@@ -765,7 +765,7 @@ static void t_longdiv(void)
 static void mo_drain(uint32_t *on, uint32_t *off, uint32_t *onDrum, uint32_t *last_note)
 {
     while (mo_r != mo_w) {
-        uint32_t p = midi_out_q[mo_r % MQ], st = (p >> 8) & 0xF0u, ch = (p >> 8) & 15u;
+        uint32_t p = midi_out_q[mo_r % MOUT_Q], st = (p >> 8) & 0xF0u, ch = (p >> 8) & 15u;
         mo_r++;
         if (st == 0x90u && (p >> 24)) { (*on)++; if (ch == 9u) (*onDrum)++; else if (ch == 0u) *last_note = (p >> 16) & 127u; }
         else if (st == 0x80u || st == 0x90u) (*off)++;
@@ -1193,8 +1193,217 @@ static void t_tflt(void)
     lock_del(&trk[1], 3, P_COUNT);
 }
 
+static void t_arp_modes(void)
+{
+    static const uint8_t OUT[] = {60, 71, 64, 67, 60, 71, 64, 67};
+    static const uint8_t ROOT[] = {60, 64, 60, 67, 60, 71, 60, 64};
+    static const uint8_t ORDER[] = {67, 60, 71, 64};
+    track_t *t = &trk[0];
+    uint32_t i, cycle, ok = 1;
+    reset(120);
+    t->p[P_AOCT] = 1;
+    t->p[P_AORDER] = 1;                          /* new pitch modes ignore press-order preference */
+    for (i = 0; i < 4u; i++) arp_add(t, ORDER[i]);
+    t->p[P_AMODE] = ARP_OUTSIDE;
+    for (i = 0; i < sizeof OUT; i++) ok &= arp_next(t) == OUT[i];
+    check(ok, "arp OUTIN: alternates lowest/highest, wraps without duplicates");
+    t->arp_idx = 0xFFFFFFFFu;
+    t->p[P_AMODE] = ARP_ROOTALT;
+    for (i = 0, ok = 1; i < sizeof ROOT; i++) ok &= arp_next(t) == ROOT[i];
+    check(ok, "arp ROOTALT: lowest note alternates with each other tone");
+    t->arp_idx = 0xFFFFFFFFu;
+    t->p[P_AMODE] = ARP_ORDER;
+    t->p[P_AORDER] = 0;
+    for (i = 0, ok = 1; i < 8u; i++) ok &= arp_next(t) == ORDER[i % 4u];
+    check(ok, "arp ORD: press order even when ORDER is NOTE");
+    t->p[P_AMODE] = ARP_SHUFFLE;
+    for (cycle = 0, ok = 1; cycle < 20u; cycle++) {
+        uint32_t seen = 0;
+        for (i = 0; i < 4u; i++) {
+            uint32_t n = arp_next(t), j;
+            for (j = 0; j < 4u && ORDER[j] != n; j++) {}
+            if (j == 4u || (seen & (1u << j))) ok = 0;
+            seen |= 1u << j;
+        }
+        ok &= seen == 15u;
+    }
+    check(ok, "arp SHUF: every held note exactly once per random cycle");
+    arp_remove(t, 71);
+    for (i = 0, ok = 1; i < 30u; i++) ok &= arp_next(t) != 71u;
+    check(ok, "arp SHUF: releasing a note invalidates the permutation");
+    t->p[P_AOCT] = 2;
+    for (i = 0, ok = 1, cycle = 0; i < 6u; i++) {
+        uint32_t n = arp_next(t), bit = n == 60 ? 0 : n == 64 ? 1 : n == 67 ? 2 :
+                                      n == 72 ? 3 : n == 76 ? 4 : n == 79 ? 5 : 6;
+        ok &= bit < 6u && !(cycle & (1u << bit));
+        cycle |= 1u << bit;
+    }
+    check(ok && cycle == 63u, "arp SHUF: octave-range changes rebuild the complete cycle");
+    t->nheld = 1; t->held[0] = 60; t->p[P_AOCT] = 1;
+    for (i = ARP_OUTSIDE, ok = 1; i < ARP_COUNT; i++) {
+        t->p[P_AMODE] = (int16_t)i;
+        for (cycle = 0; cycle < 8u; cycle++) ok &= arp_next(t) == 60u;
+    }
+    check(ok, "new arp modes: single-note input is stable");
+    t->p[P_AMODE] = ARP_OUTSIDE; t->nheld = 3;
+    t->held[0] = 60; t->held[1] = 64; t->held[2] = 67; t->arp_idx = 0xFFFFFFFFu;
+    check(arp_next(t) == 60 && arp_next(t) == 67 && arp_next(t) == 64,
+          "arp OUTIN: odd-length list plays its center once");
+    t->nheld = 2; t->held[0] = 60; t->held[1] = 84; t->p[P_AOCT] = 2;
+    t->arp_idx = 0xFFFFFFFFu;
+    check(arp_next(t) == 60 && arp_next(t) == 96 && arp_next(t) == 72 && arp_next(t) == 84,
+          "arp OUTIN: sorts the entire octave span for widely spaced input");
+    t->nheld = 16; t->p[P_AOCT] = 4; t->arp_shuffle_n = 0;
+    for (i = 0; i < 16u; i++) t->held[i] = (uint8_t)(36u + i);
+    t->p[P_AMODE] = ARP_SHUFFLE;
+    for (i = 0, ok = 1; i < 128u; i++) {
+        uint32_t n = arp_next(t);
+        ok &= n >= 36u && n <= 87u;
+    }
+    check(ok && t->arp_shuffle_n == 64u && t->arp_shuffle_pos == 64u,
+          "arp SHUF: maximum 16-note/four-octave input completes two cycles");
+    check(TP[P_AMODE].max == ARP_COUNT - 1 && ARP_ORDER == 5,
+          "arp modes: descriptor includes additions, existing IDs unchanged");
+}
+
+static void t_remaining_arp_modes(void)
+{
+    static const uint8_t NOTES[] = {60, 64, 67, 71};
+    static const uint8_t DNUP[] = {71, 67, 64, 60, 64, 67, 71, 67};
+    static const uint8_t REPEAT[] = {60, 64, 67, 71, 71, 67, 64, 60, 60, 64};
+    static const uint8_t INSIDE[] = {64, 67, 60, 71, 64, 67, 60, 71};
+    track_t *t = &trk[0];
+    uint32_t i, k, ok, prev = 0;
+    reset(120);
+    t->nheld = 4; t->p[P_AOCT] = 1; t->p[P_AORDER] = 1;
+    memcpy(t->held, NOTES, sizeof NOTES);
+    t->p[P_AMODE] = ARP_DOWNUP; t->arp_idx = 0xFFFFFFFFu;
+    for (i = 0, ok = 1; i < sizeof DNUP; i++) ok &= arp_next(t) == DNUP[i];
+    check(ok, "arp DNUP: starts high, descends then ascends without endpoint repeats");
+    t->p[P_AMODE] = ARP_UPDOWN_REPEAT; t->arp_idx = 0xFFFFFFFFu;
+    for (i = 0, ok = 1; i < sizeof REPEAT; i++) ok &= arp_next(t) == REPEAT[i];
+    check(ok, "arp UPDNREP: repeats both endpoints including cycle boundary");
+    t->p[P_AMODE] = ARP_INSIDE; t->arp_idx = 0xFFFFFFFFu;
+    for (i = 0, ok = 1; i < sizeof INSIDE; i++) ok &= arp_next(t) == INSIDE[i];
+    check(ok, "arp INOUT: center pair then outward, each note once");
+    t->nheld = 3; t->arp_idx = 0xFFFFFFFFu;
+    check(arp_next(t) == 64 && arp_next(t) == 67 && arp_next(t) == 60,
+          "arp INOUT: odd input starts at its middle");
+    t->nheld = 4; t->p[P_AMODE] = ARP_WALK; t->arp_idx = 0xFFFFFFFFu;
+    for (i = 0, ok = 1; i < 200u; i++) {
+        uint32_t n = arp_next(t);
+        for (k = 0; k < 4u && NOTES[k] != n; k++) {}
+        ok &= k < 4u && (!i ? k == 0u : (k + 1u == prev || k == prev + 1u));
+        prev = k;
+    }
+    check(ok, "arp WALK: starts low, each hit moves one pool position, reflects at edges");
+    t->nheld = 1;
+    check(arp_next(t) == 60, "arp WALK: shrinking held pool never uses a stale position");
+}
+
+static void t_arp_pulse(void)
+{
+    track_t *t = &trk[0];
+    uint8_t sounding[NVOICE];
+    uint32_t i, k, on = 0, off = 0, drum = 0, last = 0, u = div_units(2), ok = 1;
+    reset(120);
+    for (i = 0; i < NTRK; i++) {
+        arp_release(&trk[i]); trk_all_off(&trk[i]);
+        trk[i].nheld = trk[i].arp_phys = 0;
+    }
+    memset(mo_set, 0, sizeof mo_set);
+    usb.config = 1; mo_w = mo_r = 0;
+    song.g[G_MIDI] = 1; song.playing = song.rec = 0;
+    t->p[P_AMODE] = t->armp = ARP_PULSE;
+    t->p[P_AOCT] = 1; t->p[P_AHOLD] = 0; t->p[P_ARATE] = 2;
+    t->p[P_AGATE] = 64; t->p[P_APROB] = 127; t->p[P_VOICE] = V_POLY;
+    arp_add(t, 60); arp_add(t, 64); arp_add(t, 67);
+    arp_tick(t, 1);
+    check(t->arp_n == 3 && gated(t, sounding) == 3 &&
+          t->arp_notes[0] == 60 && t->arp_notes[1] == 64 && t->arp_notes[2] == 67,
+          "arp PULSE: all held tones sound together on its first hit");
+    arp_tick(t, u / 2u);
+    check(!t->arp_n && gated(t, sounding) == 0, "arp PULSE: gate ends every tone");
+    arp_tick(t, u / 2u);
+    check(t->arp_n == 3, "arp PULSE: the next rate boundary retriggers the chord");
+    arp_remove(t, 60); arp_remove(t, 64); arp_remove(t, 67);
+    arp_tick(t, 1);
+    mo_drain(&on, &off, &drum, &last);
+    check(!t->arp_n && on == 6 && off == on, "arp PULSE: key release balances all generated MIDI notes");
+    arp_add(t, 0); arp_tick(t, 1);
+    check(t->arp_n == 1 && t->arp_notes[0] == 0, "arp PULSE: MIDI note zero has explicit active state");
+    arp_remove(t, 0); arp_tick(t, 1);
+    check(!t->arp_n && !(mo_set[0][0] & 1u), "arp PULSE: MIDI note zero receives note-off");
+    arp_add(t, 60); arp_add(t, 64); arp_add(t, 67); arp_tick(t, 1);
+    t->arp_new = 0; t->arp_pos = 0;
+    t->p[P_AMODE] = ARP_UP;
+    run_block();
+    check(!t->arp_n && gated(t, sounding) == 0, "arp PULSE -> UP: old chord ends before next single hit");
+    t->p[P_AMODE] = t->armp = ARP_PULSE; t->arp_new = 1;
+    arp_tick(t, 1);
+    seq_stop();
+    check(!t->arp_n && gated(t, sounding) == 0, "arp PULSE: STOP releases every current tone");
+    t->arp_new = 1; arp_tick(t, 1); t->arp_new = 0; t->arp_pos = 0;
+    t->p[P_AMODE] = ARP_OFF;
+    run_block();
+    check(!t->arp_n && !t->nheld, "arp PULSE: turning the arp off clears its chord");
+    t->p[P_AMODE] = t->armp = ARP_PULSE; t->p[P_AHOLD] = t->aholdp = 1;
+    arp_add(t, 60); arp_add(t, 64); arp_tick(t, 1);
+    arp_remove(t, 60); arp_remove(t, 64);
+    t->p[P_AHOLD] = 0;
+    run_block();
+    check(!t->arp_n && !t->nheld, "arp PULSE: releasing HOLD clears all latched tones");
+    arp_add(t, 60); arp_add(t, 64); arp_tick(t, 1);
+    panic_req = 1; run_block();
+    check(!t->arp_n && !t->nheld && gated(t, sounding) == 0, "arp PULSE: panic releases the complete chord");
+    arp_add(t, 60); arp_add(t, 64); arp_tick(t, 1);
+    proj_capture(&proj_slot[0]);
+    arrangement_apply(0);
+    check(!t->arp_n && !t->nheld && gated(t, sounding) == 0,
+          "arp PULSE: section change releases audio and clears generated state");
+    mo_drain(&on, &off, &drum, &last);
+    check(on == off, "arp PULSE: mode, STOP, HOLD, panic and section cleanup balance generated MIDI");
+    /* Record a representable four-tone pulse through the same heard-note path. */
+    steps_clear(t); t->p[P_AHOLD] = 0; t->p[P_AMODE] = ARP_PULSE;
+    t->p[P_AOCT] = 1; t->nheld = t->arp_phys = 0;
+    for (i = 0; i < 4u; i++) arp_add(t, 60u + 2u * i);
+    clk_pos = clk_beat = 0; t->seq_abs = 0; t->seq_idx = 0;
+    song.playing = 1; song.rec = 1;
+    arp_tick(t, 1);
+    check(t->step[0].n == 4 && t->step[0].note[0] == 60 && t->step[0].note[3] == 66,
+          "arp PULSE: live recording captures a four-tone chord");
+    seq_stop(); song.rec = 0; steps_clear(t);
+    /* Maximum expanded input on all synth tracks, multiple cycles, wrapping the MIDI ring. */
+    mo_r = mo_w; on = off = 0; memset(mo_set, 0, sizeof mo_set);
+    for (i = 0; i < NPART; i++) {
+        track_t *part = &trk[i];
+        part->p[P_AMODE] = part->armp = ARP_PULSE; part->p[P_AOCT] = 4;
+        part->p[P_AHOLD] = 0; part->p[P_ARATE] = 2; part->p[P_APROB] = 127;
+        part->p[P_AGATE] = 64; part->p[P_VOICE] = V_POLY;
+        part->nheld = part->arp_phys = 0;
+        for (k = 0; k < 16u; k++) arp_add(part, 36u + k);
+        arp_tick(part, 1);
+        ok &= part->arp_n == 52u;                  /* overlapping octaves deduplicate pitches */
+    }
+    mo_drain(&on, &off, &drum, &last);
+    for (k = 0; k < 3u; k++) {
+        for (i = 0; i < NPART; i++) arp_tick(&trk[i], u);
+        mo_drain(&on, &off, &drum, &last);
+    }
+    for (i = 0; i < NPART; i++) {
+        arp_release(&trk[i]); trk[i].nheld = trk[i].arp_phys = 0;
+        trk[i].p[P_AMODE] = trk[i].armp = 0;
+    }
+    mo_drain(&on, &off, &drum, &last);
+    check(ok && on == 624u && off == on, "arp PULSE: three maximum pools deduplicate, retrigger and balance MIDI across ring wraps");
+    song.g[G_MIDI] = 0; usb.config = 0;
+}
+
 int main(void)
 {
+    t_arp_modes();
+    t_remaining_arp_modes();
+    t_arp_pulse();
     t_tflt();
     t_usbfull();
     t_micro();

@@ -5,6 +5,7 @@
  * A mono ring of the mix (PUNCH_N samples, 0.74 s) feeds the loops, reverse, tape stop,
  * half speed, wobble and echo; the filters, crush and gate run in stereo. Every change
  * crossfades over 64 samples. Runs in the audio ISR (mix_block, fx.c). */
+#include "performance_remote.h"
 #define PUNCH_N 32768u                    /* power of two */
 /* the transport clock (core.h clk_pos) places the loops and the gate on the grid */
 static uint32_t clk_samples(void) { return clk_pos / (uint32_t)song.g[G_BPM]; }   /* samples into the beat */
@@ -127,7 +128,7 @@ static int punch_owns(int32_t fx, uint32_t w)
 static void punch_process(int32_t *l, int32_t *r, uint32_t n)
 {
     uint32_t i;
-    int32_t want = punch.req;
+    int32_t want = punch.req >= 0 ? punch.req : perf_punch(fm1_ms);
     uint32_t beat, step, echo_d;
     tsvf_t c1, c2;
     if (punch.cur < 0 && want < 0) {                   /* idle: only the ring */

@@ -7,7 +7,8 @@
  * DRUM_STEP (33) reads / writes the drum track's 16 lanes, TRACK ends with the solo mask;
  * v6 = SLOOP 2.3: backup / restore (34-36); v7 = SLOOP 2.4: the steps' nudges and parameter locks (37-40);
  * v8 = SLOOP 2.4: the steps' fill conditions (41-42); v9 = SLOOP 2.4: the FM6 engine's patches (68-71,
- * editor_fm6.c: Felucca 1.0's numbers) and the patch bank as backup object 8).
+ * editor_fm6.c: Felucca 1.0's numbers) and the patch bank as backup object 8);
+ * v10 adds PERFORM_STATE (43), the read-only hardware octave offset for companion input.
  *   F0 7D 46 4C cmd args.. F7     (7D = non-commercial ID, "FL")
  * Values are 14 bit, two 7-bit bytes LSB first, offset by 8192 (so -8192..8191).
  * Every request gets a reply with the same cmd; 23/24/26 are also pushed
@@ -26,8 +27,9 @@ enum { ED_INFO = 1, ED_GET, ED_SET, ED_DUMP, ED_DESC, ED_STEP_GET, ED_STEP_SET, 
        ED_BK_LIST, ED_BK_GET, ED_BK_PUT,                                        /* v6: backup / restore */
        ED_LOCK_GET, ED_LOCK_SET, ED_MICRO_GET, ED_MICRO_SET,                    /* v7: parameter locks, nudges */
        ED_FILL_GET, ED_FILL_SET,                                                /* v8: fill conditions */
+       ED_PERFORM_STATE,                                                       /* v10: hardware octave offset */
        ED_FM6_GET = 68, ED_FM6_PUT, ED_FM6_LIST, ED_FM6_ERASE };                /* v9: FM6 patches (Felucca's numbers) */
-#define ED_PROTO 9u                                   /* the protocol version INFO ends with */
+#define ED_PROTO 12u                                  /* negotiated performance and USB return controls */
 
 static uint8_t ed_out[600];
 static uint32_t ed_n;
@@ -580,6 +582,9 @@ static int ed_backup(uint32_t cmd, const uint8_t *a, uint32_t na)   /* no flash:
 #endif
 
 #include "editor_fm6.c"                               /* v9: the FM6 patches (68..71) */
+#include "editor_performance.c"                       /* v12: host-owned fills and punch FX */
+#include "editor_drum_grooves.c"                      /* v12: shared ROM groove bank */
+#include "editor_usb_playback.c"                      /* v12: USB return gain/mute/diagnostics */
 
 static void ed_handle(const uint8_t *f, uint32_t n)   /* f: the bytes between F0 and F7 */
 {
@@ -589,6 +594,14 @@ static void ed_handle(const uint8_t *f, uint32_t n)   /* f: the bytes between F0
     int16_t *vp;
     const param_desc_t *d;
     ed_begin(cmd);
+    if (cmd == 73u) {
+        ed_performance(a, na);
+        return;
+    }
+    if (ed_drum_grooves_handle(cmd, a, na) || ed_usb_playback_handle(cmd, a, na)) {
+        ed_send();
+        return;
+    }
     if (ed_backup(cmd, a, na)) {                           /* v6: backup / restore */
         ed_send();
         return;
@@ -598,6 +611,10 @@ static void ed_handle(const uint8_t *f, uint32_t n)   /* f: the bytes between F0
         return;
     }
     switch (cmd) {
+    case ED_PERFORM_STATE:
+        if (na) return;
+        ed_v(song.octave);                            /* signed offset, -3..3; no MIDI behavior changed */
+        break;
     case ED_INFO:
         ed_str("FELUCCA " FELUCCA_VERSION, 24);
         ed_b(NENGINES);
@@ -1089,6 +1106,7 @@ static void ed_service(void)
 {
     const uint8_t *p;
     uint32_t n;
+    ed_performance_service();
     ed_sync();                                             /* v2 pushes (while watched) */
     if (!ota_frame_get(&p, &n) || n < 4u || p[0] != ED_HDR0 || p[1] != ED_HDR1 || p[2] != ED_HDR2)
         return;

@@ -154,14 +154,14 @@ The layers are **FX** (punch-in effects), **EDIT** (erase), **ARP** (note repeat
 | **LFO** | LFO pages (LFO, LFO DEST) | — |
 | **FX** | FX pages (FX, FILTER, SLICER, DLY, REV/CHO) | punch-in layer |
 | **SCL** | SCL pages (SCL, SCL 2) | key / chord layer |
-| **EDIT** | EDIT pages (EDIT 1, EDIT 2, VOICE, VOICE 2) · on TRACKS with the drum track: the **DRUMS** screen · on DRUMS: grid ↔ kit · on the STEP page: clear the step | erase layer |
+| **EDIT** | EDIT pages (EDIT 1, EDIT 2, VOICE, VOICE 2) · on TRACKS with the drum track: the **DRUMS** screen · on DRUMS: grid → kit → groove · on the STEP page: clear the step | erase layer |
 | **ARP** | ARP pages (ARP, ARP 2) | note-repeat layer |
-| **SEQ** | SEQ pages (STEP, PATTERN, SONG) · on TRACKS with the drum track: the **DRUMS** screen · on DRUMS: grid ↔ kit | step layer |
+| **SEQ** | SEQ pages (STEP, PATTERN, SONG) · on TRACKS with the drum track: the **DRUMS** screen · on DRUMS: grid → kit → groove | step layer |
 | **GLO** | GLO pages (GLOBAL, MASTER, SYSTEM, DRUMS) | mix layer |
 | **OCT− / OCT+** | synth track: octave down / up (−3 … +3) · both together: octave 0 | drum track: **ghost** (OCT−) / **hard** (OCT+) hits while held |
 | **ALGORITHM** | select track 1–4, on every screen (inside a layer it waits; not during a free take, on the SONG screen or in the menu) | — |
 | **PRESETS** | on TRACKS, HOME and the PRESETS page: the selected track's **sound** (all factory sounds by kind, then your user presets) · drum track: the **kit** · on the DRUMS screen: the kit | — |
-| **SELECT** | on TRACKS, inside a layer and on the REC screen: the **tempo** · on a page: previous / next page of its button (stops at the ends) · DRUMS screen: grid ↔ kit · visualiser: the style · menu: the section | — |
+| **SELECT** | on TRACKS, inside a layer and on the REC screen: the **tempo** · on a page: previous / next page of its button (stops at the ends) · DRUMS screen: grid → kit → groove · visualiser: the style · menu: the section | — |
 | **KNOB 1–4** | the four dials at the bottom of the screen | — |
 | **MASTER** | output volume (the visualiser ignores it) | — |
 
@@ -188,7 +188,16 @@ The layers are **FX** (punch-in effects), **EDIT** (erase), **ARP** (note repeat
 | **OFF** | OFF | every key chromatic (the default) |
 | **SNAP** | OFF | every key, rounded down to the scale |
 | **WHITE** | OFF | the white keys walk the scale from C4 (C4 = the key's root); black keys are silent |
-| any | **on** | the white keys play **chords** of the scale, one per key (C4 = the I chord); the black keys **change the chord** ([CHORD+](#chord-the-black-keys-change-the-chord)) |
+| **OFF / SNAP / WHITE** | **on** | the white keys play **chords** of the scale, one per key (C4 = the I chord); the black keys **change the chord** ([CHORD+](#chord-the-black-keys-change-the-chord)) |
+| **CHROM** | **on** | every piano key plays a chord rooted on its actual note; black keys are roots rather than modifiers. OCT and TRN still apply; ROOT does not shift these literal keys. |
+| **CHROM** | OFF | every key chromatic, like OFF |
+
+On the SCL page, set **QNT / KEYS = CHROM** for chromatic chord roots. For example, choose
+**CHORD = MAJOR** and press C# to play C# major. Fixed chord shapes retain their quality;
+scale-derived shapes use the selected scale's tonic quality transposed to each root.
+**SCALE = CHR** means all twelve semitones for ordinary notes, but legacy scale-derived
+chords deliberately use minor harmony when CHR is selected. Choose an explicit MAJOR,
+MINOR, DOM7, etc. for an unambiguous quality. Existing projects keep their key mapping.
 
 - The **GM KIT** sound (SAMPLE engine) is the exception: the lowest key is a kick (C2), no scale.
 
@@ -233,7 +242,7 @@ Every kit is level-matched. The kit is saved with projects and song sections. Ch
 
 ### The DRUMS screen
 
-Open it with **EDIT** or **SEQ** tapped on the TRACKS screen while the drum track is selected. It has two pages; **EDIT / SEQ tapped** or **SELECT** switch between them.
+Open it with **EDIT** or **SEQ** tapped on the TRACKS screen while the drum track is selected. It has three pages: **GRID**, **KIT**, **GROOVE**. **EDIT / SEQ tapped** cycles them; **SELECT** moves between them.
 
 **Grid page** — the 16 sounds × 16 steps, levels as shades, ratchets as notches.
 
@@ -256,6 +265,16 @@ Open it with **EDIT** or **SEQ** tapped on the TRACKS screen while the drum trac
 | **kit** | **level** of the drum track | **reverb** send of the drums | **pan** of the drum track |
 
 While the song plays in song mode, the grid's hit and level knobs wait (*STOP THE SONG FIRST*).
+
+**Groove page** — build a beat directly on the FM-1. Choose from 16 starters, including house, techno, disco, hip-hop, drum-and-bass, garage, reggaeton, bossa and AMEN BREAK / AMEN HALF. The screen previews kick, snare, clap and hats.
+
+| KNOB 1 | KNOB 2 | KNOB 3 | KNOB 4 |
+| --- | --- | --- | --- |
+| **groove** starter | preview **step** | preview **sound** | **audition** that hit using the selected kit |
+
+Press **OCT+** to **apply**; if the drum pattern contains anything, press **OCT+ again** to confirm replacement. **OCT− toggles a looping preview** through the current kit, without replacing your beat. During replacement confirmation, OCT− cancels and returns to GRID. Browsing leaves your pattern intact. Stop playback and recording first; an armed recording also blocks apply (*STOP FIRST*).
+
+Apply replaces the drum steps, clears their ratchets, nudges, locks and fill conditions, and sets the starter's length and division. Most straight starters are 16 sixteenth-note steps; AMEN BREAK is 64 steps (four bars) and AMEN HALF is 32 steps (two bars). The preview grid follows the selected step in 16-step windows; SHUFFLE is 12 eighth-note triplet steps. Local drum swing becomes zero; global swing remains selected. The kit, mixer, tempo, song key and synth tracks stay selected. SMALL FILL repeats as an ordinary pattern. Edit any starter with GRID, SEQ or live recording, and save it as usual. **EDIT held + OCT− / OCT+** undoes/redoes replacement, including the overwritten timing and locks, while stopped.
 
 ---
 
@@ -386,7 +405,7 @@ A held step that you edited with a knob is **kept** when you let go (only a plai
 | Control | Does |
 | --- | --- |
 | **SCL + any key** | sets the **key of the song**: the root of all three synth tracks (*KEY D*) |
-| **SCL + KNOB 1** | **CHORD** of the selected synth track: OFF, TRIAD, 7TH, 9TH, SUS4, POWER |
+| **SCL + KNOB 1** | **CHORD** of the selected synth track: OFF, TRIAD, 7TH, 9TH, SUS4, POWER, SUS2, ADD9, 6TH, SHELL, OCTAVE, MAJOR, MINOR, DOM7, MAJ7, MIN7, DIM, AUG, HALFDIM, DIM7 |
 | **SCL + KNOB 2** | **SCALE** of all three synth tracks: 16 scales |
 | **SCL + KNOB 3** | **KEYS**: OFF, SNAP, WHITE |
 | **SCL + KNOB 4** | **TRANSPOSE** the selected track, ±24 semitones |
@@ -414,6 +433,7 @@ The tiles show what is heard; the *fill* and *bar* tiles light while they act.
 | **SAVE + key 1–4** | play section **A–D**: playing, from the next bar (every track from its first step); stopped, it becomes the loop at once |
 | **SAVE + key 1–4, several tapped while SAVE stays held** | a **quick chain** (*A B B C*…, up to 8, repeats allowed): let go and they play in turn, round and round |
 | **SAVE + key 5–8** | **save the loop** into section A–D (over a used section: press the key again within 3 s) |
+| **SAVE + key 9** | **new** live project: stopped, press twice within 3 s while SAVE stays held; clears the current loop and restores default sounds/tempo, preserving saved slots |
 | **SAVE + key 13** | switch **loop** / **song** mode |
 | **SAVE + key 14** | **SONG REC**: from the next bar, every section you play (and how long) is written into the song; again (or STOP) to end |
 | **SAVE + key 16** | the **SONG** screen |
@@ -501,8 +521,17 @@ Hold **SCL** and turn **KNOB 1 CHORD** on the selected synth track:
 | **9TH** | 1-3-7-9 (the lo-fi / R&B voicing) |
 | **SUS4** | 1-4-5 |
 | **POWER** | 1-5-8 (root, fifth, octave) |
+| **SUS2** | 1-2-5 |
+| **ADD9** | 1-3-5-9 (keeps the fifth; unlike 9TH, has no seventh) |
+| **6TH** | 1-3-5-6 |
+| **SHELL** | 1-3-7 (leaves the fifth out) |
+| **OCTAVE** | root + 12 semitones |
+| **MAJOR / MINOR** | 0-4-7 / 0-3-7 semitones |
+| **DOM7 / MAJ7 / MIN7** | 0-4-7-10 / 0-4-7-11 / 0-3-7-10 |
+| **DIM / AUG** | 0-3-6 / 0-4-8 |
+| **HALFDIM / DIM7** | 0-3-6-10 / 0-3-6-9 |
 
-With a chord on, **the white keys walk the scale from C4**: C4 plays the chord of the key's I, D4 the II, E4 the III… and the keys below C4 carry on downwards. Every chord is built from the scale, so it always fits the song. With SCALE on CHR, the chords come from the minor scale. One finger plays the whole chord, and it is recorded as a chord.
+With a chord on, **the white keys walk the scale from C4**: C4 plays the chord of the key's I, D4 the II, E4 the III… and the keys below C4 carry on downwards. TRIAD through SHELL use scale degrees (POWER uses a perfect fifth and octave). With SCALE on CHR, these degree-based chords use the minor scale. OCTAVE and MAJOR through DIM7 use fixed semitone intervals, so their quality stays the same on every key; the scale still selects each root. One finger plays the whole chord, and it is recorded as a chord.
 
 ### CHORD+: the black keys change the chord
 
@@ -516,7 +545,7 @@ With a chord mode on, **hold a black key while you play a white one** — or pre
 | **C#** | adds the 9th |
 | **D#** | an inversion |
 
-Both octaves of black keys work, and you can hold several. The 7th and 9th come from the scale: in C major, G4 plays **G** (the V chord), **G#** makes it **G7**, **F# + G#** make it **Gm7**; on C4, F# + G# give C-E♭-G-B. What you play is recorded as it sounds.
+Both octaves of black keys work, and you can hold several. The 7th and 9th come from the scale: in C major, G4 plays **G** (the V chord), **G#** makes it **G7**, **F# + G#** make it **Gm7**; on C4, F# + G# give C-E♭-G-B. What you play is recorded as it sounds. For fixed-quality chords, F# flips the actual third, A# replaces it with a perfect fourth, and C# adds a major ninth. G# adds a major seventh to MAJOR/AUG, a diminished seventh to DIM, and a minor seventh to MINOR; existing sevenths stay unchanged. At four notes, the ninth replaces the fifth. POWER and OCTAVE accept inversion only; OCTAVE raises the whole pair by an octave when both notes fit below MIDI 128.
 
 ### SCL 2: STRUM and VLEAD
 
@@ -527,6 +556,7 @@ Tap **SCL** twice (or SCL, then SELECT) for **SCL 2**:
 | KNOB 1 **TRN** | transpose the track, ±24 semitones |
 | KNOB 2 **STRUM** | plays a chord's notes one after the other like a strummed guitar, 1–60 ms a note: right = low to high, left = high to low, centre = off. On the keys and on the chord steps the sequencer plays |
 | KNOB 3 **VLEAD** | **ON**: voice leading — each chord is voiced nearest the last one, so a progression moves smoothly instead of jumping |
+| KNOB 4 **LATCH** | **ON**: sustain a keyboard chord after release; the next root replaces it. Outside CHROM, black-key modifiers toggle until pressed again, including with ARP enabled and the root retained. OFF or STOP releases the latched chord. Shares ARP HOLD. Hold an existing chord plus **ARP**, or physical **SEL/SLOOP SCL**, for **700 ms** to toggle latch without restarting the chord. |
 
 ---
 
@@ -553,6 +583,7 @@ A muted track fades out in a few milliseconds and plays no new notes; its patter
 | Action | How |
 | --- | --- |
 | **Undo / redo** | **EDIT + OCT−** / **EDIT + OCT+**. One level: the last recording pass, erase, clear, step or pattern edit |
+| **Undo an accidental load** | Firmware 2.4.16: stop playback, hold **EDIT**, press **OCT−** to restore the complete project from before the latest successful load; **OCT+** redoes the load. Saved-slot loads, stopped section selection and working-project backup restore are covered. A later sequence edit/recording takes over undo history. This snapshot lives in RAM and is lost at restart; failed/empty loads leave it intact |
 | **Clear the selected track** | **hold REC** ~2 s (after 0.7 s a ring fills; let go before it is full: nothing). Undo brings it back |
 | **Clear the pattern** | SAVE → TOOLS → **CLRSQ** (GO) |
 | **Reset the sound** | SAVE → TOOLS → **INIT** (GO): the engine's defaults and first preset |
@@ -616,9 +647,9 @@ The song's settings can only be edited while it is stopped (*STOP FIRST*). An em
 | Screen | How to get there | What it shows · what the knobs do |
 | --- | --- | --- |
 | **TRACKS** | tap **HOME** | the performance view: tempo, swing, transport, bar.beat; each track with its sound, steps, playhead, mute / solo / rec badges and level. Dials: KNOB 1 **swing** (global) · KNOB 2 **level** (selected track; on a muted track: unmutes it) · KNOB 3 **steps** (its length) · KNOB 4 **pan** |
-| **Visualiser** | tap **HOME** on TRACKS | twelve full-screen visualisers; see [The visualiser](#19-the-visualiser) |
+| **Visualiser** | tap **HOME** on TRACKS | twenty-one full-screen visualisers; see [The visualiser](#19-the-visualiser) |
 | **Layer** | hold a layer button | 16 tiles (the white keys) and the four dials, in the layer's colour |
-| **DRUMS** (grid / kit) | tap **EDIT** or **SEQ** on TRACKS with the drum track | see [The DRUMS screen](#the-drums-screen) |
+| **DRUMS** (grid / kit / groove) | tap **EDIT** or **SEQ** on TRACKS with the drum track | see [The DRUMS screen](#the-drums-screen) |
 | **REC READY / FREE TAKE / COUNT-IN** | **REC** while stopped | the tracks, then **mode · length · start** on KNOB 1–3 (4-3-2-1 during a count-in); in a free take: the seconds and the loop it would make |
 | **Hold ring** | hold **REC** | the ring of *clear track* filling |
 | **SONG** | tap **SAVE** on TRACKS, or **SAVE + key 16** | the section chain; see [The SONG screen](#the-song-screen) |
@@ -644,14 +675,26 @@ Tap a button to open its first page (or the last one you used); **tap it again**
 | | **SLICER** | SLCR: OFF, GATE, STUT (stutter) | PAT: pattern 1–16 | RATE: 1/8, 1/16, 1/32, 8T, 16T, 32T | DEPTH |
 | | **DLY** (global) | TIME: 1/4, 1/8, 1/16, 1/32, 8T, 16T, 1/8D, 1/16D | FDBK feedback | COLR colour (tone of the repeats) | MIX |
 | | **REV/CHO** (global) | SIZE reverb size | DAMP reverb damping | CRT chorus rate | CDP chorus depth |
-| **SCL** | **SCL** | ROOT (the track's key) | SCL: the track's scale (SCL + KNOB 2 sets all three) | QNT keys: OFF, SNAP, WHITE | CHORD: OFF, TRIAD, 7TH, 9TH, SUS4, POWER |
-| | **SCL 2** | TRN transpose ±24 | STRUM ±60 ms | VLEAD: OFF / ON | — |
+| **SCL** | **SCL** | ROOT (the track's key) | SCL: the track's scale (SCL + KNOB 2 sets all three) | QNT keys: OFF, SNAP, WHITE | CHORD: OFF, TRIAD, 7TH, 9TH, SUS4, POWER, SUS2, ADD9, 6TH, SHELL, OCTAVE, MAJOR, MINOR, DOM7, MAJ7, MIN7, DIM, AUG, HALFDIM, DIM7 |
+| | **SCL 2** | TRN transpose ±24 | STRUM ±60 ms | VLEAD: OFF / ON | LATCH: OFF / ON |
 | **EDIT** | **EDIT 1** | engine parameter 1 | 2 | 3 | 4 (see [the engines](#the-ten-engines)) |
 | | **EDIT 2** | engine parameter 5 | 6 | 7 | 8 |
 | | **VOICE** | VCE: POLY, MONO, LEG (legato), UNI (unison) | GLD glide | GLMOD: RATE / TIME | PRIO: LAST, LOW, HIGH (mono note priority) |
 | | **VOICE 2** | ALLOC: ROT (rotate) / REUSE | DTUNE (unison detune) | PAN | MUTE |
-| **ARP** | **ARP** | MODE: OFF, UP, DN, UPDN, RND, ORD | RATE: 1/4 … 16T | OCT: 1–4 octaves | GATE |
-| | **ARP 2** | SWG swing | PROB probability of each note | HOLD: OFF / ON (latch) | ORD: NOTE (pitch order) / PLAY (the order you played) |
+| **ARP** | **ARP** | MODE: OFF, UP, DN, UPDN, RND, ORD, OUTIN, SHUF, ROOTALT, DNUP, UPDNREP, INOUT, WALK, PULSE | RATE: 1/4 … 16T | OCT: 1–4 octaves | GATE |
+| | **ARP 2** | SWG swing | PROB probability of each note | HOLD: OFF / ON (latch) | ORD: NOTE / PLAY (live only), SNOTE / SPLAY (recorded steps + live) |
+
+The new arp modes work with held notes and one-finger chords. **OUTIN** alternates the lowest and highest notes, moving inward (C–E–G–B becomes C–B–E–G). **SHUF** plays each expanded note position once in random order before reshuffling; the same note can occur at the end of one cycle and the start of the next. **ROOTALT** alternates the lowest pitch with each other note (C–E–C–G–C–B); its anchor is the lowest voiced note, including when the chord is inverted. These three modes use pitch order across the octave range. **ORD** always uses the order you pressed the keys; the separate ORD setting still controls ordering for UP, DN, and UPDN. Probability retains its existing behavior: a skipped hit does not advance the note position.
+
+| Additional arp mode | With C–E–G–B held |
+| --- | --- |
+| **DNUP** | B–G–E–C–E–G, then repeat; no repeated endpoints |
+| **UPDNREP** | C–E–G–B–B–G–E–C, then repeat; repeats both endpoints |
+| **INOUT** | E–G–C–B, then repeat; odd-sized chords start on their middle note |
+| **WALK** | Starts on C, then randomly moves one position up or down; reverses at the ends |
+| **PULSE** | All held notes and selected octaves together on each hit |
+
+These modes use pitch order across the octave range. PULSE sends each distinct pitch once per hit, so overlapping octaves do not double a note. RATE, GATE, SWG, PROB, and HOLD apply to the whole pulse. Changing modes, turning HOLD off with no keys held, STOP, panic, and section changes release every active pulse tone. Holding or latching notes after STOP lets the arp continue on its stopped clock. Internal sound still shares the eight-voice budget; MIDI can carry the full expanded chord. Recording uses the existing sequencer limit of four notes per synth step (one in mono modes); a larger pulse cannot be captured in full. PULSE starts its tones together and does not apply STRUM.
 | **SEQ** | **STEP** | STEP (cursor) | NOTE | TIME: NOTE, TIE, REST | FLAG: –, ACC, SLD, A+S |
 | | **PATTERN** | LEN 1–64 steps | DIV 1/4 … 2BAR | SWG track swing | GATE note length |
 | | **SONG** | the SONG screen | | | |
@@ -786,6 +829,15 @@ On the TRACKS screen, **tap HOME**: the whole screen becomes a visualiser of wha
 | 10 | **ORBIT** | four planets turning in 1, 2, 4 and 8 beats round a sun that pulses with the mix |
 | 11 | **WIRES** | a string per track, set swinging by its notes |
 | 12 | **SLOOP** | the logo alive: the sail's four bands are the tracks, the boat rocks on its wave |
+| 13 | **DUNGEON** | a pixelated dungeon fly-through lit by the tracks and kicks |
+| 14 | **POLYRHYTHM** | four rings show each track's pattern length, active steps and independent playhead |
+| 15 | **NOTE TRAILS** | scrolling pitches for all three synths, including chords and releases, with drum lanes below |
+| 16 | **GROOVE** | eight steps per track: grid lines, swing, micro timing, hit levels and ratchet repeats |
+| 17 | **CONSTELLATION** | sixteen drum stars flash on hits; velocity sizes their centres, with fading rings |
+| 18 | **LOCK LANDSCAPE** | the first locked parameter per track, its name and values across the pattern; white marks the current step |
+| 19 | **STEREO FIELD** | a stereo cloud, left/right balance marker and a width bar |
+| 20 | **SONG JOURNEY** | song order or quick chain, current entry and remaining bars |
+| 21 | **BEAT TERRAIN** | spectrum-driven wireframe hills, moving at the tempo |
 
 The visualiser sees the mix **as if MASTER were all the way up**: with MASTER turned down, even to 0, it still moves at full size. It costs the sound nothing.
 
@@ -997,7 +1049,7 @@ On the installer page, open **Return to the official firmware (V15)**: save a ba
 | hold HOME | menu |
 | tap SAVE | on TRACKS: SONG screen · else SAVE pages |
 | tap ENV, LFO, FX, SCL, EDIT, ARP, SEQ, GLO | their pages (again: next page) |
-| tap EDIT / SEQ on TRACKS, drum track | DRUMS screen (again: grid ↔ kit) |
+| tap EDIT / SEQ on TRACKS, drum track | DRUMS screen (again: grid → kit → groove) |
 | OCT− / OCT+ | octave (both: 0) · drums: ghost / hard while held |
 | ALGORITHM | track |
 | PRESETS | sound · drum kit |
@@ -1063,3 +1115,13 @@ On the installer page, open **Return to the official firmware (V15)**: save a ba
 ---
 
 *SLOOP is based on Felucca by Leo Kuroshita (@kurogedelic), Hügelton Instruments. Full credits and licences: [SLOOP.md](SLOOP.md#rescue-going-back-credits) and [LICENSING.md](LICENSING.md). M-VAVE and FM-1 are trademarks of their owners; SLOOP is not affiliated with them.*
+
+### Recorded chords driving the arpeggiator
+
+On a synth track, turn ARP on, then **ARP 2 → ORD → SNOTE** (pitch order) or
+**SPLAY** (live press / stored note order). Recorded chord steps now feed the arp;
+the sequencer does not also play the chord directly. TIE sustains its input, REST
+clears it, and live keys still contribute. NOTE/PLAY restore the previous live-only
+arp plus direct sequence behavior; ARP OFF plays the recorded steps directly.
+STOP clears the sequence and live latch. The arp keeps its own rate/gate/probability.
+Factory sound recall may reset ORD. This does not create follower tracks or infer roots.

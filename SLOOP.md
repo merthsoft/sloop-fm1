@@ -2,7 +2,7 @@
 
 # SLOOP 2.4.1
 
-**A live groovebox firmware for the M-VAVE FM-1 — for any style.** Four tracks — three synths and a drum machine with 16 sounds on the white keys — ten synthesis engines (now with six-operator FM and DX7 patches), 76 sounds, 37 drum kits (808, 909, trap, phonk, house, techno, UK garage, jungle, amapiano, reggaeton, synthwave, chiptune, ambient, jazz…), your own samples, ghost notes and ratchets, parameter locks, micro timing and fills, note repeat, one-key chords, 16 punch-in effects, a vinyl / sidechain / DJ-filter master, and a teenage-engineering-style screen that always shows what your hands can do next. No factory patterns, nothing to load: everything you hear, you play.
+**A live groovebox firmware for the M-VAVE FM-1 — for any style.** Four tracks — three synths and a drum machine with 16 sounds on the white keys — ten synthesis engines (now with six-operator FM and DX7 patches), 76 sounds, 37 drum kits (808, 909, trap, phonk, house, techno, UK garage, jungle, amapiano, reggaeton, synthwave, chiptune, ambient, jazz…), your own samples, ghost notes and ratchets, parameter locks, micro timing and fills, note repeat, one-key chords, 16 punch-in effects, a vinyl / sidechain / DJ-filter master, and a teenage-engineering-style screen that always shows what your hands can do next. Sixteen built-in drum groove starters provide editable starting patterns; you can still play and record every part yourself.
 
 SLOOP is free and open source (GPL-3.0), based on [Felucca](https://github.com/hugelton/Felucca) by Leo Kuroshita / Hügelton Instruments.
 
@@ -28,7 +28,7 @@ SLOOP is free and open source (GPL-3.0), based on [Felucca](https://github.com/h
 - **CHORD+ (after HiChord and minichord).** In chord mode the black keys change the chord you play: major ↔ minor, 7th, sus4, 9th, inversion, even while it is held. **STRUM** plays a chord's notes one after the other, **VLEAD** voices each chord nearest the last. See [SCL — key and chords](#scl--key-and-chords).
 - **Your own drum kits, and a 4th sample slot.** A new slot, **USR4**, in flash nothing used before. The drum track's KIT goes on to **USR1–USR4** and **USR3+4**: a big kit of about 15 s over two slots, so USR1 and USR2 stay free for instruments. Build it in the editor's new **Drum kit** page (drop WAVs on 16 pads, pitch, gain and length each, choose where it goes) and send it. See [Your own drum kits](#your-own-drum-kits-kit-usr1usr4-usr34).
 - **A new web editor.** Rebuilt to look and feel like the FM-1: its black screen, the four track colours, its own pixel font; the pages of each button as rows of four coloured knobs, values you drag like a knob, the steps as the device's tiles. See [The web editor](#the-web-editor).
-- **The visualiser.** On the TRACKS screen, tap **HOME**: twelve full-screen visualisers of what plays (oscilloscope, spectrum, spectrogram, Lissajous, VU meters, circle, tape, LCD, bounce, orbit, wires and the SLOOP logo itself), **SELECT** to change. See [The visualiser](#the-visualiser).
+- **The visualiser.** On the TRACKS screen, tap **HOME**: twenty-one full-screen visualisers of what plays (oscilloscope, spectrum, spectrogram, Lissajous, VU meters, circle, tape, LCD, bounce, orbit, wires and the SLOOP logo itself), **SELECT** to change. See [The visualiser](#the-visualiser).
 - **The menu in sections.** HOME held: SCREEN, LIGHTS, AUDIO, SYSTEM; **SELECT** turns the sections as it turns the pages, and KNOB 1, 2, 3 set the rows of the section directly, values in large type.
 - **Bigger values.** The pages without a graph (EDIT, VOICE, ENV DEST, LFO DEST, GLOBAL, MASTER, SYSTEM, FILTER…) use the empty middle of the screen: their four values in large type, placed as the knobs are (1 2 / 3 4), the one you turn in white (asked for by the community).
 - **SELECT turns the pages.** On a page (ENV, LFO, FX, EDIT, ARP, SEQ, SCL, GLO, SAVE), **SELECT** goes to the previous / next page of that group: no need to press LFO again to reach LFO DEST. On HOME, and while a layer is held, SELECT is still the tempo (asked for by the community).
@@ -246,13 +246,19 @@ The 16 white keys are the 16 steps of the page; the lit ones play. The first fou
 ### SCL — key and chords
 
 - **Any key** sets the **key of the song**: the root of all three synth tracks (*KEY D*).
-- **KNOB 1 CHORD** (selected synth track): OFF, TRIAD, 7TH, 9TH (1-3-7-9, the lo-fi / R&B voicing), SUS4, POWER. With a chord on, **the white keys walk the scale from C4** — C4 is the chord of the key's I, D4 the II, E4 the III… — and one finger plays the whole chord, recorded as a chord. With SCALE on CHR, the chords come from the minor scale.
-- **CHORD+ (2.4, after HiChord and minichord): the black keys change the chord.** With a chord mode on, hold a black key while you play a white one — or press it while the chord is held, and the chord changes under your finger: **F#** major ↔ minor, **G#** adds the 7th, **A#** sus4, **C#** adds the 9th, **D#** an inversion (both octaves of black keys; hold several to combine them; the 7th and 9th come from the scale: in C major, G4 (the V chord, G) with G# is G7, with F# + G# Gm7). What you play is recorded as it sounds. On the **SCL 2** page: **STRUM** spreads a chord's notes like a strummed guitar (1–60 ms a note; right: low to high, left: high to low), on the keys and on the chord steps the sequencer plays; **VLEAD** ON voices each chord nearest the last one, so a progression moves smoothly instead of jumping.
+- **KNOB 1 CHORD** (selected synth track): OFF, TRIAD, 7TH, 9TH (1-3-7-9, the lo-fi / R&B voicing), SUS4, POWER, **SUS2** (1-2-5), **ADD9** (1-3-5-9), **6TH** (1-3-5-6), **SHELL** (1-3-7). With a chord on, **the white keys walk the scale from C4** — C4 is the chord of the key's I, D4 the II, E4 the III… — and one finger plays the whole chord, recorded as a chord. With SCALE on CHR, the degree-based chords come from the minor scale. **OCTAVE** doubles the root; **MAJOR, MINOR, DOM7, MAJ7, MIN7, DIM, AUG, HALFDIM, DIM7** keep their fixed semitone quality on every root, regardless of scale.
+- **CHORD+ (2.4, after HiChord and minichord): the black keys change the chord.** With a chord mode on, hold a black key while you play a white one — or press it while the chord is held, and the chord changes under your finger: **F#** major ↔ minor, **G#** adds the 7th, **A#** sus4, **C#** adds the 9th, **D#** an inversion (both octaves of black keys; hold several to combine them; the 7th and 9th come from the scale: in C major, G4 (the V chord, G) with G# is G7, with F# + G# Gm7). What you play is recorded as it sounds. For fixed-quality chords, F# flips the actual third, A# replaces it with a perfect fourth, and C# adds a major ninth. G# adds a major seventh to MAJOR/AUG, a diminished seventh to DIM, and a minor seventh to MINOR; existing sevenths stay unchanged. At four notes, the ninth replaces the fifth. POWER and OCTAVE accept inversion only; OCTAVE raises the whole pair by an octave when both notes fit below MIDI 128. On the **SCL 2** page: **STRUM** spreads a chord's notes like a strummed guitar (1–60 ms a note; right: low to high, left: high to low), on the keys and on the chord steps the sequencer plays; **VLEAD** ON voices each chord nearest the last one, so a progression moves smoothly instead of jumping.
 - **KNOB 2 SCALE** for all synth tracks (16 scales: major, minor, dorian, mixolydian, pentatonics, harmonic, blues…).
 - **KNOB 3 KEYS**: OFF (all keys chromatic), SNAP (every key rounded to the scale), WHITE (the white keys walk the scale, the black keys are silent).
 - **KNOB 4 TRANSPOSE** the selected track, ±24 semitones.
 
 Changing a sound (PRESETS, a user preset) never changes the key, the chord mode, the pattern or the mix of its track.
+
+### Arpeggiator directions
+
+On the **ARP** page, MODE includes **OUTIN** (alternate lowest/highest, then move inward), **SHUF** (each expanded note position once per random cycle), and **ROOTALT** (lowest note alternating with each other note). They use pitch order across the octave range and work with chord mode. ROOTALT follows the lowest voiced pitch, so inversion changes its anchor. **ORD** always follows key press order, independent of the ARP 2 ordering preference; UP, DN, and UPDN retain that preference. Swing, gate, hold, probability, recording, and MIDI output work through the existing arp path.
+
+Also available: **DNUP** (down then up, no repeated endpoints), **UPDNREP** (up/down with both endpoints repeated), **INOUT** (middle outward), **WALK** (random adjacent-note movement, reflecting at the ends), and **PULSE** (the whole held chord across the selected octaves on each hit). They use pitch order. PULSE deduplicates overlapping pitches and applies gate, swing, probability, and hold to the whole chord; it starts simultaneously without STRUM. Every generated tone is released on mode changes, STOP, HOLD release, panic, and section changes. Held/latched input can continue running on the stopped arp clock. Internal voices remain subject to the shared eight-voice budget, and recorded steps still hold at most four notes (one in mono modes).
 
 ### GLO — mix
 
@@ -403,6 +409,8 @@ A song is up to 16 steps of 4 sections, **A–D** (each holds the four tracks: s
 
 The **SONG screen** (SAVE tapped on TRACKS, or SAVE + key 16) shows the chain and edits it by hand: **KNOB 1** the step, **KNOB 2** its section, **KNOB 3** its bars, **KNOB 4** the number of steps; **REC** stores the loop into the step's section; **SAVE** (tap) saves the chain; **OCT−** loop / song; **OCT+ twice** loads a section. The four sections are the four project slots.
 
+**Start fresh:** stop playback and SONG REC, hold **SAVE**, then press white key **9** (*new*) twice within 3 seconds. The first press asks *AGAIN: NEW*; releasing SAVE cancels. This uses the existing New Project action to clear the live loop and restore default sounds and tempo. Saved project/section slots remain intact.
+
 ## The web editor
 
 Open it from the installer page, or with **`OPEN-EDITOR.bat`** (`http://localhost:8766/webapp/editor/`), in Chrome or Edge with the FM-1 on USB, and press **Connect**. It follows the device live (turn a knob on the FM-1, the editor moves).
@@ -458,7 +466,7 @@ USB AUDIO is a setting of the FM-1: it stays as you left it. MIDI, the web edito
 
 ## The visualiser
 
-On the TRACKS screen, tap **HOME**: the whole screen becomes a visualiser of what SLOOP plays. **SELECT** steps through twelve styles (the name shows a second; the last one chosen is kept with the settings); **HOME** again, or any page button, closes it. The keys, PLAY, REC and the layers work as ever (a layer held shows its screen, then the visualiser comes back); KNOB 1–4 do nothing meanwhile, and the tempo is GLO + SELECT.
+On the TRACKS screen, tap **HOME**: the whole screen becomes a visualiser of what SLOOP plays. **SELECT** steps through twenty-one styles (the name shows a second; the last one chosen is kept with the settings); **HOME** again, or any page button, closes it. The keys, PLAY, REC and the layers work as ever (a layer held shows its screen, then the visualiser comes back); KNOB 1–4 do nothing meanwhile, and the tempo is GLO + SELECT.
 
 | # | Style | What it shows |
 | --- | --- | --- |
@@ -474,6 +482,15 @@ On the TRACKS screen, tap **HOME**: the whole screen becomes a visualiser of wha
 | 10 | **ORBIT** | four planets turning in 1, 2, 4 and 8 beats, sized by their track, round a sun that pulses with the mix |
 | 11 | **WIRES** | a string per track, set swinging by its notes |
 | 12 | **SLOOP** | the logo alive: the sail's four bands are the tracks (growing with their level, flashing on a note), the dial the mix's level, the boat rocks on its wave |
+| 13 | **DUNGEON** | a pixelated first-person dungeon: the camera circles at the tempo, track levels light the walls, notes colour them and kicks flash the room |
+| 14 | **POLYRHYTHM** | four rings show each track's pattern length, active steps and independent playhead |
+| 15 | **NOTE TRAILS** | scrolling pitches for all three synths, including chords and releases, with drum lanes below |
+| 16 | **GROOVE** | eight steps per track: grid lines, swing, micro timing, hit levels and ratchet repeats |
+| 17 | **CONSTELLATION** | sixteen drum stars flash on hits; velocity sizes their centres, with fading rings |
+| 18 | **LOCK LANDSCAPE** | the first locked parameter per track, its name and values across the pattern; white marks the current step |
+| 19 | **STEREO FIELD** | a stereo cloud, left/right balance marker and a width bar |
+| 20 | **SONG JOURNEY** | song order or quick chain, current entry and remaining bars |
+| 21 | **BEAT TERRAIN** | spectrum-driven wireframe hills, moving at the tempo |
 
 It sees the mix as if **MASTER** were all the way up, so the picture does not follow the volume knob: with MASTER turned down, even to 0, it moves as at full volume. It only reads what the audio already leaves for the screen (that mix, the tracks' levels and notes, the clock): it costs the sound nothing.
 
@@ -510,3 +527,17 @@ The glow is a short pulse on every scan of the panel (about 900 times a second):
 - **Back to the official firmware:** on the installer page, open **Return to the official firmware (V15)**: save a backup with the editor first, download FM-1 V15 from m-vave.com, select its FM-1.fwsc (only that exact file is accepted) and install it. M-VAVE's own updater, M-UPGRADE, works too (close every other app that uses MIDI first). To come back to SLOOP, install it again and restore your backup.
 - **Credits:** SLOOP is based on Felucca by Leo Kuroshita (@kurogedelic), Hügelton Instruments — engines, sequencer, editor and installer. Played-note key lights: @renebohne (pull request #11). TRS MIDI input buffer fix: Felucca [Salt] by ChanceTheMaker, found by keremimo. Knob reading, MIDI input, overload shedding, LED glow, key debounce, MIDI clock, the USB audio input and the return to the official firmware after Felucca 1.0 / 1.0.1. Font: Terminus (SIL OFL 1.1). Samples: Versilian Studios VSCO-2 CE and VCSL, Sonic Pi (all CC0). PHASE: CrispyZebra (GPL). FM6: msfa from Dexed by Google Inc. and Pascal Gauthier (Apache-2.0), ported to integer C for Felucca 1.0 by Leo Kuroshita. VOICE after klattsch (MIT). Interface ideas after teenage engineering's pocket operators and EP-133, Elektron's step entry and Akai's MPC (swing, note repeat, erase) — SLOOP is not affiliated with any of them.
 - **Licence:** GPL-3.0, no warranty. M-VAVE and FM-1 are trademarks of their owners; SLOOP is not affiliated with them. Drum kit names describe styles; they do not refer to any product.
+
+## Drum groove starters and mobile controls
+
+Firmware 2.4.15 adds recorded chords feeding the arp: enable ARP on a synth, then
+ARP 2 → ORD → SNOTE/SPLAY. TIE retains the input and REST clears the sequenced
+contribution; live keys remain separate. NOTE/PLAY restore legacy direct sequence
+playback, and ARP OFF plays the recorded steps directly. This is literal-note routing;
+semantic chord followers remain future work.
+
+On the drum track, cycle EDIT/SEQ through GRID, KIT and GROOVE. Choose a starter, then OCT+ applies while stopped; a nonempty pattern requires confirmation. OCT- toggles a non-destructive looping preview; during replacement confirmation it cancels. AMEN BREAK spans four bars. Hardware Undo restores the replaced pattern. Kit and global tempo stay selected. The phone Sequence workspace exposes the same bank when Drums is selected.
+
+Firmware 2.4.12 also exposes leased phone fill/punch controls and USB return gain/mute/diagnostics. In chord mode, SCL page 2 knob 4 controls latch. Hold a physical chord and long-hold ARP or SEL (SLOOP SCL) for 700 ms to toggle latch while playing. Non-CHROM modifier keys toggle qualities until pressed again when latched, including with ARP enabled.
+
+Firmware 2.4.16: a successful saved-project load, stopped section selection, or working-project backup restore keeps the previous complete project in RAM. While stopped, EDIT + OCT− undoes that load and EDIT + OCT+ redoes it. A later sequence edit or recording supersedes load history. Restart clears this recovery snapshot; it does not recover projects overwritten on older firmware.

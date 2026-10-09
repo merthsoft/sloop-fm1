@@ -1,16 +1,18 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
 /* SLOOP 2.4: the full-screen visualiser. On HOME (the TRACKS screen), HOME tapped opens it; HOME again or
- * any page closes it; SELECT steps through the twelve styles (the name shows a second); a layer held shows
+ * any page closes it; SELECT steps through the twenty-one styles (the name shows a second); a layer held shows
  * its screen as ever, then the visualiser comes back. The keys, PLAY and REC work as always.
  *   1 OSCILLOSCOPE  2 SPECTRUM  3 SPECTROGRAM  4 LISSAJOUS  5 VU METERS  6 CIRCLE
- *   7 TAPE  8 LCD  9 BOUNCE  10 ORBIT  11 WIRES  12 SLOOP (the logo: the sail's bands are the tracks)
+ *   7 TAPE  8 LCD  9 BOUNCE  10 ORBIT  11 WIRES  12 SLOOP (the logo: the sail's bands are the tracks)  13 DUNGEON
  * It reads what the audio already leaves for the UI: the scope buffers (audio.c, the mix at 22 kHz, left and
  * right, as if MASTER were all the way up: the picture does not follow the volume knob, even at 0), the tracks' peaks (fx.c / drums.c, as the TRACKS meters read them), the notes that started
  * (voice.c vis_hit) and the transport clock. Everything is drawn in the main loop, every other frame, in two
  * bands of 120 rows (the canvas holds 124): no cost to the audio. */
-#define VIS_N 12u
+#define VIS_N 21u
 static const char *const VIS_NAME[VIS_N] = {"OSCILLOSCOPE", "SPECTRUM", "SPECTROGRAM", "LISSAJOUS", "VU METERS",
-                                            "CIRCLE", "TAPE", "LCD", "BOUNCE", "ORBIT", "WIRES", "SLOOP"};
+                                            "CIRCLE", "TAPE", "LCD", "BOUNCE", "ORBIT", "WIRES", "SLOOP", "DUNGEON",
+                                            "POLYRHYTHM", "NOTE TRAILS", "GROOVE", "CONSTELLATION", "LOCK LANDSCAPE",
+                                            "STEREO FIELD", "SONG JOURNEY", "BEAT TERRAIN"};
 /* vis_on, vis_shown_last, vis_name_t: ui_draw.c; vis_style: panel.c (kept with the settings) */
 #define VIS_FFT 512u
 #define VIS_SG_W 48u                                /* spectrogram: 48 columns of 5 px, 72 rows of 3 px */
@@ -19,6 +21,9 @@ static int16_t vis_re[VIS_FFT] __attribute__((section(".pool"))), vis_im[VIS_FFT
 static int16_t vis_l[VIS_FFT], vis_r[VIS_FFT];      /* this frame's scope snapshot */
 static uint8_t vis_sg[VIS_SG_H][VIS_SG_W] __attribute__((section(".pool")));
 static uint8_t vis_lj[3][256][2];                   /* Lissajous: the last three frames' points */
+static uint32_t vis_notes[48][3][4];               /* note trails: sounding pitches, 48 UI frames */
+static uint16_t vis_drum_notes[48];
+static uint8_t vis_notes_head;
 static struct {
     int32_t scale, ljscale, peak;                   /* auto-scales (smoothed peaks), this frame's peak */
     int16_t bar[32], cap[32], capv[32];             /* spectrum: bars, caps and their fall speed (0..1000) */
@@ -261,16 +266,31 @@ static void vis_update(void)
     }
     vs.wph += 37u;
     vs.peak = mpk;
+    if (vis_style == 14u) {
+        uint32_t t, v;
+        vis_notes_head = (uint8_t)((vis_notes_head + 1u) % 48u);
+        memset(vis_notes[vis_notes_head], 0, sizeof vis_notes[0]);
+        fm1_irq_off();
+        for (t = 0; t < NPART; t++)
+            for (v = 0; v < NVOICE; v++) {
+                const voice_t *n = &trk[t].v[v];
+                if (n->active && n->note < 128u && !trk_silent(&trk[t]))
+                    vis_notes[vis_notes_head][t][n->note >> 5] |= 1u << (n->note & 31u);
+            }
+        fm1_irq_on();
+        vis_drum_notes[vis_notes_head] = 0;
+        for (t = 0; t < 16u; t++) if (pad_lit[t]) vis_drum_notes[vis_notes_head] |= (uint16_t)(1u << t);
+    }
     {                                               /* the wave's scale follows the peak */
         int32_t target = mpk < 1600 ? 1600 : mpk;
         vs.scale += (target - vs.scale) / 5;
     }
     switch (vis_style) {
-    case 1: case 2: {
+    case 1: case 2: case 20: {
         int16_t b[32];
         vis_fft();
         vis_bands(b);
-        if (vis_style == 1) {
+        if (vis_style != 2) {
             for (i = 0; i < 32u; i++) {
                 int32_t bar = vs.bar[i] - vs.bar[i] * 18 / 100;
                 vs.bar[i] = (int16_t)(b[i] > bar ? b[i] : bar);
@@ -596,6 +616,227 @@ static void vis_sloop(void)
     }
 }
 
+/* Procedural dungeon: 60 chunky rays, at most 96 steps each, fixed point only.
+ * The circular camera route stays in the open centre; pillars lie outside it.
+ * Ray directions use a camera plane so distance is already perspective-correct.
+ * No assets, allocation, or work in the audio interrupt. */
+static void vis_dungeon(void)
+{
+    uint32_t a = (vis_beat_q8() / 16u) & 1023u, x;
+    int32_t px = 8 * 256 + (icos(a) * 512 / 32768);
+    int32_t py = 8 * 256 + (isin(a) * 512 / 32768);
+    int32_t dx = -isin(a), dy = icos(a);
+    int32_t horizon = 112 + (isin(a * 8u) * (2 + vs.lvl[4] / 250) / 32768);
+    int32_t y;
+    for (y = 0; y < 240; y += 4) {
+        int32_t light = y < horizon ? 12 : 18 + (y - horizon) / 5;
+        cv_rect(0, y, 240, 4, RGB(light, light, light + 5));
+    }
+    for (x = 0; x < 240u; x += 4u) {
+        int32_t plane = ((int32_t)x - 118) * 192 / 120;
+        int32_t rx = dx - dy * plane / 256, ry = dy + dx * plane / 256;
+        int32_t t, hx = px, hy = py, mx = 0, my = 0, oldx = px / 256;
+        for (t = 32; t <= 96 * 32; t += 32) {
+            hx = px + rx * t / 32768;
+            hy = py + ry * t / 32768;
+            mx = hx / 256; my = hy / 256;
+            if (mx <= 0 || my <= 0 || mx >= 15 || my >= 15 ||
+                ((mx == 4 || mx == 11) && (my == 4 || my == 7 || my == 11)))
+                break;
+            oldx = mx;
+        }
+        {
+            uint32_t track = (uint32_t)(mx + my) & 3u;
+            int32_t h = clamp(180 * 256 / t, 8, 230), top = horizon - h / 2;
+            int32_t u = (mx != oldx ? hy : hx) & 255;
+            int32_t light = clamp(210 - t / 16 + vs.lvl[track] / 12 + vs.kick / 4, 24, 240);
+            uint16_t col = mix565(RGB(72, 66, 58), TE_COL[track], 80 + vs.flash[track] * 12);
+            col = mix565(C_BLACK, col, light);
+            cv_rect((int32_t)x, top, 4, h, col);
+            /* Brick joints projected into each column, plus metal wall edges. */
+            for (y = 0; y < 8; y++) {
+                int32_t yy = top + y * h / 8;
+                cv_rect((int32_t)x, yy, 4, 1, mix565(C_BLACK, col, 100));
+                if (((u + (y & 1) * 64) & 127) < 12)
+                    cv_rect((int32_t)x, yy, 4, h / 8 + 1, mix565(C_BLACK, col, 120));
+            }
+            if (u < 8 || u > 247)
+                cv_rect((int32_t)x, top, 4, h, mix565(C_BLACK, col, 160));
+        }
+    }
+}
+
+/* Sequencer views use each track's own grid, including long divisions and swing. */
+static uint32_t vis_position(const track_t *t, uint32_t *fraction)
+{
+    uint32_t into, len, at = trk_grid(t, &into, &len), unit = len / 256u;
+    *fraction = clamp((int32_t)(into / (unit ? unit : 1u)), 0, 255);
+    return at % trk_len(t);
+}
+static int vis_has(const track_t *t, uint32_t s)
+{
+    return is_drum(t) ? dstep_mask(&t->dstep[s]) != 0 : t->step[s].n && t->step[s].time != ST_REST;
+}
+static void vis_polyrhythm(void)
+{
+    uint32_t t, s;
+    for (t = 0; t < 4u; t++) {
+        uint32_t f, len = trk_len(&trk[t]), at = vis_position(&trk[t], &f);
+        int32_t r = 34 + (int32_t)t * 22;
+        vis_circle(120, 123, r, TE_DIM[t]);
+        for (s = 0; s < len; s++) {
+            uint32_t a = s * 1024u / len - 256u;
+            int32_t x = 120 + icos(a) * r / 32768, y = 123 + isin(a) * r / 32768;
+            vis_ellipse(x, y, vis_has(&trk[t], s) ? 3 : 1, vis_has(&trk[t], s) ? 3 : 1,
+                        vis_has(&trk[t], s) ? TE_COL[t] : TE_DIM[t]);
+        }
+        { uint32_t a = (at * 256u + f) * 4u / len - 256u;
+          vis_ellipse(120 + icos(a) * r / 32768, 123 + isin(a) * r / 32768, 4, 4, C_WHITE); }
+    }
+}
+static void vis_trails(void)
+{
+    uint32_t i, t, n;
+    for (n = 0; n < 128u; n += 12u)
+        cv_rect(0, 216 - (int32_t)n * 3 / 2, 240, 1, C_LINE);
+    for (i = 0; i < 48u; i++)
+        for (t = 0; t < 3u; t++)
+            for (n = 0; n < 128u; n++)
+                if ((vis_notes[(vis_notes_head + 1u + i) % 48u][t][n >> 5] >> (n & 31u)) & 1u)
+                    cv_rect((int32_t)i * 5, 216 - (int32_t)n * 3 / 2, 5, 2, TE_COL[t]);
+    cv_rect(235, 24, 1, 194, C_WHITE);
+    cv_rect(0, 223, 240, 16, TE_DIM[3]);
+    for (i = 0; i < 48u; i++)
+        for (n = 0; n < 16u; n++)
+            if ((vis_drum_notes[(vis_notes_head + 1u + i) % 48u] >> n) & 1u)
+                cv_rect((int32_t)i * 5, 223 + (int32_t)n, 5, 1, TE_COL[3]);
+}
+static void vis_groove(void)
+{
+    uint32_t t, s;
+    cv_text(8, 24, &FONT_S, "GRID / SWING / NUDGE", C_DIM);
+    for (t = 0; t < 4u; t++) {
+        track_t *p = &trk[t];
+        uint32_t f, at = vis_position(p, &f), base = at / 8u * 8u, len = trk_len(p);
+        int32_t y = 65 + (int32_t)t * 48;
+        cv_rect(8, y + 15, 224, 1, TE_DIM[t]);
+        for (s = 0; s < 8u; s++) {
+            uint32_t idx = (base + s) % len, k, rats = 1, velocity = 100;
+            int32_t x = 14 + (int32_t)s * 28, shift = p->micro[idx] * 28 / 64;
+            if ((idx & 1u) && swings(trk_div(p)))
+                shift += clamp(p->p[P_SSWING] + song.g[G_SWING], 0, 100) * 28 / 200;
+            cv_rect(x, y - 8, 1, 30, C_LINE);
+            if (!vis_has(p, idx)) continue;
+            if (is_drum(p)) {
+                for (k = 0; k < 16u; k++) if (dstep_has(&p->dstep[idx], k)) {
+                    uint32_t r = dstep_rat(&p->dstep[idx], k) + 1u;
+                    velocity = dstep_lvl(&p->dstep[idx], k) == LV_GHOST ? 35u : dstep_lvl(&p->dstep[idx], k) == LV_SOFT ? 65u : 100u;
+                    if (r > rats) rats = r;
+                }
+            } else { rats = (p->step[idx].rat & 3u) + 1u; velocity = p->step[idx].vel; }
+            cv_line(x, y + 15, x + shift, y, TE_DIM[t]);
+            for (k = 0; k < rats; k++)
+                vis_ellipse(x + shift + (int32_t)k * 24 / (int32_t)rats, y, 2 + (int32_t)velocity / 50, 2 + (int32_t)velocity / 50,
+                            idx == at ? C_WHITE : mix565(TE_DIM[t], TE_COL[t], (int32_t)velocity * 2));
+        }
+    }
+}
+static void vis_constellation(void)
+{
+    uint32_t i;
+    for (i = 0; i < 16u; i++) {
+        uint32_t a = i * 64u + vis_beat_q8() / 32u;
+        int32_t r = (i & 1u) ? 88 : 58, x = 120 + icos(a) * r / 32768, y = 126 + isin(a) * r / 32768;
+        char lab[4];
+        cv_line(120, 126, x, y, TE_DIM[3]);
+        vis_circle(x, y, 9 + (6 - (int32_t)pad_lit[i]) * 2, pad_lit[i] ? TE_COL[3] : TE_DIM[3]);
+        { int32_t size = pad_lit[i] ? 3 + drums.hit_vel[i] / 24 : 3;
+          vis_ellipse(x, y, size, size, pad_lit[i] ? C_WHITE : TE_COL[3]); }
+        fmt_int(lab, (int32_t)i + 1); cv_text(x - 4, y + 10, &FONT_S, lab, C_DIM);
+    }
+}
+static void vis_landscape(void)
+{
+    uint32_t t, s, k;
+    for (t = 0; t < 4u; t++) {
+        track_t *p = &trk[t];
+        uint32_t param = P_COUNT, f, at = vis_position(p, &f), len = trk_len(p);
+        int32_t prev = 0, y0 = 58 + (int32_t)t * 52, base;
+        const param_desc_t *d;
+        for (k = 0; k < NLOCK; k++) if (p->lock[k].step < len && p->lock[k].param < P_COUNT) { param = p->lock[k].param; break; }
+        if (param == P_COUNT) { cv_text(8, y0, &FONT_S, "NO LOCKS", TE_DIM[t]); continue; }
+        d = lock_desc(p, param); base = p->p[param];
+        for (k = 0; k < p->lk_n && k < NLOCK; k++) if (p->lk_param[k] == param) base = p->lk_base[k];
+        cv_text(8, y0 - 22, &FONT_S, d->label, TE_COL[t]);
+        for (s = 0; s < len; s++) {
+            int32_t v = base, x = 8 + (int32_t)s * 224 / (int32_t)len, y;
+            for (k = 0; k < NLOCK; k++) if (p->lock[k].step == s && p->lock[k].param == param) v = p->lock[k].val;
+            y = y0 + 18 - clamp((v - d->min) * 32 / (d->max > d->min ? d->max - d->min : 1), 0, 32);
+            if (s) cv_line(8 + (int32_t)(s - 1u) * 224 / (int32_t)len, prev, x, y, TE_COL[t]);
+            cv_rect(x, y, 2, y0 + 20 - y, TE_DIM[t]); prev = y;
+        }
+        cv_rect(8 + (int32_t)at * 224 / (int32_t)len, y0 - 15, 2, 36, C_WHITE);
+    }
+}
+static void vis_stereo(void)
+{
+    uint32_t i;
+    int32_t lsum = 0, rsum = 0, diff = 0, total = 0, scale = vs.scale > 1600 ? vs.scale : 1600;
+    cv_rect(120, 30, 1, 168, C_LINE); cv_rect(20, 120, 200, 1, C_LINE);
+    for (i = 0; i < VIS_FFT; i += 4u) {
+        int32_t l = vis_l[i], r = vis_r[i], d = r - l;
+        lsum += l < 0 ? -l : l; rsum += r < 0 ? -r : r;
+        diff += d < 0 ? -d : d; total += (l < 0 ? -l : l) + (r < 0 ? -r : r);
+        vis_ellipse(clamp(120 + d * 90 / scale, 12, 228), clamp(120 - (l + r) * 65 / scale, 30, 195), 2, 2, vis_heat((uint32_t)vs.lvl[4] * 255u / 1000u));
+    }
+    cv_text(8, 204, &FONT_S, "L     BALANCE     R", C_DIM);
+    cv_rect(20, 224, 200, 3, C_LINE);
+    vis_ellipse(120 + (rsum - lsum) * 90 / (total ? total : 1), 225, 4, 4, C_WHITE);
+    cv_rect(20, 234, clamp(diff * 200 / (total ? total : 1), 0, 200), 3, TE_COL[0]);
+}
+static void vis_journey(void)
+{
+    uint32_t i, n = chain_n ? chain_n : arrangement.count, at = chain_n ? chain_i : arrangement_clock.index;
+    uint32_t bars = chain_n ? chain_bars : arrangement.entry[at % ARR_STEPS].bars;
+    uint32_t elapsed = chain_n ? live_bar : arrangement_clock.bar;
+    int running = song.playing && (chain_n || arrangement_clock.running);
+    char lab[24];
+    if (n > ARR_STEPS) n = ARR_STEPS;
+    cv_text(14, 30, &FONT_S, chain_n ? "QUICK CHAIN" : "SONG ORDER", C_DIM);
+    for (i = 0; i < n; i++) {
+        uint32_t sec = chain_n ? chain_sec[i % CHAIN_MAX] & 3u : arrangement.entry[i].scene & 3u;
+        int32_t x = 12 + (int32_t)(i % 4u) * 57, y = 65 + (int32_t)(i / 4u) * 32;
+        char s[2] = {(char)('A' + sec), 0};
+        cv_rect(x, y, 50, 25, i == at ? TE_COL[sec] : TE_DIM[sec]);
+        cv_text(x + 20, y + 4, &FONT_S, s, i == at ? C_BLACK : C_WHITE);
+    }
+    if (running) {
+        fmt_int(lab, (int32_t)(elapsed < bars ? bars - elapsed : 0));
+        str_cpy(lab + str_len(lab), " BARS LEFT", 12);
+    } else str_cpy(lab, "READY", sizeof lab);
+    cv_text(14, 205, &FONT_S, lab, C_WHITE);
+    cv_rect(12, 230, 216, 4, C_LINE);
+    cv_rect(12, 230, (int32_t)(elapsed < bars ? elapsed : bars) * 216 / (int32_t)(bars ? bars : 1u), 4, TE_COL[0]);
+}
+static void vis_terrain(void)
+{
+    int32_t row, col, px[17], py[17], prevx[17], prevy[17];
+    uint32_t beat = vis_beat_q8();
+    cv_text(8, 25, &FONT_S, "BASS     MID     HIGH", C_DIM);
+    for (row = 0; row < 12; row++) {
+        int32_t depth = 12 + row * 8 + (int32_t)(beat & 255u) / 32, y = 65 + depth * depth / 65;
+        for (col = 0; col <= 16; col++) {
+            uint32_t band = (uint32_t)col * 31u / 16u;
+            int32_t h = vs.bar[band] * depth / 2200;
+            px[col] = 120 + (col - 8) * depth / 6;
+            py[col] = y - h + isin((uint32_t)(col * 90 + row * 70) + beat) * h / 65536;
+            if (col) cv_line(px[col - 1], py[col - 1], px[col], py[col], TE_COL[band / 8u]);
+            if (row) cv_line(prevx[col], prevy[col], px[col], py[col], TE_DIM[band / 8u]);
+            prevx[col] = px[col]; prevy[col] = py[col];
+        }
+    }
+}
+
 /* the visualiser, every other frame: the update, then both bands */
 static void vis_draw(void)
 {
@@ -622,6 +863,15 @@ static void vis_draw(void)
         case 8: vis_bounce(); break;
         case 9: vis_orbit(); break;
         case 10: vis_wires(); break;
+        case 12: vis_dungeon(); break;
+        case 13: vis_polyrhythm(); break;
+        case 14: vis_trails(); break;
+        case 15: vis_groove(); break;
+        case 16: vis_constellation(); break;
+        case 17: vis_landscape(); break;
+        case 18: vis_stereo(); break;
+        case 19: vis_journey(); break;
+        case 20: vis_terrain(); break;
         default: vis_sloop(); break;
         }
         if (!pass && (vis_name_t || ui.msg_t)) {    /* the style's name a second (or a message) */
@@ -631,7 +881,7 @@ static void vis_draw(void)
             cv_text(120 - text_w(&FONT_S, s) / 2, 2, &FONT_S, s, C_WHITE);
             if (!ui.msg_t) {
                 fmt_int(n, (int32_t)(vis_style % VIS_N) + 1);
-                str_cpy(n + str_len(n), "/12", 4);
+                str_cpy(n + str_len(n), "/21", 4);
                 cv_text(4, 2, &FONT_S, n, C_DIM);
             }
         }

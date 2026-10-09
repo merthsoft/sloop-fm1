@@ -7,6 +7,12 @@ protocol v3; commands 31-32 (any track's parameters) form protocol v4; command 3
 (SLOOP 2.3); commands 37-40 (the steps' nudges and parameter locks) form protocol v7, commands 41-42 (the
 steps' fill conditions) protocol v8 and commands 68-71 (the FM6 engine's patches) protocol v9 (all SLOOP 2.4).
 
+Protocol v10 adds command **43 PERFORM_STATE**. Request arguments are empty; reply arguments
+are one signed v14 hardware octave offset (`song.octave`, −3..+3). This is read-only and
+does not change how incoming standard MIDI notes are interpreted. The Android companion
+checks INFO protocol >=10 and polls this state to follow OCT−/OCT+; it pauses polling during
+device operations. Earlier clients and commands retain their previous wire layouts.
+
 **v3 (four tracks):** the device has four tracks: 1..3 are synth parts, 4 is the drum track. One
 of them is *selected* (the TRACKS page on the device, or `TRACK`). Every v1 / v2 command acts on the
 selected track (its parameters, engine, preset, steps, the user presets it stores or loads); `TRACK`,
@@ -375,6 +381,23 @@ Felucca 1.0's numbers (68–71) so the two editors stay close; firmware `editor_
 - A device that does not know these commands (v8 and older) sends no reply: use `INFO`'s version byte (the editor hides
   its FM6 panel).
 
+## Reserved scene transaction extension (command 72)
+
+The bounded scene staging and transport state machine is available behind the
+build flag `FELUCCA_SCENE_TX=1`; it is **off** in production firmware 2.4.7.
+The exact proposed schema and wire contract are in
+[SCENE-TRANSACTION.md](../android/src/Sloop.Protocol/SCENE-TRANSACTION.md).
+Production reports `INFO` protocol **12** and leaves command 72 unsupported
+without allocating staging RAM. Test builds that enable the flag return capability
+flags **0** and Unsupported Begin because engine hooks are not installed.
+Clients must retain the stopped-only FM6 sound batch; this release does not support
+live atomic scene application. No existing command layouts have changed.
+
+Protocol 11 and nonzero capability flags require complete mutation revision tracking,
+a negotiated musical tick domain, exact boundary scheduling before events, bounded
+validated engine application, and lifecycle/inactivity cancellation. The existing
+`song.tick` counts audio blocks and cannot be used as a musical beat tick.
+
 ## Notes for the editor
 
 - **One request at a time.** Wait for the reply, about 10–50 ms, before sending the next.
@@ -391,3 +414,12 @@ Felucca 1.0's numbers (68–71) so the two editors stay close; firmware `editor_
   Felucca's own storage; never the app or the update area. Since SLOOP 2.4 every one of them, and
   `BK_PUT` of a preset bank, answers rc 3 while the song plays (as the panel refuses to save then): a
   flash erase silences the audio for about 50 ms.
+
+## Protocol 12 companion extensions
+
+Commands 73 (leased remote fills/punch), 74 (firmware drum groove capabilities/list/apply)
+and 75 (USB return gain/mute/diagnostics) negotiate their own schema/capabilities.
+Older command layouts are unchanged; command 72 remains disabled in production.
+See [performance wire](../android/src/Sloop.Protocol/PERFORMANCE-WIRE.md),
+[groove bank](../firmware/DRUM-GROOVES-DESIGN.md), and
+[USB playback](../firmware/USB-PLAYBACK-IMPLEMENTATION.md).

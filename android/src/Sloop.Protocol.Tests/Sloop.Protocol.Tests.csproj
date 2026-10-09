@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><TargetFramework>net10.0</TargetFramework><OutputType>Exe</OutputType></PropertyGroup>
+  <ItemGroup><ProjectReference Include="../Sloop.Protocol/Sloop.Protocol.csproj" /></ItemGroup>
+  <ItemGroup><ProjectReference Include="../Sloop.Simulator/Sloop.Simulator.csproj" /></ItemGroup>
+  <ItemGroup><ProjectReference Include="../Sloop.Core/Sloop.Core.csproj" /></ItemGroup>
+</Project>

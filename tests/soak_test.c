@@ -52,7 +52,7 @@ int main(int argc, char **argv)
                 else if (trk[t].step[i2].n) { trk[t].step[i2].lvl = (uint8_t)rnd(256); trk[t].step[i2].rat = (uint8_t)rnd(256); }
                 break;
             }
-            case 21: trk[rnd(NPART)].p[P_CHORD] = (int16_t)rnd(6); trk[rnd(NPART)].p[P_VOICE] = (int16_t)rnd(4); break;
+            case 21: trk[rnd(NPART)].p[P_CHORD] = (int16_t)rnd(CH_COUNT); trk[rnd(NPART)].p[P_VOICE] = (int16_t)rnd(4); break;
             case 0: if (!ft_on || !rnd(16)) transport_req = song.playing ? 2 : 1; break;   /* (a free take: PLAY closes it) */
             case 1: if (song.playing) rec_begin(); else rec_wait = 1; break;        /* REC */
             case 2: song.rec = 0; rec_wait = 0; break;                            /* REC off */
@@ -68,7 +68,7 @@ int main(int argc, char **argv)
             case 11: midi_in(0x90u | rnd(16), 24 + rnd(80), 1 + rnd(127)); break;
             case 12: midi_in(0x80u | rnd(16), 24 + rnd(80), 0); break;
             case 13: trk[rnd(NTRK)].p[P_SLCR] = (int16_t)rnd(3); break;
-            case 14: trk[rnd(NPART)].p[P_AMODE] = (int16_t)rnd(6); break;
+            case 14: trk[rnd(NPART)].p[P_AMODE] = (int16_t)rnd(ARP_COUNT); break;
             default: {                                                             /* keys: press / release */
                 uint32_t key = rnd(27);
                 if (rnd(2)) held |= 1u << key; else held &= ~(1u << key);

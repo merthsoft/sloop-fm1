@@ -190,7 +190,7 @@ static void t_fuzz(uint32_t nframes)
         } else if (r < 53) {
             trk[rn(NTRK)].p[P_TFLT] = (int16_t)((int)rn(128) - 64);
         } else if (r < 54) {
-            trk[rn(NPART)].p[P_CHORD] = (int16_t)rn(6);
+            trk[rn(NPART)].p[P_CHORD] = (int16_t)rn(CH_COUNT);
         } else if (r < 55) {
             uint32_t t = rn(NPART), e = rn(3) ? ENGI_FM6 : rn(NENGINES);
             host_preset_req(&trk[t], e, rn(ENGINES[e]->npresets));
@@ -268,8 +268,8 @@ static void t_fuzz(uint32_t nframes)
             mix_block(o, CTL);
             for (i = 0; i < CTL * 2u; i++) if ((o[i] < 0 ? -o[i] : o[i]) > q) q = o[i] < 0 ? -o[i] : o[i];
         }
-        printf("fuzz: %u frames (%.1f min), peak %d, tail %d, visualiser styles seen %u/12, chords %u, strum changes %u\n",
-               nf, nf * 16.0 / 60000.0, peak, q, (unsigned)__builtin_popcount(vis_seen), mods, strums);
+        printf("fuzz: %u frames (%.1f min), peak %d, tail %d, visualiser styles seen %u/%u, chords %u, strum changes %u\n",
+               nf, nf * 16.0 / 60000.0, peak, q, (unsigned)__builtin_popcount(vis_seen), VIS_N, mods, strums);
         scheck(q < 64, "end: silence after stop");
     }
     scheck(peak < (1 << 24), "fuzz: output bounded");

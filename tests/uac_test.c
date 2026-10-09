@@ -66,7 +66,7 @@ static void test_descriptors(void)
     }
 
     check("device descriptor: 18 bytes, type 1, EP0 64", dv[0] == 18 && dv[1] == 1 && dv[7] == 64);
-    check("bcdDevice bumped for the audio input (x.1x)", (dv[12] & 0xF0u) == 0x10u && dv[13] == 3);
+    check("bcdDevice bumped for the duplex audio (x.2x)", (dv[12] & 0xF0u) == 0x20u && dv[13] == 3);
     check(CDC_SHOWN ? "device class misc / IAD (EF 02 01)" : "device class 0 (per interface)",
           CDC_SHOWN ? dv[4] == 0xEF && dv[5] == 2 && dv[6] == 1 : dv[4] == 0);
     check("configuration: type 2, wTotalLength = the bytes sent", c[1] == 2 && total == n);
@@ -88,10 +88,10 @@ static void test_descriptors(void)
             iad_n++;
             if (d[0] != 8 || d[2] + d[3] > 16)
                 iad_ok = 0;
-            if (iad_n == 1 && !(d[2] == 0 && d[3] == 3 && d[4] == 1))
-                iad_ok = 0;                            /* audio: IF 0..2 */
-            if (iad_n == 2 && !(d[2] == 3 && d[3] == 2 && d[4] == 2))
-                iad_ok = 0;                            /* CDC: IF 3..4 */
+            if (iad_n == 1 && !(d[2] == 0 && d[3] == 4 && d[4] == 1))
+                iad_ok = 0;                            /* audio: IF 0..3 */
+            if (iad_n == 2 && !(d[2] == 4 && d[3] == 2 && d[4] == 2))
+                iad_ok = 0;                            /* CDC: IF 4..5 */
             break;
         case 4:
             if (cur_if >= 0 && got_eps != cur_neps)
@@ -132,13 +132,13 @@ static void test_descriptors(void)
                     ncoll = d[7];
                     for (i = 0; i < ncoll && i < sizeof coll; i++)
                         coll[i] = d[8 + i];
-                } else if (d[2] == 2) {
+                } else if (d[2] == 2 && d[3] == 1) {
                     it_ok = d[0] == 12 && d[3] == 1 && d[7] == 2 && le16(d + 8) == 3u && le16(d + 4) != 0x0101u;
-                } else if (d[2] == 3) {
+                } else if (d[2] == 3 && d[3] == 2) {
                     ot_ok = d[0] == 9 && d[3] == 2 && le16(d + 4) == 0x0101u && d[7] == 1;
                 }
             } else if (if_class[cur_if] == 1 && if_sub[cur_if] == 2) {   /* audio streaming */
-                if (d[2] == 1)
+                if (d[2] == 1 && cur_if == UAC_AS_IF)
                     asg_ok = d[0] == 7 && d[3] == 2 && le16(d + 5) == 1u;
                 else if (d[2] == 2)
                     fmt_ok = d[0] == 11 && d[3] == 1 && d[4] == 2 && d[5] == 2 && d[6] == 16 && d[7] == 1 &&
@@ -154,13 +154,13 @@ static void test_descriptors(void)
     }
     if (cur_if >= 0 && got_eps != cur_neps)
         eps_ok = 0;
-    coll_ok = ncoll == 2;
+    coll_ok = ncoll == 3;
     for (i = 0; i < ncoll && i < sizeof coll; i++)
         if (coll[i] >= 16 || if_class[coll[i]] != 1 || (if_sub[coll[i]] != 2 && if_sub[coll[i]] != 3))
             coll_ok = 0;
 
     check("descriptor lengths add up to wTotalLength", lens_ok && off == n);
-    check("bNumInterfaces = the interfaces present", c[4] == nif && nif == (CDC_SHOWN ? 5u : 3u));
+    check("bNumInterfaces = the interfaces present", c[4] == nif && nif == (CDC_SHOWN ? 6u : 4u));
     check("each interface setting has bNumEndpoints endpoints", eps_ok);
     check("endpoint addresses unique", dup_ok);
     check("AC header: UAC 1.00, length 8 + collection", ac_ok);
@@ -174,7 +174,7 @@ static void test_descriptors(void)
     check("EP 0x84: isochronous async, 184 B (46 frames), every frame, alt 1", iso_ok);
     check("CS endpoint: sampling frequency control", csep_ok);
     check("MIDI bulk endpoints 0x01 / 0x81 unchanged", midi_ok == 2);
-    snprintf(name, sizeof name, "IADs: %s", CDC_SHOWN ? "audio IF 0-2, CDC IF 3-4" : "none");
+    snprintf(name, sizeof name, "IADs: %s", CDC_SHOWN ? "audio IF 0-3, CDC IF 4-5" : "none");
     check(name, iad_ok && iad_n == (CDC_SHOWN ? 2 : 0));
 }
 

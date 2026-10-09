@@ -31,6 +31,8 @@ static void audio_block(int32_t *out, uint32_t n)       /* mix (fx.c), then Q15 
     mix_block(out, n);
 #if FELUCCA_UAC
     uac_tap(usb_full_now ? usb_out : out, n);           /* the USB audio input: the master output, or at full level */
+    uac_play_mix(out, n, (int32_t)song.master_q12,
+                 usb.up && usb.config && !usb.suspended); /* capture remains instrument-only */
 #endif
     for (i = 0; i < n; i++) {
         if (i & 1u)
@@ -38,8 +40,8 @@ static void audio_block(int32_t *out, uint32_t n)       /* mix (fx.c), then Q15 
             scope_bufr[scope_w & (SCOPE_N - 1u)] = vis_tap[2u * i + 1u];   /* (fx.c: MASTER all the way up) */
             scope_buf[scope_w++ & (SCOPE_N - 1u)] = vis_tap[2u * i];
         }
-        out[2u * i] <<= OUT_SHIFT;
-        out[2u * i + 1u] <<= OUT_SHIFT;
+        out[2u * i] *= 1 << OUT_SHIFT;
+        out[2u * i + 1u] *= 1 << OUT_SHIFT;
     }
 }
 

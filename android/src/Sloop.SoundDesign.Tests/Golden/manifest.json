@@ -1,0 +1,54 @@
+{
+  "source": "tools/gen_fm6_patches.py",
+  "sha256": "b5130bb67d04b08c77671fd9f7d31dbd04aa91ddd963a5477385e8d22262d40c",
+  "voices": [
+    {
+      "index": 0,
+      "label": "TINE EP",
+      "name": "TINE EP",
+      "packedSha256": "f4972cfc982bc0f00863e6c774190bfda9f213a2793cea684984434c345351c8"
+    },
+    {
+      "index": 1,
+      "label": "BELL",
+      "name": "GLASS BELL",
+      "packedSha256": "22136111f325d86fcda1d7db5c3a16a0d266106e23aa3b3e0f1c64afa7c2ee33"
+    },
+    {
+      "index": 2,
+      "label": "FM BASS",
+      "name": "ROUND BASS",
+      "packedSha256": "000b8e43a10af73b2f354a859b09687bf885b92fbd7c009be93c4cf01a3daf38"
+    },
+    {
+      "index": 3,
+      "label": "BRASS",
+      "name": "BRASS SECT",
+      "packedSha256": "ad81ef39cc02cf12521d8e4b8fcfca04c24a5418d06ea3dbf7fb3955a9deb35f"
+    },
+    {
+      "index": 4,
+      "label": "PAD",
+      "name": "SOFT PAD",
+      "packedSha256": "0b8b0c8b5ad6c71b30c975454fce769d744aae6fa94b0319003fb424c6de77ca"
+    },
+    {
+      "index": 5,
+      "label": "MARIMBA",
+      "name": "WOOD BARS",
+      "packedSha256": "ba7e44a33312006c42f5b852c0171a0d90aad4c0e39f8c5110be9bc059d8ed6d"
+    },
+    {
+      "index": 6,
+      "label": "ORGAN",
+      "name": "DRAWBARS",
+      "packedSha256": "eb86449cdfb3c5b363d4992fcefc4ab08de2602c664620f45680464b1ac9fa6c"
+    },
+    {
+      "index": 7,
+      "label": "PLUCK",
+      "name": "NYLON PICK",
+      "packedSha256": "c5bfd875bdd8572a29b7a26eb0ccd861387da8db8b7101bf191d4847cba55b72"
+    }
+  ]
+}

@@ -1,3 +1,4 @@
+#undef NDEBUG /* Test assertions stay active in optimized host builds. */
 /* SPDX-License-Identifier: GPL-3.0-only */
 /* The real UI (ui.c, ui_draw.c, ui_studio.c, ui_layers.c, ui_song.c, ui_menu.c, ui_input.c) on a
  * framebuffer with panel / flash / storage doubles, the audio (mix_block) running between frames as on
@@ -56,6 +57,8 @@ static uint32_t saves, loads;
 static int project_used(uint32_t i) { return i < 2; }
 static void project_save(uint32_t i) { (void)i; saves++; ui_message("SAVED"); }
 static void project_load(uint32_t i) { (void)i; loads++; }
+static int project_undo_available(void) { return 0; }
+static int project_undo_swap(int redo) { (void)redo; return 0; }
 static void arrangement_save(void) {}
 static uint32_t arrangement_ready(void) { return 3; }
 static void arrangement_apply(uint32_t s) { (void)s; }
@@ -111,6 +114,7 @@ static void press(uint32_t b) { edges_btn |= BT(b); fm1_in.buttons |= BT(b); fra
 static void release(uint32_t b) { fm1_in.buttons &= ~BT(b); frame(); }
 static void tap(uint32_t b) { press(b); release(b); }
 static void key(uint32_t k) { fm1_in.notes |= 1u << k; frame(); fm1_in.notes &= ~(1u << k); frame(); }
+static uint32_t chord_gates(void) { uint32_t n = 0, i; for (i = 0; i < NVOICE; i++) n += trk[0].v[i].gate != 0; return n; }
 static int fails;
 static void check(int ok, const char *what) { printf("ui: %-74s %s\n", what, ok ? "ok" : "FAIL"); fails += !ok; }
 static const char *sub_line(void) { return layer_sub_shown; }   /* the layer's sub line as last drawn (ui_layers.c) */
@@ -155,6 +159,13 @@ int main(int argc, char **argv)
     open_family(FAM_GLO); ui.force = 1; frame(); ppm("page-global");
     open_family(FAM_GLO); ui.force = 1; frame(); ppm("page-master");
     open_family(FAM_SCL); ui.force = 1; frame(); ppm("page-scale");
+    open_family(FAM_SCL); frame();
+    check(cur_page()->id[3] == P_AHOLD, "SCL 2: KNOB 4 is chord latch");
+    encs[panel.enc[EN_K4]] = 1; frame();
+    check(TSEL->p[P_AHOLD] == 1, "SCL 2: KNOB 4 enables latch");
+    encs[panel.enc[EN_K4]] = -1; frame();
+    check(TSEL->p[P_AHOLD] == 0, "SCL 2: KNOB 4 disables latch");
+    ui.force = 1; frame(); ppm("page-scale-latch");
     {   /* (2.4) GLO > SYSTEM: KNOB 1 is MIDI OUT (KEYS / SEQ), shown as such; the USB status in the third column */
         uint32_t i, m0 = (uint32_t)song.g[G_MIDI];
         for (i = 0; i < NPAGES; i++) if (!strcmp(PAGES[i].title, "SYSTEM")) break;
@@ -274,6 +285,104 @@ int main(int argc, char **argv)
     release(B_EDIT);
     check(TDRUM->p[P_SLEN] == 16, "EDIT + OCT-: the length back to 16");
 
+    {   /* Hold an already sounding chord, then capture it without a note restart. */
+        uint32_t b, mw, oldsel = song.sel, oldusb = usb.config;
+        int16_t oldparams[sizeof trk[0].p / sizeof trk[0].p[0]];
+        uint32_t oldsolo = song.solo;
+        uint32_t oldrec = song.rec, oldplaying = song.playing;
+        memcpy(oldparams, trk[0].p, sizeof oldparams);
+        song.rec = 0; song.playing = 0;
+        usb.config = 1; trk[0].p[P_VOICE] = V_POLY; trk[0].p[P_MUTE] = 0; song.solo = 0;
+        song.sel = 0; go_home(); frame();
+        trk[0].p[P_CHORD] = CH_MAJOR;
+        trk[0].p[P_QUANT] = 0;
+        trk[0].p[P_AMODE] = 0;
+        trk[0].p[P_AHOLD] = 0;
+        for (b = 0; b < 2; b++) {
+            uint32_t button = b ? B_SCL : B_ARP;
+            fm1_in.notes = 1u << 7; frame();
+            mw = mo_w;
+            press(button); frames(20);
+            check(!trk[0].p[P_AHOLD], "chord capture: short hold does not latch");
+            frames(30);
+            check(trk[0].p[P_AHOLD] && chord_gates() == 3 && mo_w == mw,
+                  "ARP / SEL-SCL long hold: latch without releasing or retriggering");
+            frames(60);
+            check(trk[0].p[P_AHOLD], "chord capture: long hold toggles only once");
+            release(button);
+            fm1_in.notes = 0; frame();
+            check(chord_latch_n[0] == 3 && chord_gates() == 3 && mo_w == mw,
+                  "chord capture: releasing keys preserves the captured chord");
+            trk[0].p[P_AHOLD] = 0; frame();
+            check(!chord_gates(), "chord capture: disabling latch releases captured notes");
+        }
+        for (b = 0; b < 2; b++) {
+            uint32_t button = b ? B_SCL : B_ARP;
+            uint8_t pool[16];
+            trk[0].p[P_AMODE] = 1;
+            fm1_in.notes = 1u << 7; frame();
+            memcpy(pool, trk[0].held, sizeof pool);
+            check(trk[0].nheld == 3 && trk[0].arp_phys == 3,
+                  "arp chord capture: physical root populates three arp notes");
+            press(button); frames(50);
+            check(trk[0].p[P_AHOLD] && trk[0].nheld == 3 && trk[0].arp_phys == 3 &&
+                  !memcmp(pool, trk[0].held, sizeof pool),
+                  "ARP / SEL-SCL long hold with arp on: latch preserves the running arp pool");
+            frames(60);
+            check(trk[0].p[P_AHOLD], "arp chord capture: toggles only once per button hold");
+            release(button); fm1_in.notes = 0; frames(60);
+            check(trk[0].nheld == 3 && !trk[0].arp_phys && trk[0].armp,
+                  "arp chord capture: arpeggio continues after physical root release");
+            fm1_in.notes = 1u << 1; frame();
+            check(kb_kind[1] == KS_MOD_LATCH && trk[0].nheld == 3 && trk[0].held[2] == pool[1] - 1,
+                  "latched arp: minor modifier replaces the third after root release");
+            fm1_in.notes = 0; frame();
+            check(trk[0].held[2] == pool[1] - 1 && !trk[0].arp_phys,
+                  "latched arp: modifier release preserves quality and physical count");
+            fm1_in.notes = 1u << 13; frame(); fm1_in.notes = 0; frame();
+            check(trk[0].held[2] == pool[1] && !chord_latch_mods[0],
+                  "latched arp: second minor modifier press restores major");
+            fm1_in.notes = 1u << 9; frame();
+            fm1_in.notes |= 1u << 3; frame();
+            check(trk[0].nheld == 4 && trk[0].arp_phys == 4 && kb_n[9] == 4,
+                  "latched arp: seventh modifier while root held updates physical ownership");
+            fm1_in.notes = 1u << 9; frame();
+            check(trk[0].nheld == 4 && chord_latch_mods[0] == CM_SEVEN,
+                  "latched arp: seventh remains toggled after modifier release");
+            fm1_in.notes = 0; frame();
+            check(trk[0].nheld == 4 && !trk[0].arp_phys,
+                  "latched arp: releasing expanded chord balances physical note count");
+            fm1_in.notes = 1u << 3; frame(); fm1_in.notes = 0; frame();
+            check(trk[0].nheld == 3 && !trk[0].arp_phys,
+                  "latched arp: seventh toggle off removes the extra pool note");
+            fm1_in.notes = 1u << 9; frame();
+            press(button); frames(50);
+            check(!trk[0].p[P_AHOLD] && trk[0].nheld == 3 && trk[0].arp_phys == 3,
+                  "arp chord capture: unlatching keeps the held root's arp pool");
+            release(button); fm1_in.notes = 0; frame();
+            check(!trk[0].nheld && !trk[0].arp_phys,
+                  "arp chord capture: unlatching then key release clears arp notes");
+            trk[0].p[P_AMODE] = 0; frame();
+        }
+        fm1_in.notes = 1u << 7; frame();
+        trk[0].p[P_AHOLD] = 1;
+        mw = mo_w;
+        press(B_SCL); frames(50);
+        check(!trk[0].p[P_AHOLD] && chord_gates() == 3 && mo_w == mw,
+              "SEL-SCL long hold: disabling latch keeps physically held notes sounding");
+        release(B_SCL); fm1_in.notes = 0; frame();
+        check(!chord_gates(), "latch off: physical key release ends the chord");
+        press(B_ARP); frames(50); release(B_ARP);
+        check(!trk[0].p[P_AHOLD], "long hold without an existing chord preserves layer behavior");
+        fm1_in.notes = 1u << 7; frame();
+        press(B_SCL); encs[panel.enc[EN_K1]] = 1; frame(); frames(50);
+        check(!trk[0].p[P_AHOLD], "using a layer knob cancels chord capture shortcut");
+        release(B_SCL); fm1_in.notes = 0; frame();
+        memcpy(trk[0].p, oldparams, sizeof oldparams);
+        song.solo = oldsolo; song.sel = oldsel; usb.config = oldusb; frame();
+        song.rec = oldrec; song.playing = oldplaying;
+    }
+
     /* ---- ARP layer: a roll, rate knob */
     press(B_ARP); frames(10);
     encs[panel.enc[EN_K1]] = 1; frame();
@@ -290,6 +399,11 @@ int main(int argc, char **argv)
     check(trk[0].p[P_ROOT] == 2 && trk[1].p[P_ROOT] == 2 && trk[2].p[P_ROOT] == 2, "SCL + D: every part in D");
     encs[panel.enc[EN_K1]] = 2; frame();
     check(trk[0].p[P_CHORD] == 2, "SCL + KNOB 1: chords (7TH) on the track");
+    encs[panel.enc[EN_K1]] = 20; frame();
+    check(trk[0].p[P_CHORD] == CH_COUNT - 1, "SCL + KNOB 1: reaches last appended chord at upper bound");
+    ui.force = 1; frame(); ppm("layer-key-last-chord");
+    encs[panel.enc[EN_K1]] = -(CH_COUNT - 1 - CH_SEVENTH); frame();
+    check(trk[0].p[P_CHORD] == CH_SEVENTH, "SCL + KNOB 1: returns through appended shapes to 7TH");
     ppm("layer-key");
     release(B_SCL);
     press(B_GLO); frames(10);
@@ -470,6 +584,28 @@ int main(int argc, char **argv)
     check(!on_song_page() && saves == 0, "SAVE held and let go: no song page, no save");
     tap(B_SAVE); check(on_song_page(), "SAVE tapped on TRACKS: the song page");
     ui.force = 1; frame(); ppm("page-song");
+
+    /* NEW on the held-SAVE screen: confirm twice, never clear while playing. */
+    go_home(); song.playing = 0; arrangement_clock.running = 0; srec = 0;
+    trk[0].step[3].n = 1; trk[0].step[3].note[0] = 60;
+    song.g[G_BPM] = 137;
+    press(B_SAVE); frames(15);
+    key(key_of_white(8));
+    check(sec_armed == 5u && trk[0].step[3].n == 1 && song.g[G_BPM] == 137, "NEW first press only arms");
+    ui.force = 1; frame(); ppm("layer-song-new");
+    release(B_SAVE); frames(2);
+    check(sec_armed == 0 && trk[0].step[3].n == 1, "SAVE release cancels NEW confirmation");
+    press(B_SAVE); frames(15); key(key_of_white(8));
+    fm1_ms += 3001; key(key_of_white(8));
+    check(sec_armed == 5u && trk[0].step[3].n == 1, "Expired NEW confirmation rearms without clearing");
+    song.playing = 1; key(key_of_white(8));
+    check(sec_armed == 0 && trk[0].step[3].n == 1, "NEW rejects playing state");
+    song.playing = 0; key(key_of_white(8)); key(key_of_white(8));
+    check(sec_armed == 0 && trk[0].step[3].n == 0 && song.g[G_BPM] == GP[G_BPM].def,
+          "Confirmed NEW clears the live pattern and restores defaults");
+    check(saves == 0 && loads == 0 && live_req == -1 && live_sec == -1 && chain_n == 0,
+          "NEW leaves flash slots alone and removes queued section playback");
+    release(B_SAVE); frames(2);
 
     /* ---- the drum screen */
     song.sel = TRK_DRUM; studio_open(SC_DRUM); ui.force = 1; frames(16);   /* (after SAVE: the knobs quiet, #39) */
@@ -848,7 +984,7 @@ int main(int argc, char **argv)
         for (j = 0; j < NSTEP; j++) memset(&TDRUM->dstep[j], 0, sizeof(dstep_t));
         song.sel = 0; go_home(); frames(4);
     }
-    {   /* the visualiser (2.4): HOME on HOME opens it, SELECT its 12 styles, HOME / a page closes it; a layer
+    {   /* the visualiser: HOME opens it, SELECT its 21 styles, HOME / a page closes it; a layer
          * shows its screen over it; the style is kept with the settings */
         uint32_t st, j, x, lit, k;
         static const uint8_t BASS[2] = {38, 34};
@@ -865,13 +1001,18 @@ int main(int argc, char **argv)
             dstep_set(&TDRUM->dstep[j], 4, (j & 1u) ? LV_SOFT : LV_NORM, 0);
             for (k = 0; k < 4u; k++) trk[k].seq_active = 1;
         }
+        for (j = 0; j < NTRK; j++) {
+            lock_set(&trk[j], 0, P_TFLT, -40);
+            lock_set(&trk[j], 8, P_TFLT, 40);
+            trk[j].micro[2] = -12; trk[j].micro[6] = 12;
+        }
         go_home(); frames(20);                      /* (the knobs quiet after the layers above) */
         transport_req = 1; frames(30);
         check(!vis_shown(), "visualiser: closed on the TRACKS screen");
         tap(B_HOME); frames(2);
         check(vis_shown() && vis_on, "visualiser: HOME on HOME opens it");
         vis_style = 0; ui.force = 1;
-        for (st = 0; st < 12u; st++) {
+        for (st = 0; st < VIS_N; st++) {
             char nm[80];
             frames(st == 0u ? 40u : 70u);           /* (past the name's second) */
             ui.force = 1; frames(2);
@@ -895,11 +1036,17 @@ int main(int argc, char **argv)
             check(op < 64u && pk > 2000u && lit > 1500u, "visualiser: MASTER at 0: no sound, the picture as at full volume");
             song.master_q12 = m0; frames(4);
         }
-        check(vis_style == 0u, "visualiser: SELECT goes round (12 -> 1)");
+        check(vis_style == 0u, "visualiser: SELECT goes round (21 -> 1)");
         encs[panel.enc[EN_SELECT]] = -1; frames(2);
-        check(vis_style == 11u && (lights_word() >> 17 & 15u) == 11u, "visualiser: SELECT left: SLOOP (12), kept in the settings word");
+        check(vis_style == VIS_N - 1u && (lights_word() >> 17 & 31u) == VIS_N - 1u, "visualiser: SELECT left: BEAT TERRAIN (21), kept in the settings word");
         lights_from_word(lights_word());
-        check(vis_style == 11u, "visualiser: the style read back");
+        check(vis_style == VIS_N - 1u, "visualiser: the style read back");
+        for (st = 0; st < VIS_N; st++) {
+            vis_style = (uint8_t)st; lights_from_word(lights_word());
+            check(vis_style == st, "visualiser: every style round trips through settings");
+        }
+        lights_from_word(12u << 17);
+        check(vis_style == 12u && !strcmp(VIS_NAME[12], "DUNGEON"), "visualiser: existing DUNGEON setting retained");
         { int16_t bpm = song.g[G_BPM], lv = trk[0].p[P_LEVEL];
           encs[panel.enc[EN_K2]] = 5; frame();
           check(trk[0].p[P_LEVEL] == lv && song.g[G_BPM] == bpm, "visualiser: KNOB 2 (the hidden TRACKS screen) edits nothing, SELECT is not the tempo"); }

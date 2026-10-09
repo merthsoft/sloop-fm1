@@ -35,6 +35,7 @@ static struct {
     uint8_t synth[NDRUM];        /* the voice plays a synthesised kit (ds[]) */
     dsv_t ds[NDRUM];
     volatile uint16_t hits;      /* bit per lane hit since the UI last looked (pads, key LEDs) */
+    volatile uint8_t hit_vel[DRUM_LANES]; /* latest velocity for the constellation */
     volatile uint8_t kick;       /* a kick was hit (fx.c DUCK) */
     int32_t a0, a1;              /* the drum track's mute / solo attenuation over this block (fx.c), Q15, 0 = heard */
 } drums = {.set = -2};
@@ -148,8 +149,10 @@ static void drum_on(uint32_t note, uint32_t vel)
     voice_t *v = &drums.v[0];
     uint32_t i, zi = 0xFFFFu, kit = drum_kit();
     int32_t zid = -1;
-    if (note != 76u && note != 77u)                 /* the pads and key LEDs (not the click's wood block) */
+    if (note != 76u && note != 77u) {               /* the pads and key LEDs (not the click's wood block) */
         drums.hits |= (uint16_t)(1u << lane_of_note(note));
+        drums.hit_vel[lane_of_note(note)] = (uint8_t)clamp((int32_t)vel, 0, 127);
+    }
     if (note == 35u || note == 36u)
         drums.kick = 1;                             /* (DUCK) */
     if (kit >= DRUM_USR) {                          /* a user kit: the lane's sound, as its note (the hat choke) */

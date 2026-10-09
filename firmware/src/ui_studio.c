@@ -6,7 +6,8 @@
  * LAYERS (a function button held: what the 16 white keys and the knobs do now), HOLD (a hold to
  * confirm: clear, save), REC (armed / free take). Every band is drawn into the canvas only when its
  * signature changed. */
-static uint8_t drum_page, drum_lane, drum_cursor;   /* drum_page: 0 GRID, 1 KIT */
+static uint8_t drum_page, drum_lane, drum_cursor;   /* 0 GRID, 1 KIT, 2 GROOVE */
+static uint8_t groove_sel, groove_cursor, groove_lane, groove_confirm;
 static void trk_short_name(uint32_t c, char *b);
 static int on_drum_page(void) { return !ui.home && cur_page()->scope == SC_DRUM; }
 
@@ -107,6 +108,7 @@ static void te_dials(int32_t y0, const char *const lab[4], const char *const val
 
 static void studio_open(uint32_t scope)
 {
+    groove_preview.active = 0;
     uint32_t i;
     if (scope == SC_SONG && rec_wait)
         rec_wait = 0;                                   /* (an arm does not follow into the song page) */
@@ -328,10 +330,53 @@ static void pads_tick(void)                             /* once a frame: the hit
         }
 }
 
+static void groove_screen_draw(void)
+{
+    static uint32_t head, cache;
+    const drum_groove_t *p = &DRUM_GROOVES[groove_sel];
+    uint32_t i, k, sig;
+    char b[16];
+    te_header("groove", TE_DRUM, &head);
+    sig = groove_sel + groove_cursor * 13u + groove_lane * 257u + groove_confirm * 8191u;
+    sig += groove_preview.active * 65537u;
+    sig = studio_hash(sig, ui.msg_t ? ui.msg : "");
+    if (!ui.force && sig == cache) return;
+    cache = sig;
+    cv_begin(240, 120, C_BLACK);
+    cv_text(4, 4, &FONT_S, p->name, C_WHITE);
+    fmt_int(b, p->len); str_cpy(b + str_len(b), " STEPS", sizeof b - str_len(b));
+    cv_text(4, 24, &FONT_S, b, TE_G4);
+    cv_text(144, 24, &FONT_S, N_SDIV[p->div], TE_G4);
+    for (k = 0; k < 5; k++) {
+        static const uint8_t lanes[5] = {0, 2, 3, 4, 5};
+        cv_text(4, 46 + (int32_t)k * 14, &FONT_S, LANE_SHORT[lanes[k]], TE_G3);
+        for (i = 0; i < 16 && (groove_cursor / 16u) * 16u + i < p->len; i++) {
+            uint32_t step = (groove_cursor / 16u) * 16u + i;
+            dstep_t s = drum_groove_step(groove_sel, step);
+            cv_rect(52 + (int32_t)i * 11, 49 + (int32_t)k * 14, 9, 9,
+                    dstep_has(&s, lanes[k]) ? lvl_col(dstep_lvl(&s, lanes[k])) : TE_G1);
+            if (step == groove_cursor && lanes[k] == groove_lane)
+                cv_rect(52 + (int32_t)i * 11, 48 + (int32_t)k * 14, 9, 1, C_WHITE);
+        }
+    }
+    cv_blit(0, 40);
+    cv_begin(240, 80, C_BLACK);
+    cv_text(4, 0, &FONT_S, groove_confirm ? "OCT+ CONFIRM REPLACE" : "OCT+ APPLY OCT- LISTEN", C_WHITE);
+    cv_text(4, 20, &FONT_S, "1 GROOVE  2 STEP", TE_G3);
+    cv_text(4, 40, &FONT_S, "3 SOUND  4 AUDITION", TE_G3);
+    fmt_int(b, groove_cursor + 1);
+    cv_text(4, 60, &FONT_S, b, TE_G4);
+    cv_text(52, 60, &FONT_S, LANE_SHORT[groove_lane], TE_G4);
+    if (groove_preview.active) cv_text(112, 60, &FONT_S, "PREVIEW", C_WHITE);
+    if (ui.msg_t) { cv_rect(0, 0, 240, 20, C_WHITE); cv_text(4, 2, &FONT_S, ui.msg, C_BLACK); }
+    cv_blit(0, 160);
+}
+
 static void drum_screen_draw(void)
 {
     static uint32_t head, title_sig, body_sig, footer;
     uint32_t i, j, len = (uint32_t)clamp(TDRUM->p[P_SLEN], 1, 64), kit = drum_kit(), sig, bank;
+    if (drum_page == 2) { groove_screen_draw(); return; }
     if (drum_cursor >= len) drum_cursor = (uint8_t)(len - 1u);
     bank = drum_cursor / 16u;
     {
@@ -484,6 +529,7 @@ static void drum_screen_input(uint32_t pressed, uint32_t home)
     uint32_t k, b;
     int32_t s;
     if (song.sel != TRK_DRUM || home == 1u) {
+        groove_confirm = 0;
         go_home();
         return;
     }
@@ -494,16 +540,49 @@ static void drum_screen_input(uint32_t pressed, uint32_t home)
             else if (!song.playing && arrangement_enabled && !arr_valid(&arrangement, arrangement_ready())) ui_message("EMPTY SECTION: REC");
             else transport_req = song.playing ? 2 : 1;
         } else if (b == B_SEQ || b == B_EDIT) {
-            drum_page = (uint8_t)((drum_page + 1u) % 2u);
+            groove_preview.active = 0;
+            drum_page = (uint8_t)((drum_page + 1u) % 3u);
+            groove_confirm = 0;
             ui.msg_t = 0;
             ui.force = 1;
         } else if (b == B_SAVE) {
             studio_open(SC_SONG);
             return;
+        } else if (drum_page == 2 && b == B_OCTDN) {
+            if (groove_confirm) {
+                groove_confirm = 0; groove_preview.active = 0; drum_page = 0;
+            } else if (groove_preview.active) {
+                groove_preview.active = 0;
+            } else if (song.playing || transport_req || song.rec || rec_wait || ft_on) {
+                ui_message("STOP FIRST");
+            } else {
+                const drum_groove_t *p = &DRUM_GROOVES[groove_sel];
+                fm1_irq_off();
+                groove_preview.mask[0] = p->kick; groove_preview.mask[1] = p->snare;
+                groove_preview.mask[2] = p->clap; groove_preview.mask[3] = p->hat;
+                groove_preview.mask[4] = p->open; groove_preview.mask[5] = p->accent;
+                groove_preview.mask[6] = p->ghost;
+                groove_preview.len = p->len; groove_preview.div = p->div;
+                groove_preview.phase = 0; groove_preview.step = 0; groove_preview.first = 1;
+                groove_preview.active = 1;
+                fm1_irq_on();
+            }
+            ui.force = 1;
+        } else if (drum_page == 2 && b == B_OCTUP) {
+            groove_preview.active = 0;
+            if (song.playing || transport_req == 1 || song.rec || rec_wait || ft_on) {
+                groove_confirm = 0; ui_message("STOP FIRST");
+            } else if (!groove_confirm && drum_groove_has_content()) {
+                groove_confirm = 1; ui.msg_t = 0; ui.force = 1;
+            } else if (drum_groove_apply(groove_sel)) {
+                groove_confirm = 0; drum_cursor = 0; ui_message("GROOVE APPLIED");
+            }
         }
     }
-    if ((s = panel_enc(EN_SELECT)) && (uint32_t)(s > 0) != drum_page) {   /* SELECT: grid <- -> kit (its pages) */
-        drum_page = (uint8_t)(s > 0);
+    if ((s = panel_enc(EN_SELECT))) {   /* SELECT: GRID / KIT / GROOVE */
+        groove_preview.active = 0;
+        drum_page = (uint8_t)clamp((int32_t)drum_page + s, 0, 2);
+        groove_confirm = 0;
         ui.msg_t = 0;
         ui.force = 1;
     }
@@ -518,7 +597,21 @@ static void drum_screen_input(uint32_t pressed, uint32_t home)
     for (k = 0; k < 4u; k++) if ((s = panel_enc(EN_K1 + k))) {
         ui.hot_col = (uint8_t)k;
         ui.hot_t = 40;
-        if (!drum_page) {
+        if (drum_page == 2) {
+            if (k == 0) {
+                groove_preview.active = 0;
+                groove_sel = (uint8_t)clamp((int32_t)groove_sel + s, 0, NDRUM_GROOVES - 1);
+                groove_cursor = (uint8_t)clamp(groove_cursor, 0, DRUM_GROOVES[groove_sel].len - 1);
+                groove_confirm = 0; ui.msg_t = 0;
+            }
+            if (k == 1) groove_cursor = (uint8_t)clamp((int32_t)groove_cursor + s, 0, DRUM_GROOVES[groove_sel].len - 1);
+            if (k == 2) groove_lane = (uint8_t)clamp((int32_t)groove_lane + s, 0, DRUM_LANES - 1);
+            if (k == 3) {
+                dstep_t st = drum_groove_step(groove_sel, groove_cursor), one = {{0}, {0}, {0}};
+                if (dstep_has(&st, groove_lane)) dstep_set(&one, groove_lane, dstep_lvl(&st, groove_lane), 0);
+                audition_step(&one);
+            }
+        } else if (!drum_page) {
             dstep_t *st = &TDRUM->dstep[drum_cursor];
             if (k == 0) {                              /* the sound: heard */
                 uint8_t l = (uint8_t)clamp(drum_lane + s, 0, DRUM_LANES - 1);

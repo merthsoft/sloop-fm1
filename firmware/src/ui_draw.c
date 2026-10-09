@@ -940,7 +940,7 @@ static void draw_columns(void)
         } else {
             param_format(d, *vp, val, &unit);
         }
-        draw_column(c, d->label, val, unit, VAL(c), d->fmt == F_ENUM && d->max < 2 ? -1 : RATIO(d, *vp),
+        draw_column(c, cur_page()->fam == FAM_SCL && cur_page()->id[c] == P_AHOLD ? "LATCH" : d->label, val, unit, VAL(c), d->fmt == F_ENUM && d->max < 2 ? -1 : RATIO(d, *vp),
                     param_icon(d, *vp));
     }
 }
@@ -966,6 +966,8 @@ static uint8_t vis_on, vis_shown_last, vis_name_t;   /* the visualiser (ui_vis.c
 static void ui_draw(void)
 {
     ui.frame++;
+    if (groove_preview.active && (!on_drum_page() || drum_page != 2 || song.sel != TRK_DRUM || ui.menu))
+        groove_preview.active = 0;
     pads_tick();
     if (rec_go) {                                       /* the take started: say so */
         rec_go = 0;

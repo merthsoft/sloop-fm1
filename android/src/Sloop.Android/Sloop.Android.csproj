@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0-android</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <SupportedOSPlatformVersion>26.0</SupportedOSPlatformVersion>
+    <ApplicationId>org.sloopfm.mobile</ApplicationId>
+    <ApplicationTitle>SLOOP Mobile</ApplicationTitle>
+    <ApplicationVersion>1</ApplicationVersion>
+    <ApplicationDisplayVersion>0.1.0</ApplicationDisplayVersion>
+    <!-- APKs must launch when installed directly with adb, without IDE fast-deployment files. -->
+    <EmbedAssembliesIntoApk>true</EmbedAssembliesIntoApk>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Sloop.Core/Sloop.Core.csproj" />
+    <ProjectReference Include="../Sloop.Protocol/Sloop.Protocol.csproj" />
+    <ProjectReference Include="../Sloop.Simulator/Sloop.Simulator.csproj" />
+    <ProjectReference Include="../Sloop.Workstation/Sloop.Workstation.csproj" />
+    <ProjectReference Include="../Sloop.Scenes.Android/Sloop.Scenes.Android.csproj" />
+  </ItemGroup>
+</Project>

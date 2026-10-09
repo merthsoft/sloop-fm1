@@ -24,7 +24,7 @@ static const uint8_t LAYER_BTN[LY_COUNT] = {NB, B_FX, B_EDIT, B_ARP, B_SEQ, B_SC
 static const char *const LAYER_NAME[LY_COUNT] = {"", "punch", "erase", "roll", "steps", "key", "mix", "song"};
 static void section_store(uint32_t s);                  /* project.c */
 static void section_load(uint32_t s);
-static uint8_t sec_armed;                               /* store over a used section: the key again within 3 s */
+static uint8_t sec_armed;                               /* 1..4 store section, 5 NEW: key again within 3 s */
 static uint32_t sec_armed_ms;
 static uint8_t chain_tap[CHAIN_MAX], chain_taps;        /* the section keys tapped in this SAVE hold (the first
                                                          * is asked for at once; two or more: a chain on release) */
@@ -350,6 +350,8 @@ static void layer_key(uint32_t layer, uint32_t k, uint32_t down)
         char b[2] = {0, 0};
         if (w < 0)
             return;
+        if (w != 8 && sec_armed == 5u)
+            sec_armed = 0;
         b[0] = (char)('A' + (w & 3));
         if (w < 4) {
             if (arrangement_clock.running) {
@@ -382,6 +384,21 @@ static void layer_key(uint32_t layer, uint32_t k, uint32_t down)
                 sec_armed = 0;
                 section_store(s);
                 ui_say("SAVED ", b);
+            }
+        } else if (w == 8) {                            /* NEW: stopped, two presses; saved slots stay intact */
+            if (song.playing || arrangement_clock.running || srec) {
+                sec_armed = 0;
+                ui_message("STOP FIRST");
+            } else if (!(sec_armed == 5u && fm1_ms - sec_armed_ms < 3000u)) {
+                sec_armed = 5u;
+                sec_armed_ms = fm1_ms;
+                ui_message("AGAIN: NEW");
+            } else {
+                sec_armed = 0;
+                chain_n = chain_taps = 0;
+                live_req = live_sec = -1;
+                project_new();
+                ui_message("NEW PROJECT");
             }
         } else if (w == 12) {
             if (srec) {
@@ -526,7 +543,7 @@ static void layer_knobs(uint32_t layer)
         case LY_SCALE:
             if (k == 0u) {
                 if (!is_drum(t))
-                    t->p[P_CHORD] = (int16_t)clamp(t->p[P_CHORD] + s, 0, 5);
+                    t->p[P_CHORD] = (int16_t)clamp(t->p[P_CHORD] + s, 0, CH_COUNT - 1);
             } else if (k == 1u) {
                 uint32_t i;
                 int16_t v = (int16_t)clamp(trk[0].p[P_SCALE] + s, 0, NSCALES - 1);
@@ -715,6 +732,7 @@ static void layer_screen_draw(void)
             fmt_int(v[1], t->p[P_SLEN]);
             str_cpy(v[2], is_drum(t) ? "" : "-  +", 8);
             str_cpy(sub, undo.valid ? (undo.undone ? "oct+ redo" : "oct- undo") : sub, sizeof sub);
+            if (project_undo_available()) str_cpy(sub, "oct- undo load / oct+ redo", sizeof sub);
         } else {
             lab[0] = "rate";
             str_cpy(v[0], N_ROLL[clamp(song.g[G_ROLL], 0, 4)], 8);
@@ -830,10 +848,18 @@ static void layer_screen_draw(void)
                 uint32_t n = kb_map(t, k), m;
                 if (n != KB_SILENT && (m = chord_notes(t, n, c)) != 0u) {
                     uint32_t third = m > 1u ? (uint32_t)(c[1] - c[0]) : 4u;
+                    uint32_t chord_type = (uint32_t)clamp(t->p[P_CHORD], 0, CH_COUNT - 1);
                     str_cpy(tl[i].lab, N_NOTE[c[0] % 12u], 8);
-                    if (t->p[P_CHORD] == 5)
+                    if (chord_type == CH_POWER)
                         str_cpy(tl[i].lab + str_len(tl[i].lab), "5", 2);
-                    else if (third == 3u)
+                    else if (chord_type == CH_OCTAVE)
+                        str_cpy(tl[i].lab + str_len(tl[i].lab), "8", 2);
+                    else if (chord_type >= CH_MAJOR) {
+                        static const char *const quality[] = {"", "m", "7", "M7", "m7", "dim", "+", "m7b5", "dim7"};
+                        _Static_assert(NELEM(quality) == CH_COUNT - CH_MAJOR, "chord quality labels");
+                        str_cpy(tl[i].lab + str_len(tl[i].lab), quality[chord_type - CH_MAJOR],
+                                8u - str_len(tl[i].lab));
+                    } else if (third == 3u)
                         str_cpy(tl[i].lab + str_len(tl[i].lab), "m", 2);
                     pc = c[0] % 12u;
                     in = 1;
@@ -845,13 +871,13 @@ static void layer_screen_draw(void)
             tl[i].fg = pc == root ? C_BLACK : in ? C_WHITE : TE_G2;
         }
         lab[0] = "chord", lab[1] = "scale", lab[2] = "keys", lab[3] = "transp";
-        te_lower(v[0], N_CHORD[clamp(t->p[P_CHORD], 0, 5)], 8);
+        te_lower(v[0], N_CHORD[clamp(t->p[P_CHORD], 0, CH_COUNT - 1)], 8);
         te_lower(v[1], N_SCALE[clamp(trk[0].p[P_SCALE], 0, NSCALES - 1)], 8);
         te_lower(v[2], N_QUANT[clamp(t->p[P_QUANT], 0, 2)], 8);
         fmt_int(v[3], t->p[P_TRANS]);
         if (is_drum(t))
             v[0][0] = v[2][0] = v[3][0] = 0;
-        ratio[0] = t->p[P_CHORD] * 200;
+        ratio[0] = t->p[P_CHORD] * 1000 / (CH_COUNT - 1);
         ratio[1] = trk[0].p[P_SCALE] * 1000 / (NSCALES - 1);
         ratio[2] = t->p[P_QUANT] * 500;
         ratio[3] = (t->p[P_TRANS] + 24) * 1000 / 48;
@@ -923,6 +949,9 @@ static void layer_screen_draw(void)
             tl[4 + i].fg = sec_armed == i + 1u ? C_BLACK : TE_G4;
             tl[4 + i].top = TE_DIM[i];
         }
+        str_cpy(tl[8].lab, "new", 8);
+        tl[8].bg = sec_armed == 5u && fm1_ms - sec_armed_ms < 3000u ? TE_RED : TE_G1;
+        tl[8].fg = tl[8].bg == TE_RED ? C_BLACK : TE_G4;
         str_cpy(tl[12].lab, arrangement_enabled ? "song" : "loop", 8);
         tl[12].bg = arrangement_enabled ? C_WHITE : TE_G2;
         tl[12].fg = arrangement_enabled ? C_BLACK : C_WHITE;

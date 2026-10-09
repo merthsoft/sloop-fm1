@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><TargetFramework>net10.0</TargetFramework><OutputType>Exe</OutputType></PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Sloop.Workstation/Sloop.Workstation.csproj" />
+    <Compile Include="../Sloop.Android/PerformOptions.cs" Link="PerformOptions.cs" />
+    <Compile Include="../Sloop.Android/SessionPresetCodec.cs" Link="SessionPresetCodec.cs" />
+  </ItemGroup>
+</Project>

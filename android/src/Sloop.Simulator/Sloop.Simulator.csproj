@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><TargetFramework>net10.0</TargetFramework></PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Sloop.Protocol/Sloop.Protocol.csproj" />
+    <EmbeddedResource Include="FirmwareProfile.json" />
+  </ItemGroup>
+</Project>

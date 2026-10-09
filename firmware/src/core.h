@@ -26,6 +26,10 @@ enum { V_POLY, V_MONO, V_LEGATO, V_UNISON };   /* P_VOICE */
 #define NELEM(a) (sizeof(a) / sizeof((a)[0]))
 
 /* ------------------------------------------------------- parameters --- */
+/* P_CHORD values are stored in projects and presets: append new shapes only. */
+enum { CH_OFF, CH_TRIAD, CH_SEVENTH, CH_NINTH, CH_SUS4, CH_POWER,
+       CH_SUS2, CH_ADD9, CH_SIXTH, CH_SHELL, CH_OCTAVE, CH_MAJOR, CH_MINOR,
+       CH_DOM7, CH_MAJ7, CH_MIN7, CH_DIM, CH_AUG, CH_HALFDIM, CH_DIM7, CH_COUNT };
 enum {
     F_INT, F_PCT, F_BIPCT, F_TIME, F_LFOHZ, F_CUTOFF, F_DB, F_SEMI, F_ENUM, F_BPM, F_NOTE,
     F_ONOFF, F_OCT, F_STEPS,
@@ -57,13 +61,17 @@ enum {                          /* per-track parameters */
     P_GLMODE, P_PRIO, P_ALLOC, P_DETUNE,
     P_SLCR, P_SLPAT, P_SLRATE, P_SLDEPTH,      /* SLICER insert (slicer.c); new common parameters go just
                                                 * before P_E0 (user presets and projects map by count) */
-    P_CHORD,                                   /* chord mode: one key plays a chord of the scale (seq.c) */
+    P_CHORD,                                   /* chord mode: scale-degree or fixed-quality chord (seq.c) */
     P_TFLT,                                    /* SLOOP 2.4: the track's filter, < 0 low-pass, > 0 high-pass (fx.c) */
     P_STRUM,                                   /* SLOOP 2.4: a chord's notes one after the other, ms each (> 0 down, < 0 up) */
     P_VLEAD,                                   /* SLOOP 2.4: chord mode, each chord voiced nearest the last (seq.c) */
     P_E0, P_E1, P_E2, P_E3, P_E4, P_E5, P_E6, P_E7,
     P_COUNT
 };
+
+/* P_AORDER keeps old NOTE/PLAY IDs; appended choices opt into literal sequence
+ * harmony with direct step playback suppressed while ARP is enabled. */
+enum { AORDER_NOTE, AORDER_PLAY, AORDER_SEQ_NOTE, AORDER_SEQ_PLAY };
 
 enum {                          /* global parameters */
     G_BPM, G_SWING, G_CLOCK, G_TUNE,
@@ -81,6 +89,10 @@ enum {                          /* global parameters */
 };
 
 /* ----------------------------------------------------------- voices --- */
+/* Stored mode values are append-only: existing projects keep their direction. */
+enum { ARP_OFF, ARP_UP, ARP_DOWN, ARP_UPDOWN, ARP_RANDOM, ARP_ORDER,
+       ARP_OUTSIDE, ARP_SHUFFLE, ARP_ROOTALT,
+       ARP_DOWNUP, ARP_UPDOWN_REPEAT, ARP_INSIDE, ARP_WALK, ARP_PULSE, ARP_COUNT };
 typedef struct {
     uint8_t note, vel, gate, active;
     uint8_t stage;               /* env: 0 off, 1 attack, 2 decay/sustain, 3 release, 4 fading out (given up) */
@@ -210,7 +222,10 @@ typedef struct track {
     uint32_t arp_pos;            /* stopped: units into the current arp step */
     uint32_t arp_abs;            /* playing: the arp step of the transport grid last played */
     uint32_t arp_idx;
-    uint8_t arp_note;            /* sounding arp note, 0 = none */
+    uint8_t arp_shuffle[64];     /* permutation of expanded note indices, runtime only */
+    uint8_t arp_shuffle_n, arp_shuffle_pos;
+    uint8_t arp_walk_pos;
+    uint8_t arp_notes[64], arp_n; /* generated notes still gated; count allows MIDI pitch 0 */
     uint8_t arp_new;             /* a chord just started: its first note now */
     uint32_t arp_off;            /* units to its note-off */
     /* sequencer: synth parts step[], the drum track dstep[] (16 lanes) */

@@ -292,6 +292,13 @@ int main(void)
     host_tracks_init();
     for (t = 0; t < NTRK; t++)
         trk[t].p[P_SLEN] = (int16_t)(5 + t);
+    trk[0].p[P_AMODE] = ARP_SHUFFLE;
+    trk[0].p[P_CHORD] = CH_SHELL;
+    trk[2].p[P_AMODE] = ARP_ROOTALT;
+    trk[2].p[P_CHORD] = CH_ADD9;
+    trk[2].p[P_QUANT] = 3;
+    trk[1].p[P_AMODE] = ARP_PULSE;
+    trk[1].p[P_CHORD] = CH_DIM7;
     trk[1].step[2].n = 2, trk[1].step[2].note[0] = 60, trk[1].step[2].note[1] = 64, trk[1].step[2].time = ST_NOTE;
     trk[1].step[2].lvl = 0x0D;
     dstep_set(&TDRUM->dstep[9], 4, LV_SOFT, 1);
@@ -306,7 +313,10 @@ int main(void)
     step_fill_set(TDRUM, 63, FC_FILL);
     proj_capture(&q);
     host_tracks_init();
+    undo.valid = 1;
+    perf_owner[0].token = 1; perf_owner[0].until = fm1_ms + 1000; perf_owner[0].kind = 0;
     proj_apply(&q, 1);
+    bad += check("project adoption invalidates stale undo and host performance ownership", !undo.valid && !perf_fill(fm1_ms));
     ok = trk[2].p[P_SLEN] == 7 && trk[1].step[2].n == 2 && trk[1].step[2].lvl == 0x0D && song.g[G_DUST] == 33 &&
          dstep_has(&TDRUM->dstep[9], 4) && dstep_lvl(&TDRUM->dstep[9], 4) == LV_SOFT && dstep_rat(&TDRUM->dstep[9], 4) == 1u &&
          trk[1].micro[2] == -20 && TDRUM->micro[9] == 12 && trk[1].micro[3] == 0 &&
@@ -315,6 +325,10 @@ int main(void)
          step_fill(&trk[1], 2) == FC_FILL && step_fill(&trk[1], 3) == FC_NORM && step_fill(TDRUM, 9) == FC_NOFILL &&
          step_fill(TDRUM, 63) == FC_FILL && step_fill(TDRUM, 8) == FC_NORM;
     bad += check("the working project: capture -> apply round trip (levels, lanes, DUST, nudges, locks, fill conditions)", ok);
+    bad += check("new chord and arp IDs survive project capture/apply without layout changes",
+                 trk[0].p[P_AMODE] == ARP_SHUFFLE && trk[0].p[P_CHORD] == CH_SHELL &&
+                 trk[1].p[P_AMODE] == ARP_PULSE && trk[1].p[P_CHORD] == CH_DIM7 &&
+                 trk[2].p[P_AMODE] == ARP_ROOTALT && trk[2].p[P_CHORD] == CH_ADD9 && trk[2].p[P_QUANT] == 3);
     /* a damaged image: a nudge out of range, a lock on a parameter that cannot lock, on a step past the end,
      * with a value past the range: clamped, freed, freed, clamped */
     q.t[1].micro[7] = 100;
@@ -330,6 +344,42 @@ int main(void)
          trk[1].lock[7].val == 127 && lock_find(&trk[1], 2, P_ED_FLT, 0) >= 0 &&
          step_fill(&trk[1], 4) == FC_FILL && step_fill(&trk[1], 5) == FC_NOFILL && trk[1].fill[1] == 0x09;
     bad += check("apply: a nudge past the range is clamped, a lock on LEN / step 64 / param 200 is freed, LEVEL 999 -> 127, condition 3 -> normal", ok);
+
+    /* Exercise the actual full-project history with the production capture/apply path. */
+    project_t before_load, loaded, exchange, restored;
+    proj_capture(&before_load);
+    project_undo_mark();
+    loaded = before_load;
+    loaded.t[0].step[0].note[0] = 72;
+    loaded.t[0].step[0].n = 1;
+    loaded.t[0].step[0].time = ST_NOTE;
+    loaded.t[1].micro[3] = 7;
+    loaded.t[3].dstep[0].lvl[0] ^= 1; /* drum bits differ too */
+    loaded.g[G_BPM] = 137;
+    proj_apply(&loaded, 1);
+    proj_capture(&loaded);
+    proj_capture(&exchange);
+    bad += check("project load undo is available after adoption clears track undo", project_undo_available());
+    bad += check("redo before undo refuses without consuming history", !project_undo_exchange(&exchange, 1));
+    bad += check("project load undo exchanges the complete captured project", project_undo_exchange(&exchange, 0) && !memcmp(&exchange, &before_load, sizeof exchange));
+    proj_apply(&exchange, 1);
+    proj_capture(&restored);
+    bad += check("load undo restores all tracks, globals, locks, fills and nudges", !memcmp(&restored, &before_load, sizeof restored));
+    proj_capture(&exchange);
+    bad += check("second undo refuses; redo restores the loaded project", !project_undo_exchange(&exchange, 0) && project_undo_exchange(&exchange, 1) && !memcmp(&exchange, &loaded, sizeof exchange));
+    proj_apply(&exchange, 1);
+    undo_mark(&trk[0], (undo_sess += 4u) | 3u);
+    bad += check("later sequence editing supersedes whole-project load history", !project_undo_available());
+    undo.valid = 0;
+    bad += check("clearing sequence undo cannot resurrect stale load history", !project_undo_available());
+    project_undo_mark();
+    proj_apply(&before_load, 1);
+    proj_capture(&exchange);
+    bad += check("a subsequent load snapshots the latest project", project_undo_exchange(&exchange, 0) && !memcmp(&exchange, &loaded, sizeof exchange));
+    project_undo_mark();
+    undo_mark(&trk[1], UNDO_REC(&trk[1]));
+    undo.valid = 0;
+    bad += check("recording supersedes load history without changing UI session", !project_undo_available());
 
     printf("%s\n", bad ? "PROJECT FORMAT TEST FAILED" : "project format test passed");
     return bad != 0;

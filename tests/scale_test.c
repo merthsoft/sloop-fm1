@@ -1,3 +1,4 @@
+#undef NDEBUG /* Test assertions stay active in optimized host builds. */
 /* SPDX-License-Identifier: GPL-3.0-only */
 /* Exercise the real keyboard, recording, arp and MIDI-out paths on the host.
  * Build with the same generated headers and flags as hostsim.c. */
@@ -133,10 +134,236 @@ static void key_events_test(void)
     puts("scales: silent keys, arp, live recording, MIDI out and held-note changes ok");
 }
 
+static void chord_shapes_test(void)
+{
+    track_t *t = &trk[0];
+    static const uint8_t major[4][4] = {{60, 62, 67, 0}, {60, 64, 67, 74},
+                                        {60, 64, 67, 69}, {60, 64, 71, 0}};
+    static const uint8_t minor[4][4] = {{60, 62, 67, 0}, {60, 63, 67, 74},
+                                        {60, 63, 67, 68}, {60, 63, 70, 0}};
+    static const uint8_t counts[4] = {3, 4, 4, 3};
+    uint8_t c[4];
+    uint32_t shape, scale, root_note, n, j;
+    host_tracks_init();
+    t->p[P_ROOT] = 0;
+    t->p[P_VLEAD] = 0;
+    assert(CH_POWER == 5 && CH_SUS2 == 6 && TP[P_CHORD].max == CH_COUNT - 1);
+    assert(NELEM(N_CHORD) == CH_COUNT);
+    for (scale = 1; scale <= 2; scale++) {
+        t->p[P_SCALE] = (int16_t)scale;
+        for (shape = CH_SUS2; shape <= CH_SHELL; shape++) {
+            t->p[P_CHORD] = (int16_t)shape;
+            n = chord_notes(t, 60, c);
+            assert(n == counts[shape - CH_SUS2]);
+            assert(!memcmp(c, scale == 1 ? major[shape - CH_SUS2] : minor[shape - CH_SUS2], n));
+        }
+    }
+    t->p[P_SCALE] = 1;
+    t->p[P_CHORD] = CH_SUS2;
+    n = chord_play_notes(t, 60, CM_MINOR, c); /* a suspension has no third to flip */
+    assert(n == 3 && c[1] == 62);
+    n = chord_play_notes(t, 60, CM_SUS4 | CM_SEVEN, c);
+    assert(n == 4 && c[1] == 65 && c[3] == 71);
+    t->p[P_CHORD] = CH_ADD9;
+    n = chord_play_notes(t, 60, CM_MINOR | CM_NINE, c);
+    assert(n == 4 && c[1] == 63 && c[3] == 74); /* no duplicate ninth */
+    t->p[P_CHORD] = CH_SHELL;
+    n = chord_play_notes(t, 60, CM_SEVEN | CM_NINE, c);
+    assert(n == 4 && c[2] == 71 && c[3] == 74); /* no duplicate seventh */
+    {
+        static const uint8_t tones[][4] = {
+            {0,12,0,0},{0,4,7,0},{0,3,7,0},{0,4,7,10},{0,4,7,11},
+            {0,3,7,10},{0,3,6,0},{0,4,8,0},{0,3,6,10},{0,3,6,9}
+        };
+        static const uint8_t sizes[] = {2,3,3,4,4,4,3,3,4,4};
+        assert(CH_SHELL == 9 && CH_OCTAVE == 10 && CH_COUNT == 20);
+        for (scale = 0; scale < NELEM(SCALE_MASK); scale++)
+            for (shape = CH_OCTAVE; shape < CH_COUNT; shape++) {
+                t->p[P_SCALE] = (int16_t)scale;
+                t->p[P_CHORD] = (int16_t)shape;
+                n = chord_notes(t, 60, c);
+                assert(n == sizes[shape - CH_OCTAVE]);
+                for (j = 0; j < n; j++) assert(c[j] == 60 + tones[shape - CH_OCTAVE][j]);
+            }
+        t->p[P_SCALE] = 2;
+        t->p[P_CHORD] = CH_MAJOR;
+        n = chord_play_notes(t, 60, CM_MINOR | CM_SEVEN, c);
+        assert(n == 4 && c[1] == 63 && c[3] == 71);
+        t->p[P_CHORD] = CH_MINOR;
+        n = chord_play_notes(t, 60, CM_MINOR | CM_SUS4 | CM_SEVEN, c);
+        assert(n == 4 && c[1] == 65 && c[3] == 70);
+        t->p[P_CHORD] = CH_DIM7;
+        n = chord_play_notes(t, 60, CM_SEVEN | CM_NINE, c);
+        assert(n == 4 && c[1] == 63 && c[2] == 69 && c[3] == 74);
+        t->p[P_CHORD] = CH_HALFDIM;
+        n = chord_play_notes(t, 60, CM_MINOR | CM_SEVEN | CM_NINE, c);
+        assert(n == 4 && c[1] == 64 && c[2] == 70 && c[3] == 74);
+        t->p[P_CHORD] = CH_AUG;
+        n = chord_play_notes(t, 60, CM_SEVEN | CM_NINE, c);
+        assert(n == 4 && c[1] == 64 && c[2] == 71 && c[3] == 74);
+        t->p[P_CHORD] = CH_OCTAVE;
+        n = chord_play_notes(t, 60, CM_MINOR | CM_SEVEN | CM_SUS4 | CM_NINE, c);
+        assert(n == 2 && c[0] == 60 && c[1] == 72);
+        n = chord_play_notes(t, 60, CM_INV, c);
+        assert(n == 2 && c[0] == 72 && c[1] == 84);
+        n = chord_play_notes(t, 104, CM_INV, c);
+        assert(n == 2 && c[0] == 104 && c[1] == 116); /* preserve pair at the MIDI ceiling */
+        t->p[P_VLEAD] = 1;
+        for (root_note = 48; root_note <= 84; root_note++) {
+            n = chord_play_notes(t, root_note, 0, c);
+            assert(n == 2 && c[1] - c[0] == 12);
+            n = chord_play_notes(t, root_note, CM_INV, c);
+            assert(n == 2 && c[1] - c[0] == 12);
+        }
+        t->p[P_VLEAD] = 0;
+    }
+    for (shape = CH_OFF; shape < CH_COUNT; shape++)
+        for (scale = 0; scale < NELEM(SCALE_MASK); scale++) {
+            t->p[P_CHORD] = (int16_t)shape;
+            t->p[P_SCALE] = (int16_t)scale;
+            for (root_note = 100; root_note <= 127; root_note++) {
+                n = chord_play_notes(t, root_note, CM_SUS4 | CM_SEVEN | CM_NINE, c);
+                assert(n >= 1 && n <= 4);
+                for (j = 0; j < n; j++)
+                    assert(c[j] >= root_note && c[j] <= 127);
+            }
+        }
+    t->p[P_CHORD] = CH_OFF;
+    puts("chords: appended shapes, major/minor tones, modifiers and MIDI ceiling ok");
+}
+
+static uint32_t scale_voice_gates(const track_t *t) { uint32_t i, n = 0; for (i = 0; i < NVOICE; i++) n += t->v[i].gate != 0; return n; }
+
+static void chromatic_chords_test(void)
+{
+    track_t *t = &trk[0];
+    uint8_t notes[4];
+    uint32_t key, count;
+    host_tracks_init();
+    t->p[P_QUANT] = 3;
+    t->p[P_CHORD] = CH_TRIAD;
+    t->p[P_SCALE] = 1;
+    t->p[P_ROOT] = 9;                   /* ROOT does not transpose literal keys */
+    t->p[P_VLEAD] = 0;
+    song.octave = 0;
+    assert(TP[P_QUANT].max == 3);
+    for (key = 0; key < 27; key++) {
+        uint32_t root = 53 + key;
+        assert(kb_map(t, key) == root);
+        count = chord_play_notes(t, root, CM_NINE | CM_MINOR | CM_INV, notes);
+        assert(count == 3 && notes[0] == root && notes[1] == root + 4 && notes[2] == root + 7);
+    }
+    /* C#4 is key 8: a true C# major chord, recorded and released as owned notes. */
+    song.sel = 0;
+    song.rec = song.playing = 1;
+    fm1_in.notes = 1u << 8;
+    keyboard_block();
+    assert(kb_kind[8] == KS_NOTE && kb_n[8] == 3);
+    assert(kb_nt[8][0] == 61 && kb_nt[8][1] == 65 && kb_nt[8][2] == 68);
+    assert(t->step[0].n == 3 && scale_voice_gates(t) == 3);
+    t->p[P_QUANT] = 0;                 /* release follows old ownership after mode change */
+    fm1_in.notes = 0;
+    keyboard_block();
+    assert(scale_voice_gates(t) == 0 && kb_kind[8] == KS_NONE);
+    host_tracks_init();
+    t->p[P_CHORD] = CH_TRIAD;
+    t->p[P_SCALE] = 1;
+    fm1_in.notes = 1u << 8;
+    keyboard_block();
+    assert(kb_kind[8] == KS_MOD && scale_voice_gates(t) == 0); /* legacy C# remains a ninth modifier */
+    fm1_in.notes = 0;
+    keyboard_block();
+    puts("chords: chromatic roots, tonic quality, recording/release and legacy modifiers ok");
+}
+
+static void chord_latch_test(void)
+{
+    track_t *t = &trk[0];
+    host_tracks_init();
+    song.sel = 0;
+    t->p[P_CHORD] = CH_MAJOR;
+    t->p[P_QUANT] = 3;
+    t->p[P_AHOLD] = 1;
+    fm1_in.notes = 1u << 7;
+    keyboard_block();
+    fm1_in.notes = 0;
+    keyboard_block();
+    assert(chord_latch_n[0] == 3 && scale_voice_gates(t) == 3);
+    fm1_in.notes = 1u << 9;
+    keyboard_block();
+    assert(chord_latch_n[0] == 0 && scale_voice_gates(t) == 3); /* replaces C with D */
+    fm1_in.notes = 0;
+    keyboard_block();
+    assert(chord_latch_n[0] == 3 && chord_latch_notes[0][0] == 62);
+    t->p[P_AHOLD] = 0;
+    keyboard_block();
+    assert(chord_latch_n[0] == 0 && scale_voice_gates(t) == 0);
+    t->p[P_AHOLD] = 1;
+    fm1_in.notes = 1u << 7; keyboard_block();
+    fm1_in.notes = 0; keyboard_block();
+    seq_stop();
+    assert(chord_latch_n[0] == 0 && scale_voice_gates(t) == 0);
+    t->p[P_QUANT] = 0;
+    t->p[P_SCALE] = 1;
+    t->p[P_CHORD] = CH_TRIAD;
+    fm1_in.notes = 1u << 7; keyboard_block();
+    fm1_in.notes = 0; keyboard_block();
+    assert(chord_latch_notes[0][1] == 64);
+    fm1_in.notes = 1u << 1; keyboard_block(); /* F#: minor modifier */
+    assert(kb_kind[1] == KS_MOD_LATCH && chord_latch_n[0] == 3);
+    assert(chord_latch_notes[0][0] == 60 && chord_latch_notes[0][1] == 63 && chord_latch_notes[0][2] == 67);
+    fm1_in.notes = 0; keyboard_block();
+    assert(chord_latch_notes[0][1] == 63 && scale_voice_gates(t) == 3); /* release preserves minor */
+    fm1_in.notes = 1u << 13; keyboard_block(); /* same modifier in the upper octave toggles off */
+    assert(chord_latch_notes[0][1] == 64);
+    fm1_in.notes = 0; keyboard_block();
+    fm1_in.notes = (1u << 3) | (1u << 5); keyboard_block(); /* seventh + sus4 */
+    assert(chord_latch_n[0] == 4 && chord_latch_notes[0][1] == 65 && chord_latch_notes[0][3] == 71);
+    fm1_in.notes = 0; keyboard_block();
+    assert(chord_latch_n[0] == 4 && chord_latch_notes[0][1] == 65 && scale_voice_gates(t) == 4);
+    fm1_in.notes = 1u << 3; keyboard_block(); /* remove seventh, retain sus4 */
+    fm1_in.notes = 0; keyboard_block();
+    assert(chord_latch_n[0] == 3 && chord_latch_notes[0][1] == 65);
+    fm1_in.notes = 1u << 7; keyboard_block(); /* next root inherits toggles */
+    fm1_in.notes = 0; keyboard_block();
+    assert(chord_latch_notes[0][1] == 65);
+    song.sel = 1;
+    assert(chord_mods(1) == 0 && chord_mods(0) == CM_SUS4);
+    song.sel = 0;
+    t->p[P_AHOLD] = 0; keyboard_block();
+    assert(chord_latch_n[0] == 0 && scale_voice_gates(t) == 0 && chord_latch_mods[0] == 0);
+    t->p[P_AHOLD] = 1;
+    fm1_in.notes = 1u << 1; keyboard_block();
+    fm1_in.notes = 0; keyboard_block();
+    assert(chord_latch_mods[0] == CM_MINOR); /* can prepare a quality before the root */
+    t->p[P_QUANT] = 3; keyboard_block();
+    assert(chord_latch_mods[0] == 0);
+    t->p[P_QUANT] = 0;
+    fm1_in.notes = 1u << 1; keyboard_block();
+    fm1_in.notes = 0; keyboard_block();
+    seq_stop();
+    assert(chord_latch_mods[0] == 0);
+    fm1_in.notes = 1u << 7; keyboard_block();
+    fm1_in.notes |= 1u << 1; keyboard_block(); /* modifier while root is still physically held */
+    assert(kb_nt[7][1] == 63);
+    fm1_in.notes = 1u << 7; keyboard_block();
+    assert(kb_nt[7][1] == 63);
+    fm1_in.notes = 0; keyboard_block();
+    assert(chord_latch_notes[0][1] == 63);
+    t->p[P_AMODE] = 1; keyboard_block();
+    assert(chord_latch_mods[0] == CM_MINOR && chord_latch_n[0] == 0);
+    t->p[P_AMODE] = 0;
+    puts("chord latch: sustain, replacement, disable and STOP cleanup ok");
+    puts("chord latch: modifier toggles, combinations, root persistence, part isolation and reset ok");
+}
+
 int main(void)
 {
     host_tracks_init();
     mapping_test();
+    chord_shapes_test();
     key_events_test();
+    chromatic_chords_test();
+    chord_latch_test();
     return 0;
 }

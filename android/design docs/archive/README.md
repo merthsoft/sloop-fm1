@@ -1,0 +1,62 @@
+# Documentation archive
+
+Historical coordination and evidence retained for reference. These documents describe their
+original checkpoint and do not define current implementation status or outstanding tasks.
+Use [current status](../STATUS.md), [component index](../README.md) and [verification](../VERIFICATION.md).
+
+## Completed handoffs
+
+- [NEXT-COMPOSITION-HANDOFF](handoffs/NEXT-COMPOSITION-HANDOFF.md)
+- [NEXT-HARDWARE-SCENE-HANDOFF](handoffs/NEXT-HARDWARE-SCENE-HANDOFF.md)
+- [NEXT-PERFORM-HANDOFF](handoffs/NEXT-PERFORM-HANDOFF.md)
+- [NEXT-PIANO-ROLL-HANDOFF](handoffs/NEXT-PIANO-ROLL-HANDOFF.md)
+- [NEXT-SAMPLING-HANDOFF](handoffs/NEXT-SAMPLING-HANDOFF.md)
+- [NEXT-SOUND-AUDITION-HANDOFF](handoffs/NEXT-SOUND-AUDITION-HANDOFF.md)
+- [PARALLEL-SAMPLING-HANDOFF](handoffs/PARALLEL-SAMPLING-HANDOFF.md)
+- [PARALLEL-SCENES-HANDOFF](handoffs/PARALLEL-SCENES-HANDOFF.md)
+- [PARALLEL-SESSIONS-HANDOFF](handoffs/PARALLEL-SESSIONS-HANDOFF.md)
+- [PARALLEL-TRANSPORT-HANDOFF](handoffs/PARALLEL-TRANSPORT-HANDOFF.md)
+- [PROMPT-EXPANSION-HANDOFF](handoffs/PROMPT-EXPANSION-HANDOFF.md)
+- [SAMPLING-KIT-HANDOFF](handoffs/SAMPLING-KIT-HANDOFF.md)
+- [SCENE-HARDWARE-HANDOFF](handoffs/SCENE-HARDWARE-HANDOFF.md)
+- [SESSION-INTEGRATION-HANDOFF](handoffs/SESSION-INTEGRATION-HANDOFF.md)
+
+## Chat assignments and earlier integration waves
+
+- [NEXT-WAVE](planning/NEXT-WAVE.md)
+- [PARALLEL-IMPLEMENTATION](planning/PARALLEL-IMPLEMENTATION.md)
+- [PARALLEL-INTEGRATION](planning/PARALLEL-INTEGRATION.md)
+
+## Superseded implementation and review checkpoints
+
+- [FM6-VISUALS-VERIFICATION](checkpoints/FM6-VISUALS-VERIFICATION.md)
+- [IMPLEMENTATION](checkpoints/IMPLEMENTATION.md)
+- [INTEGRATION](checkpoints/INTEGRATION.md)
+- [2.4.7 integration and Pixel verification](checkpoints/INTEGRATION-2.4.7.md)
+- [Initial 2.4.8 integration verification](checkpoints/INTEGRATION-2.4.8-FIRST.md)
+- [VERIFICATION](checkpoints/VERIFICATION.md)
+
+## Earlier firmware releases
+
+- [RELEASE-2.4.2](releases/RELEASE-2.4.2.md)
+- [RELEASE-2.4.3](releases/RELEASE-2.4.3.md)
+- [RELEASE-2.4.4](releases/RELEASE-2.4.4.md)
+- [RELEASE-2.4.5](releases/RELEASE-2.4.5.md)
+- [RELEASE-2.4.6](releases/RELEASE-2.4.6.md)
+- [RELEASE-2.4.7](releases/RELEASE-2.4.7.md)
+
+- [Firmware 2.4.8](releases/RELEASE-2.4.8.md): modifier latch release checkpoint.
+
+- [Firmware 2.4.9](releases/RELEASE-2.4.9.md): held-chord latch shortcut before the arpeggiator fix.
+
+- [Firmware 2.4.10](releases/RELEASE-2.4.10.md): ARP-enabled chord capture checkpoint.
+
+- [2.4.11 integration evidence](checkpoints/INTEGRATION-2.4.11.md)
+- [2.4.11 release](releases/RELEASE-2.4.11.md)
+
+- [2.4.12 release](releases/RELEASE-2.4.12.md)
+
+- [2.4.13 release](releases/RELEASE-2.4.13.md)
+
+- [2.4.14 integration evidence](checkpoints/INTEGRATION-2.4.14.md)
+- [2.4.14 release](releases/RELEASE-2.4.14.md)

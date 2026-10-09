@@ -322,12 +322,17 @@ static void proj_capture(project_t *p)        /* what is playing now, as a proje
 static void proj_apply(const project_t *p, int all)
 {
     uint32_t i, k;
+    undo.valid = 0;                                  /* undo never crosses project/section adoption */
+    perf_reset();
+    groove_preview.active = 0;
     for (i = 0; i < G_COUNT; i++)
         if (all ? i != G_SLOT && i != G_LOAD && i != G_SAVE && i != G_SYNC && i != G_MIDI && i != G_ROUTE : i == G_DRLVL || i == G_DRREV)
             song.g[i] = (int16_t)clamp(p->g[i], GP[i].min, GP[i].max);
     for (k = 0; k < NTRK; k++) {
         track_t *t = &trk[k];
         const proj_trk_t *s = &p->t[k];
+        seq_harmony_clear(t);
+        arp_release(t);
         uint32_t e = k < NPART ? s->engine % NENGINES : 0u;
         t->eng_req = (uint8_t)e;
         t->user = 0;                                    /* (no user preset slot is saved) */
@@ -378,6 +383,38 @@ static void proj_apply(const project_t *p, int all)
     }
 }
 
+/* One whole-project load undo. A later sequence edit supersedes this history.
+ * Separate from song_keep: playing an arrangement must not consume the snapshot. */
+/* Use ordinary RAM: keep the pool's required 8 KiB reserve untouched. */
+static project_t project_undo_saved;
+static uint32_t project_undo_session, project_undo_revision;
+static uint8_t project_undo_valid, project_undo_redone;
+static void project_undo_mark(void)
+{
+    proj_capture(&project_undo_saved);
+    project_undo_session = undo_sess;
+    project_undo_revision = undo_revision;
+    project_undo_valid = 1;
+    project_undo_redone = 0;
+}
+static int project_undo_available(void)
+{
+    return project_undo_valid && project_undo_session == undo_sess &&
+        project_undo_revision == undo_revision && !undo.valid;
+}
+/* Caller captures the current project into work; return the previous project there
+ * and retain the current one for redo. No additional full-project scratch allocation. */
+static int project_undo_exchange(project_t *work, int redo)
+{
+    uint32_t i;
+    uint8_t *a = (uint8_t *)work, *b = (uint8_t *)&project_undo_saved;
+    if (!project_undo_available() || (uint32_t)!!redo != project_undo_redone)
+        return 0;
+    for (i = 0; i < sizeof *work; i++) { uint8_t x = a[i]; a[i] = b[i]; b[i] = x; }
+    project_undo_redone = (uint8_t)!redo;
+    return 1;
+}
+
 #ifndef PROJ_HOST
 #if FELUCCA_ARRANGER
 #include "arranger_scene.c"
@@ -422,6 +459,7 @@ static void project_save(uint32_t slot)
 static void project_apply(const project_t *p)
 {
     uint32_t k;
+    groove_confirm = 0;
     transport_req = 2;
     panic_req = (1u << NTRK) - 1u;
     fm1_irq_off();                                      /* the audio ISR must not see half a project */
@@ -451,6 +489,7 @@ static void project_load(uint32_t slot)
         ui_message("EMPTY SLOT");
         return;
     }
+    project_undo_mark();
     project_apply(p);
     ui_message("LOADED");
 }
@@ -462,6 +501,17 @@ static void project_load(uint32_t slot)
 #define AUTOSAVE_GAP 20000u                    /* ms between two saves at least */
 static project_t autosave_buf __attribute__((section(".pool")));
 static uint32_t autosave_hash, autosave_ms, autosave_checked;
+
+static int project_undo_swap(int redo)
+{
+    if (!project_undo_available() || song.playing || transport_req)
+        return 0;
+    proj_capture(&autosave_buf);
+    if (!project_undo_exchange(&autosave_buf, redo))
+        return 0;
+    project_apply(&autosave_buf);
+    return 1;
+}
 
 static int audio_quiet(void)
 {
@@ -710,6 +760,7 @@ static uint32_t project_restore(uint32_t slot, const void *raw, uint32_t n)
     if (!proj_import(&autosave_buf, raw, (int)n))
         return 2;
     if (slot == 4u) {
+        project_undo_mark();
         project_apply(&autosave_buf);
         return 0;
     }
@@ -749,6 +800,8 @@ static void section_store(uint32_t s)
 static void section_load(uint32_t s)                    /* stopped: the section is the loop now */
 {
     s &= 3u;
+    if (!proj_ok(&proj_slot[s])) { ui_message("EMPTY SLOT"); return; }
+    project_undo_mark();
     project_apply(&proj_slot[s]);
     live_sec = (int8_t)s;
 }

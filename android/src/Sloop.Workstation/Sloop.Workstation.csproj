@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><TargetFramework>net10.0</TargetFramework></PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Sloop.Protocol/Sloop.Protocol.csproj" />
+    <ProjectReference Include="../Sloop.Core/Sloop.Core.csproj" />
+    <ProjectReference Include="../Sloop.SoundDesign/Sloop.SoundDesign.csproj" />
+    <ProjectReference Include="../Sloop.Sequencing/Sloop.Sequencing.csproj" />
+    <ProjectReference Include="../Sloop.SampleEncoding/Sloop.SampleEncoding.csproj" />
+  </ItemGroup>
+</Project>

@@ -59,7 +59,7 @@ SLOOP turns the FM-1 into a four-track groovebox you play live: **three synths a
 | **Your own drum kits** | A 4th sample slot (USR4). KIT USR1–USR4 or **USR3+4** (a big kit, about 15 s) on the drum track: 16 of your sounds, one per lane, built in the editor's new **Drum kit** page (drop WAVs on pads, sorted by name; pitch, gain, length; choose where; ZIP to share). |
 | **New web editor** | Rebuilt in the FM-1's own look (black, the four track colours, its pixel font): each button's pages as rows of four coloured knobs, values you drag like knobs, the steps as the device's tiles. |
 | **CHORD+** | In chord mode the black keys change the chord (major ↔ minor, 7th, sus4, 9th, inversion), even while it is held; STRUM strums the chords, VLEAD voices them smoothly. After HiChord and minichord. |
-| **The visualiser** | On the TRACKS screen, tap HOME: 12 full-screen styles (oscilloscope, spectrum, spectrogram, Lissajous, VU meters, circle, tape, LCD, bounce, orbit, wires, the SLOOP logo), SELECT to change. |
+| **The visualiser** | On the TRACKS screen, tap HOME: 21 full-screen styles (oscilloscope, spectrum, spectrogram, Lissajous, VU meters, circle, tape, LCD, bounce, orbit, wires, the SLOOP logo, a dungeon fly-through, polyrhythm rings, note trails, groove, drum constellation, lock landscape, stereo field, song journey and beat terrain), SELECT to change. |
 | **A filter per track** | One knob, low-pass to the left, high-pass to the right, on each track and the drums: FX → FILTER, or FX held + KNOB 4. Lockable on a step. |
 | **Bigger values** | Pages without a graph (EDIT, VOICE, GLOBAL…) show their four values in large type in the middle of the screen. |
 | **SELECT turns the pages** | On a page (LFO, FX, EDIT…), SELECT goes to the next / previous page of its group. On HOME it is still the tempo. |
@@ -230,7 +230,7 @@ Nothing to download or compile. Your projects, user presets, samples and setting
 | **KNOB 1–4** | what the four dials at the bottom of the screen show, each in its colour |
 | **OCT− / OCT+** | octave (both: back to 0) · on the drum track, held: ghost / hard hits |
 | **FX · SCL · ENV · LFO · EDIT · GLO** (top row) | tap: their pages · hold FX, SCL, EDIT, GLO: a layer. **SCL** is the second button of the top row, between FX and ENV |
-| **HOME** | the TRACKS screen · on it: the full-screen visualiser (SELECT: 12 styles; HOME again closes it) · hold: the menu · tapped while a layer is held: lock it |
+| **HOME** | the TRACKS screen · on it: the full-screen visualiser (SELECT: 21 styles; HOME again closes it) · hold: the menu · tapped while a layer is held: lock it |
 | **SAVE** | on TRACKS: the SONG screen · elsewhere: the SAVE pages · hold: the song layer |
 | **ARP · SEQ** | tap: their pages · hold: note repeat · steps |
 | **PLAY** | start / stop all four tracks; its light flashes on every beat |

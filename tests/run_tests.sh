@@ -26,7 +26,7 @@ export AC79_SDK="${AC79_SDK:-$HOME/fw-AC79_AIoT_SDK}"
 cd "$(dirname "$0")/.."
 OUT=build/host
 mkdir -p "$OUT"
-CC="${CC:-cc} -O1 -Wall -Wno-unused-function"
+CC="${CC:-cc} -UNDEBUG -O1 -Wall -Wno-unused-function"
 fail=0
 run() { echo "== $1"; shift; "$@" || fail=1; }
 
@@ -53,6 +53,8 @@ $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/studio_drums_test" tests/studio_d
 run "drum lanes, kit audio, metronome, record arm, free take" "$OUT/studio_drums_test" "$OUT/drum-styles.wav"
 $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/seq2_test" tests/seq2_test.c -lm
 run "sequencer 2.0: no drift, ratchets, roll, erase / undo, ghost / hard, chords, mute / solo, nudge, locks" "$OUT/seq2_test"
+$CC -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/seq_arp_test" tests/seq_arp_test.c -lm
+run "sequencer-fed arpeggio: source ownership, microtiming, latch and generated MIDI cleanup" "$OUT/seq_arp_test"
 
 $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/drumkit_test" tests/drumkit_test.c -lm
 run "synthesised drum kits: every kit x sound bounded, audible, finite, levels, cost" "$OUT/drumkit_test" "$OUT/drum-kits.wav" "$OUT/drum-kits.txt"
@@ -61,11 +63,22 @@ run "user drum kits (KIT USR1..USR3): a user slot's sounds on the drum lanes" "$
 $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/punch_test" tests/punch_test.c -lm
 run "punch-in FX: 16 effects, bounded, dry after release, FX-held keys" "$OUT/punch_test" "$OUT/punch-fx.wav"
 
+$CC -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/performance_remote_test" tests/performance_remote_test.c
+run "remote performance: wire validation, leases and owner cleanup" "$OUT/performance_remote_test"
+$CC -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/performance_engine_test" tests/performance_engine_test.c -lm
+run "remote performance: actual panel priority, DSP and sequencer boundaries" "$OUT/performance_engine_test"
+$CC -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/drum_grooves_test" tests/drum_grooves_test.c -lm
+run "drum groove starters: apply, undo, project roundtrip and screens" "$OUT/drum_grooves_test" "$OUT"
+$CC -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/editor_drum_grooves_test" tests/editor_drum_grooves_test.c -lm
+run "phone drum grooves: capabilities, malformed requests, confirmation and undo" "$OUT/editor_drum_grooves_test"
+$CC -O2 -Wall -Wextra -o "$OUT/harmony_owners_test" tests/harmony_owners_test.c firmware/src/harmony_owners.c
+run "inactive harmony foundation: shared-owner note transitions" "$OUT/harmony_owners_test"
+
 $CC -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/ui_pages_test" tests/ui_pages_test.c -lm
 run "live UI: pages, layers (punch, steps, erase, roll, key, mix), holds, drums, REC, fuzz" "$OUT/ui_pages_test" "$OUT"
 # no divide by 0 (the FM-1 runs with the div0 trap off, hal/fm1_irq.h: a real one would give a wrong value
 # silently): the UI fuzz, the sequencer, the projects and a minute of random live use, with UBSan
-UBSAN="${CC_UB:-cc} -O1 -w -fsanitize=integer-divide-by-zero -fno-sanitize-recover=integer-divide-by-zero -Ibuild/gen -Ifirmware/src -Ifirmware/hal"
+UBSAN="${CC_UB:-cc} -UNDEBUG -O1 -w -fsanitize=integer-divide-by-zero -fno-sanitize-recover=integer-divide-by-zero -Ibuild/gen -Ifirmware/src -Ifirmware/hal"
 $UBSAN -o "$OUT/ui_pages_ub" tests/ui_pages_test.c -lm && $UBSAN -o "$OUT/seq2_ub" tests/seq2_test.c -lm &&
     $UBSAN -o "$OUT/project_ub" tests/project_test.c -lm && $UBSAN -o "$OUT/soak_ub" tests/soak_test.c -lm || fail=1
 mkdir -p "$OUT/ub"
@@ -103,6 +116,8 @@ run "USB SERIAL OFF: the descriptors of a build without CDC, byte for byte" \
     sh -c "[ \"\$(UAC_DUMP=1 '$OUT/uac_test_seroff' | tail -n 2)\" = \"\$(UAC_DUMP=1 '$OUT/uac_test_nocdc' | tail -n 2)\" ] && echo same"
 uac_in_app() { ${CC%% *} -E -Ibuild/gen -Ifirmware/hal -Ifirmware/src firmware/src/felucca.c 2>/dev/null | grep -q uac_service; }
 run "USB audio input: built into the firmware (FELUCCA_UAC set before usb.c)" uac_in_app
+run "USB playback: adaptive duplex, mixer, reset and loader variants" env CC="$CC" sh tests/run_usb_playback.sh
+run "scene transaction staging, faults and OTA USB compatibility" env CC="$CC" sh tests/run_scene_transaction.sh
 
 $CC -o "$OUT/ota_test" tests/ota_test.c
 run "M-UPGRADE entry" "$OUT/ota_test" build/felucca.fwsc

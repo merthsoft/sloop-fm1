@@ -524,12 +524,15 @@ static void layer_tap(uint32_t layer)
         break;
     case LY_ERASE:
     case LY_STEP:
-        if (on_drum_page()) {                             /* DRUMS: GRID <-> KIT */
-            drum_page = (uint8_t)((drum_page + 1u) % 2u);
+        if (on_drum_page()) {                             /* DRUMS: GRID / KIT / GROOVE */
+            groove_preview.active = 0;
+            drum_page = (uint8_t)((drum_page + 1u) % 3u);
+            groove_confirm = 0;
+            ui.msg_t = 0;
             ui.force = 1;
             break;
         }
-        if (!ui.home && cur_page()->scope == SC_TRK && is_drum(TSEL)) {
+        if (is_drum(TSEL)) {
             studio_open(SC_DRUM);
             break;
         }
@@ -588,11 +591,23 @@ static int ly_quiet(void)
         ly_quiet_t = 0;
     return ly_quiet_t != 0;
 }
+static int chord_physically_held(uint32_t part)
+{
+    uint32_t k;
+    if (part >= NPART || !trk[part].p[P_CHORD])
+        return 0;
+    for (k = 0; k < 27u; k++)
+        if (kb_kind[k] == KS_NOTE && kb_trk[k] == part && (fm1_in.notes & (1u << k)))
+            return 1;
+    return 0;
+}
+
 /* the layers, once a frame: which one is held (or locked), the taps on release, its keys and knobs.
  * Returns 1 while one is held or locked (the page does not take the knobs then) */
 static int layers_input(uint32_t note_edges, uint32_t *pressed, uint32_t home)
 {
     static uint8_t down[LY_COUNT], used[LY_COUNT];
+    static uint8_t latch_part[LY_COUNT];
     static uint32_t t0[LY_COUNT];
     uint32_t l, now = fm1_ms, held = LY_PLAY, eat = 0;
     if (ly_lock != LY_PLAY) {
@@ -610,13 +625,30 @@ static int layers_input(uint32_t note_edges, uint32_t *pressed, uint32_t home)
         if (d && !down[l]) {
             t0[l] = now;
             used[l] = (uint8_t)((eat & ly_bit[l]) != 0u);  /* (the press that unlocked: not a tap) */
+            latch_part[l] = (uint8_t)((l == LY_ROLL || l == LY_SCALE) && !used[l] &&
+                !ui.menu && !ui.confirm && chord_physically_held(song.sel) ? song.sel : NPART);
         }
         if (d && note_edges)
             used[l] = 1;                                  /* a key while held: not a tap */
+        if (d && latch_part[l] < NPART) {
+            uint32_t part = latch_part[l];
+            if (used[l] || song.sel != part || !chord_physically_held(part) || ui.menu || ui.confirm ||
+                ly_lock != LY_PLAY || (layer_buttons() & ~ly_bit[l]) ||
+                (fm1_in.buttons & (1u << panel.btn[B_HOME]))) {
+                latch_part[l] = NPART;
+            } else if (now - t0[l] >= 700u) {
+                trk[part].p[P_AHOLD] ^= 1;
+                ui_message(trk[part].p[P_AHOLD] ? "CHORD LATCH ON" : "CHORD LATCH OFF");
+                used[l] = 1;
+                latch_part[l] = NPART;                    /* exactly once per hold */
+            }
+        }
         if (!d && down[l] && !used[l] && now - t0[l] < TAP_MS && !ui.menu && !ui.confirm)
             layer_tap(l);
-        if (!d && down[l] && l == LY_SONG)
+        if (!d && down[l] && l == LY_SONG) {
             chain_release();                              /* SAVE let go: the section taps of the hold (ui_layers.c) */
+            if (sec_armed == 5u) sec_armed = 0;             /* NEW needs both taps in the same hold */
+        }
         down[l] = (uint8_t)d;
         if (d && held == LY_PLAY)
             held = l;
@@ -676,7 +708,10 @@ static int layers_input(uint32_t note_edges, uint32_t *pressed, uint32_t home)
         prev = b;
         if (press) {
             used[held] = 1;
-            if (press & ob)
+            if ((groove_undo_matches() && (song.playing || transport_req == 1)) ||
+                (project_undo_available() && (song.playing || transport_req)))
+                ui_message("STOP FIRST");
+            else if (press & ob)
                 ui_message(undo_swap(0) ? "UNDO" : "NOTHING TO UNDO");
             else
                 ui_message(undo_swap(1) ? "REDO" : "NOTHING TO REDO");

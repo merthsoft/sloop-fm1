@@ -21,6 +21,9 @@
 #include <stdint.h>
 #include "fm1_cc.h"
 
+/* Host tests provide a byte-register/DMA model instead of physical MMIO. */
+#ifndef FM1_USB_HOST_TEST
+
 #define FM1_USB_CON0 (*(volatile uint32_t *)0x11800u)
 #define FM1_USB_CON1 (*(volatile uint32_t *)0x11804u)
 #define FM1_USB_EP_CNT(n) (*(volatile uint32_t *)(0x11808u + 4u * (n)))          /* EP0..3 */
@@ -98,6 +101,9 @@ FM1_INLINE void fm1_usb_ep_send(uint32_t ep, void *p, uint32_t n)
 /* EP4 IN (the USB audio stream, isochronous): its DMA address and count have their own
  * registers (SDK usb_set_dma_taddr / usb_write_ep_cnt, id 0, ep 4) (after Felucca 1.0) */
 FM1_INLINE void fm1_usb_ep4_txbuf(void *p) { FM1_USB_EP4_TADR = (uint32_t)(uintptr_t)p; }
+/* EP4 OUT has an independent RX DMA address; never use EP_RADR(4), whose
+ * EP1..3 arithmetic aliases EP4's count register. */
+FM1_INLINE void fm1_usb_ep4_rxbuf(void *p) { FM1_USB_EP4_RADR = (uint32_t)(uintptr_t)p; }
 FM1_INLINE void fm1_usb_ep4_send(void *p, uint32_t n)
 {
     __asm__ volatile("csync" ::: "memory");
@@ -116,3 +122,4 @@ FM1_INLINE uint32_t fm1_usb_sof_take(void)
     FM1_USB_CON0 |= 1u << 12;
     return 1;
 }
+#endif

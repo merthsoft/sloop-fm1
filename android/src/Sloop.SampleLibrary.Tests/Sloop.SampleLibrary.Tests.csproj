@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework></PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../Sloop.Workstation/SampleLibrary.cs" Link="SampleLibrary.cs" />
+    <Compile Include="../Sloop.Workstation/Sessions.cs" Link="Sessions.cs" />
+    <Compile Include="../Sloop.Workstation/SamplePreparation.cs" Link="SamplePreparation.cs" />
+    <Compile Include="../Sloop.Workstation/SampleKitPlan.cs" Link="SampleKitPlan.cs" />
+    <Compile Include="../Sloop.Workstation/SamplePitch.cs" Link="SamplePitch.cs" />
+    <Compile Include="../Sloop.Core/Sampling/PcmWave.cs" Link="PcmWave.cs" />
+    <Compile Include="../Sloop.Core/Sampling/SampleDocument.cs" Link="SampleDocument.cs" />
+    <Compile Include="../Sloop.SampleEncoding/*.cs" Link="Encoding/%(Filename)%(Extension)" />
+  </ItemGroup>
+</Project>

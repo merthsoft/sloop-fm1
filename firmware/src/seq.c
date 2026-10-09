@@ -41,15 +41,32 @@ static const uint16_t SCALE_MASK[] = {
 #define SEQ_NONE 0xFFFFFFFFu
 
 #define KB_SILENT 255u
+#include "harmony_owners.h"
+/* Separate ownership: live HOLD/physical counts never include sequence pitches.
+ * A complete literal snapshot replaces the previous step in one ISR commit. */
+static harmony_seq_source seq_harmony[NPART];
+static int seq_arp_route(const track_t *t)
+{ return !is_drum(t) && t->p[P_AMODE] && t->p[P_AORDER] >= AORDER_SEQ_NOTE; }
+static void seq_harmony_clear(track_t *t)
+{ uint32_t i = (uint32_t)(t - trk); if (i < NPART) seq_harmony[i].n = 0; }
 static uint32_t kb_prev;
 /* per key: what its press started, so its release ends the same (whatever the layer or track is now) */
-enum { KS_NONE, KS_NOTE, KS_DRUM, KS_ROLL, KS_ERASE, KS_FX, KS_UI, KS_MOD };   /* KS_MOD: a chord modifier (2.4) */
+enum { KS_NONE, KS_NOTE, KS_DRUM, KS_ROLL, KS_ERASE, KS_FX, KS_UI, KS_MOD, KS_MOD_LATCH };
+static uint8_t chord_latch_mods[NPART];              /* toggled chord qualities, owned by each synth */
 static uint8_t kb_kind[27], kb_trk[27], kb_n[27], kb_nt[27][4], kb_root[27];   /* kb_root: a chord key's note (CHORD+) */
+static uint8_t chord_latch_n[NPART], chord_latch_notes[NPART][4], chord_latch_root[NPART];
+static uint8_t arp_chord_latch_n[NPART], arp_chord_latch_notes[NPART][4], arp_chord_latch_root[NPART];
 static uint8_t last_note = 60;
 static uint8_t pen_n = 1, pen_note[4] = {60};   /* the last chord / note played: the SEQ layer writes it */
 static uint8_t pen_lane;                       /* the last drum lane played: the SEQ layer's lane */
 static volatile uint8_t transport_req;   /* 1 start, 2 stop (from the UI); 3 start from a MIDI START */
 static volatile uint8_t panic_req;       /* bit per track: release every sounding note (preset / engine change) */
+/* Browser clock: independent of transport and persisted track steps. */
+static struct {
+    uint64_t mask[7];
+    uint32_t phase;
+    uint8_t active, first, step, len, div;
+} groove_preview;
 
 static uint32_t trk_index(const track_t *t) { return (uint32_t)(t - trk); }
 
@@ -163,7 +180,7 @@ static uint32_t kb_map(const track_t *t, uint32_t k)
             n--;
         return (uint32_t)clamp(n, 0, 127);
     }
-    if (t->p[P_QUANT] == 2 || t->p[P_CHORD]) {   /* WHITE: white keys walk the scale, black keys are silent */
+    if (t->p[P_QUANT] == 2 || (t->p[P_CHORD] && t->p[P_QUANT] != 3)) {   /* CHROM keeps every key's literal root */
         uint32_t mask = t->p[P_CHORD] && !t->p[P_SCALE] ? SCALE_MASK[2] : scale_mask(t), i;
         int32_t count = 0, degree = DEGREE[n % 12], oct;
         if (degree < 0)
@@ -190,32 +207,46 @@ static uint32_t kb_map(const track_t *t, uint32_t k)
     return (uint32_t)clamp(n + 12 * song.octave + t->p[P_TRANS], 0, 127);
 }
 
-/* chord mode (P_CHORD): the chord of the scale built on note n (in the scale; CHR: minor), into c[];
+/* chord mode (P_CHORD): scale degrees (CHR: minor) or fixed semitone quality built on note n, into c[];
  * the notes it holds (<= 4, the most a step keeps) */
-static const int8_t CHORD_DEG[6][4] = {
+static const int8_t CHORD_DEG[CH_OCTAVE][4] = {
     {0, -1, -1, -1},                     /* OFF */
     {0, 2, 4, -1},                       /* TRIAD: 1 3 5 */
     {0, 2, 4, 6},                        /* 7TH: 1 3 5 7 */
     {0, 2, 6, 8},                        /* 9TH: 1 3 7 9 (the lo-fi / R&B voicing) */
     {0, 3, 4, -1},                       /* SUS4: 1 4 5 */
     {0, -1, -1, -1},                     /* POWER: 1 5 8 (semitones, below) */
+    {0, 1, 4, -1},                       /* SUS2: 1 2 5 */
+    {0, 2, 4, 8},                        /* ADD9: 1 3 5 9 */
+    {0, 2, 4, 5},                        /* 6TH: 1 3 5 6 */
+    {0, 2, 6, -1},                       /* SHELL: 1 3 7 */
 };
 static uint32_t chord_notes(const track_t *t, uint32_t n, uint8_t *c)
 {
-    uint32_t type = (uint32_t)clamp(t->p[P_CHORD], 0, 5), mask = t->p[P_SCALE] ? scale_mask(t) : SCALE_MASK[2];
+    uint32_t type = (uint32_t)clamp(t->p[P_CHORD], 0, CH_COUNT - 1), mask = t->p[P_SCALE] ? scale_mask(t) : SCALE_MASK[2];
+    /* In CHROM the selected scale describes a tonic quality at each literal root,
+     * e.g. MAJ + TRIAD on C# gives C# major instead of a C-scale chord on C#. */
+    int32_t scale_root = t->p[P_QUANT] == 3 ? (int32_t)n : t->p[P_ROOT];
     uint32_t k = 0, j;
-    if (type == 5u) {
-        static const uint8_t PW[3] = {0, 7, 12};
-        for (j = 0; j < 3u; j++)
-            if (n + PW[j] < 128u)
-                c[k++] = (uint8_t)(n + PW[j]);
+    if (type == CH_POWER || type >= CH_OCTAVE) {
+        static const int8_t FIXED[][4] = {
+            {0, 12, -1, -1}, {0, 4, 7, -1}, {0, 3, 7, -1},
+            {0, 4, 7, 10}, {0, 4, 7, 11}, {0, 3, 7, 10},
+            {0, 3, 6, -1}, {0, 4, 8, -1}, {0, 3, 6, 10}, {0, 3, 6, 9}
+        };
+        static const int8_t PW[4] = {0, 7, 12, -1};
+        const int8_t *interval = type == CH_POWER ? PW : FIXED[type - CH_OCTAVE];
+        _Static_assert(NELEM(FIXED) == CH_COUNT - CH_OCTAVE, "fixed chord shapes");
+        for (j = 0; j < 4u && interval[j] >= 0; j++)
+            if (n + (uint32_t)interval[j] < 128u)
+                c[k++] = (uint8_t)(n + interval[j]);
         return k;
     }
     for (j = 0; j < 4u && CHORD_DEG[type][j] >= 0; j++) {
         int32_t m = (int32_t)n, d = CHORD_DEG[type][j], guard = 48;
         while (d > 0 && guard--) {                       /* d scale degrees up */
             m++;
-            if ((mask >> (uint32_t)((m - t->p[P_ROOT] + 120) % 12)) & 1u)
+            if ((mask >> (uint32_t)((m - scale_root + 120) % 12)) & 1u)
                 d--;
         }
         if (m < 128)
@@ -227,7 +258,8 @@ static uint32_t chord_notes(const track_t *t, uint32_t n, uint8_t *c)
 /* CHORD+ (2.4, after HiChord / minichord): in chord mode the black keys are modifiers. Held while a white key
  * plays (or pressed while it is held: the chord changes under the finger), they change its chord: F# flips its
  * third (major <-> minor), G# adds the 7th, A# makes it sus4, C# adds the 9th, D# inverts it (its lowest note an
- * octave up); several at once combine. P_VLEAD ON voices each chord nearest the last one played on the track. */
+ * octave up); several at once combine. Chord latch turns modifier presses into per-part toggles.
+ * P_VLEAD ON voices each chord nearest the last one played on the track. */
 enum { CM_MINOR = 1, CM_SEVEN = 2, CM_SUS4 = 4, CM_NINE = 8, CM_INV = 16 };
 static uint32_t chord_mod_of_key(uint32_t k)            /* key k's modifier (0: a white key) */
 {
@@ -263,24 +295,32 @@ static void sort_notes(uint8_t *c, uint32_t n)
 /* the chord of white key n with the modifiers held, voiced (VLEAD); its notes (<= 4) into c[] */
 static uint32_t chord_play_notes(track_t *t, uint32_t n, uint32_t mods, uint8_t *c)
 {
-    uint32_t k = chord_notes(t, n, c), j, type = (uint32_t)clamp(t->p[P_CHORD], 0, 5), part = trk_index(t);
-    if (type != 5u && k >= 2u && mods) {                /* (POWER: the inversion only) */
-        uint32_t third = scale_up(t, n, 2u);
+    if (t->p[P_QUANT] == 3) mods = 0;   /* every black key is a root in CHROM, including held former modifiers */
+    uint32_t k = chord_notes(t, n, c), j, type = (uint32_t)clamp(t->p[P_CHORD], 0, CH_COUNT - 1), part = trk_index(t);
+    if (type != CH_POWER && type != CH_OCTAVE && k >= 2u && mods) {          /* POWER / OCTAVE: inversion only */
+        uint32_t fixed = type >= CH_MAJOR;
+        uint32_t third = fixed ? n + (type == CH_MINOR || type == CH_MIN7 || type == CH_DIM ||
+                                         type == CH_HALFDIM || type == CH_DIM7 ? 3u : 4u) : scale_up(t, n, 2u);
         for (j = 0; j < k; j++) {
-            if (c[j] == third && (mods & CM_SUS4))
-                c[j] = (uint8_t)scale_up(t, n, 3u);     /* the 4th instead of the 3rd */
-            else if (c[j] == third && (mods & CM_MINOR))
+            if ((c[j] == third || (type == CH_SUS2 && j == 1u)) && (mods & CM_SUS4)) {
+                uint32_t fourth = fixed ? n + 5u : scale_up(t, n, 3u);
+                if (fourth < 128u)
+                    c[j] = (uint8_t)fourth;           /* the 4th instead of the 3rd / suspended 2nd */
+            } else if (c[j] == third && (mods & CM_MINOR))
                 c[j] = (uint8_t)(c[j] - n == 4u ? c[j] - 1u : c[j] - n == 3u ? c[j] + 1u : c[j]);
         }
         if ((mods & CM_SEVEN) && k < 4u) {
-            uint32_t s7 = scale_up(t, n, 6u);
+            uint32_t s7 = fixed ? n + (type == CH_MAJOR || type == CH_MAJ7 || type == CH_AUG ? 11u :
+                                      type == CH_DIM || type == CH_DIM7 ? 9u : 10u) : scale_up(t, n, 6u);
             for (j = 0; j < k && c[j] != s7; j++)
                 ;
             if (j == k && s7 < 128u)
                 c[k++] = (uint8_t)s7;
         }
         if (mods & CM_NINE) {
-            uint32_t s9 = scale_up(t, n, 8u), s5 = scale_up(t, n, 4u);
+            uint32_t s9 = fixed ? n + 14u : scale_up(t, n, 8u);
+            uint32_t s5 = fixed ? n + (type == CH_DIM || type == CH_HALFDIM || type == CH_DIM7 ? 6u :
+                                      type == CH_AUG ? 8u : 7u) : scale_up(t, n, 4u);
             for (j = 0; j < k && c[j] != s9; j++)
                 ;
             if (j == k && s9 < 128u) {
@@ -298,7 +338,7 @@ static uint32_t chord_play_notes(track_t *t, uint32_t n, uint32_t mods, uint8_t 
     if (t->p[P_VLEAD] && part < NPART && vl_n[part] && k) {   /* the inversion and octave nearest the last chord */
         uint8_t best[4], cand[4];
         int32_t bcost = 0x7FFFFFFF, inv, oct;
-        for (inv = 0; inv < (int32_t)k; inv++)
+        for (inv = 0; inv < (type == CH_OCTAVE ? 1 : (int32_t)k); inv++)
             for (oct = -1; oct <= 1; oct++) {
                 int32_t cost = 0, ok = 1;
                 for (j = 0; j < k; j++) {
@@ -322,7 +362,10 @@ static uint32_t chord_play_notes(track_t *t, uint32_t n, uint32_t mods, uint8_t 
         if (bcost != 0x7FFFFFFF)
             memcpy(c, best, k);
     }
-    if ((mods & CM_INV) && k >= 2u && c[0] + 12u < 128u) {   /* an inversion: the lowest an octave up */
+    if ((mods & CM_INV) && type == CH_OCTAVE && k && c[k - 1u] + 12u < 128u) {
+        for (j = 0; j < k; j++)                     /* octave doubling: raise the pair, keep its spacing */
+            c[j] = (uint8_t)(c[j] + 12u);
+    } else if ((mods & CM_INV) && type != CH_OCTAVE && k >= 2u && c[0] + 12u < 128u) {
         c[0] = (uint8_t)(c[0] + 12u);
         sort_notes(c, k);
     }
@@ -393,11 +436,13 @@ static struct {
     step_t st[NSTEP];
 } undo;
 static uint32_t undo_sess = 1;           /* UI sessions (seq.c: recording passes use the track's pass) */
+static uint32_t undo_revision;          /* also counts recording edits, independent of UI sessions */
 static void undo_mark(const track_t *t, uint32_t sess)
 {
     uint32_t i = trk_index(t);
     if (undo.valid && !undo.undone && undo.trk == i && undo.sess == sess)
         return;                                          /* (this session is marked already) */
+    undo_revision++;
     memcpy(undo.st, t->step, sizeof undo.st);
     undo.len = t->p[P_SLEN];
     undo.trk = (uint8_t)i;
@@ -758,6 +803,7 @@ static uint32_t step_plays(const track_t *t, uint32_t idx)   /* its condition ho
 static void steps_clear(track_t *t)           /* an empty pattern (synth: REST steps, drums: no lane); no lock, no nudge, no condition */
 {
     uint32_t k;
+    seq_harmony_clear(t);
     memset(t->step, 0, sizeof t->step);
     if (!is_drum(t))
         for (k = 0; k < NSTEP; k++)
@@ -964,6 +1010,7 @@ static void arp_add(track_t *t, uint32_t note)
     for (i = 0; i < t->nheld; i++)
         if (t->held[i] == note)
             return;                                 /* repeated note-on: not a new note */
+    t->arp_shuffle_n = 0;
     if (t->nheld < 16u)
         t->held[t->nheld++] = (uint8_t)note;
     if (t->nheld == 1u) {
@@ -983,37 +1030,120 @@ static void arp_remove(track_t *t, uint32_t note)
         if (t->held[i] != note)
             t->held[k++] = t->held[i];
     t->nheld = (uint8_t)k;
+    t->arp_shuffle_n = 0;
 }
 
-/* the next note of the arp: the held notes (sorted or as played) over OCT octaves, by MODE */
-static uint32_t arp_next(track_t *t)
+/* Build the bounded octave-expanded pool for note selection and chord pulses. */
+static __attribute__((noinline)) uint32_t arp_list(const track_t *t, uint8_t *list)
 {
-    uint32_t cnt, list[64], len = 0, i, j, o;
+    uint32_t cnt, len = 0, i, j, o;
     for (i = 0; i < t->nheld; i++)
         list[i] = t->held[i];
     cnt = t->nheld;
-    if (!t->p[P_AORDER])
+    if (seq_arp_route(t)) {
+        uint32_t k = trk_index(t);
+        /* The existing generator has a 64-tone budget. Sequence pitches come
+         * after live press order; at saturation the first 16 unique roots win. */
+        for (i = 0; i < seq_harmony[k].n && cnt < 16u; i++) {
+            for (j = 0; j < cnt && list[j] != seq_harmony[k].note[i]; j++) ;
+            if (j == cnt) list[cnt++] = seq_harmony[k].note[i];
+        }
+    }
+    /* ORD always means press order; pitch-based additions always use sorted notes.
+     * Existing UP/DN/UPDN retain the independent ORDER preference. */
+    if (t->p[P_AMODE] != ARP_ORDER &&
+        (!(t->p[P_AORDER] & 1) || t->p[P_AMODE] >= ARP_OUTSIDE))
         for (i = 1; i < cnt; i++)
             for (j = i; j > 0 && list[j - 1] > list[j]; j--) {
-                uint32_t x = list[j];
+                uint8_t x = list[j];
                 list[j] = list[j - 1];
                 list[j - 1] = x;
             }
     for (o = 0; o < (uint32_t)t->p[P_AOCT]; o++)
         for (i = 0; i < cnt && len < 64u; i++)
-            list[len++] = (uint32_t)clamp((int32_t)list[i] + 12 * (int32_t)o, 0, 127);
+            list[len++] = (uint8_t)clamp((int32_t)list[i] + 12 * (int32_t)o, 0, 127);
+    if (t->p[P_AMODE] >= ARP_OUTSIDE)
+        for (i = 1; i < len; i++)
+            for (j = i; j > 0 && list[j - 1u] > list[j]; j--) {
+                uint8_t x = list[j];
+                list[j] = list[j - 1u];
+                list[j - 1u] = x;
+            }
+    return len;
+}
+
+/* Keep selectors out of line: inlining their growth can pull mix_block into
+ * the target audio ISR and distort its loop budget. */
+static __attribute__((noinline)) uint32_t arp_next(track_t *t)
+{
+    uint8_t list[64];
+    uint32_t len = arp_list(t, list), i, j;
+    if (!len)
+        return 0;                                  /* caller normally guards empty input */
     t->arp_idx++;
     switch (t->p[P_AMODE]) {
-    case 2:
+    case ARP_DOWN:
         j = len - 1u - t->arp_idx % len;
         break;
-    case 3: {
+    case ARP_UPDOWN: {
         uint32_t cyc = len > 1u ? 2u * len - 2u : 1u, k = t->arp_idx % cyc;
         j = k < len ? k : cyc - k;
         break;
     }
-    case 4:
+    case ARP_RANDOM:
         j = rng() % len;
+        break;
+    case ARP_OUTSIDE: {
+        uint32_t k = t->arp_idx % len;
+        j = (k & 1u) ? len - 1u - k / 2u : k / 2u;
+        break;
+    }
+    case ARP_SHUFFLE:
+        if (t->arp_shuffle_n != len || t->arp_shuffle_pos >= len) {
+            for (i = 0; i < len; i++)
+                t->arp_shuffle[i] = (uint8_t)i;
+            for (i = len - 1u; i > 0u; i--) {
+                uint32_t k = rng() % (i + 1u);
+                uint8_t x = t->arp_shuffle[i];
+                t->arp_shuffle[i] = t->arp_shuffle[k];
+                t->arp_shuffle[k] = x;
+            }
+            t->arp_shuffle_n = (uint8_t)len;
+            t->arp_shuffle_pos = 0;
+        }
+        j = t->arp_shuffle[t->arp_shuffle_pos++];
+        break;
+    case ARP_ROOTALT:
+        /* Held notes have no semantic root; anchor at the lowest pitch. */
+        j = len > 1u && (t->arp_idx & 1u) ? 1u + (t->arp_idx / 2u) % (len - 1u) : 0u;
+        break;
+    case ARP_DOWNUP: {
+        uint32_t cyc = len > 1u ? 2u * len - 2u : 1u, k = t->arp_idx % cyc;
+        j = len - 1u - (k < len ? k : cyc - k);
+        break;
+    }
+    case ARP_UPDOWN_REPEAT: {
+        uint32_t k = t->arp_idx % (2u * len);
+        j = k < len ? k : 2u * len - 1u - k;
+        break;
+    }
+    case ARP_INSIDE: {
+        uint32_t k = t->arp_idx % len, middle = (len - 1u) / 2u;
+        j = (k & 1u) ? middle + (k + 1u) / 2u : middle - k / 2u;
+        break;
+    }
+    case ARP_WALK:
+        if (!t->arp_idx || t->arp_walk_pos >= len || len == 1u)
+            t->arp_walk_pos = 0;
+        else if (!t->arp_walk_pos)
+            t->arp_walk_pos = 1;
+        else if (t->arp_walk_pos == len - 1u)
+            t->arp_walk_pos--;
+        else if (rng() & 1u)
+            t->arp_walk_pos++;
+        else
+            t->arp_walk_pos--;
+        j = t->arp_walk_pos;
         break;
     default:
         j = t->arp_idx % len;
@@ -1022,30 +1152,45 @@ static uint32_t arp_next(track_t *t)
     return list[j];
 }
 
+static void arp_release(track_t *t)
+{
+    uint32_t i;
+    for (i = 0; i < t->arp_n; i++) {
+        trk_note_off(t, t->arp_notes[i]);
+        seq_out_off(t, t->arp_notes[i]);
+    }
+    t->arp_n = 0;
+}
+
+static void arp_emit(track_t *t, uint32_t note)
+{
+    t->arp_notes[t->arp_n++] = (uint8_t)note;
+    trk_note_on(t, note, 100);
+    seq_out_on(t, note, 100);
+    if (((song.rec >> trk_index(t)) & 1u) && song.playing)
+        rec_note(t, note, 100, 0, 0);
+}
+
 /* the arp, once per block: on the transport's grid of RATE (with its SWING) while playing, from the
  * first key while stopped. A new chord starts at once unless the grid is just ahead. While recording,
  * each note it plays is recorded (what you hear) */
 static void arp_tick(track_t *t, uint32_t adv)
 {
     uint32_t div = (uint32_t)t->p[P_ARATE] % NDIV_SHORT, u = div_units(div), into, slen, abs = 0, fire = 0;
-    if (t->arp_note) {
+    if (t->arp_n) {
         if (t->arp_off <= adv) {
-            trk_note_off(t, t->arp_note);
-            seq_out_off(t, t->arp_note);
-            t->arp_note = 0;
+            arp_release(t);
         } else {
             t->arp_off -= adv;
         }
     }
-    if (!t->p[P_AMODE] || !t->nheld) {
-        if (!t->nheld && t->arp_note) {
-            trk_note_off(t, t->arp_note);
-            seq_out_off(t, t->arp_note);
-            t->arp_note = 0;
-        }
+    if (!t->p[P_AMODE] || (!t->nheld && (!seq_arp_route(t) || !seq_harmony[trk_index(t)].n))) {
+        arp_release(t);
         t->arp_new = 0;
         return;
     }
+    if (t->arp_new)
+        t->arp_shuffle_n = 0;                       /* first key / transport restart: a fresh cycle */
     if (song.playing) {
         abs = grid_at(div, swings(div) ? swing_units(t->p[P_ASWING], u) : 0u, &into, &slen);
         if (t->arp_new) {
@@ -1073,19 +1218,18 @@ static void arp_tick(track_t *t, uint32_t adv)
     }
     if (!fire)
         return;
-    if (t->arp_note) {
-        trk_note_off(t, t->arp_note);
-        seq_out_off(t, t->arp_note);
-    }
-    t->arp_note = 0;
+    arp_release(t);
     if ((uint32_t)(rng() & 127u) <= (uint32_t)t->p[P_APROB]) {
-        uint32_t n = arp_next(t);
-        t->arp_note = (uint8_t)n;
         t->arp_off = slen * (uint32_t)t->p[P_AGATE] / 128u;
-        trk_note_on(t, n, 100);
-        seq_out_on(t, n, 100);
-        if (((song.rec >> trk_index(t)) & 1u) && song.playing)
-            rec_note(t, n, 100, 0, 0);
+        if (t->p[P_AMODE] == ARP_PULSE) {
+            uint8_t list[64];
+            uint32_t i, len = arp_list(t, list);
+            for (i = 0; i < len; i++)
+                if (!i || list[i] != list[i - 1u])   /* octave overlap / upper-edge clamp: one pitch once */
+                    arp_emit(t, list[i]);
+        } else {
+            arp_emit(t, arp_next(t));
+        }
     }
 }
 
@@ -1146,7 +1290,26 @@ static void input_off(track_t *t, uint32_t note)
         ft_note_off(note);
     rec_release(t, note);
     arp_remove(t, note);                            /* both: the note may have started in the */
-    trk_note_off(t, note);                          /* other mode (ARP switched while held) */
+    /* In the opt-in route a live release must not cut the generator's
+     * independently gated attack. Legacy mode-switch release stays unchanged. */
+    {
+        uint32_t i;
+        for (i = 0; i < t->arp_n && t->arp_notes[i] != note; i++) ;
+        if (!seq_arp_route(t) || i == t->arp_n) trk_note_off(t, note);
+    }
+}
+
+static void chord_latch_release(uint32_t part)
+{
+    uint32_t i, mc;
+    if (part >= NPART) return;
+    mc = trk_midi_ch(part);
+    for (i = 0; i < chord_latch_n[part]; i++) {
+        uint32_t note = chord_latch_notes[part][i];
+        input_off(&trk[part], note);
+        midi_out_event(0x08u | (0x80u | mc) << 8 | note << 16);
+    }
+    chord_latch_n[part] = 0;
 }
 
 /* a drum hit from a key, MIDI or a roll: lane, level; rat: its ratchet when recorded (rolls); rec: it
@@ -1299,10 +1462,10 @@ static uint32_t key_lvl(void)
     return (b & dyn_bit[0]) ? LV_GHOST : (b & dyn_bit[1]) ? LV_HARD : LV_NORM;
 }
 
-/* CHORD+: the modifiers held (the black keys down in chord mode) */
-static uint32_t chord_mods(void)
+/* CHORD+: momentary keys plus the selected synth's toggled qualities */
+static uint32_t chord_mods(uint32_t sel)
 {
-    uint32_t k, m = 0;
+    uint32_t k, m = sel < NPART ? chord_latch_mods[sel] : 0;
     for (k = 0; k < 27u; k++)
         if (kb_kind[k] == KS_MOD)
             m |= chord_mod_of_key(k);
@@ -1312,8 +1475,60 @@ static uint32_t chord_mods(void)
  * the ones it gains start; the ones it keeps ring on) */
 static void chord_revoice(uint32_t sel)
 {
-    uint32_t k, i, j, mods = chord_mods(), mc = trk_midi_ch(sel);
+    uint32_t k, i, j, mods = chord_mods(sel), mc = trk_midi_ch(sel);
     track_t *t = &trk[sel % NTRK];
+    if (sel < NPART && t->p[P_AMODE] && t->p[P_CHORD] && t->p[P_QUANT] != 3) {
+        uint32_t phys = t->arp_phys, hold = t->p[P_AHOLD];
+        int32_t physical_delta = 0;
+        t->p[P_AHOLD] = 0;                           /* edit the pool, never recapture/restart it */
+        for (k = 0; k <= 27u; k++) {
+            uint8_t nw[4], *old;
+            uint32_t nn, on, root;
+            if (k == 27u) {
+                if (!arp_chord_latch_n[sel]) continue;
+                old = arp_chord_latch_notes[sel]; on = arp_chord_latch_n[sel]; root = arp_chord_latch_root[sel];
+            } else {
+                if (kb_kind[k] != KS_NOTE || kb_trk[k] != sel) continue;
+                old = kb_nt[k]; on = kb_n[k]; root = kb_root[k];
+            }
+            nn = chord_play_notes(t, root, mods, nw);
+            if (k != 27u) physical_delta += (int32_t)nn - (int32_t)on;
+            for (i = 0; i < on; i++) {
+                for (j = 0; j < nn && nw[j] != old[i]; j++) ;
+                if (j == nn) arp_remove(t, old[i]);
+            }
+            for (j = 0; j < nn; j++) {
+                for (i = 0; i < on && old[i] != nw[j]; i++) ;
+                if (i == on) arp_add(t, nw[j]);
+            }
+            memcpy(old, nw, nn);
+            if (k == 27u) arp_chord_latch_n[sel] = (uint8_t)nn;
+            else kb_n[k] = (uint8_t)nn;
+        }
+        t->arp_phys = (uint32_t)((int32_t)phys + physical_delta);
+        t->p[P_AHOLD] = (int16_t)hold;
+        return;
+    }
+    if (sel < NPART && chord_latch_n[sel] && t->p[P_CHORD] && t->p[P_QUANT] != 3) {
+        uint8_t nw[4];
+        uint32_t nn = chord_play_notes(t, chord_latch_root[sel], mods, nw);
+        for (i = 0; i < chord_latch_n[sel]; i++) {
+            for (j = 0; j < nn && nw[j] != chord_latch_notes[sel][i]; j++) ;
+            if (j == nn) {
+                input_off(t, chord_latch_notes[sel][i]);
+                midi_out_event(0x08u | (0x80u | mc) << 8 | (uint32_t)chord_latch_notes[sel][i] << 16);
+            }
+        }
+        for (j = 0; j < nn; j++) {
+            for (i = 0; i < chord_latch_n[sel] && chord_latch_notes[sel][i] != nw[j]; i++) ;
+            if (i == chord_latch_n[sel]) {
+                input_on(t, nw[j], 100);
+                midi_out_event(0x09u | (0x90u | mc) << 8 | (uint32_t)nw[j] << 16 | 100u << 24);
+            }
+        }
+        memcpy(chord_latch_notes[sel], nw, nn);
+        chord_latch_n[sel] = (uint8_t)nn;
+    }
     for (k = 0; k < 27u; k++) {
         uint8_t nw[4];
         uint32_t nn;
@@ -1419,7 +1634,12 @@ static void key_down(uint32_t k)
         uint32_t n = kb_map(t, k);
         if (n == KB_SILENT) {
             if (t->p[P_CHORD] && layer == LY_PLAY && chord_mod_of_key(k)) {   /* CHORD+: a modifier key */
-                kb_kind[k] = KS_MOD;
+                if (sel < NPART && t->p[P_AHOLD]) {
+                    kb_kind[k] = KS_MOD_LATCH;
+                    chord_latch_mods[sel] ^= (uint8_t)chord_mod_of_key(k);
+                } else {
+                    kb_kind[k] = KS_MOD;
+                }
                 chord_revoice(sel);
             }
             return;
@@ -1431,10 +1651,12 @@ static void key_down(uint32_t k)
             roll_start(k, t, n, LV_NORM);
             return;
         }
+        chord_latch_release(sel);                   /* next root replaces the sustained chord */
+        if (sel < NPART) arp_chord_latch_n[sel] = 0;
         kb_kind[k] = KS_NOTE;
         kb_root[k] = (uint8_t)n;
         if (t->p[P_CHORD]) {
-            kb_n[k] = (uint8_t)chord_play_notes(t, n, chord_mods(), kb_nt[k]);   /* (the modifiers held, voiced) */
+            kb_n[k] = (uint8_t)chord_play_notes(t, n, chord_mods(sel), kb_nt[k]);
         } else {
             kb_nt[k][0] = (uint8_t)n;
             kb_n[k] = 1;
@@ -1471,7 +1693,9 @@ static void key_up(uint32_t k)
     case KS_UI:
         lk_push(kb_nt[k][0], k, 0);
         return;
-    case KS_MOD:                                    /* a CHORD+ modifier let go: the chords held change back */
+    case KS_MOD_LATCH:                              /* toggled on key-down; release preserves the quality */
+        return;
+    case KS_MOD:                                    /* a momentary modifier let go */
         chord_revoice(kb_trk[k]);
         return;
     case KS_ERASE:
@@ -1487,6 +1711,18 @@ static void key_up(uint32_t k)
                 roll_end(i);
         return;
     case KS_NOTE:
+        if (kb_trk[k] < NPART && t->p[P_CHORD] && t->p[P_AHOLD] && t->p[P_AMODE]) {
+            arp_chord_latch_n[kb_trk[k]] = kb_n[k];
+            arp_chord_latch_root[kb_trk[k]] = kb_root[k];
+            memcpy(arp_chord_latch_notes[kb_trk[k]], kb_nt[k], kb_n[k]);
+        }
+        if (kb_trk[k] < NPART && t->p[P_CHORD] && t->p[P_AHOLD] && !t->p[P_AMODE]) {
+            chord_latch_release(kb_trk[k]);
+            chord_latch_n[kb_trk[k]] = kb_n[k];
+            chord_latch_root[kb_trk[k]] = kb_root[k];
+            memcpy(chord_latch_notes[kb_trk[k]], kb_nt[k], kb_n[k]);
+            return;
+        }
         mc = trk_midi_ch(kb_trk[k] % NTRK);
         for (i = 0; i < kb_n[k]; i++) {
             input_off(t, kb_nt[k][i]);
@@ -1534,9 +1770,50 @@ static void audition_block(void)
             trk_note_on(TDRUM, LANE_NOTE[l], lvl_vel((lv >> (2u * l)) & 3u, 100));
 }
 
+static void groove_preview_block(uint32_t n)
+{
+    static const uint8_t lanes[5] = {0, 2, 3, 4, 5};
+    uint32_t k, interval;
+    uint64_t bit;
+    if (!groove_preview.active) return;
+    if (song.playing || transport_req || song.rec || rec_wait || ft_on || panic_req) {
+        groove_preview.active = 0;
+        return;
+    }
+    interval = div_units(groove_preview.div);
+    if (groove_preview.first || groove_preview.phase >= interval) {
+        if (!groove_preview.first) {
+            groove_preview.phase -= interval;
+            groove_preview.step = (uint8_t)((groove_preview.step + 1u) % groove_preview.len);
+        }
+        groove_preview.first = 0;
+        bit = (uint64_t)1u << groove_preview.step;
+        for (k = 0; k < 5; k++) if (groove_preview.mask[k] & bit) {
+            uint32_t level = k == 1 && (groove_preview.mask[6] & bit) ? LV_GHOST :
+                (groove_preview.mask[5] & bit) ? LV_HARD : LV_NORM;
+            trk_note_on(TDRUM, LANE_NOTE[lanes[k]], lvl_vel(level, 100));
+        }
+    }
+    groove_preview.phase += n * (uint32_t)song.g[G_BPM];
+}
+
 static void keyboard_block(void)
 {
     uint32_t cur = fm1_in.notes, ch = cur ^ kb_prev, k, r;
+    for (k = 0; k < NPART; k++)
+        if (!trk[k].p[P_AHOLD] || !trk[k].p[P_CHORD]) {
+            chord_latch_mods[k] = 0;
+            chord_latch_release(k);
+            arp_chord_latch_n[k] = 0;
+        } else if (trk[k].p[P_AMODE]) {
+            chord_latch_release(k);
+        } else if (trk[k].p[P_QUANT] == 3) {
+            chord_latch_mods[k] = 0;                 /* CHROM black keys are literal roots */
+        }
+    for (k = 0; k < NPART; k++) {
+        if (!trk[k].p[P_AMODE]) arp_chord_latch_n[k] = 0;
+        if (trk[k].p[P_QUANT] == 3) chord_latch_mods[k] = 0;
+    }
     audition_block();
     if (!(layer_buttons() & ly_bit[LY_ROLL]))         /* ARP up (and not locked): the rolls end (the keys stay silent) */
         for (r = 0; r < NROLL; r++)
@@ -1693,6 +1970,7 @@ static void seq_reset_tracks(uint32_t pos)
         t->rskip_lanes = 0;
         t->rskip_abs = SEQ_NONE;
         t->rh_n = 0;
+        seq_harmony_clear(t);
         t->arp_new = t->nheld != 0;
     }
     for (i = 0; i < NROLL; i++)
@@ -1742,6 +2020,8 @@ static void seq_release(track_t *t)
 
 static void seq_stop(void)
 {
+    groove_preview.active = 0;
+    perf_reset();
     uint32_t i;
 #if FELUCCA_ARRANGER
     if (song.playing)
@@ -1754,7 +2034,14 @@ static void seq_stop(void)
     fill_bar_on = 0;
     song.playing = 0;
     for (i = 0; i < NTRK; i++) {
+        seq_harmony_clear(&trk[i]);
+        if (seq_arp_route(&trk[i])) trk[i].nheld = trk[i].arp_phys = 0;
         seq_release(&trk[i]);
+        chord_latch_release(i);
+        arp_release(&trk[i]);
+        if (i < NPART) { chord_latch_mods[i] = 0; arp_chord_latch_n[i] = 0; }
+        trk[i].arp_pos = 0;
+        trk[i].arp_new = 0;
         locks_restore(&trk[i]);                    /* the parameters back to their base */
         trk[i].rh_n = 0;                           /* a recorded note held over the stop: as far as it got */
     }
@@ -1782,6 +2069,26 @@ static void seq_step(track_t *t, const step_t *s, uint32_t slen, uint32_t skip)
     uint32_t i, j, gate = slen * (uint32_t)t->p[P_SGATE] / 128u;
     uint32_t slide_in = t->seq_hold && t->seq_n;
     uint32_t next_tie = t->step[(t->seq_idx + 1u) % trk_len(t)].time == ST_TIE;
+    if (seq_arp_route(t)) {
+        uint32_t k = trk_index(t), first = !t->nheld && !seq_harmony[k].n;
+        if (s->time == ST_TIE) return;
+        /* Release the generated gate at an explicit change/rest, then publish
+         * once. Recording skip, step gate, strum and ratchets affect direct
+         * playback only; they cannot suppress or duplicate harmony publication. */
+        arp_release(t);
+        seq_release(t);
+        seq_harmony[k].n = 0;
+        if (s->time != ST_REST) {
+            for (i = 0; i < s->n && i < 4u; i++) {
+                if (s->note[i] > 127u) continue;
+                for (j = 0; j < seq_harmony[k].n && seq_harmony[k].note[j] != s->note[i]; j++) ;
+                if (j == seq_harmony[k].n) seq_harmony[k].note[seq_harmony[k].n++] = s->note[i];
+            }
+        }
+        t->arp_shuffle_n = 0;
+        if (first && seq_harmony[k].n) { t->arp_new = 1; t->arp_idx = 0xFFFFFFFFu; }
+        return;
+    }
     if (s->time == ST_TIE) {
         if (t->seq_n) {
             t->seq_off = gate + slen / 2u;
@@ -1959,6 +2266,7 @@ static void seq_tick(track_t *t, uint32_t adv)
                 seq_out_track_off(t);
             } else {
                 rec_hold(t, idx, len, nabs);
+                if (seq_arp_route(t)) { seq_harmony_clear(t); arp_release(t); }
                 seq_release(t);
             }
         } else if (is_drum(t)) {
@@ -1987,7 +2295,7 @@ static void seq_tick(track_t *t, uint32_t adv)
         rel = (int32_t)into - ((int32_t)slen + micro_units(t, abs + 1u, slen));
     else
         rel = (int32_t)into;
-    if (t->seq_abs != SEQ_NONE)
+    if (t->seq_abs != SEQ_NONE && !seq_arp_route(t))
         seq_ratchets(t, rel < 0 ? 0u : (uint32_t)rel, slen);
 }
 
@@ -2160,6 +2468,7 @@ static void events_block(uint32_t n)
     if (rec_wait && song.playing)
         rec_begin();                                /* started some other way: record now */
     adv = mclk_on() && song.playing ? mclk_adv(n) : n * (uint32_t)song.g[G_BPM];   /* (after a START) */
+    groove_preview_block(n);
     ft_block();
 #if FELUCCA_ARRANGER
     if (song.playing && arrangement_clock.running) {
@@ -2179,32 +2488,48 @@ static void events_block(uint32_t n)
     if (song.playing && !(clk_beat & 3u) && (clk_beat >> 2) != fill_last_bar) {   /* a new bar: the armed fill bar
                                                                                     * (after a section: its bar 0) */
         fill_last_bar = clk_beat >> 2;
+        perf_take_bar(fm1_ms);
         fill_bar_on = fill_arm;
         fill_arm = 0;
     }
-    fill_now = (uint8_t)(fill_held || fill_bar_on);
+    fill_now = (uint8_t)(fill_held || fill_bar_on || perf_fill(fm1_ms));
     pr = panic_req;
     panic_req = 0;
+    if (pr) perf_reset();
     for (i = 0; i < NTRK; i++) {
         track_t *t = &trk[i];
         if ((pr >> i) & 1u) {
+            seq_harmony_clear(t);
+            chord_latch_release(i);
+            if (i < NPART) { chord_latch_mods[i] = 0; arp_chord_latch_n[i] = 0; }
+            arp_release(t);
             trk_all_off(t);
             t->nheld = 0;
             t->arp_phys = 0;
-            t->arp_note = 0;
+            t->arp_n = 0;
         }
         if (i < NPART)
             engine_block(t);                          /* engine switch: fade, then switch (voice.c) */
+        if (i < NPART && seq_harmony[i].routed != seq_arp_route(t)) {
+            seq_harmony_clear(t);
+            seq_release(t);
+            arp_release(t);
+            seq_harmony[i].routed = (uint8_t)seq_arp_route(t);
+            /* Adopt the effective current step on the next sequencer block. */
+            t->seq_abs = SEQ_NONE;
+            t->arp_new = t->nheld != 0;
+        }
         /* ARP turned off, or HOLD released with no key down: drop the latched chord */
         if ((t->armp && !t->p[P_AMODE]) || (t->aholdp && !t->p[P_AHOLD] && !t->arp_phys)) {
             t->nheld = 0;
             if (!t->p[P_AMODE])
                 t->arp_phys = 0;
-            if (t->arp_note) {
-                trk_note_off(t, t->arp_note);
-                seq_out_off(t, t->arp_note);
-                t->arp_note = 0;
-            }
+            arp_release(t);
+        }
+        if (t->armp != t->p[P_AMODE]) {
+            arp_release(t);                         /* pulse -> single: release every old tone */
+            t->arp_idx = 0xFFFFFFFFu;
+            t->arp_shuffle_n = 0;
         }
         t->armp = t->p[P_AMODE];
         t->aholdp = t->p[P_AHOLD];

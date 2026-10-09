@@ -3,12 +3,15 @@
 /* Felucca user interface. Four columns map to KNOB 1..4. Rendering is lazy:
  * every element remembers what it last drew and is redrawn only on change. */
 #ifndef FELUCCA_VERSION
-#define FELUCCA_VERSION "SLOOP 2.4.1"  /* the beat machine firmware for the FM-1 (based on Felucca) */
+#define FELUCCA_VERSION "2.4.16 Merthsoft"  /* the beat machine firmware for the FM-1 (based on Felucca) */
 #endif
 static void project_save(uint32_t slot);
 static void arrangement_save(void);
 static void panel_setup(void);
 static void project_load(uint32_t slot);
+static int project_undo_available(void);
+static int project_undo_swap(int redo);
+static void project_new(void);
 static int project_used(uint32_t slot);
 static int up_used(uint32_t k);              /* user presets: upreset.c */
 static int up_load(uint32_t k);
@@ -116,6 +119,7 @@ static void ui_message(const char *s) { ui_say(s, ""); }
 
 static void page_entered(void)
 {
+    groove_preview.active = 0;
     const page_t *pg = cur_page();
     song.seq_mode = !ui.home && pg->fam == FAM_SEQ;
     ui.entry_open = 0;
@@ -136,13 +140,21 @@ static void step_clear(step_t *st)
     st->time = ST_REST;
 }
 
+#include "drum_grooves.c"
+
 /* undo / redo (EDIT + OCT- / OCT+): the marked pattern and the one now swap places */
 static int undo_swap(int redo)
 {
     track_t *t;
     int16_t len;
+    if (project_undo_available())
+        return project_undo_swap(redo);
     if (!undo.valid || (uint32_t)!!redo != undo.undone)
         return 0;
+    if (groove_undo_matches() && (song.playing || transport_req == 1)) {
+        ui_message("STOP FIRST");
+        return 0;
+    }
     t = &trk[undo.trk % NTRK];
     fm1_irq_off();
     {
@@ -156,6 +168,7 @@ static int undo_swap(int redo)
     len = t->p[P_SLEN];
     t->p[P_SLEN] = undo.len;
     undo.len = len;
+    if (groove_undo_matches()) groove_undo_swap();
     undo.undone = (uint8_t)!redo;
     fm1_irq_on();
     sync_reload = 1;
@@ -231,6 +244,7 @@ static int page_walk(int32_t s)
 
 static void go_home(void)
 {
+    groove_preview.active = 0;
 #if FELUCCA_ARRANGER
     ui.home = 0;
     ui.page = (uint8_t)page_first(FAM_TRK);
@@ -262,7 +276,7 @@ static void track_defaults_steps(track_t *t) { steps_clear(t); }
 static int param_kept(uint32_t i)
 {
     return i == P_LEVEL || i == P_PAN || i == P_MUTE || (i >= P_SLEN && i <= P_SGATE) ||
-           (i >= P_ROOT && i <= P_QUANT) || i == P_CHORD || i == P_TFLT || i == P_STRUM || i == P_VLEAD;
+           (i >= P_ROOT && i <= P_QUANT) || i == P_CHORD || i == P_TFLT || i == P_STRUM || i == P_VLEAD || i == P_AHOLD;
 }
 
 /* preset pi of the engine the track asked for: the whole sound (not the pattern parameters) */
@@ -453,6 +467,7 @@ static const param_desc_t *home_param(uint32_t k, int16_t **vp)
 /* select track i (KNOB 1 on TRACKS, the editor): its sound, pages and pattern from now on */
 static void track_select(uint32_t i)
 {
+    groove_preview.active = 0;
     if (i >= NTRK || i == song.sel)
         return;
     song.sel = (uint8_t)i;

@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><TargetFramework>net10.0</TargetFramework><OutputType>Exe</OutputType></PropertyGroup>
+  <ItemGroup><ProjectReference Include="../Sloop.SoundDesign/Sloop.SoundDesign.csproj" /></ItemGroup>
+  <ItemGroup>
+    <Compile Include="../Sloop.Android/Services/SoundAudition.cs" Link="SoundAudition.cs" />
+    <Compile Include="../Sloop.Android/Services/SoundAuditionRetention.cs" Link="SoundAuditionRetention.cs" />
+    <Compile Include="../Sloop.Android/Services/SceneHardwareBatch.cs" Link="SceneHardwareBatch.cs" />
+  </ItemGroup>
+</Project>
