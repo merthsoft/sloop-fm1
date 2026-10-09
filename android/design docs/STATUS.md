@@ -3,6 +3,18 @@
 This is the current status index. Component docs contain both implemented checkpoints and
 future design contracts; dated release/handoff/test results remain historical evidence.
 
+## Upstream 2.5 integration
+
+Release **2.5 Merthsoft.1** incorporates upstream `fa9ce57` while retaining the Android
+workstation, grooves/preview, chord latch/modifiers, sequencer arps and project-load undo.
+PHYS/NOISE engines, shared engine memory, SYN drum kits and 48 kHz USB capture are integrated.
+USB playback remains 44.1 kHz and negotiates independently of capture. INFO protocol 13
+keeps companion commands 72–75; SYN commands are 80–84. Web routing also supports upstream
+protocol 10. Fourteen visualizers remain; removed persisted styles fall back safely.
+Original Android work is Unlicensed with GPL/Apache exceptions: [licensing](../LICENSING.md).
+Releases increment `Merthsoft.N`, keeping the upstream base version visible. Development
+uses branch `android`; local `main` tracks the upstream base.
+
 ## Hardware acceptance
 
 The user considers hands-on hardware validation complete for now (October 8, 2026).

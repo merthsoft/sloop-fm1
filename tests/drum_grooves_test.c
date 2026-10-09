@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
 #undef NDEBUG
 #define UI_PAGES_HARNESS_ONLY 1
+#define UI_REAL_PROJECT_HISTORY 1
 #include "ui_pages_test.c"
 #define PROJ_HOST 1
 #include "../firmware/src/project.c"

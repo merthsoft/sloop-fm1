@@ -132,6 +132,21 @@ static void test_controls(void)
     ep0buf[0] = 0x80; ep0buf[1] = 0xBB; ep0buf[2] = 0;
     regs[0][S_COUNT0] = 3; regs[0][S_CSR0] = 1; ep0_service();
     check("SET_CUR rejects 48000 data stage", stalled());
+#if FELUCCA_UAC_48K
+    setup(1, 11, 1, UAC_AS_IF, 0);
+    setup(0x22, 1, 0x100, 0x84, 3);
+    ep0buf[0] = 0x80; ep0buf[1] = 0xBB; ep0buf[2] = 0;
+    regs[0][S_COUNT0] = 3; regs[0][S_CSR0] = 1; ep0_service();
+    check("48 kHz capture negotiates without stopping playback", !stalled() && uac.r48 && up.alt == 1);
+    setup(0xA2, 0x81, 0x100, 0x84, 3);
+    check("capture GET_CUR reports 48000", !stalled() && ep0buf[0] == 0x80 && ep0buf[1] == 0xBB);
+    setup(0xA2, 0x83, 0x100, 0x04, 3);
+    check("playback GET_MAX stays 44100 while capture is 48000", !stalled() && ep0buf[0] == 0x44 && ep0buf[1] == 0xAC);
+    setup(0x22, 1, 0x100, 0x04, 3);
+    ep0buf[0] = 0x44; ep0buf[1] = 0xAC; ep0buf[2] = 0;
+    regs[0][S_COUNT0] = 3; regs[0][S_CSR0] = 1; ep0_service();
+    check("playback SET_CUR cannot reset negotiated capture rate", !stalled() && uac.r48 && up.alt == 1);
+#endif
     setup(0x22, 1, 0x100, 4, 2); check("SET_CUR rejects incorrect length", stalled());
     setup(0, 9, 0, 0, 0); check("unconfigure stops both streams", !up.alt && !uac.alt);
 }

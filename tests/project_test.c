@@ -9,6 +9,7 @@
  * its lanes (accent: hard), globals, selection, the engine bytes (kept; the drum track's 0), no nudge, no
  * lock, no fill condition; damaged ones are refused. Run by tests/run_tests.sh (needs build/gen). */
 #define main hostsim_main
+#include <stddef.h>
 #include "hostsim.c"
 #undef main
 #define PROJ_HOST 1
@@ -145,8 +146,9 @@ int main(void)
     ok = q.sel == 3 && q.g[G_SWING] == 40;
     for (i = 0; i < PROJ_NG_V3; i++)
         ok &= i == G_SWING || q.g[i] == (int16_t)(300 + i);
-    for (i = PROJ_NG_V3; i < G_COUNT; i++)
+    for (i = PROJ_NG_V3; i < PROJ_NG; i++)
         ok &= q.g[i] == GP[i].def;
+    ok &= q.drdly == 0;
     bad += check("FUN3 -> FUN5: globals (swing 50 -> 40: the MPC scale), the new ones default", ok);
     ok = 1;
     for (t = 0; t < NTRK; t++) {
@@ -303,6 +305,7 @@ int main(void)
     trk[1].step[2].lvl = 0x0D;
     dstep_set(&TDRUM->dstep[9], 4, LV_SOFT, 1);
     song.g[G_DUST] = 33;
+    song.g[G_DRDLY] = 77;
     trk[1].micro[2] = -20;
     TDRUM->micro[9] = 12;
     lock_set(&trk[1], 2, P_ED_FLT, -30);
@@ -315,9 +318,10 @@ int main(void)
     host_tracks_init();
     undo.valid = 1;
     perf_owner[0].token = 1; perf_owner[0].until = fm1_ms + 1000; perf_owner[0].kind = 0;
+    song.g[G_DRDLY] = 0;
     proj_apply(&q, 1);
     bad += check("project adoption invalidates stale undo and host performance ownership", !undo.valid && !perf_fill(fm1_ms));
-    ok = trk[2].p[P_SLEN] == 7 && trk[1].step[2].n == 2 && trk[1].step[2].lvl == 0x0D && song.g[G_DUST] == 33 &&
+    ok = q.drdly == 77 && song.g[G_DRDLY] == 77 && trk[2].p[P_SLEN] == 7 && trk[1].step[2].n == 2 && trk[1].step[2].lvl == 0x0D && song.g[G_DUST] == 33 &&
          dstep_has(&TDRUM->dstep[9], 4) && dstep_lvl(&TDRUM->dstep[9], 4) == LV_SOFT && dstep_rat(&TDRUM->dstep[9], 4) == 1u &&
          trk[1].micro[2] == -20 && TDRUM->micro[9] == 12 && trk[1].micro[3] == 0 &&
          lock_find(&trk[1], 2, P_ED_FLT, 0) >= 0 && trk[1].lock[lock_find(&trk[1], 2, P_ED_FLT, 0)].val == -30 &&
@@ -329,6 +333,15 @@ int main(void)
                  trk[0].p[P_AMODE] == ARP_SHUFFLE && trk[0].p[P_CHORD] == CH_SHELL &&
                  trk[1].p[P_AMODE] == ARP_PULSE && trk[1].p[P_CHORD] == CH_DIM7 &&
                  trk[2].p[P_AMODE] == ARP_ROOTALT && trk[2].p[P_CHORD] == CH_ADD9 && trk[2].p[P_QUANT] == 3);
+    q2 = q;
+    q2.drdly = 0;                                  /* a 2.4 project: the byte was 0 */
+    proj_apply(&q2, 0);                            /* (as a song section) */
+    ok = song.g[G_DRDLY] == 0;
+    q2.drdly = 200;
+    proj_apply(&q2, 1);
+    ok &= song.g[G_DRDLY] == 127;
+    bad += check("2.5 drum DLY: kept in the byte after sel (format 5 unchanged), a 2.4 project: 0, a section sets it, 200 -> 127",
+                 ok && G_DRDLY == PROJ_NG && offsetof(project_t, drdly) == 8u + 2u * PROJ_NG + 1u);
     /* a damaged image: a nudge out of range, a lock on a parameter that cannot lock, on a step past the end,
      * with a value past the range: clamped, freed, freed, clamped */
     q.t[1].micro[7] = 100;

@@ -1,5 +1,9 @@
 # SLOOP Mobile source
 
+Original Android work uses the [Unlicense](../UNLICENSE). GPL-derived sample encoding
+and factory patches retain their licenses; distributing the combined application must
+meet applicable GPL requirements. See [licensing scope](../LICENSING.md).
+
 Android-first C# workstation with native views and shared domain libraries. Start with
 [current status](<../design docs/STATUS.md>), [design index](<../design docs/README.md>) and
 [verification](<../design docs/VERIFICATION.md>) for feature scope, checks and deployment.

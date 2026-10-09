@@ -1,3 +1,30 @@
+# Upstream 2.5 merge verification — October 8, 2026
+
+Release **2.5 Merthsoft.1** builds successfully: image 578,152 bytes, RAM 97,108/98,304,
+pool 333,948/344,064; RAM-text and HAL checks pass. The leading version identifies upstream;
+`Merthsoft.N` is our release counter.
+
+- `build/merge-main-android-build.log`: solution builds with zero warnings/errors.
+- `build/merge-main-domain-tests/results.json`: all 25 domain runners exit 0.
+- `build/merge-main-host-tests.log`: real firmware suites, 182 unchanged golden renders,
+  voice/routing checks, UI fuzz and 10-minute soak pass. Aggregate exit remains 1: its
+  sanitizer compiler default was unavailable and the existing ISR cost baseline is exceeded.
+- `build/merge-main-sanitizers.log`: explicit Zig trap-instrumented divide-by-zero tests
+  for UI/seq/project/one-minute soak and 15,000-frame UBSan stress pass. ASan is unavailable
+  with the installed compiler. This does not claim equivalent memory instrumentation.
+- `build/merge-main-usb.log`: CDC 0/1/2, descriptors, loader and USB return tests pass;
+  new assertions verify 48 kHz capture negotiation cannot reset/change 44.1 kHz playback.
+- `build/merge-main-ui-final.log`: final UI input/render/fuzz and persisted visualizer IDs.
+- `build/merge-main-web-tests.log`: full editor/sample/package/updater simulations pass;
+  protocol 13 routes SYN commands 80–84 without consuming companion IDs 72–75.
+
+The historical target ISR static estimate is compiler/inlining-sensitive and remains above
+its old budget. It has not been reset to conceal the failure; actual target timing needs
+hardware measurement before claiming a performance margin. No phone test or firmware flash
+was performed for this merge. Earlier device observations below are historical evidence.
+
+---
+
 # Current verification — October 8, 2026
 
 Firmware 2.4.16 adds whole-project load undo/redo. Assertion-enabled, undefined-behavior

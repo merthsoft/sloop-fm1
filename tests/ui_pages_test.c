@@ -12,7 +12,7 @@
  *           condition go; + OCT+: the condition (normal, fill only, no fill)
  *   EDIT    held + a key: erase; OCT- / OCT+: undo / redo; KNOB 1 shift, 2 length x2
  *   ARP     held + a key: a roll; KNOB 1 the rate
- *   SCL     held + a key: the key of the song
+ *   SEL     held + a key: the key of the song
  *   GLO     held + keys: mute, solo, fill (held) / fill the next bar, tap tempo; knobs: levels
  *   REC     press: arm / record at once; held: the clear ring, to the end: cleared (undo brings it back)
  *   SAVE    tapped: the song page; held: the SONG layer (sections A..D: play / store, SONG REC; two or more
@@ -57,7 +57,9 @@ static uint32_t saves, loads;
 static int project_used(uint32_t i) { return i < 2; }
 static void project_save(uint32_t i) { (void)i; saves++; ui_message("SAVED"); }
 static void project_load(uint32_t i) { (void)i; loads++; }
+#ifndef UI_REAL_PROJECT_HISTORY
 static int project_undo_available(void) { return 0; }
+#endif
 static int project_undo_swap(int redo) { (void)redo; return 0; }
 static void arrangement_save(void) {}
 static uint32_t arrangement_ready(void) { return 3; }
@@ -392,18 +394,18 @@ int main(int argc, char **argv)
     fm1_in.notes = 0; frame(); check(!roll[0].on, "key up: the roll ends");
     release(B_ARP);
 
-    /* ---- SCL: the key of the song; GLO: mute, solo, tap */
+    /* ---- SEL: the key of the song; GLO: mute, solo, tap */
     song.sel = 0; go_home(); frame();
     press(B_SCL); frames(10);
     key(9);                                           /* D4 */
-    check(trk[0].p[P_ROOT] == 2 && trk[1].p[P_ROOT] == 2 && trk[2].p[P_ROOT] == 2, "SCL + D: every part in D");
+    check(trk[0].p[P_ROOT] == 2 && trk[1].p[P_ROOT] == 2 && trk[2].p[P_ROOT] == 2, "SEL + D: every part in D");
     encs[panel.enc[EN_K1]] = 2; frame();
-    check(trk[0].p[P_CHORD] == 2, "SCL + KNOB 1: chords (7TH) on the track");
+    check(trk[0].p[P_CHORD] == 2, "SEL + KNOB 1: chords (7TH) on the track");
     encs[panel.enc[EN_K1]] = 20; frame();
-    check(trk[0].p[P_CHORD] == CH_COUNT - 1, "SCL + KNOB 1: reaches last appended chord at upper bound");
+    check(trk[0].p[P_CHORD] == CH_COUNT - 1, "SEL + KNOB 1: reaches last appended chord at upper bound");
     ui.force = 1; frame(); ppm("layer-key-last-chord");
     encs[panel.enc[EN_K1]] = -(CH_COUNT - 1 - CH_SEVENTH); frame();
-    check(trk[0].p[P_CHORD] == CH_SEVENTH, "SCL + KNOB 1: returns through appended shapes to 7TH");
+    check(trk[0].p[P_CHORD] == CH_SEVENTH, "SEL + KNOB 1: returns through appended shapes to 7TH");
     ppm("layer-key");
     release(B_SCL);
     press(B_GLO); frames(10);
@@ -711,7 +713,7 @@ int main(int argc, char **argv)
         }
         {   /* every screen and layer: lit where the keys are notes, a glow under the tiles */
             static const struct { uint32_t ly; int lit; const char *name; } L[] = {
-                {LY_ERASE, 1, "EDIT erase"}, {LY_ROLL, 1, "ARP roll"}, {LY_SCALE, 1, "SCL key"}, {LY_SONG, 1, "SAVE song"},
+                {LY_ERASE, 1, "EDIT erase"}, {LY_ROLL, 1, "ARP roll"}, {LY_SCALE, 1, "SEL key"}, {LY_SONG, 1, "SAVE song"},
                 {LY_FX, 0, "FX punch"}, {LY_STEP, 0, "SEQ steps"}, {LY_MIX, 0, "GLO mix"}};
             uint32_t k, ok = 1, ly0 = ui.layer;
             char what[96];
@@ -725,12 +727,12 @@ int main(int argc, char **argv)
                 check(ok, what);
             }
             ui.layer = LY_SCALE;
-            check((keys_notes_dim() & scale_keys(0)) == scale_keys(0), "NOTES on, SCL: the scale glows");
+            check((keys_notes_dim() & scale_keys(0)) == scale_keys(0), "NOTES on, SEL: the scale glows");
             lights_notes = 0;
             ui.layer = LY_ERASE;
             check((keys_lit() >> 7 & 1u) == 0 && keys_notes_dim() == 0u, "NOTES off, EDIT erase: as before (no note lights)");
             ui.layer = LY_SCALE;
-            check(keys_notes_dim() == 0u, "NOTES off, SCL: as before");
+            check(keys_notes_dim() == 0u, "NOTES off, SEL: as before");
             lights_notes = 1;
             ui.layer = (uint8_t)ly0;
         }
@@ -984,7 +986,29 @@ int main(int argc, char **argv)
         for (j = 0; j < NSTEP; j++) memset(&TDRUM->dstep[j], 0, sizeof(dstep_t));
         song.sel = 0; go_home(); frames(4);
     }
-    {   /* the visualiser: HOME opens it, SELECT its 21 styles, HOME / a page closes it; a layer
+    {   /* (2.4.1) the STEP page in chord mode: a key writes the whole chord it sounds (it wrote only the root, as
+         * 2.3 did); with a CHORD+ modifier held, the changed chord; a single note without chord mode */
+        uint32_t j, k5 = key_of_white(4), kmin = 1u;            /* key 5 = C4 (the I chord); F#3 (key index 1): minor */
+        track_t *t = &trk[1];
+        song.sel = 1; go_home(); frames(2);
+        steps_clear(t); t->p[P_SLEN] = 16; t->p[P_VOICE] = V_POLY;
+        t->p[P_ROOT] = 0; t->p[P_SCALE] = 1; t->p[P_QUANT] = 0; t->p[P_CHORD] = 1;   /* C major, TRIAD */
+        for (j = 0; j < NPAGES; j++) if (!strcmp(PAGES[j].title, "STEP")) break;
+        open_family(FAM_SEQ); ui.page = (uint8_t)j; ui.fam_last[FAM_SEQ] = (uint8_t)j; page_entered(); ui.force = 1; frames(2);
+        cursor_set(0); frames(1);
+        key(k5); frames(2);
+        check(t->step[0].n == 3u && t->step[0].note[0] % 12u == 0u && t->step[0].note[1] % 12u == 4u && t->step[0].note[2] % 12u == 7u,
+              "STEP page, chord mode TRIAD: C4 writes the chord C E G (not only C)");
+        fm1_in.notes = 1u << kmin; frames(2);
+        key(k5); frames(2);
+        fm1_in.notes = 0; frames(2);
+        check(t->step[1].n == 3u && t->step[1].note[1] % 12u == 3u, "STEP page, CHORD+: F# held, C4 writes C minor (C Eb G)");
+        t->p[P_CHORD] = 0;
+        key(k5); frames(2);
+        check(t->step[2].n == 1u && t->step[2].note[0] % 12u == 0u, "STEP page, no chord mode: one note");
+        steps_clear(t); song.sel = 0; go_home(); frames(4);
+    }
+    {   /* the visualiser (2.4): HOME on HOME opens it, SELECT its 14 styles, HOME / a page closes it; a layer
          * shows its screen over it; the style is kept with the settings */
         uint32_t st, j, x, lit, k;
         static const uint8_t BASS[2] = {38, 34};
@@ -1036,17 +1060,35 @@ int main(int argc, char **argv)
             check(op < 64u && pk > 2000u && lit > 1500u, "visualiser: MASTER at 0: no sound, the picture as at full volume");
             song.master_q12 = m0; frames(4);
         }
-        check(vis_style == 0u, "visualiser: SELECT goes round (21 -> 1)");
+        check(vis_style == 0u, "visualiser: SELECT goes round (14 -> 1)");
         encs[panel.enc[EN_SELECT]] = -1; frames(2);
-        check(vis_style == VIS_N - 1u && (lights_word() >> 17 & 31u) == VIS_N - 1u, "visualiser: SELECT left: BEAT TERRAIN (21), kept in the settings word");
+        check(vis_style == VIS_N - 1u && (lights_word() >> 17 & 31u) == 20u, "visualiser: SELECT left: BEAT TERRAIN (14), stable persisted ID");
         lights_from_word(lights_word());
         check(vis_style == VIS_N - 1u, "visualiser: the style read back");
         for (st = 0; st < VIS_N; st++) {
             vis_style = (uint8_t)st; lights_from_word(lights_word());
             check(vis_style == st, "visualiser: every style round trips through settings");
         }
-        lights_from_word(12u << 17);
-        check(vis_style == 12u && !strcmp(VIS_NAME[12], "DUNGEON"), "visualiser: existing DUNGEON setting retained");
+        { static const uint8_t removed[] = {6,7,8,11,12,16,17};
+          for (st = 0; st < sizeof removed; st++) {
+            lights_from_word((uint32_t)removed[st] << 17);
+            check(vis_style == 0u, "visualiser: removed style falls back to oscilloscope");
+          }
+        }
+        { /* Shared storage must not interpret waveform bytes as old trail notes. */
+          uint32_t oldplay = song.playing;
+          song.playing = 0;
+          vis_style = 0; vis_update();
+          memset(&vis_frame, 0xff, sizeof vis_frame);
+          vis_style = 9; vis_update();
+          check(vis_notes[0][0][0] == 0u, "visualiser: entering trails clears waveform history");
+          memset(scope_buf, 0, sizeof scope_buf); memset(scope_bufr, 0, sizeof scope_bufr);
+          vis_style = 0; vis_update();
+          check(vis_l[0] == 0 && vis_r[0] == 0, "visualiser: returning to scope refreshes shared storage");
+          song.playing = oldplay;
+        }
+        lights_from_word(14u << 17);
+        check(vis_style == 9u && !strcmp(VIS_NAME[9], "NOTE TRAILS"), "visualiser: existing note-trail setting keeps its style");
         { int16_t bpm = song.g[G_BPM], lv = trk[0].p[P_LEVEL];
           encs[panel.enc[EN_K2]] = 5; frame();
           check(trk[0].p[P_LEVEL] == lv && song.g[G_BPM] == bpm, "visualiser: KNOB 2 (the hidden TRACKS screen) edits nothing, SELECT is not the tempo"); }

@@ -1,35 +1,40 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
 /* SLOOP 2.4: the full-screen visualiser. On HOME (the TRACKS screen), HOME tapped opens it; HOME again or
- * any page closes it; SELECT steps through the twenty-one styles (the name shows a second); a layer held shows
+ * any page closes it; SELECT steps through the fourteen styles (the name shows a second); a layer held shows
  * its screen as ever, then the visualiser comes back. The keys, PLAY and REC work as always.
  *   1 OSCILLOSCOPE  2 SPECTRUM  3 SPECTROGRAM  4 LISSAJOUS  5 VU METERS  6 CIRCLE
- *   7 TAPE  8 LCD  9 BOUNCE  10 ORBIT  11 WIRES  12 SLOOP (the logo: the sail's bands are the tracks)  13 DUNGEON
+ *   7 ORBIT  8 WIRES  9 POLYRHYTHM  10 NOTE TRAILS  11 GROOVE
+ *   12 STEREO FIELD  13 SONG JOURNEY  14 BEAT TERRAIN
  * It reads what the audio already leaves for the UI: the scope buffers (audio.c, the mix at 22 kHz, left and
  * right, as if MASTER were all the way up: the picture does not follow the volume knob, even at 0), the tracks' peaks (fx.c / drums.c, as the TRACKS meters read them), the notes that started
  * (voice.c vis_hit) and the transport clock. Everything is drawn in the main loop, every other frame, in two
  * bands of 120 rows (the canvas holds 124): no cost to the audio. */
-#define VIS_N 21u
+#define VIS_N VIS_STYLE_COUNT
 static const char *const VIS_NAME[VIS_N] = {"OSCILLOSCOPE", "SPECTRUM", "SPECTROGRAM", "LISSAJOUS", "VU METERS",
-                                            "CIRCLE", "TAPE", "LCD", "BOUNCE", "ORBIT", "WIRES", "SLOOP", "DUNGEON",
-                                            "POLYRHYTHM", "NOTE TRAILS", "GROOVE", "CONSTELLATION", "LOCK LANDSCAPE",
-                                            "STEREO FIELD", "SONG JOURNEY", "BEAT TERRAIN"};
+    "CIRCLE", "ORBIT", "WIRES", "POLYRHYTHM", "NOTE TRAILS", "GROOVE", "STEREO FIELD", "SONG JOURNEY", "BEAT TERRAIN"};
 /* vis_on, vis_shown_last, vis_name_t: ui_draw.c; vis_style: panel.c (kept with the settings) */
 #define VIS_FFT 512u
 #define VIS_SG_W 48u                                /* spectrogram: 48 columns of 5 px, 72 rows of 3 px */
 #define VIS_SG_H 72u
 static int16_t vis_re[VIS_FFT] __attribute__((section(".pool"))), vis_im[VIS_FFT] __attribute__((section(".pool")));
-static int16_t vis_l[VIS_FFT], vis_r[VIS_FFT];      /* this frame's scope snapshot */
+/* Waveform snapshots and note trails are used by mutually exclusive styles. */
+static union {
+    struct { int16_t l[VIS_FFT], r[VIS_FFT]; } scope;
+    struct { uint32_t notes[48][3][4]; uint16_t drums[48]; } trails;
+} vis_frame;
+#define vis_l vis_frame.scope.l
+#define vis_r vis_frame.scope.r
+#define vis_notes vis_frame.trails.notes
+#define vis_drum_notes vis_frame.trails.drums
+static uint8_t vis_frame_style = 255;
 static uint8_t vis_sg[VIS_SG_H][VIS_SG_W] __attribute__((section(".pool")));
 static uint8_t vis_lj[3][256][2];                   /* Lissajous: the last three frames' points */
-static uint32_t vis_notes[48][3][4];               /* note trails: sounding pitches, 48 UI frames */
-static uint16_t vis_drum_notes[48];
 static uint8_t vis_notes_head;
 static struct {
     int32_t scale, ljscale, peak;                   /* auto-scales (smoothed peaks), this frame's peak */
     int16_t bar[32], cap[32], capv[32];             /* spectrum: bars, caps and their fall speed (0..1000) */
     int16_t vu[5], pk[5], pkt[5];                   /* VU: tracks + master, peak holds */
     int16_t lvl[5];                                 /* the tracks' levels (0..1000) this frame, the master */
-    int16_t bh[4], bv[4];                           /* BOUNCE: height and speed (1/256 units) */
     uint8_t flash[4], kick;                         /* frames since a note started (0 = none) / a kick, fading */
     int16_t wamp[4];                                /* WIRES: each string's swing (0..1000) */
     uint8_t wn[4];                                  /* its wave count (from the note) */
@@ -49,7 +54,7 @@ static void vis_open(void)
 }
 static int32_t isin(uint32_t a) { return SINE[a & 1023u]; }          /* a: 1024 a turn; Q15 */
 static int32_t icos(uint32_t a) { return SINE[(a + 256u) & 1023u]; }
-static uint16_t mix565(uint16_t a, uint16_t b, int32_t k)              /* a -> b, k 0..256 */
+static uint16_t mix565(uint16_t a, uint16_t b, int32_t k) /* share UI colour blending code */
 {
     int32_t r = (a >> 11) + ((((b >> 11) - (a >> 11)) * k) >> 8);
     int32_t g = ((a >> 5) & 63) + (((((b >> 5) & 63) - ((a >> 5) & 63)) * k) >> 8);
@@ -84,7 +89,7 @@ static void vis_ellipse(int32_t cx, int32_t cy, int32_t rx, int32_t ry, uint16_t
             cv_rect(cx - w + 1, cy + y, 2 * w - 1, 1, c);
     }
 }
-static void vis_circle(int32_t cx, int32_t cy, int32_t r, uint16_t c)  /* an outline */
+static void vis_circle(int32_t cx, int32_t cy, int32_t r, uint16_t c) /* an outline */
 {
     int32_t x = r, y = 0, e = 1 - r;
     while (x >= y) {
@@ -212,13 +217,20 @@ static void vis_update(void)
 {
     uint32_t i, w, hit, now = fm1_ms;
     int32_t pk[4], mpk = 0;
+    if (vis_frame_style != vis_style) {
+        if (vis_style == 9u) memset(&vis_frame.trails, 0, sizeof vis_frame.trails);
+        vis_frame_style = vis_style;
+    }
     /* the scope: the last 512 frames (left, right) */
     w = scope_w;
     for (i = 0; i < VIS_FFT; i++) {
-        vis_l[i] = scope_buf[(w + i) & (SCOPE_N - 1u)];
-        vis_r[i] = scope_bufr[(w + i) & (SCOPE_N - 1u)];
-        if (vis_l[i] > mpk) mpk = vis_l[i];
-        if (-vis_l[i] > mpk) mpk = -vis_l[i];
+        int16_t sample = scope_buf[(w + i) & (SCOPE_N - 1u)];
+        if (vis_style != 9u) {
+            vis_l[i] = sample;
+            vis_r[i] = scope_bufr[(w + i) & (SCOPE_N - 1u)];
+        }
+        if (sample > mpk) mpk = sample;
+        if (-sample > mpk) mpk = -sample;
     }
     /* the tracks' peaks since the last look (as the TRACKS meters take them) and the notes that started */
     fm1_irq_off();
@@ -242,18 +254,11 @@ static void vis_update(void)
             vs.flash[i] = 8;
             vs.wn[i] = (uint8_t)(2u + vis_note[i] % 12u / 2u);
             if (vs.wamp[i] < 1000) vs.wamp[i] = 1000;
-            if (vs.bh[i] < 8 * 256)                 /* BOUNCE: a kick, unless already high up */
-                vs.bv[i] = (int16_t)(3 * 256 + 51 * (int32_t)i);
         } else if (vs.flash[i]) {
             vs.flash[i]--;
         }
         vs.wamp[i] = (int16_t)(vs.wamp[i] > v ? vs.wamp[i] - (vs.wamp[i] - v) / 6 - 4 : v);
         if (vs.wamp[i] < 0) vs.wamp[i] = 0;
-        /* BOUNCE physics: gravity, a bounce off the floor */
-        vs.bv[i] = (int16_t)(vs.bv[i] - 56);
-        vs.bh[i] = (int16_t)clamp(vs.bh[i] + vs.bv[i], 0, 34 * 256);
-        if (!vs.bh[i] && vs.bv[i] < 0)
-            vs.bv[i] = (int16_t)(vs.bv[i] < -256 ? -vs.bv[i] * 35 / 100 : 0);
     }
     vs.lvl[4] = (int16_t)vis_lvl(mpk);
     vs.kick = (uint8_t)(vs.kick > 20 ? vs.kick - 20 : 0);
@@ -266,7 +271,7 @@ static void vis_update(void)
     }
     vs.wph += 37u;
     vs.peak = mpk;
-    if (vis_style == 14u) {
+    if (vis_style == 9u) {
         uint32_t t, v;
         vis_notes_head = (uint8_t)((vis_notes_head + 1u) % 48u);
         memset(vis_notes[vis_notes_head], 0, sizeof vis_notes[0]);
@@ -286,7 +291,7 @@ static void vis_update(void)
         vs.scale += (target - vs.scale) / 5;
     }
     switch (vis_style) {
-    case 1: case 2: case 20: {
+    case 1: case 2: case 13: {
         int16_t b[32];
         vis_fft();
         vis_bands(b);
@@ -344,10 +349,6 @@ static void vis_update(void)
                 vs.pk[i] = (int16_t)(vs.pk[i] > 20 ? vs.pk[i] - 20 : 0);
             }
         }
-        break;
-    case 11:                                        /* SLOOP: the sail's bands and the dial fall slowly */
-        for (i = 0; i < 5u; i++)
-            vs.vu[i] = (int16_t)(vs.lvl[i] > vs.vu[i] - 30 ? vs.lvl[i] : vs.vu[i] - 30);
         break;
     default:
         break;
@@ -465,75 +466,6 @@ static void vis_ring(void)
         px = x, py = y;
     }
 }
-static void vis_tape(void)
-{
-    uint32_t bq = vis_beat_q8(), s;
-    int32_t prog = (int32_t)((song.playing ? clk_beat * 256u + clk_pos / (BEAT_U / 256u) : 0u) % (118u * 256u)) * 1000 /
-                   (118 * 256);                     /* the tape runs one reel to the other in a minute or so */
-    char b[12];
-    for (s = 0; s < 2u; s++) {
-        int32_t cx = s ? 176 : 64, fill = s ? prog : 1000 - prog, rr = 26 + fill * 22 / 1000, k;
-        vis_ellipse(cx, 110, rr, rr, RGB(40, 40, 46));
-        vis_circle(cx, 110, 22, C_WHITE);
-        vis_circle(cx, 110, 21, C_WHITE);
-        for (k = 0; k < 3; k++) {                   /* three spokes, a quarter turn a beat (playing) */
-            uint32_t a = (song.playing ? bq : 0u) + (uint32_t)k * 341u;
-            vis_thick(cx, 110, cx + ((icos(a) * 20) >> 15), 110 + ((isin(a) * 20) >> 15), C_WHITE);
-        }
-        vis_ellipse(cx, 110, 5, 5, TE_COL[3]);
-    }
-    cv_line(60, 158, 120, 196, C_DIM);
-    cv_line(120, 196, 180, 158, C_DIM);
-    cv_rect(104, 190, 33, 17, TE_COL[3]);           /* the head, the level passing it */
-    for (s = 0; s < 9u; s++) {
-        int32_t d = (int32_t)s - 4, h = vs.lvl[4] * 30 * (5 - (d < 0 ? -d : d)) / 5000;
-        cv_rect(84 + (int32_t)s * 8, 186 - h, 5, h, s == 4u ? TE_COL[3] : C_HI);
-    }
-    s = song.playing ? clk_beat : 0u;
-    b[0] = (char)('0' + (s / 4u + 1u) / 100u % 10u);
-    b[1] = (char)('0' + (s / 4u + 1u) / 10u % 10u);
-    b[2] = (char)('0' + (s / 4u + 1u) % 10u);
-    b[3] = '.';
-    b[4] = (char)('1' + s % 4u);
-    b[5] = 0;
-    cv_text(8, 24, &FONT_S, b, C_WHITE);
-    fmt_int(b, song.g[G_BPM]);
-    cv_text(232 - text_w(&FONT_S, b), 24, &FONT_S, b, TE_COL[3]);
-    cv_text(8, 220, &FONT_S, "tape", C_DIM);
-}
-static void vis_lcd(void)
-{
-    uint32_t bpm = (uint32_t)song.g[G_BPM], beat = song.playing ? clk_beat : 0u, bar = beat / 4u + 1u, k, i;
-    vis_seg(18, 30, 44, 76, 7, bpm >= 100u ? (int)(bpm / 100u) : -1, C_WHITE);
-    vis_seg(74, 30, 44, 76, 7, (int)(bpm / 10u % 10u), C_WHITE);
-    vis_seg(130, 30, 44, 76, 7, (int)(bpm % 10u), C_WHITE);
-    cv_text(190, 90, &FONT_S, "bpm", C_DIM);
-    vis_seg(18, 124, 26, 46, 5, bar >= 10u ? (int)(bar / 10u % 10u) : -1, TE_COL[3]);
-    vis_seg(52, 124, 26, 46, 5, (int)(bar % 10u), TE_COL[3]);
-    cv_rect(88, 164, 5, 6, TE_COL[3]);
-    vis_seg(100, 124, 26, 46, 5, (int)(beat % 4u + 1u), TE_COL[3]);
-    for (k = 0; k < 4u; k++)
-        vis_ellipse(154 + (int32_t)k * 22, 144, 8, 8, song.playing && beat % 4u == k ? TE_COL[3] : RGB(40, 40, 46));
-    for (i = 0; i < 4u; i++)
-        for (k = 0; k < 14u; k++)
-            cv_rect(18 + (int32_t)k * 15, 186 + (int32_t)i * 12, 13, 9,
-                    (int32_t)k < vs.lvl[i] * 14 / 1000 + (vs.lvl[i] > 0) ? TE_COL[i] : RGB(30, 30, 34));
-}
-static void vis_bounce(void)
-{
-    uint32_t i;
-    for (i = 0; i < 4u; i++) {
-        int32_t x = 36 + (int32_t)i * 56, h = vs.bh[i], y = 196 - h * 45 / 2560, sh = 16 - h / 512;
-        int32_t sq = h < 512 && vs.bv[i] < 0 ? 4 : 0;   /* squashed as it lands */
-        vis_ellipse(x, 205, sh < 4 ? 4 : sh, 3, RGB(30, 30, 34));
-        vis_ellipse(x, y, 16 + sq, 16 - sq, TE_COL[i]);
-        {
-            char lab[2] = {(char)('1' + i), 0};
-            cv_text(x - 4, 220, &FONT_S, lab, TE_COL[i]);
-        }
-    }
-    cv_rect(8, 212, 224, 2, C_LINE);
-}
 static void vis_orbit(void)
 {
     static const uint8_t RAD[4] = {42, 62, 82, 102}, PER[4] = {1, 2, 4, 8};
@@ -573,98 +505,7 @@ static void vis_wires(void)
 }
 /* the logo (tools/gen_logo.py at 0.86, centred on 120, 112), alive: the dial is the master, the sail's four
  * bands the tracks (growing with their level, flashing on a note), the boat rocks on the master's wave */
-static void vis_sloop(void)
-{
-    static const int16_t BAND[4][4] = {{691, 1035, 1659, 1938}, {1118, 1462, 2006, 2285}, {1544, 1888, 2353, 2632},
-                                       {1971, 2315, 2700, 2980}};   /* y0, y1, x right at y0, at y1 (1/16 px) */
-    static const uint16_t DIMC[4] = {RGB(9, 27, 56), RGB(7, 45, 25), RGB(56, 44, 5), RGB(56, 22, 6)};
-    uint32_t bq = vis_beat_q8(), i;
-    int32_t ang = (isin(bq) * 11) >> 15;            /* +-4 degrees (1024 a turn), a sway every four beats */
-    int32_t sn = isin((uint32_t)ang), cs = icos((uint32_t)ang);
-    int32_t px[4], py[4], x, sc = vs.scale > 1600 ? vs.scale : 1600, end;
-#define ROT(X, Y, I) do { int32_t dx_ = (X) - 120 * 16, dy_ = (Y) - 170 * 16;                       \
-        px[I] = 120 * 16 + ((dx_ * cs - dy_ * sn) >> 15); py[I] = 170 * 16 + ((dx_ * sn + dy_ * cs) >> 15); } while (0)
-    /* the dial: 270 degrees, lit to the master's level */
-    end = vs.vu[4] * 768 / 1000;
-    for (x = 0; x <= 768; x += 6) {
-        uint32_t a = (uint32_t)(384 + x) & 1023u;
-        vis_ellipse(120 + ((icos(a) * 99) >> 15), 112 + ((isin(a) * 99) >> 15), 5, 5, x <= end && vs.vu[4] ? C_WHITE : RGB(40, 40, 46));
-    }
-    /* the mast */
-    ROT(1443, 627, 0); ROT(1571, 627, 1); ROT(1571, 2507, 2); ROT(1443, 2507, 3);
-    vis_poly(px, py, 4, C_WHITE);
-    /* the sail: each band dim, then lit to its track's level */
-    for (i = 0; i < 4u; i++) {
-        int32_t g = 256 * (250 + 750 * vs.vu[i] / 1000) / 1000, xr0 = 1659 + (BAND[i][2] - 1659) * g / 256,
-                xr1 = 1659 + (BAND[i][3] - 1659) * g / 256;
-        uint16_t col = vs.flash[i] ? mix565(TE_COL[i], C_WHITE, vs.flash[i] * 13) : TE_COL[i];
-        ROT(1659, BAND[i][0], 0); ROT(BAND[i][2], BAND[i][0], 1); ROT(BAND[i][3], BAND[i][1], 2); ROT(1659, BAND[i][1], 3);
-        vis_poly(px, py, 4, DIMC[i]);
-        ROT(1659, BAND[i][0], 0); ROT(xr0, BAND[i][0], 1); ROT(xr1, BAND[i][1], 2); ROT(1659, BAND[i][1], 3);
-        vis_poly(px, py, 4, col);
-    }
-    /* the hull */
-    ROT(62 * 16, 2635, 0); ROT(178 * 16, 2635, 1); ROT(170 * 16, 2811, 2); ROT(70 * 16, 2811, 3);
-    vis_poly(px, py, 4, C_WHITE);
-#undef ROT
-    /* the sea: the master's wave */
-    for (x = 0; x < 240; x++) {
-        int32_t s = x ? (vis_l[x - 1] + 2 * vis_l[x] + vis_l[x + 1]) / 4 : vis_l[0];   /* (smoothed: a sea, not a hiss) */
-        int32_t y = 182 + s * 5 / sc + ((isin((uint32_t)(x * 9) + bq) * 3) >> 15);
-        cv_rect(x, y, 1, 240 - y, RGB(12, 34, 76));
-        cv_rect(x, y, 1, 2, TE_COL[0]);
-    }
-}
 
-/* Procedural dungeon: 60 chunky rays, at most 96 steps each, fixed point only.
- * The circular camera route stays in the open centre; pillars lie outside it.
- * Ray directions use a camera plane so distance is already perspective-correct.
- * No assets, allocation, or work in the audio interrupt. */
-static void vis_dungeon(void)
-{
-    uint32_t a = (vis_beat_q8() / 16u) & 1023u, x;
-    int32_t px = 8 * 256 + (icos(a) * 512 / 32768);
-    int32_t py = 8 * 256 + (isin(a) * 512 / 32768);
-    int32_t dx = -isin(a), dy = icos(a);
-    int32_t horizon = 112 + (isin(a * 8u) * (2 + vs.lvl[4] / 250) / 32768);
-    int32_t y;
-    for (y = 0; y < 240; y += 4) {
-        int32_t light = y < horizon ? 12 : 18 + (y - horizon) / 5;
-        cv_rect(0, y, 240, 4, RGB(light, light, light + 5));
-    }
-    for (x = 0; x < 240u; x += 4u) {
-        int32_t plane = ((int32_t)x - 118) * 192 / 120;
-        int32_t rx = dx - dy * plane / 256, ry = dy + dx * plane / 256;
-        int32_t t, hx = px, hy = py, mx = 0, my = 0, oldx = px / 256;
-        for (t = 32; t <= 96 * 32; t += 32) {
-            hx = px + rx * t / 32768;
-            hy = py + ry * t / 32768;
-            mx = hx / 256; my = hy / 256;
-            if (mx <= 0 || my <= 0 || mx >= 15 || my >= 15 ||
-                ((mx == 4 || mx == 11) && (my == 4 || my == 7 || my == 11)))
-                break;
-            oldx = mx;
-        }
-        {
-            uint32_t track = (uint32_t)(mx + my) & 3u;
-            int32_t h = clamp(180 * 256 / t, 8, 230), top = horizon - h / 2;
-            int32_t u = (mx != oldx ? hy : hx) & 255;
-            int32_t light = clamp(210 - t / 16 + vs.lvl[track] / 12 + vs.kick / 4, 24, 240);
-            uint16_t col = mix565(RGB(72, 66, 58), TE_COL[track], 80 + vs.flash[track] * 12);
-            col = mix565(C_BLACK, col, light);
-            cv_rect((int32_t)x, top, 4, h, col);
-            /* Brick joints projected into each column, plus metal wall edges. */
-            for (y = 0; y < 8; y++) {
-                int32_t yy = top + y * h / 8;
-                cv_rect((int32_t)x, yy, 4, 1, mix565(C_BLACK, col, 100));
-                if (((u + (y & 1) * 64) & 127) < 12)
-                    cv_rect((int32_t)x, yy, 4, h / 8 + 1, mix565(C_BLACK, col, 120));
-            }
-            if (u < 8 || u > 247)
-                cv_rect((int32_t)x, top, 4, h, mix565(C_BLACK, col, 160));
-        }
-    }
-}
 
 /* Sequencer views use each track's own grid, including long divisions and swing. */
 static uint32_t vis_position(const track_t *t, uint32_t *fraction)
@@ -739,43 +580,6 @@ static void vis_groove(void)
                 vis_ellipse(x + shift + (int32_t)k * 24 / (int32_t)rats, y, 2 + (int32_t)velocity / 50, 2 + (int32_t)velocity / 50,
                             idx == at ? C_WHITE : mix565(TE_DIM[t], TE_COL[t], (int32_t)velocity * 2));
         }
-    }
-}
-static void vis_constellation(void)
-{
-    uint32_t i;
-    for (i = 0; i < 16u; i++) {
-        uint32_t a = i * 64u + vis_beat_q8() / 32u;
-        int32_t r = (i & 1u) ? 88 : 58, x = 120 + icos(a) * r / 32768, y = 126 + isin(a) * r / 32768;
-        char lab[4];
-        cv_line(120, 126, x, y, TE_DIM[3]);
-        vis_circle(x, y, 9 + (6 - (int32_t)pad_lit[i]) * 2, pad_lit[i] ? TE_COL[3] : TE_DIM[3]);
-        { int32_t size = pad_lit[i] ? 3 + drums.hit_vel[i] / 24 : 3;
-          vis_ellipse(x, y, size, size, pad_lit[i] ? C_WHITE : TE_COL[3]); }
-        fmt_int(lab, (int32_t)i + 1); cv_text(x - 4, y + 10, &FONT_S, lab, C_DIM);
-    }
-}
-static void vis_landscape(void)
-{
-    uint32_t t, s, k;
-    for (t = 0; t < 4u; t++) {
-        track_t *p = &trk[t];
-        uint32_t param = P_COUNT, f, at = vis_position(p, &f), len = trk_len(p);
-        int32_t prev = 0, y0 = 58 + (int32_t)t * 52, base;
-        const param_desc_t *d;
-        for (k = 0; k < NLOCK; k++) if (p->lock[k].step < len && p->lock[k].param < P_COUNT) { param = p->lock[k].param; break; }
-        if (param == P_COUNT) { cv_text(8, y0, &FONT_S, "NO LOCKS", TE_DIM[t]); continue; }
-        d = lock_desc(p, param); base = p->p[param];
-        for (k = 0; k < p->lk_n && k < NLOCK; k++) if (p->lk_param[k] == param) base = p->lk_base[k];
-        cv_text(8, y0 - 22, &FONT_S, d->label, TE_COL[t]);
-        for (s = 0; s < len; s++) {
-            int32_t v = base, x = 8 + (int32_t)s * 224 / (int32_t)len, y;
-            for (k = 0; k < NLOCK; k++) if (p->lock[k].step == s && p->lock[k].param == param) v = p->lock[k].val;
-            y = y0 + 18 - clamp((v - d->min) * 32 / (d->max > d->min ? d->max - d->min : 1), 0, 32);
-            if (s) cv_line(8 + (int32_t)(s - 1u) * 224 / (int32_t)len, prev, x, y, TE_COL[t]);
-            cv_rect(x, y, 2, y0 + 20 - y, TE_DIM[t]); prev = y;
-        }
-        cv_rect(8 + (int32_t)at * 224 / (int32_t)len, y0 - 15, 2, 36, C_WHITE);
     }
 }
 static void vis_stereo(void)
@@ -858,21 +662,15 @@ static void vis_draw(void)
         case 3: vis_lissajous(); break;
         case 4: vis_meters(); break;
         case 5: vis_ring(); break;
-        case 6: vis_tape(); break;
-        case 7: vis_lcd(); break;
-        case 8: vis_bounce(); break;
-        case 9: vis_orbit(); break;
-        case 10: vis_wires(); break;
-        case 12: vis_dungeon(); break;
-        case 13: vis_polyrhythm(); break;
-        case 14: vis_trails(); break;
-        case 15: vis_groove(); break;
-        case 16: vis_constellation(); break;
-        case 17: vis_landscape(); break;
-        case 18: vis_stereo(); break;
-        case 19: vis_journey(); break;
-        case 20: vis_terrain(); break;
-        default: vis_sloop(); break;
+        case 6: vis_orbit(); break;
+        case 7: vis_wires(); break;
+        case 8: vis_polyrhythm(); break;
+        case 9: vis_trails(); break;
+        case 10: vis_groove(); break;
+        case 11: vis_stereo(); break;
+        case 12: vis_journey(); break;
+        case 13: vis_terrain(); break;
+        default: vis_scope(); break;
         }
         if (!pass && (vis_name_t || ui.msg_t)) {    /* the style's name a second (or a message) */
             char n[8];
@@ -881,7 +679,7 @@ static void vis_draw(void)
             cv_text(120 - text_w(&FONT_S, s) / 2, 2, &FONT_S, s, C_WHITE);
             if (!ui.msg_t) {
                 fmt_int(n, (int32_t)(vis_style % VIS_N) + 1);
-                str_cpy(n + str_len(n), "/21", 4);
+                str_cpy(n + str_len(n), "/14", 4);
                 cv_text(4, 2, &FONT_S, n, C_DIM);
             }
         }

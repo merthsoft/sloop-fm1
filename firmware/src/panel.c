@@ -5,10 +5,11 @@
  * OCT+ while powering on), which asks for each label in turn. The learned
  * table lives in .noinit and, with FELUCCA_FLASH, in flash with the settings
  * (project.c). */
+/* (B_SCL: the button printed SEL, the key / scale button between FX and ENV) */
 enum { B_FX, B_SCL, B_ENV, B_LFO, B_EDIT, B_GLO, B_HOME, B_SAVE, B_ARP, B_SEQ, B_PLAY, B_REC,
        B_OCTDN, B_OCTUP, NB };
 enum { EN_SELECT, EN_ALGO, EN_PRESET, EN_K1, EN_K2, EN_K3, EN_K4, NE };
-static const char *const B_NAME[NB] = {"FX", "SCL", "ENV", "LFO", "EDIT", "GLO", "HOME", "SAVE",
+static const char *const B_NAME[NB] = {"FX", "SEL", "ENV", "LFO", "EDIT", "GLO", "HOME", "SAVE",
                                         "ARP", "SEQ", "PLAY", "REC", "OCT-", "OCT+"};
 static const char *const E_NAME[NE] = {"SELECT", "ALGORITHM", "PRESETS", "KNOB 1", "KNOB 2",
                                         "KNOB 3", "KNOB 4"};
@@ -84,13 +85,16 @@ static uint8_t lights_min;                     /* GLO > SYSTEM > IN (G_ROUTE): 1
 static const uint16_t LIGHTS_NS[LIGHTS_N] = {0u, 500u, 1000u, 2000u};   /* the backlight pulse a frame (ns): a lit
                                                 * LED ~95 us, the glow (landmarks) 4 us (fm1_input.h) */
 static uint8_t usb_serial;                      /* menu USB SERIAL: 1 = the serial console presented (usb.c) */
-static uint8_t vis_style;                       /* the visualiser's style, 0..20 (ui_vis.c) */
+#define VIS_STYLE_COUNT 14u
+/* Preserve the original persisted IDs for retained styles. Removed IDs fall back to scope. */
+static const uint8_t VIS_STYLE_IDS[VIS_STYLE_COUNT] = {0,1,2,3,4,5,9,10,13,14,15,18,19,20};
+static uint8_t vis_style;
 static uint32_t lights_word(void)
 {
     return (uint32_t)lights_lvl | (uint32_t)lights_keys << 4 | (uint32_t)(lights_notes != 0u) << 8 |
            (uint32_t)(rec_tempo != 0u) << 9 | (uint32_t)(rec_count != 0u) << 10 | (uint32_t)(usb_full != 0u) << 11 |
            (uint32_t)(lights_sync % 3u) << 12 | (uint32_t)(lights_mout != 0u) << 14 | (uint32_t)(lights_min != 0u) << 15 |
-           (uint32_t)(usb_serial != 0u) << 16 | (uint32_t)(vis_style % 21u) << 17;
+           (uint32_t)(usb_serial != 0u) << 16 | (uint32_t)VIS_STYLE_IDS[vis_style % VIS_STYLE_COUNT] << 17;
 }
 static void lights_from_word(uint32_t w)
 {
@@ -104,7 +108,9 @@ static void lights_from_word(uint32_t w)
     lights_mout = (uint8_t)((w >> 14) & 1u);    /* GLO > SYSTEM > MIDI (seq.c) */
     lights_min = (uint8_t)((w >> 15) & 1u);     /* GLO > SYSTEM > IN (seq.c) */
     usb_serial = (uint8_t)((w >> 16) & 1u);
-    vis_style = (uint8_t)(((w >> 17) & 31u) % 21u);   /* five bits; existing style indices stay unchanged */
+    { uint32_t stored = (w >> 17) & 31u, i;
+      vis_style = 0;
+      for (i = 0; i < VIS_STYLE_COUNT; i++) if (VIS_STYLE_IDS[i] == stored) { vis_style = (uint8_t)i; break; } }
 }
 
 static void settings_save(void);              /* project.c: flash copy (FELUCCA_FLASH) */

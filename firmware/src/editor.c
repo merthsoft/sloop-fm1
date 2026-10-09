@@ -9,6 +9,7 @@
  * v8 = SLOOP 2.4: the steps' fill conditions (41-42); v9 = SLOOP 2.4: the FM6 engine's patches (68-71,
  * editor_fm6.c: Felucca 1.0's numbers) and the patch bank as backup object 8);
  * v10 adds PERFORM_STATE (43), the read-only hardware octave offset for companion input.
+ * v13 adds the upstream SYN drum kit editor at commands 80..84 and backup object 9.
  *   F0 7D 46 4C cmd args.. F7     (7D = non-commercial ID, "FL")
  * Values are 14 bit, two 7-bit bytes LSB first, offset by 8192 (so -8192..8191).
  * Every request gets a reply with the same cmd; 23/24/26 are also pushed
@@ -29,7 +30,7 @@ enum { ED_INFO = 1, ED_GET, ED_SET, ED_DUMP, ED_DESC, ED_STEP_GET, ED_STEP_SET, 
        ED_FILL_GET, ED_FILL_SET,                                                /* v8: fill conditions */
        ED_PERFORM_STATE,                                                       /* v10: hardware octave offset */
        ED_FM6_GET = 68, ED_FM6_PUT, ED_FM6_LIST, ED_FM6_ERASE };                /* v9: FM6 patches (Felucca's numbers) */
-#define ED_PROTO 12u                                  /* negotiated performance and USB return controls */
+#define ED_PROTO 13u /* merged performance, grooves, USB return and SYN kits */
 
 static uint8_t ed_out[600];
 static uint32_t ed_n;
@@ -432,6 +433,11 @@ static const uint8_t *ed_bk_obj(uint32_t id, uint32_t *len)   /* 0 = no such obj
             *len = sizeof(fm6_bank_t);
         return (const uint8_t *)fm6_bank_flash(fm6_bank_cur < 0 ? 0u : (uint32_t)fm6_bank_cur);
     }
+    if (id == 9u) {                                       /* SLOOP 2.5: the SYN drum kits (drum_synth.c dsu) */
+        (void)dsu_kit(0);
+        *len = sizeof dsu;
+        return (const uint8_t *)&dsu;
+    }
     if (id >= 32u && id < 32u + SMP_USER_SLOTS) {
         const smp_user_hdr_t *h = (const smp_user_hdr_t *)smp_user_xip(id - 32u);
         if (h->magic == SMP_USER_MAGIC && h->version == 1u && h->nz && h->nz <= 16u &&
@@ -441,7 +447,7 @@ static const uint8_t *ed_bk_obj(uint32_t id, uint32_t *len)   /* 0 = no such obj
     }
     return 0;
 }
-static const uint8_t ED_BK_IDS[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 32, 33, 34, 35};   /* 35: USR4 (2.4) */
+static const uint8_t ED_BK_IDS[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 32, 33, 34, 35};   /* 35: USR4 (2.4), 9: SYN kits (2.5) */
 
 /* a flash erase silences the audio for ~50 ms and stalls USB: only while stopped (as the panel) */
 static uint32_t ed_flash_busy(void) { return song.playing || transport_req; }
@@ -480,6 +486,22 @@ static uint32_t ed_bk_commit(void)
             return 4;
         fm6_bank_scan();
         fm6_bank_changed();
+        return 0;
+    }
+    if (id == 9u) {                                       /* SLOOP 2.5: the SYN drum kits, written with the settings */
+        persist_t p;
+        uint32_t k;
+        if (ed_flash_busy())
+            return 3;
+        if (n != sizeof(dsu_bank_t) || !dsu_valid((const dsu_bank_t *)raw))
+            return 2;
+        memcpy(&dsu, raw, sizeof dsu);
+        for (k = 0; k < DSU_N; k++)
+            dsu_fix_kit(&dsu.k[k]);
+        persist_fill(&p);
+        if (!flash_ok || settings_write(&p))
+            return 4;
+        persist_saved = p;
         return 0;
     }
     return 1;
@@ -527,7 +549,7 @@ static int ed_backup(uint32_t cmd, const uint8_t *a, uint32_t na)   /* 1: a back
         rc = 1;
         if (!flash_ok) {
             rc = 4;
-        } else if (op == 0u && na == 12u && (id <= 8u)) {  /* begin: id, length (5), CRC-32 (5) */
+        } else if (op == 0u && na == 12u && (id <= 9u)) {  /* begin: id, length (5), CRC-32 (5) */
             len = ed_bk_r32(a + 2);
             if (id >= 2u || len) {                        /* (the working project and the settings are never empty) */
                 if (len <= sizeof proj_tmp) {
@@ -585,6 +607,7 @@ static int ed_backup(uint32_t cmd, const uint8_t *a, uint32_t na)   /* no flash:
 #include "editor_performance.c"                       /* v12: host-owned fills and punch FX */
 #include "editor_drum_grooves.c"                      /* v12: shared ROM groove bank */
 #include "editor_usb_playback.c"                      /* v12: USB return gain/mute/diagnostics */
+#include "editor_dsyn.c"                              /* v10: the SYN drum kits (72..76) */
 
 static void ed_handle(const uint8_t *f, uint32_t n)   /* f: the bytes between F0 and F7 */
 {
@@ -610,6 +633,10 @@ static void ed_handle(const uint8_t *f, uint32_t n)   /* f: the bytes between F0
         ed_send();
         return;
     }
+    if (ed_dsyn_handle(cmd, a, na)) {                      /* v10: the SYN drum kits */
+        ed_send();
+        return;
+    }
     switch (cmd) {
     case ED_PERFORM_STATE:
         if (na) return;
@@ -625,7 +652,7 @@ static void ed_handle(const uint8_t *f, uint32_t n)   /* f: the bytes between F0
         for (i = 0; i < NENGINES; i++)
             ed_str(ENGINES[i]->name, 8);
         ed_b(NTRK);                                       /* v3 */
-        ed_b(ED_PROTO);                                   /* v5..: the protocol version (9: FM6 patches) */
+        ed_b(ED_PROTO);                                   /* v5..: the protocol version (9: FM6 patches, 10: SYN kits) */
         break;
     case ED_GET:
     case ED_SET:
