@@ -14,6 +14,13 @@ typedef struct {               /* proportional, see tools/gen_font.py */
     const uint8_t *data;
 } felucca_font_t;
 #include "felucca_font.h"
+/* Old generated headers have no marker and use four-bit alpha. */
+#ifndef FONT_DATA_BITS
+#define FONT_DATA_BITS 4
+#endif
+#if FONT_DATA_BITS != 1 && FONT_DATA_BITS != 4
+#error "unsupported generated font format"
+#endif
 
 #define CV_MAX (240u * 124u)      /* the graph strip is 240 x 124 */
 static uint16_t cv_px[CV_MAX] __attribute__((section(".pool")));
@@ -135,22 +142,34 @@ static uint32_t glyph(const felucca_font_t *f, uint32_t ch)
 /* text, alpha-blended onto black with colour c; returns the end x */
 static int32_t cv_text(int32_t x, int32_t y, const felucca_font_t *f, const char *s, uint16_t c)
 {
+#if FONT_DATA_BITS == 4
     uint16_t ramp[16];
     uint32_t r = c >> 11, g = (c >> 5) & 63u, b = c & 31u, a;
     for (a = 0; a < 16u; a++)
         ramp[a] = (uint16_t)(((r * a / 15u) << 11) | ((g * a / 15u) << 5) | (b * a / 15u));
+#endif
     for (; *s; s++) {
         uint32_t gi = glyph(f, (uint8_t)*s), gx, gy, w, bpr;
         const uint8_t *gd;
         w = f->bw[gi];
-        bpr = ((w >> f->sh) + 1u) / 2u;
+        bpr = (w >> f->sh);
+#if FONT_DATA_BITS == 4
+        bpr = (bpr + 1u) / 2u;
+#endif
         gd = f->data + f->off[gi];
         for (gy = 0; gy < f->h; gy++)
             for (gx = 0; gx < w; gx++) {
-                uint32_t sx = gx >> f->sh, v = gd[(gy >> f->sh) * bpr + sx / 2u];
+                uint32_t sx = gx >> f->sh;
+#if FONT_DATA_BITS == 1
+                uint32_t bit = (gy >> f->sh) * bpr + sx;
+                if ((gd[bit / 8u] >> (7u - (bit & 7u))) & 1u)
+                    cv_pset(x - f->pad + (int32_t)gx, y + (int32_t)gy, c);
+#else
+                uint32_t v = gd[(gy >> f->sh) * bpr + sx / 2u];
                 v = (sx & 1u) ? (v & 15u) : (v >> 4);
                 if (v)
                     cv_pset(x - f->pad + (int32_t)gx, y + (int32_t)gy, ramp[v]);
+#endif
             }
         x += f->adv[gi];
     }
