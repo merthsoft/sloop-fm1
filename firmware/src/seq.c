@@ -64,9 +64,13 @@ static volatile uint8_t panic_req;       /* bit per track: release every soundin
 /* Browser clock: independent of transport and persisted track steps. */
 static struct {
     uint64_t mask[7];
-    uint32_t phase;
+    int32_t phase;
     uint8_t active, first, step, len, div;
 } groove_preview;
+/* UI browsers bind these only while open; headless audio harnesses keep no-op defaults. */
+static dstep_t (*groove_preview_read)(uint32_t);
+static void (*sequence_preview_tick)(uint32_t);
+static void (*sequence_preview_end)(void);
 
 static uint32_t trk_index(const track_t *t) { return (uint32_t)(t - trk); }
 
@@ -1782,17 +1786,24 @@ static void groove_preview_block(uint32_t n)
         return;
     }
     interval = div_units(groove_preview.div);
-    if (groove_preview.first || groove_preview.phase >= interval) {
+    if ((groove_preview.first && groove_preview.phase >= 0) ||
+        (!groove_preview.first && groove_preview.phase >= (int32_t)interval)) {
         if (!groove_preview.first) {
             groove_preview.phase -= interval;
             groove_preview.step = (uint8_t)((groove_preview.step + 1u) % groove_preview.len);
         }
         groove_preview.first = 0;
-        bit = (uint64_t)1u << groove_preview.step;
-        for (k = 0; k < 5; k++) if (groove_preview.mask[k] & bit) {
+        if (groove_preview_read) {
+            dstep_t step = groove_preview_read(groove_preview.step);
+            for (k = 0; k < DRUM_LANES; k++) if (dstep_has(&step, k))
+                trk_note_on(TDRUM, LANE_NOTE[k], lvl_vel(dstep_lvl(&step, k), 100));
+        } else {
+          bit = (uint64_t)1u << groove_preview.step;
+          for (k = 0; k < 5; k++) if (groove_preview.mask[k] & bit) {
             uint32_t level = k == 1 && (groove_preview.mask[6] & bit) ? LV_GHOST :
                 (groove_preview.mask[5] & bit) ? LV_HARD : LV_NORM;
             trk_note_on(TDRUM, LANE_NOTE[lanes[k]], lvl_vel(level, 100));
+          }
         }
     }
     groove_preview.phase += n * (uint32_t)song.g[G_BPM];
@@ -2030,6 +2041,7 @@ static void seq_release(track_t *t)
 
 static void seq_stop(void)
 {
+    if (sequence_preview_end) sequence_preview_end();
     groove_preview.active = 0;
     punch_clear();
     perf_reset();
@@ -2569,13 +2581,45 @@ static void events_block(uint32_t n)
         if (i < NPART)
             engine_block(t);                          /* engine switch: fade, then switch (voice.c) */
         if (i < NPART && seq_harmony[i].routed != seq_arp_route(t)) {
+            step_t held = {.n = 0};
+            uint32_t route = (uint32_t)seq_arp_route(t), j;
+            /* Transfer the actually sounding source across a route change.
+             * Re-reading a TIE after clearing ownership loses its chord until
+             * the next NOTE. Do not infer notes from skipped/rest steps. */
+            held.n = route ? t->seq_n : seq_harmony[i].n;
+            for (j = 0; j < held.n; j++)
+                held.note[j] = route ? t->seq_notes[j] : seq_harmony[i].note[j];
+            if (held.n && !route) {
+                uint32_t back, len = trk_len(t);
+                for (back = 0; back < len; back++) {
+                    const step_t *source = &t->step[(t->seq_idx + len - back) % len];
+                    if (source->time == ST_TIE) continue;
+                    held.vel = source->vel;
+                    for (j = 0; j < held.n; j++) {
+                        uint32_t match;
+                        for (match = 0; match < source->n && match < 4u; match++)
+                            if (source->note[match] == held.note[j]) {
+                                held.lvl |= ((source->lvl >> (2u * match)) & 3u) << (2u * j);
+                                break;
+                            }
+                    }
+                    held.flags = source->flags & SF_ACCENT;
+                    break;
+                }
+            }
             seq_harmony_clear(t);
             seq_release(t);
             arp_release(t);
-            seq_harmony[i].routed = (uint8_t)seq_arp_route(t);
-            /* Adopt the effective current step on the next sequencer block. */
-            t->seq_abs = SEQ_NONE;
-            t->arp_new = t->nheld != 0;
+            seq_harmony[i].routed = (uint8_t)route;
+            if (song.playing && held.n) {
+                uint32_t into, slen;
+                trk_grid(t, &into, &slen);
+                seq_step(t, &held, slen, 0);
+            } else {
+                /* No sounding source: adopt the current grid normally. */
+                t->seq_abs = SEQ_NONE;
+            }
+            t->arp_new = t->nheld != 0 || seq_harmony[i].n != 0;
         }
         /* ARP turned off, or HOLD released with no key down: drop the latched chord */
         if ((t->armp && !t->p[P_AMODE]) || (t->aholdp && !t->p[P_AHOLD] && !t->arp_phys)) {
@@ -2592,6 +2636,7 @@ static void events_block(uint32_t n)
         t->armp = t->p[P_AMODE];
         t->aholdp = t->p[P_AHOLD];
     }
+    if (sequence_preview_tick) sequence_preview_tick(n);
     keyboard_block();
     drum_audition_poll();                             /* (the editor's DRUM SYNTH page) */
     strum_block(n);                                   /* (voice.c: the strummed notes due) */

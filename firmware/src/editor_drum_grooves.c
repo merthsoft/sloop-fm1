@@ -4,7 +4,7 @@
  * Replies: [0,status,1,bank_count,1(capability flag: apply with undo)];
  * [1,status,count, (id,len,div,name ASCII NUL)*]; [2,status,id].
  * Malformed apply replies retain ID if supplied, otherwise 127.
- * Errors omit trailing capabilities/list data. Bank <=16, name <=20.
+ * Errors omit trailing capabilities/list data. Bank <=24, name <=20.
  * Status: 0 OK, 1 malformed, 2 busy, 3 overwrite confirmation needed.
  * IDs follow the immutable firmware ROM bank; browsing is read-only. */
 #define ED_DRUM_GROOVES 74u

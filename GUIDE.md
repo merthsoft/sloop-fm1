@@ -1196,3 +1196,27 @@ clears it, and live keys still contribute. NOTE/PLAY restore the previous live-o
 arp plus direct sequence behavior; ARP OFF plays the recorded steps directly.
 STOP clears the sequence and live latch. The arp keeps its own rate/gate/probability.
 Factory sound recall may reset ORD. This does not create follower tracks or infer roots.
+
+On **ARP**, KNOB 1 chooses MODE, KNOB 2 RATE, KNOB 3 octave range, and KNOB 4 GATE.
+For a C–E–G–A chord held by ties, UP plays C–E–G–A, DN plays A–G–E–C,
+and UPDN plays C–E–G–A–G–E. Changes take effect on the next arp tick.
+Turning ARP OFF and back on while a chord is sustained transfers that chord
+between direct sequence playback and the arp without waiting for the next NOTE.
+
+### Native starter libraries
+
+On a synth track, tap **SEQ** through STEP → PATTERN → SEQUENCES → SONG.
+SELECT reaches the same four pages in either direction; SONG is the arrangement
+screen. SEQUENCES offers twelve four-bar progressions, including classic turns,
+sevenths, house offbeats and funk. Knobs select starter, root, scale and CHORD/BASS/ARP
+NOTES output. Its rhythm page offers rotation, offset, syncopation and Feel.
+
+On drums, tap **SEQ** or **EDIT** through GRID → KIT → GROOVE → SHAPE.
+The bank contains 24 beats, including Amen, funk, broken house, Afro clave,
+jungle and odd-length patterns. SHAPE knobs choose target lane, whole-step shift,
+syncopation and Feel; Feel nudges the entire drum step.
+
+In either browser, **OCT-** auditions without replacing the pattern. **OCT+** applies
+while stopped; replacing existing work requires another OCT+ press or a 700 ms hold.
+Changing the selection cancels confirmation. Apply produces ordinary editable steps;
+the existing undo restores the replaced steps and their timing/lock metadata.

@@ -1,9 +1,21 @@
-# Current implementation status — October 8, 2026
+# Current implementation status — October 9, 2026
 
 This is the current status index. Component docs contain both implemented checkpoints and
 future design contracts; dated release/handoff/test results remain historical evidence.
 
 ## Latest firmware
+
+**2.5 Merthsoft.4** adds twelve native musical sequence starters, expands the drum bank
+to 24 grooves, and adds rhythm shaping and non-destructive audition. Native OCT+ holds
+confirm replacement after 700 ms. Both libraries use the same complete pattern/metadata
+undo supplement. Synth SEQ navigation reaches STEP, PATTERN, SEQUENCES and SONG through
+physical taps and SELECT; its browser includes a rhythm subpage. Drum pages are GRID,
+KIT, GROOVE and SHAPE. SNOTE route changes preserve a currently sustained chord when
+turning ARP off/on, including per-note dynamics. Lossless one-bit font packing saves
+16,128 bytes of bitmap data while preserving pixels and legacy header compatibility.
+See [sequence starters](../../firmware/SEQUENCE-STARTERS-DESIGN.md),
+[drum grooves](../../firmware/DRUM-GROOVES-DESIGN.md) and
+[rhythm shaping](../../firmware/RHYTHM-SHAPING-DESIGN.md).
 
 **2.5 Merthsoft.3** adds black-key punch controls: Slower/Faster, Triplet, Gentle/Extreme,
 Blend, Latch and Retrigger. Momentary controls clear on FX exit; latch survives key/layer
@@ -77,8 +89,12 @@ Revisit hardware only for a new failure or a material feature change; do not rep
 - Persistent FM6 base-voice bank saving with destination review, overwrite confirmation
   and verified readback. Track macros remain separate.
 - Negotiated USB return gain/mute and diagnostics.
-- Sixteen native drum groove starters, including four-bar Amen and non-destructive hardware preview, accessible on hardware and from the phone drum
+- Twenty-four native drum groove starters, including four-bar Amen and non-destructive hardware preview, accessible on hardware and from the phone drum
   Sequence workspace. Stopped-only replacement preserves kit/tempo and supports hardware undo.
+- Twelve native musical sequence starters with root/scale, chord/bass/arp-note modes,
+  non-destructive preview, complete replacement undo, and native rhythm controls.
+  Musical starters and rhythm controls currently use hardware UI; phone command 74
+  continues to discover/apply canonical drum grooves.
 - Opt-in sequencer-fed arpeggios through ARP 2 ORD SNOTE/SPLAY, with independent
   sequence/live membership, NOTE/TIE/REST lifecycle and balanced generated output.
   General local/USB/TRS owner aggregation and semantic harmony/followers remain future work.

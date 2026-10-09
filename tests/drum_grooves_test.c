@@ -30,7 +30,32 @@ int main(int argc, char **argv)
             groove_cursor = (uint8_t)i; ui.force = 1; groove_screen_draw();
         }
     }
-    assert(NDRUM_GROOVES == 16);
+    assert(NDRUM_GROOVES == 24);
+    {
+        rhythm_shape_t shape = {0, 1, 9, 2, 1};
+        uint32_t counts[DRUM_LANES] = {0}, shifted[DRUM_LANES] = {0};
+        for (i = 0; i < 64; i++) {
+            dstep_t original = drum_groove_step(14, i), mapped = drum_groove_shaped_step(14, i, &shape);
+            for (l = 0; l < DRUM_LANES; l++) {
+                counts[l] += dstep_has(&original, l); shifted[l] += dstep_has(&mapped, l);
+            }
+        }
+        assert(!memcmp(counts, shifted, sizeof counts));
+        /* Native controls shape the applied pattern; protocol apply remains canonical. */
+        groove_shape = shape;
+        assert(drum_groove_apply_shaped(14, &groove_shape));
+        for (i = 0; i < NSTEP; i++) {
+            dstep_t expected = drum_groove_shaped_step(14, i, &shape);
+            assert(!memcmp(&TDRUM->dstep[i], &expected, sizeof expected) && TDRUM->micro[i] == 9);
+        }
+        assert(drum_groove_apply(14));
+        for (i = 0; i < NSTEP; i++) {
+            dstep_t expected = drum_groove_step(14, i);
+            assert(!memcmp(&TDRUM->dstep[i], &expected, sizeof expected) && !TDRUM->micro[i]);
+        }
+        groove_shape = (rhythm_shape_t){0,0,0,RHYTHM_PART_ALL,0};
+        check(1, "shape preserves all hits, applies timing, and leaves protocol patterns canonical");
+    }
     assert(DRUM_GROOVES[14].len == 64 && DRUM_GROOVES[15].len == 32);
     { dstep_t last = drum_groove_step(14, 60), ghost = drum_groove_step(14, 42);
       assert(dstep_has(&last, 2) && dstep_lvl(&last, 2) == LV_HARD);
@@ -108,11 +133,15 @@ int main(int argc, char **argv)
     tap(B_SEQ);
     check(on_drum_page() && drum_page == 2, "third SEQ tap reaches GROOVE rather than SONG");
     tap(B_SEQ);
-    check(on_drum_page() && drum_page == 0, "fourth SEQ tap wraps to GRID");
+    check(on_drum_page() && drum_page == 3, "fourth SEQ tap reaches SHAPE");
+    tap(B_SEQ);
+    check(on_drum_page() && drum_page == 0, "fifth SEQ tap wraps to GRID");
     encs[panel.enc[EN_SELECT]] = 1; frame();
     check(on_drum_page() && drum_page == 1, "SELECT detent advances GRID to KIT");
     encs[panel.enc[EN_SELECT]] = 1; frame();
     check(on_drum_page() && drum_page == 2, "SELECT detent advances KIT to GROOVE");
+    encs[panel.enc[EN_SELECT]] = 1; frame();
+    check(on_drum_page() && drum_page == 3, "SELECT reaches SHAPE");
     studio_open(SC_DRUM); drum_page = 1;
     tap(B_SEQ);
     check(drum_page == 2, "physical SEQ tap enters groove view from kit");
@@ -124,7 +153,27 @@ int main(int argc, char **argv)
     check(drum_page == 2, "physical SELECT reaches groove view");
     tap(B_OCTUP); tap(B_OCTUP);
     check(!groove_confirm && groove_undo_matches(), "physical OCT+ applies on second press");
-    groove_sel = 14; drum_page = 2; song.playing = 0; song.rec = 0; rec_wait = 0; transport_req = 0;
+    { uint32_t first_sess;
+      groove_sel = 16; groove_confirm = 0; drum_page = 2;
+      before = *TDRUM; first_sess = undo.sess;
+      press(B_OCTUP); frames(20);
+      check(groove_confirm && undo.sess == first_sess && !memcmp(before.dstep, TDRUM->dstep, sizeof before.dstep),
+            "held OCT+: short hold only asks for confirmation");
+      frames(30);
+      check(!groove_confirm && undo.sess != first_sess && TDRUM->p[P_SLEN] == 16,
+            "held OCT+: applies after 700ms without a second press");
+      first_sess = undo.sess; frames(60);
+      check(undo.sess == first_sess, "held OCT+: applies only once per hold");
+      release(B_OCTUP); assert(undo_swap(0));
+      check(!memcmp(before.dstep, TDRUM->dstep, sizeof before.dstep), "held OCT+: ordinary undo restores replaced pattern");
+      groove_sel = 23; groove_confirm = 0;
+      press(B_OCTUP); frames(20); encs[panel.enc[EN_K1]] = -1; frame(); frames(40); release(B_OCTUP);
+      check(!groove_confirm && !groove_hold_t0, "held OCT+: changing groove cancels the pending apply");
+      before = *TDRUM; groove_confirm = 0;
+      press(B_OCTUP); frames(20); song.rec = 1; frames(40); release(B_OCTUP); song.rec = 0;
+      check(!memcmp(before.dstep, TDRUM->dstep, sizeof before.dstep), "held OCT+: recording blocks replacement");
+    }
+    groove_sel = 14; groove_confirm = 0; drum_page = 2; song.playing = 0; song.rec = 0; rec_wait = 0; transport_req = 0;
     proj_capture(&saved);
     tap(B_OCTDN);
     assert(groove_preview.active);

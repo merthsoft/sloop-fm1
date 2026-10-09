@@ -329,6 +329,7 @@ static void proj_apply(const project_t *p, int all)
     uint32_t i, k;
     undo.valid = 0;                                  /* undo never crosses project/section adoption */
     perf_reset();
+    if (sequence_preview_end) sequence_preview_end();
     groove_preview.active = 0;
     for (i = 0; i < PROJ_NG; i++)
         if (all ? i != G_SLOT && i != G_LOAD && i != G_SAVE && i != G_SYNC && i != G_MIDI && i != G_ROUTE : i == G_DRLVL || i == G_DRREV)

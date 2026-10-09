@@ -3,7 +3,7 @@
 /* Felucca user interface. Four columns map to KNOB 1..4. Rendering is lazy:
  * every element remembers what it last drew and is redrawn only on change. */
 #ifndef FELUCCA_VERSION
-#define FELUCCA_VERSION "2.5 Merthsoft.3"  /* the beat machine firmware for the FM-1 (based on Felucca) */
+#define FELUCCA_VERSION "2.5 Merthsoft.4"  /* the beat machine firmware for the FM-1 (based on Felucca) */
 #endif
 static void project_save(uint32_t slot);
 static void arrangement_save(void);
@@ -95,6 +95,9 @@ static int32_t accel(uint32_t role, int32_t s, int32_t range);   /* ui_input.c *
 static void layer_screen_draw(void);                            /* ui_layers.c */
 static void hold_screen_draw(void);
 static uint8_t layer_shown;
+enum { BT_NONE, BT_TAP, BT_HOLD };
+static void sequence_screen_open(void);
+static void sequence_screen_close(void);
 
 static uint32_t page_first(uint32_t fam)
 {
@@ -121,6 +124,8 @@ static void page_entered(void)
 {
     groove_preview.active = 0;
     const page_t *pg = cur_page();
+    if (pg->scope == SC_STARTER && song.sel < NPART) sequence_screen_open();
+    else sequence_screen_close();
     song.seq_mode = !ui.home && pg->fam == FAM_SEQ;
     ui.entry_open = 0;
     ui.hot_t = 0;                                /* the white value / focus box was the old page's */
@@ -140,7 +145,9 @@ static void step_clear(step_t *st)
     st->time = ST_REST;
 }
 
+#include "rhythm_shapes.c"
 #include "drum_grooves.c"
+#include "sequence_starters.c"
 
 /* undo / redo (EDIT + OCT- / OCT+): the marked pattern and the one now swap places */
 static int undo_swap(int redo)
@@ -222,10 +229,10 @@ static int page_walk(int32_t s)
     uint32_t i, fam = pg->fam, n = 0;
     int32_t cur = -1, to;
     uint8_t idx[8];
-    if (ui.home || pg->scope == SC_SONG || pg->scope == SC_DRUM)
+    if (ui.home || pg->scope == SC_DRUM)
         return 0;
     for (i = 0; i < NPAGES && n < 8u; i++) {
-        if (PAGES[i].fam != fam || PAGES[i].scope == SC_SONG || PAGES[i].scope == SC_DRUM)
+        if (PAGES[i].fam != fam || PAGES[i].scope == SC_DRUM)
             continue;
         if (i == ui.page)
             cur = (int32_t)n;
@@ -245,6 +252,7 @@ static int page_walk(int32_t s)
 static void go_home(void)
 {
     groove_preview.active = 0;
+    sequence_screen_close();
 #if FELUCCA_ARRANGER
     ui.home = 0;
     ui.page = (uint8_t)page_first(FAM_TRK);
@@ -496,6 +504,8 @@ static void track_select(uint32_t i)
     groove_preview.active = 0;
     if (i >= NTRK || i == song.sel)
         return;
+    sequence_screen_close();
+    if (cur_page()->scope == SC_STARTER) go_home();
     song.sel = (uint8_t)i;
     rec_follow(i);                                   /* LIVE: recording follows the selected track */
     ui.entry_open = 0;

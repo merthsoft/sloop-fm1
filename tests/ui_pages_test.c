@@ -81,6 +81,7 @@ static void up_ui(uint32_t op, uint32_t k) { (void)op; (void)k; }
 static void settings_save(void) {}
 #include "../firmware/src/ui_song.c"
 #include "../firmware/src/ui_studio.c"
+#include "../firmware/src/ui_sequence_starters.c"
 #include "../firmware/src/icons.c"
 #include "../firmware/src/ui_draw.c"
 #include "../firmware/src/ui_vis.c"
@@ -910,7 +911,7 @@ int main(int argc, char **argv)
         SEL(9);
         check(!strcmp(PT(), "VOICE 2"), "SELECT on EDIT: up to VOICE 2");
         tap(B_SEQ); SEL(9);
-        check(!strcmp(PT(), "PATTERN"), "SELECT on SEQ: STEP <-> PATTERN, not into the SONG screen");
+        check(!strcmp(PT(), "SONG"), "SELECT on SEQ reaches the advertised last page, SONG");
         tap(B_ENV);
         check(!strcmp(PT(), "ENV"), "the button still opens its family");
         tap(B_ENV);

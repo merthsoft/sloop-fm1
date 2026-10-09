@@ -1,4 +1,4 @@
-> Merthsoft fork release: **2.5 Merthsoft.3**. `2.5` identifies the upstream SLOOP base; only `Merthsoft.N` increments for our releases until we adopt a newer upstream base. Our Android and firmware integration lives on the `android` branch. Original Android work uses the Unlicense, with retained third-party obligations described in [Android licensing](android/LICENSING.md).
+> Merthsoft fork release: **2.5 Merthsoft.4**. `2.5` identifies the upstream SLOOP base; only `Merthsoft.N` increments for our releases until we adopt a newer upstream base. Our Android and firmware integration lives on the `android` branch. Original Android work uses the Unlicense, with retained third-party obligations described in [Android licensing](android/LICENSING.md).
 
 <p align="center"><img src="assets/logo/sloop-logo.png" alt="SLOOP" width="420"></p>
 
@@ -17,7 +17,7 @@ Free and open source (GPL-3.0), based on <a href="https://github.com/hugelton/Fe
 
 ---
 
-SLOOP turns the FM-1 into a four-track groovebox you play live: **three synths and a drum machine** with 16 sounds on the white keys, twelve synthesis engines, 153 sounds, 37 drum kits, your own samples, a song mode you play with your hands, USB audio, MIDI in on the jack and MIDI clock — and now **physical models** (guitars, sitar, bells, hand drums), a **noise** engine, **six-operator FM with DX7 patches**, **parameter locks**, **micro timing**, **fills**, a **quick chain** of sections and the **sequencer to MIDI out**. House, techno, hip-hop, trap, drum & bass, amapiano, synthwave, lo-fi, ambient, chiptune — it does not pick a style for you. No factory patterns, nothing to load: everything you hear, you play.
+SLOOP turns the FM-1 into a four-track groovebox you play live: **three synths and a drum machine** with 16 sounds on the white keys, twelve synthesis engines, 153 sounds, 37 drum kits, your own samples, a song mode you play with your hands, USB audio, MIDI in on the jack and MIDI clock — and now **physical models** (guitars, sitar, bells, hand drums), a **noise** engine, **six-operator FM with DX7 patches**, **parameter locks**, **micro timing**, **fills**, a **quick chain** of sections and the **sequencer to MIDI out**. House, techno, hip-hop, trap, drum & bass, amapiano, synthwave, lo-fi, ambient, chiptune — it does not pick a style for you. Start from your own playing or optional native drum grooves and musical sequence starters.
 
 > **Status:** 2.5 (two new engines, PHYS and NOISE, 77 new sounds, a drum synth, DX7 cartridges in one go, MIDI CCs, 48 kHz USB audio, and the fixes of 2.4.1). Still a beta: install at your own risk, and please [report](../../issues) what you find. Your projects, presets, samples and settings are kept when you update, and you can go back at any time (see [Going back](#going-back)).
 
@@ -76,7 +76,7 @@ Projects, autosaves and backups from 2.4 load as they are. Going back to 2.4: a 
 | **Your own drum kits** | A 4th sample slot (USR4). KIT USR1–USR4 or **USR3+4** (a big kit, about 15 s) on the drum track: 16 of your sounds, one per lane, built in the editor's new **Drum kit** page (drop WAVs on pads, sorted by name; pitch, gain, length; choose where; ZIP to share). |
 | **New web editor** | Rebuilt in the FM-1's own look (black, the four track colours, its pixel font): each button's pages as rows of four coloured knobs, values you drag like knobs, the steps as the device's tiles. |
 | **CHORD+** | In chord mode the black keys change the chord (major ↔ minor, 7th, sus4, 9th, inversion), even while it is held; STRUM strums the chords, VLEAD voices them smoothly. After HiChord and minichord. |
-| **The visualiser** | On the TRACKS screen, tap HOME: 21 full-screen styles (oscilloscope, spectrum, spectrogram, Lissajous, VU meters, circle, tape, LCD, bounce, orbit, wires, the SLOOP logo, a dungeon fly-through, polyrhythm rings, note trails, groove, drum constellation, lock landscape, stereo field, song journey and beat terrain), SELECT to change. |
+| **The visualiser** | On the TRACKS screen, tap HOME: 14 full-screen styles (oscilloscope, spectrum, spectrogram, Lissajous, VU meters, circle, orbit, wires, polyrhythm rings, note trails, groove, stereo field, song journey and beat terrain), SELECT to change. |
 | **A filter per track** | One knob, low-pass to the left, high-pass to the right, on each track and the drums: FX → FILTER, or FX held + KNOB 4. Lockable on a step. |
 | **Bigger values** | Pages without a graph (EDIT, VOICE, GLOBAL…) show their four values in large type in the middle of the screen. |
 | **SELECT turns the pages** | On a page (LFO, FX, EDIT…), SELECT goes to the next / previous page of its group. On HOME it is still the tempo. |

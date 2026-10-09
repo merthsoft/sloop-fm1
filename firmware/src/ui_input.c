@@ -510,7 +510,6 @@ static void seq_entry(uint32_t pressed)
 
 /* HOME: tap on release, hold 0.7 s fires once. t0 = press time | 1,
  * bit 1 = fired (or swallowed: then the release is no tap either) */
-enum { BT_NONE, BT_TAP, BT_HOLD };
 static uint32_t btn_hold(uint32_t *t0, uint32_t label, uint32_t now, int hold_ok)
 {
     uint32_t tap;
@@ -539,7 +538,7 @@ static void layer_tap(uint32_t layer)
     case LY_STEP:
         if (on_drum_page()) {                             /* DRUMS: GRID / KIT / GROOVE */
             groove_preview.active = 0;
-            drum_page = (uint8_t)((drum_page + 1u) % 3u);
+            drum_page = (uint8_t)((drum_page + 1u) % 4u);
             groove_confirm = 0;
             ui.msg_t = 0;
             ui.force = 1;
@@ -847,7 +846,13 @@ static void ui_input(void)
     if (pressed || notes)
         ui_input_ms = fm1_ms;
     fm6_poll();                                         /* FM6: PTCH turned -> its patch */
+#if FELUCCA_ARRANGER
+    if (!on_drum_page() || drum_page < 2 || ui.menu || ui.confirm ||
+        (layer_buttons() & ~(1u << panel.btn[B_OCTUP])))
+        groove_hold_t0 = 0;                              /* a hold never survives leaving its screen */
+#endif
     if (home == BT_HOLD) {                              /* HOME held: open the menu, or leave it */
+        if (sequence_browser) go_home();
         if (ui.menu) {
             menu_close();
         } else {
@@ -865,6 +870,13 @@ static void ui_input(void)
         if (!ui.home_t0)
             menu_input(pressed);
         return;
+    }
+    if (sequence_browser && (pressed & ((1u << panel.btn[B_ENV]) | (1u << panel.btn[B_LFO]) |
+        (1u << panel.btn[B_FX]) | (1u << panel.btn[B_EDIT]) | (1u << panel.btn[B_ARP]) |
+        (1u << panel.btn[B_SEQ]) | (1u << panel.btn[B_SCL]) | (1u << panel.btn[B_GLO]) |
+        (1u << panel.btn[B_SAVE]) | (1u << panel.btn[B_REC]) | (1u << panel.btn[B_PLAY])))) {
+        if (pressed & (1u << panel.btn[B_SEQ])) sequence_screen_close();
+        else go_home();                               /* new page/transport gestures keep their normal meaning */
     }
     layered = layers_input(notes, &pressed, home);
     if (home_eat && !((fm1_in.buttons >> panel.btn[B_HOME]) & 1u)) {   /* (the HOME that unlocked: let go) */
@@ -904,7 +916,15 @@ static void ui_input(void)
             panel_enc(EN_K1 + k);
     }
 #if FELUCCA_ARRANGER
+    if (sequence_browser) {
+        if (home == BT_TAP) go_home();
+        else sequence_screen_input(pressed, home);
+        return;
+    }
     if (on_song_page()) {
+        if (pressed & (1u << panel.btn[B_ENV])) { open_family(FAM_ENV); return; }
+        if (pressed & (1u << panel.btn[B_LFO])) { open_family(FAM_LFO); return; }
+        if ((s = panel_enc(EN_SELECT)) && page_walk(s) && !on_song_page()) return;
         song_screen_input(pressed, home);
         return;
     }

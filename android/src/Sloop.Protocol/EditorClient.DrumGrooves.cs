@@ -10,7 +10,7 @@ public sealed partial class EditorClient
         if (info.ProtocolVersion < 12) throw new NotSupportedException("Update SLOOP firmware to browse its groove bank.");
         var caps = await RequestAsync(74, [0], cancellationToken: token).ConfigureAwait(false);
         var a = caps.Arguments;
-        if (a.Length != 5 || a[0] != 0 || a[1] != 0 || a[2] != 1 || a[3] is < 1 or > 16 || a[4] != 1)
+        if (a.Length != 5 || a[0] != 0 || a[1] != 0 || a[2] != 1 || a[3] is < 1 or > 24 || a[4] != 1)
             throw new FormatException("Unsupported drum groove bank capabilities.");
         var entries = DecodeDrumGrooves(await RequestAsync(74, [1], cancellationToken: token).ConfigureAwait(false));
         if (entries.Count != a[3]) throw new FormatException("Groove bank changed during discovery.");
@@ -23,7 +23,7 @@ public sealed partial class EditorClient
         var r = new PayloadReader(frame.Arguments);
         if (r.Byte() != 1 || r.Byte() != 0) throw new FormatException("Drum groove bank unavailable.");
         int count = r.Byte();
-        if (count is < 1 or > 16) throw new FormatException("Invalid groove count.");
+        if (count is < 1 or > 24) throw new FormatException("Invalid groove count.");
         var entries = new List<DrumGroove>(count);
         for (int i = 0; i < count; i++) {
             byte id = r.Byte(), length = r.Byte(), division = r.Byte();
@@ -38,7 +38,7 @@ public sealed partial class EditorClient
 
     public async Task<DrumGrooveStatus> ApplyDrumGrooveAsync(byte id, bool replacementConfirmed, CancellationToken token = default)
     {
-        if (id >= 16) throw new ArgumentOutOfRangeException(nameof(id));
+        if (id >= 24) throw new ArgumentOutOfRangeException(nameof(id));
         var frame = await RequestAsync(74, [2, id, (byte)(replacementConfirmed ? 1 : 0)],
             cancellationToken: token).ConfigureAwait(false);
         var a = frame.Arguments;

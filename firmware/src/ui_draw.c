@@ -966,7 +966,7 @@ static uint8_t vis_on, vis_shown_last, vis_name_t;   /* the visualiser (ui_vis.c
 static void ui_draw(void)
 {
     ui.frame++;
-    if (groove_preview.active && (!on_drum_page() || drum_page != 2 || song.sel != TRK_DRUM || ui.menu))
+    if (groove_preview.active && (!on_drum_page() || drum_page < 2 || song.sel != TRK_DRUM || ui.menu))
         groove_preview.active = 0;
     pads_tick();
     if (rec_go) {                                       /* the take started: say so */
@@ -1050,6 +1050,12 @@ static void ui_draw(void)
     }
     if (on_drum_page()) {
         drum_screen_draw();
+        ui_timers();
+        ui.force = 0;
+        return;
+    }
+    if (sequence_browser) {
+        sequence_screen_draw();
         ui_timers();
         ui.force = 0;
         return;

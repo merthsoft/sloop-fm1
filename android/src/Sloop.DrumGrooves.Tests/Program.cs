@@ -8,16 +8,16 @@ void Reject(byte[] data) {
 byte[] list = [1,0,2,0,16,2,70,76,79,79,82,0,1,12,4,83,72,85,70,70,76,69,0];
 var bank = EditorClient.DecodeDrumGrooves(new(74, list));
 Check(bank.Count == 2 && bank[0] == new DrumGroove(0,"FLOOR",16,2) && bank[1].Name == "SHUFFLE", "Device bank decoding");
-var fullList = new List<byte> { 1, 0, 16 };
-for (byte id = 0; id < 16; id++) {
+var fullList = new List<byte> { 1, 0, 24 };
+for (byte id = 0; id < 24; id++) {
     fullList.AddRange([id, (byte)(id == 14 ? 64 : 16), 2]);
     fullList.AddRange(System.Text.Encoding.ASCII.GetBytes(id == 14 ? "AMEN BREAK" : $"GROOVE {id}"));
     fullList.Add(0);
 }
 var fullBank = EditorClient.DecodeDrumGrooves(new(74, fullList.ToArray()));
-Check(fullBank.Count == 16 && fullBank[14] == new DrumGroove(14,"AMEN BREAK",64,2), "Full bank with four-bar Amen");
+Check(fullBank.Count == 24 && fullBank[14] == new DrumGroove(14,"AMEN BREAK",64,2), "Full bank with four-bar Amen");
 for (int i = 0; i < list.Length; i++) Reject(list[..i]);
-Reject([..list,0]); Reject([1,0,0]); Reject([1,0,17]);
+Reject([..list,0]); Reject([1,0,0]); Reject([1,0,25]);
 foreach (int offset in new[]{3,4,5,12,13,14}) {
     var corrupt = list.ToArray(); corrupt[offset] = 127; Reject(corrupt);
 }
@@ -32,10 +32,14 @@ for (byte status = 0; status <= 3; status++) {
     Check((byte)await client.ApplyDrumGrooveAsync(1,status == 0) == status, "Apply refusal/success is preserved");
     Check(wire.Last.SequenceEqual(new byte[]{2,1,(byte)(status == 0 ? 1 : 0)}), "Replacement confirmation travels on wire");
 }
+wire.Replies.Enqueue([0,0,1,24,1]); wire.Replies.Enqueue(fullList.ToArray());
+Check((await client.ListDrumGroovesAsync(Info(13))).Count == 24, "Expanded native bank capability discovery");
+wire.Replies.Enqueue([2,0,23]);
+Check(await client.ApplyDrumGrooveAsync(23,true) == DrumGrooveStatus.Applied, "Expanded bank last ID applies");
 wire.Replies.Enqueue([2,0,0]);
 try { await client.ApplyDrumGrooveAsync(1,true); throw new Exception("Wrong groove ack accepted"); } catch (FormatException) { checks++; }
 int sent = wire.Sent;
-try { await client.ApplyDrumGrooveAsync(16,true); throw new Exception("Invalid groove sent"); } catch (ArgumentOutOfRangeException) { checks++; }
+try { await client.ApplyDrumGrooveAsync(24,true); throw new Exception("Invalid groove sent"); } catch (ArgumentOutOfRangeException) { checks++; }
 Check(wire.Sent == sent, "Invalid IDs rejected before send");
 Console.WriteLine($"Drum groove protocol: {checks} checks passed.");
 

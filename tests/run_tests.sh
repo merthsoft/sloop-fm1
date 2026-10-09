@@ -36,6 +36,16 @@ mkdir -p build/gen
 [ build/gen/felucca_tables.h -nt tools/gen_tables.py ] || python3 tools/gen_tables.py build/gen/felucca_tables.h
 [ build/gen/felucca_fm6.h -nt tools/gen_fm6_patches.py ] || python3 tools/gen_fm6_patches.py build/gen/felucca_fm6.h
 
+# Font packing uses the original BDF pixels as its oracle, then exercises the
+# actual C renderer with both packed assets and the legacy unmarked format.
+python3 tests/font_asset_test.py
+$CC -Ibuild/host/font-assets -Ifirmware/src -o "$OUT/font_render_test" tests/font_render_test.c
+run "packed font: identical pixels, metrics, scaling and clipping" "$OUT/font_render_test"
+$CC -Ibuild/host/font-assets/legacy -Ibuild/host/font-assets -Ifirmware/src -o "$OUT/font_render_legacy_test" tests/font_render_test.c
+run "legacy font header compatibility" "$OUT/font_render_legacy_test"
+$CC -o "$OUT/rhythm_shapes_test" tests/rhythm_shapes_test.c
+run "rhythm shapes preserve hits, wrap rotation, syncopate and offset safely" "$OUT/rhythm_shapes_test"
+
 $CC -o "$OUT/storage_test" tests/storage_test.c
 run "flash storage (A/B, torn writes)" "$OUT/storage_test"
 
@@ -55,6 +65,10 @@ $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/seq2_test" tests/seq2_test.c -lm
 run "sequencer 2.0: no drift, ratchets, roll, erase / undo, ghost / hard, chords, mute / solo, nudge, locks" "$OUT/seq2_test"
 $CC -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/seq_arp_test" tests/seq_arp_test.c -lm
 run "sequencer-fed arpeggio: source ownership, microtiming, latch and generated MIDI cleanup" "$OUT/seq_arp_test"
+$CC -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/seq_arp_modes_test" tests/seq_arp_modes_test.c -lm
+run "sequencer arpeggio: four-note chord plus fifteen ties, every runtime mode, generated MIDI grid" "$OUT/seq_arp_modes_test"
+$CC -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/seq_navigation_test" tests/seq_navigation_test.c -lm
+run "native SEQ navigation and selected-track ARP knob while sequencer-fed chord plays" "$OUT/seq_navigation_test"
 
 $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/drumkit_test" tests/drumkit_test.c -lm
 run "synthesised drum kits: every kit x sound bounded, audible, finite, levels, cost" "$OUT/drumkit_test" "$OUT/drum-kits.wav" "$OUT/drum-kits.txt"
@@ -71,6 +85,10 @@ $CC -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/performance_engine
 run "remote performance: actual panel priority, DSP and sequencer boundaries" "$OUT/performance_engine_test"
 $CC -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/drum_grooves_test" tests/drum_grooves_test.c -lm
 run "drum groove starters: apply, undo, project roundtrip and screens" "$OUT/drum_grooves_test" "$OUT"
+$CC -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/sequence_starters_test" tests/sequence_starters_test.c -lm
+run "musical starters: roots, scales, rhythm transforms and preview" "$OUT/sequence_starters_test"
+$CC -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/sequence_starters_ui_test" tests/sequence_starters_ui_test.c -lm
+run "musical browser: physical navigation, hold apply and complete undo" "$OUT/sequence_starters_ui_test" "$OUT"
 $CC -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/editor_drum_grooves_test" tests/editor_drum_grooves_test.c -lm
 run "phone drum grooves: capabilities, malformed requests, confirmation and undo" "$OUT/editor_drum_grooves_test"
 $CC -O2 -Wall -Wextra -o "$OUT/harmony_owners_test" tests/harmony_owners_test.c firmware/src/harmony_owners.c

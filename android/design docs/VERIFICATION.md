@@ -1,3 +1,39 @@
+# Native starters, navigation and font packing — October 9, 2026
+
+**2.5 Merthsoft.4** integrates twelve musical starters, 24 drum grooves, native rhythm
+controls and audition, 700 ms apply holds, and shared metadata undo.
+
+- `build/seq_navigation-next.log`: physical SEQ/SELECT reaches all synth pages and the
+  browser rhythm subpage; ARP knobs edit the selected track while a four-note source plays.
+- `tests/seq_arp_modes_test.c`: every mode emits its expected pitches through production
+  MIDI, with fifteen ties, grid-aligned runtime switching and balanced releases. OFF/on
+  transfers sustained notes; duplicate-pitch dynamics, rests and skipped notes are covered.
+- `build/drum_grooves-next.log` and `build/editor_drum_grooves-next.log`: 24 templates,
+  shaped hit preservation, canonical phone apply, physical hold/cancel, metadata undo,
+  full Amen preview, project preservation and lifecycle guards pass.
+- Musical generator and real UI tests pass: root/scale/modes, rhythm, Feel, 700 ms apply,
+  complete undo/redo, track isolation and preview ownership. Audition refuses an existing
+  live latch rather than altering its notes.
+- `build/native-starters-ui-final.log` and `build/native-starters-ui-final-divzero.log`:
+  real UI/audio and 20,000-frame fuzz pass in optimized and divide-by-zero-trap variants.
+  Full undefined-behavior sanitizer is clean for the pure generators; fixed-point audio
+  arithmetic prevents an equivalent whole-audio claim. Font tests pass 6,120 pixel/metric
+  comparisons for each of packed and legacy formats.
+- `build/native-starters-regress.log`: 182 unchanged audio renders; zero health,
+  voice/routing, CPU-budget or crash failures. Host timings do not prove target deadlines.
+- `build/native-starters-web-final.log`: web/editor/OTA compatibility passes.
+- `build/native-starters-android-build.log`: solution/APK build passes with zero warnings
+  and errors. The updated 24-groove protocol runner passes. No new phone install claimed.
+- `build/merthsoft-4-build.log`: final image 568,800 bytes, RAM 97,332/98,304,
+  pool 333,948/344,064; RAM text 925 instructions/no calls and HAL checks pass.
+  Font bitmap data saves 16,128 bytes; the splash remains. Target font speed has not
+  been benchmarked. No physical firmware flash or new hardware listening is claimed.
+
+Historical verification follows. Existing target ISR cost-budget and ASan limitations
+were not removed or relaxed.
+
+---
+
 # Black-key punch FX verification — October 9, 2026
 
 **2.5 Merthsoft.3** uses the existing ring/DSP with no extra sample buffers.
