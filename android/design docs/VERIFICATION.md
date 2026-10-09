@@ -1,3 +1,16 @@
+# Manual ARP latch verification — October 9, 2026
+
+**2.5 Merthsoft.2**: `build/arp-latch-before.log` reproduces failure to capture three piano
+notes with CHORD OFF/ARP ON. `build/arp-latch-after.log` passes capture, one toggle per hold,
+toggling off while keys stay held, re-enabling, release retention and cleanup, plus existing
+generated-chord/modifier/roll regressions and 20,000-frame UI fuzz. Real audio runs between
+input frames; assertions and divide-by-zero trap instrumentation remain active.
+Target build log `build/merthsoft-2-build.log`: image 578,248, RAM 97,108/98,304,
+pool 333,948/344,064, RAM-text and HAL checks pass. No physical flash or new phone test.
+Earlier broader merge checks and their limitations follow.
+
+---
+
 # Upstream 2.5 merge verification — October 8, 2026
 
 Release **2.5 Merthsoft.1** builds successfully: image 578,152 bytes, RAM 97,108/98,304,

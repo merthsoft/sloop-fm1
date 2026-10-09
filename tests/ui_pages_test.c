@@ -366,6 +366,27 @@ int main(int argc, char **argv)
                   "arp chord capture: unlatching then key release clears arp notes");
             trk[0].p[P_AMODE] = 0; frame();
         }
+        { /* A manually played arp chord also needs the live capture gesture. */
+          trk[0].p[P_CHORD] = CH_OFF; trk[0].p[P_QUANT] = 0;
+          trk[0].p[P_AMODE] = 1; trk[0].p[P_AHOLD] = 0;
+          fm1_in.notes = (1u << 7) | (1u << 11) | (1u << 14); frame();
+          check(trk[0].nheld == 3 && trk[0].arp_phys == 3, "manual arp capture: three physical piano notes");
+          press(B_ARP); frames(50);
+          check(trk[0].p[P_AHOLD] && trk[0].nheld == 3, "manual arp capture: long ARP hold enables latch");
+          frames(60);
+          check(trk[0].p[P_AHOLD], "manual arp capture: long hold toggles only once");
+          release(B_ARP);
+          press(B_ARP); frames(50);
+          check(!trk[0].p[P_AHOLD] && trk[0].nheld == 3 && trk[0].arp_phys == 3,
+                "manual arp capture: toggling latch off keeps physical notes playing");
+          release(B_ARP); press(B_ARP); frames(50);
+          check(trk[0].p[P_AHOLD], "manual arp capture: next button hold can latch again");
+          release(B_ARP); fm1_in.notes = 0; frame();
+          check(trk[0].nheld == 3 && !trk[0].arp_phys, "manual arp capture: releasing keys keeps arp pool");
+          trk[0].p[P_AHOLD] = 0; frame();
+          check(!trk[0].nheld, "manual arp capture: disabling latch releases arp pool");
+          trk[0].p[P_AMODE] = 0; trk[0].p[P_CHORD] = CH_MAJOR;
+        }
         fm1_in.notes = 1u << 7; frame();
         trk[0].p[P_AHOLD] = 1;
         mw = mo_w;

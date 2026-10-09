@@ -1,4 +1,4 @@
-> Merthsoft fork release: **2.5 Merthsoft.1**. `2.5` identifies the upstream SLOOP base; only `Merthsoft.N` increments for our releases until we adopt a newer upstream base. Our Android and firmware integration lives on the `android` branch. Original Android work uses the Unlicense, with retained third-party obligations described in [Android licensing](android/LICENSING.md).
+> Merthsoft fork release: **2.5 Merthsoft.2**. `2.5` identifies the upstream SLOOP base; only `Merthsoft.N` increments for our releases until we adopt a newer upstream base. Our Android and firmware integration lives on the `android` branch. Original Android work uses the Unlicense, with retained third-party obligations described in [Android licensing](android/LICENSING.md).
 
 <p align="center"><img src="assets/logo/sloop-logo.png" alt="SLOOP" width="420"></p>
 

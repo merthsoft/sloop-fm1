@@ -603,10 +603,10 @@ static int ly_quiet(void)
         ly_quiet_t = 0;
     return ly_quiet_t != 0;
 }
-static int chord_physically_held(uint32_t part)
+static int latch_notes_physically_held(uint32_t part)
 {
     uint32_t k;
-    if (part >= NPART || !trk[part].p[P_CHORD])
+    if (part >= NPART || (!trk[part].p[P_CHORD] && !trk[part].p[P_AMODE]))
         return 0;
     for (k = 0; k < 27u; k++)
         if (kb_kind[k] == KS_NOTE && kb_trk[k] == part && (fm1_in.notes & (1u << k)))
@@ -638,19 +638,21 @@ static int layers_input(uint32_t note_edges, uint32_t *pressed, uint32_t home)
             t0[l] = now;
             used[l] = (uint8_t)((eat & ly_bit[l]) != 0u);  /* (the press that unlocked: not a tap) */
             latch_part[l] = (uint8_t)((l == LY_ROLL || l == LY_SCALE) && !used[l] &&
-                !ui.menu && !ui.confirm && chord_physically_held(song.sel) ? song.sel : NPART);
+                !ui.menu && !ui.confirm && latch_notes_physically_held(song.sel) ? song.sel : NPART);
         }
         if (d && note_edges)
             used[l] = 1;                                  /* a key while held: not a tap */
         if (d && latch_part[l] < NPART) {
             uint32_t part = latch_part[l];
-            if (used[l] || song.sel != part || !chord_physically_held(part) || ui.menu || ui.confirm ||
+            if (used[l] || song.sel != part || !latch_notes_physically_held(part) || ui.menu || ui.confirm ||
                 ly_lock != LY_PLAY || (layer_buttons() & ~ly_bit[l]) ||
                 (fm1_in.buttons & (1u << panel.btn[B_HOME]))) {
                 latch_part[l] = NPART;
             } else if (now - t0[l] >= 700u) {
                 trk[part].p[P_AHOLD] ^= 1;
-                ui_message(trk[part].p[P_AHOLD] ? "CHORD LATCH ON" : "CHORD LATCH OFF");
+                ui_message(trk[part].p[P_CHORD] ?
+                    (trk[part].p[P_AHOLD] ? "CHORD LATCH ON" : "CHORD LATCH OFF") :
+                    (trk[part].p[P_AHOLD] ? "ARP LATCH ON" : "ARP LATCH OFF"));
                 used[l] = 1;
                 latch_part[l] = NPART;                    /* exactly once per hold */
             }

@@ -3,6 +3,13 @@
 This is the current status index. Component docs contain both implemented checkpoints and
 future design contracts; dated release/handoff/test results remain historical evidence.
 
+## Latest firmware
+
+**2.5 Merthsoft.2** extends the 700 ms ARP/SEL hold gesture to manually played arpeggios
+with CHORD OFF. Keys stay physically held during capture; releasing them preserves the
+arp pool. A second button hold toggles latch off without cutting physically held notes.
+Generated chord and modifier latch behavior remains covered by real UI/audio tests.
+
 ## Upstream 2.5 integration
 
 Release **2.5 Merthsoft.1** incorporates upstream `fa9ce57` while retaining the Android

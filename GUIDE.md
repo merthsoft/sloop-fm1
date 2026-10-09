@@ -557,7 +557,7 @@ Tap **SEL** twice (or SEL, then SELECT) for **SEL 2**:
 | KNOB 1 **TRN** | transpose the track, ±24 semitones |
 | KNOB 2 **STRUM** | plays a chord's notes one after the other like a strummed guitar, 1–60 ms a note: right = low to high, left = high to low, centre = off. On the keys and on the chord steps the sequencer plays |
 | KNOB 3 **VLEAD** | **ON**: voice leading — each chord is voiced nearest the last one, so a progression moves smoothly instead of jumping |
-| KNOB 4 **LATCH** | **ON**: sustain a keyboard chord after release; the next root replaces it. Outside CHROM, black-key modifiers toggle until pressed again, including with ARP enabled and the root retained. OFF or STOP releases the latched chord. Shares ARP HOLD. Hold an existing chord plus **ARP**, or physical **SEL/SLOOP SCL**, for **700 ms** to toggle latch without restarting the chord. |
+| KNOB 4 **LATCH** | **ON**: sustain a keyboard chord after release; the next root replaces it. Outside CHROM, black-key modifiers toggle until pressed again, including with ARP enabled and the root retained. OFF or STOP releases the latched chord. Shares ARP HOLD. Hold an existing chord plus **ARP**, or physical **SEL/SLOOP SCL**, for **700 ms** to toggle latch without restarting the chord. This also captures manually played arpeggio notes with CHORD OFF; a second button hold toggles latch off while the physical keys keep playing. |
 
 ---
 
