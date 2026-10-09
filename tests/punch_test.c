@@ -32,7 +32,7 @@ static void beat_setup(void)
             }
     }
     TDRUM->p[P_SLEN] = 16;
-    punch.req = -1;
+    punch_clear(); punch.layer_seen = 0;
     punch.cur = -1;
     punch.g = 0;
     punch.hold = 0;
@@ -54,6 +54,72 @@ static void test_mix(uint32_t b, int32_t *l, int32_t *r)
         l[i] = (tone + nz) * 3;
         r[i] = (tone - nz) * 3;
     }
+}
+
+static uint32_t modifier_render(uint32_t fx, uint32_t keys)
+{
+    uint32_t b, i, hash = 2166136261u, on = FS / CTL, off = on + FS / 2u / CTL;
+    beat_setup(); song.playing = 1; memset(punch_ring, 0, sizeof punch_ring);
+    for (b = 0; b < off + 8u; b++) {
+        int32_t l[CTL], r[CTL], dry_l[CTL], dry_r[CTL];
+        test_mix(b, l, r); memcpy(dry_l, l, sizeof l); memcpy(dry_r, r, sizeof r);
+        if (b == on) { punch.req = (int8_t)fx; punch.black_keys = keys; }
+        if (b == off) punch_clear();
+        punch_process(l, r, CTL);
+        clk_pos = (clk_pos + CTL * (uint32_t)song.g[G_BPM]) % BEAT_U;
+        for (i = 0; i < CTL; i++) {
+            assert(l[i] > -(1 << 22) && l[i] < (1 << 22) && r[i] > -(1 << 22) && r[i] < (1 << 22));
+            if (b >= on && b < off) hash = (hash ^ (uint32_t)l[i]) * 16777619u;
+            if (b >= off + 3u) assert(l[i] == dry_l[i] && r[i] == dry_r[i]);
+        }
+    }
+    assert(punch.cur == -1); return hash;
+}
+static void modifier_tests(void)
+{
+    static const uint32_t keys[] = {0, 1u<<1, 1u<<3, 1u<<5, 1u<<8, 1u<<10, 1u<<13,
+        (1u<<1)|(1u<<3), (1u<<8)|(1u<<10), (1u<<3)|(1u<<5)|(1u<<10)|(1u<<13)};
+    uint32_t hashes[16][sizeof keys / sizeof keys[0]], f, m;
+    for (f = 0; f < PUNCH_NFX; f++) {
+        for (m = 0; m < sizeof keys / sizeof keys[0]; m++) hashes[f][m] = modifier_render(f, keys[m]);
+        assert(hashes[f][0] == hashes[f][7]); /* opposing rates cancel */
+        assert(hashes[f][0] == hashes[f][8]); /* opposing strengths cancel */
+        assert(hashes[f][0] != hashes[f][6]); /* blend audible for every effect */
+    }
+    assert(hashes[PX_LOOP16][0] != hashes[PX_LOOP16][1] && hashes[PX_LOOP16][0] != hashes[PX_LOOP16][2]);
+    assert(hashes[PX_LOOP16][0] != hashes[PX_LOOP16][3]);
+    assert(hashes[PX_CRUSH][0] != hashes[PX_CRUSH][4] && hashes[PX_CRUSH][0] != hashes[PX_CRUSH][5]);
+    puts("punch modifiers: 16 effects x 10 combinations, bounded audio, opposing controls, dry cleanup and audible rate/triplet/intensity/blend PASS");
+    beat_setup(); song.playing = 0; song.rec = 1; song.sel = 0;
+    fm1_in.notes = 0; events_block(CTL);
+    ly_bit[LY_FX] = 1u << 2; fm1_in.buttons = ly_bit[LY_FX];
+    fm1_in.notes = 1u; events_block(CTL); assert(punch.req == PX_LOOP4);
+    fm1_in.notes |= (1u << 8) | (1u << 20); events_block(CTL); assert(punch_mods() == PM_SOFT);
+    fm1_in.notes &= ~(1u << 8); events_block(CTL); assert(punch_mods() == PM_SOFT);
+    fm1_in.notes = 1u; events_block(CTL); assert(!punch_mods() && punch.req == PX_LOOP4);
+    fm1_in.notes |= 1u << 15; events_block(CTL); assert(punch.latch);
+    fm1_in.notes = 0; events_block(CTL); assert(punch.req == PX_LOOP4 && !punch.keybit);
+    fm1_in.buttons = 0; events_block(CTL); assert(punch.req == PX_LOOP4 && punch.latch);
+    fm1_in.buttons = ly_bit[LY_FX]; fm1_in.notes = 1u << 17; events_block(CTL);
+    assert(punch.retrigger); /* action key does not choose another effect */
+    { int32_t l[CTL] = {0}, r[CTL] = {0};
+      for (m = 0; m < 12; m++) punch_process(l,r,CTL);
+      punch.t = 10000; punch.g = 32767; punch.retrigger = 1;
+      for (m = 0; m < 12; m++) punch_process(l,r,CTL);
+      assert(!punch.retrigger && punch.t < 10000 && punch.req == PX_LOOP4);
+    }
+    fm1_in.notes = 1u << 13; events_block(CTL); assert(punch_mods() == PM_BLEND);
+    fm1_in.buttons = 0; events_block(CTL); assert(!punch_mods() && punch.latch);
+    fm1_in.notes = 0; events_block(CTL);
+    fm1_in.buttons = ly_bit[LY_FX]; fm1_in.notes = 1u << 15; events_block(CTL);
+    assert(!punch.latch && punch.req == -1);
+    fm1_in.notes = 0; events_block(CTL);
+    fm1_in.notes = 1u; events_block(CTL); fm1_in.notes |= 1u << 15; events_block(CTL);
+    assert(punch.latch); transport_req = 2; events_block(CTL);
+    assert(!punch.latch && punch.req == -1 && !punch_mods());
+    assert(!trk[0].step[0].n && !trk[0].v[0].active);
+    fm1_in.notes = 0; fm1_in.buttons = 0; events_block(CTL); song.rec = 0;
+    puts("punch controls: latched key/FX release, retrigger, momentary cleanup, toggle off and STOP; no synth notes or recording PASS");
 }
 
 int main(int argc, char **argv)
@@ -111,6 +177,7 @@ int main(int argc, char **argv)
         transport_req = 2;
         events_block(CTL);
     }
+    modifier_tests();
     if (f) {   /* demo: one beat dry, then each effect for one beat with a beat dry between */
         uint32_t beat = FS / 2u / CTL, b, total = beat * (1u + 2u * PUNCH_NFX);
         static int32_t blk[CTL * 2u];

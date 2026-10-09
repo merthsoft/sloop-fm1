@@ -571,6 +571,7 @@ static void layer_knobs(uint32_t layer)
 /* 16 tiles (the white keys, 4 x 4) under a title band, the knobs' dials at the bottom */
 typedef struct {
     char lab[8];
+    const char *hint;            /* FX: the adjacent black key's modifier */
     uint16_t bg, fg, top;        /* fill, text, the 3-pixel top band (0 = none) */
     uint8_t marks;               /* small marks under the label (a ratchet), 0 = none */
     uint8_t tag;                 /* a dot in the top right corner (a nudge or a lock on the step), 0 = none */
@@ -583,6 +584,7 @@ static void tiles_draw(const tile_t *tl, uint32_t *cache)
     for (r = 0; r < 16u; r++)
         sig = studio_hash(sig * 31u + tl[r].bg * 3u + tl[r].fg * 5u + tl[r].top * 7u + tl[r].marks + tl[r].tag * 11u + tl[r].cond * 13u,
                           tl[r].lab);
+    for (r = 0; r < 16u; r++) sig = studio_hash(sig, tl[r].hint ? tl[r].hint : "");
     if (!ui.force && sig == *cache)
         return;
     *cache = sig;
@@ -595,7 +597,8 @@ static void tiles_draw(const tile_t *tl, uint32_t *cache)
             cv_rect(x, 2, 56, 32, t->bg);
             if (t->top)
                 cv_rect(x, 2, 56, 3, t->top);
-            te_text_c(x + 28, 9, t->lab, t->fg);
+            te_text_c(x + 28, t->hint ? 4 : 9, t->lab, t->fg);
+            if (t->hint) te_text_c(x + 28, 19, t->hint, t->fg);
             for (m = 0; m < t->marks; m++)
                 cv_rect(x + 22 + (int32_t)m * 5, 27, 3, 3, t->fg);
             if (t->tag)
@@ -672,11 +675,15 @@ static void layer_screen_draw(void)
     switch (layer) {
     case LY_FX:                                         /* the 16 punch-in effects */
         col = TE_DRUM;
-        str_cpy(sub, "hold + key", sizeof sub);
+        str_cpy(sub, punch.latch ? "latched" : "black key mods", sizeof sub);
         for (i = 0; i < 16u; i++) {
             static const char *const PSHORT[16] = {"loop 4", "loop 8", "loop16", "loop32", "stutt", "rev", "stop", "half",
                                                    "low", "high", "phone", "crush", "alias", "gate", "echo", "wobble"};
+            static const char *const hints[16] = {"F# slow", "G# fast", "A# trip", 0,
+                "C# soft", "D# hard", 0, "F# mix", "G# lat", "A# rst", 0,
+                "C# soft", "D# hard", 0, "F# mix", 0};
             int on = punch.req == (int8_t)i;
+            tl[i].hint = hints[i];
             str_cpy(tl[i].lab, PSHORT[i], 8);
             tl[i].bg = on ? C_WHITE : TE_G1;
             tl[i].fg = on ? C_BLACK : TE_G4;

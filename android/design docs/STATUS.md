@@ -5,6 +5,12 @@ future design contracts; dated release/handoff/test results remain historical ev
 
 ## Latest firmware
 
+**2.5 Merthsoft.3** adds black-key punch controls: Slower/Faster, Triplet, Gentle/Extreme,
+Blend, Latch and Retrigger. Momentary controls clear on FX exit; latch survives key/layer
+release and clears on toggle or STOP. Controls retain physical/remote FX priority and do
+not emit or record synth notes. FX tiles show mappings. See [component design](../../firmware/PUNCH-FX-DESIGN.md).
+
+
 **2.5 Merthsoft.2** extends the 700 ms ARP/SEL hold gesture to manually played arpeggios
 with CHORD OFF. Keys stay physically held during capture; releasing them preserves the
 arp pool. A second button hold toggles latch off without cutting physically held notes.

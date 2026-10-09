@@ -1570,7 +1570,7 @@ static void key_down(uint32_t k)
         if (fx >= 0 && fx < (int32_t)PUNCH_NFX) {
             punch.req = (int8_t)fx;
             punch.keybit = 1u << k;
-        }
+        } else punch_modifier_event(k, 1);
         return;
     }
     case LY_STEP:
@@ -1687,8 +1687,9 @@ static void key_up(uint32_t k)
     case KS_FX:
         if (punch.keybit == 1u << k) {                /* its key is up: the mix comes back */
             punch.keybit = 0;
-            punch.req = -1;
+            if (!punch.latch) punch.req = -1;
         }
+        if (punch_modifier(k)) punch_modifier_event(k, 0);
         return;
     case KS_UI:
         lk_push(kb_nt[k][0], k, 0);
@@ -1800,6 +1801,15 @@ static void groove_preview_block(uint32_t n)
 static void keyboard_block(void)
 {
     uint32_t cur = fm1_in.notes, ch = cur ^ kb_prev, k, r;
+    { /* Leaving FX clears momentary controls; explicitly latched FX survive. */
+        uint32_t held = (layer_buttons() & ly_bit[LY_FX]) != 0u;
+        if (!held && punch.layer_seen) {
+            punch.black_keys = 0;
+            punch.keybit = 0;
+            if (!punch.latch) punch.req = -1;
+        }
+        punch.layer_seen = (uint8_t)held;
+    }
     for (k = 0; k < NPART; k++)
         if (!trk[k].p[P_AHOLD] || !trk[k].p[P_CHORD]) {
             chord_latch_mods[k] = 0;
@@ -2021,6 +2031,7 @@ static void seq_release(track_t *t)
 static void seq_stop(void)
 {
     groove_preview.active = 0;
+    punch_clear();
     perf_reset();
     uint32_t i;
 #if FELUCCA_ARRANGER
@@ -2542,7 +2553,7 @@ static void events_block(uint32_t n)
     fill_now = (uint8_t)(fill_held || fill_bar_on || perf_fill(fm1_ms));
     pr = panic_req;
     panic_req = 0;
-    if (pr) perf_reset();
+    if (pr) { perf_reset(); punch_clear(); }
     for (i = 0; i < NTRK; i++) {
         track_t *t = &trk[i];
         if ((pr >> i) & 1u) {

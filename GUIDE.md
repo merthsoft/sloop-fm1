@@ -799,6 +799,29 @@ On FX + KNOB 1–3, or GLO → MASTER:
 | 7 · E4 | tape stop | 15 · F5 | echo (dotted 1/8) |
 | 8 · F4 | half speed | 16 · G5 | tape wobble |
 
+### Black-key punch modifiers (2.5 Merthsoft.3)
+
+While **FX** is held (or its layer is locked), select a white-key effect and use:
+
+| Physical black key | Control | Behavior |
+| --- | --- | --- |
+| F♯3 | Slower | Half playback/rate; slower gate, echo timing and filter/wobble movement |
+| G♯3 | Faster | Double playback/rate; faster gate, echo timing and filter/wobble movement |
+| A♯3 | Triplet | Two-thirds loop/gate/echo divisions and faster wobble movement |
+| C♯4 or C♯5 | Gentle (`soft`) | Lower wet amount and gentler filter/crush/alias/gate/echo/wobble settings |
+| D♯4 or D♯5 | Extreme (`hard`) | Deeper filter/crush/alias/gate/echo/wobble settings; full wet amount |
+| F♯4 or F♯5 | Blend (`mix`) | Halve the wet amount; stacks with Gentle |
+| G♯4 | Latch (`lat`) | Toggle the selected effect's latch; releases of its white key and FX keep it running |
+| A♯4 | Retrigger (`rst`) | Fade to dry, recapture/restart the selected effect on its normal grid, then fade back |
+
+Rate, Triplet, intensity and Blend act **while their black keys are held**. Slower + Faster
+cancel; Gentle + Extreme cancel. Repeated Gentle/Extreme/Blend keys remain active until
+all copies are released. Momentary controls clear when you leave FX; Latch remains until
+G♯4 toggles it off or **STOP** clears it. To unlatch, hold FX and press G♯4 again: a still-held
+white key keeps sounding until released. Selecting another white effect replaces the
+latched effect. Latch/Reset need a selected effect; they do not play synth notes or record.
+The FX tiles show the adjacent black-key mappings, and the header/LEDs show latch status.
+
 ### Per track
 
 - **FILTER** (FX → FILTER, or **FX + KNOB 4** for the selected track): one knob, left a low-pass, right a high-pass, centre off. It stays when you change the sound, can be locked on a step, and is saved with the project.

@@ -1,3 +1,24 @@
+# Black-key punch FX verification — October 9, 2026
+
+**2.5 Merthsoft.3** uses the existing ring/DSP with no extra sample buffers.
+- `build/punch-mods-final.log`: all 16 effects x 10 modifier combinations, audible changes,
+  opposing controls, output bounds and exact dry cleanup; real keyboard capture/release,
+  duplicate-key ownership, retrigger, STOP and no recording/synth playback pass.
+- `build/punch-ui.log`: undefined-behavior traps, real UI/audio flow and 20,000-frame fuzz pass.
+- `build/punch-ui-final.log`: final compact-label UI input/render/fuzz passes; rendered
+  `build/host/layer-punch-modifiers.png` was visually inspected for readable labels.
+- `build/punch-remote.log`: actual physical/remote priority, release, expiry and STOP pass.
+- `build/punch-regress.log`: 182 unchanged golden renders, zero health/voice/routing failures,
+  zero host CPU budget failures and zero crashes.
+- `build/merthsoft-3-build.log`: image 579,492 bytes, RAM 97,204/98,304, pool 333,948/344,064;
+  RAM-text 925 instructions/no calls and HAL checks pass. No splash removal required.
+
+UI-visible latch/key state uses volatile reads across ISR/main contexts. No new phone test
+or physical firmware flash is claimed. Earlier target ISR cost and ASan limitations below
+remain unresolved; host CPU checks do not establish target audio deadline margin.
+
+---
+
 # Manual ARP latch verification — October 9, 2026
 
 **2.5 Merthsoft.2**: `build/arp-latch-before.log` reproduces failure to capture three piano

@@ -212,6 +212,16 @@ int main(int argc, char **argv)
     ppm("layer-punch");
     fm1_in.notes = 1u << 4; frame(); check(punch.req == 2, "FX + the 3rd white key: punch effect 3");
     ppm("layer-punch-on");
+    fm1_in.notes |= 1u << 1; frame();
+    check(punch_mods() == PM_SLOW && punch.req == 2, "FX black key: slower modifies the current white effect");
+    fm1_in.notes = (1u << 4) | (1u << 15); frame();
+    check(punch.latch && !punch_mods() && !strcmp(sub_line(), "latched"),
+          "FX latch: visible status and momentary modifier release");
+    ui.force = 1; frame(); ppm("layer-punch-modifiers");
+    release(B_FX); fm1_in.notes = 0; frame();
+    check(punch.req == 2 && punch.latch, "FX latch: releasing FX and piano preserves effect");
+    press(B_FX); frames(12); fm1_in.notes = 1u << 15; frame();
+    check(!punch.latch && punch.req == -1, "FX latch: next G-sharp press clears the effect");
     fm1_in.notes = 0; frame(); check(punch.req == -1, "key up: the mix comes back");
     encs[panel.enc[EN_K2]] = 10; frame(); check(song.g[G_DUST] > 0, "FX + KNOB 2: DUST");
     encs[panel.enc[EN_K1]] = -10; frame(); check(song.g[G_FILT] < 0, "FX + KNOB 1: the filter (low-pass)");
