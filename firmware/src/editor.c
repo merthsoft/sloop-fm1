@@ -30,7 +30,7 @@ enum { ED_INFO = 1, ED_GET, ED_SET, ED_DUMP, ED_DESC, ED_STEP_GET, ED_STEP_SET, 
        ED_FILL_GET, ED_FILL_SET,                                                /* v8: fill conditions */
        ED_PERFORM_STATE,                                                       /* v10: hardware octave offset */
        ED_FM6_GET = 68, ED_FM6_PUT, ED_FM6_LIST, ED_FM6_ERASE };                /* v9: FM6 patches (Felucca's numbers) */
-#define ED_PROTO 13u /* merged performance, grooves, USB return and SYN kits */
+#define ED_PROTO 14u /* merged features plus native musical starter bank */
 
 static uint8_t ed_out[600];
 static uint32_t ed_n;
@@ -607,8 +607,9 @@ static int ed_backup(uint32_t cmd, const uint8_t *a, uint32_t na)   /* no flash:
 #include "editor_performance.c"                       /* v12: host-owned fills and punch FX */
 #include "editor_drum_grooves.c"                      /* v12: shared ROM groove bank */
 #include "editor_usb_playback.c"                      /* v12: USB return gain/mute/diagnostics */
-#include "editor_dsyn.c"                              /* v10: the SYN drum kits (72..76) */
+#include "editor_dsyn.c"                              /* v13: the SYN drum kits (80..84) */
 
+#include "editor_musical_starters.c"
 static void ed_handle(const uint8_t *f, uint32_t n)   /* f: the bytes between F0 and F7 */
 {
     uint32_t cmd = f[3], i;
@@ -621,7 +622,7 @@ static void ed_handle(const uint8_t *f, uint32_t n)   /* f: the bytes between F0
         ed_performance(a, na);
         return;
     }
-    if (ed_drum_grooves_handle(cmd, a, na) || ed_usb_playback_handle(cmd, a, na)) {
+    if (ed_musical_starters_handle(cmd, a, na) || ed_drum_grooves_handle(cmd, a, na) || ed_usb_playback_handle(cmd, a, na)) {
         ed_send();
         return;
     }
@@ -1134,6 +1135,7 @@ static void ed_service(void)
     const uint8_t *p;
     uint32_t n;
     ed_performance_service();
+    ed_starter_service();
     ed_sync();                                             /* v2 pushes (while watched) */
     if (!ota_frame_get(&p, &n) || n < 4u || p[0] != ED_HDR0 || p[1] != ED_HDR1 || p[2] != ED_HDR2)
         return;

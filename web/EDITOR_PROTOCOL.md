@@ -1,4 +1,4 @@
-> **SLOOP 2.5 Merthsoft.1 integration:** INFO reports protocol 13. Commands 72–75 retain the Merthsoft scene reservation, remote performance, groove bank and USB playback meanings. DRUM SYNTH commands use 80–84 (LIST, GET, PUT, STORE, PLAY). The web editor negotiates these IDs from INFO; upstream protocol 10 still uses 72–76. Earlier protocol sections below describe their original releases.
+> **SLOOP 2.5 Merthsoft.7 integration:** INFO reports protocol 14. Additive command 76 provides the native musical starter bank with leased preview and stopped-only apply; see [wire contract](../docs/firmware/MUSICAL-STARTER-PROTOCOL.md). Commands 72–75 retain the Merthsoft scene reservation, remote performance, groove bank and USB playback meanings. DRUM SYNTH commands use 80–84 (LIST, GET, PUT, STORE, PLAY). The web editor negotiates these IDs from INFO; upstream protocol 10 still uses 72–76. Earlier protocol sections below describe their original releases.
 
 # SLOOP editor protocol (SysEx over USB-MIDI)
 

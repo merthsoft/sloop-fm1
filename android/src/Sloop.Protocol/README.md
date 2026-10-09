@@ -8,8 +8,8 @@ after request setup fault the connection epoch to prevent an ambiguous late repl
 for a subsequent operation. Reconnect before issuing another request. Mutations are not retried.
 
 Typed operations include device metadata/state, WATCH, sample transfer, native patterns,
-FM6 exchange and persistent banks, remote performance, drum grooves and USB return controls.
-Protocol-12 extensions negotiate support; generic MIDI performs no SLOOP queries.
+FM6 exchange and persistent banks, remote performance, drum grooves, leased native musical starters and USB return controls.
+Protocol-14 extensions negotiate support; generic MIDI performs no SLOOP queries.
 Atomic scene command 72 remains a tested client/staging scaffold disabled in production.
 See [performance wire](PERFORMANCE-WIRE.md), [sound banks](SOUND-BANKS.md),
 [groove design](../../../docs/firmware/DRUM-GROOVES-DESIGN.md) and

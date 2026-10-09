@@ -302,6 +302,10 @@ static void step_edit(uint32_t slot, int32_t steps)
     if (is_drum(TSEL))
         return;                                           /* (the drum track: its grid) */
     if (slot == 1u && (fm1_in.buttons & ((1u << panel.btn[B_OCTUP]) | (1u << panel.btn[B_OCTDN])))) {
+        step_octave(steps);
+        return;
+    }
+    if (slot == 2u && (fm1_in.buttons & ((1u << panel.btn[B_OCTUP]) | (1u << panel.btn[B_OCTDN])))) {
         step_move(steps);
         return;
     }
@@ -985,7 +989,7 @@ static void ui_input(void)
             if (!ui.home && cur_page()->scope == SC_STEP &&
                 !song.rec && !rec_wait && !ft_on) {
                 ui.tie_sess = (undo_sess += 4u) | 3u;
-                ui_message(b == B_OCTUP ? "HOLD: 1 TIE 2 MOVE" : "HOLD: 1 REST 2 MOVE");
+                ui_message(b == B_OCTUP ? "HOLD 1 TIE 2 OCT 3 MOVE" : "HOLD 1 REST 2 OCT 3 MOVE");
                 break;
             }
             if ((fm1_in.buttons & both) == both)

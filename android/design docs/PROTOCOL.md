@@ -24,7 +24,7 @@ basic monotonic timing are implemented; timestamped prioritization/coalescing is
 ## Current contract
 
 Source: [editor protocol](../../web/EDITOR_PROTOCOL.md), [editor.c](../../firmware/src/editor.c),
-[usb.c](../../firmware/src/usb.c). Current production protocol is 12. Use INFO and DESC rather than assuming
+[usb.c](../../firmware/src/usb.c). Current production protocol is 14. Command 76 discovers, auditions and applies the native musical starter bank with a short lease; SYN kits remain at 80–84. Use INFO and DESC rather than assuming
 counts, engine order, or engine parameter IDs. Legacy firmware may omit appended fields.
 
 SysEx framing: F0 7D 46 4C command arguments F7. All payload bytes are 7-bit.

@@ -34,4 +34,5 @@
   <Project Path="Sloop.SceneTransaction.Tests/Sloop.SceneTransaction.Tests.csproj" />
   <Project Path="Sloop.SessionSettings.Tests/Sloop.SessionSettings.Tests.csproj" />
   <Project Path="Sloop.SampleLibrary.Tests/Sloop.SampleLibrary.Tests.csproj" />
+  <Project Path="Sloop.MusicalStarters.Tests/Sloop.MusicalStarters.Tests.csproj" />
 </Solution>

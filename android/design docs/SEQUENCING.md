@@ -289,3 +289,13 @@ TIE retains the snapshot; REST and rejected fill steps clear it even with HOLD e
 Legacy NOTE/PLAY and ARP OFF keep direct native step playback. Routing shares ORD and
 factory sound recall may reset it. Existing generated velocity/timing and MIDI output rules
 remain. See the [full contract](../../docs/firmware/CHORD-ARPEGGIO-DESIGN.md).
+
+## Firmware musical starter library
+
+Synth tracks in Sequence expose **FM1 musical starter library**. Connect real firmware with protocol 14 and command 76 capabilities, then browse its 24 ROM entries. Starter and scale names are read from firmware; Android does not duplicate musical material or render its own audition. Options include key, scale, octave, CHORD/BASS/ARP NOTES, VLEAD and the existing rotation, offset, syncopation and feel shaping. ARP NOTES applies ordinary sequence notes without configuring the live ARP mode.
+
+Listen auditions on the selected FM1 track's current sound and tempo. Stop before changing options and listening again. Preview changes no stored pattern. Heartbeat renewals use a lightweight connection epoch guarded API without UI Busy refreshes, and stop on dialog close, track/workspace change, Activity stop/destroy or disconnect. Firmware owns a 1500 ms lease and releases preview before new physical/MIDI notes, transport or recording take over. Initial requests also refuse held notes/latches, native browser ownership and stale hardware selection.
+
+Apply asks confirmation for replacing the selected FM1 synth track's 64 steps, timing, fill and locks. Stop transport and release keys first. The app freezes the confirmed options and checks connection identity and selected app track; firmware independently checks actual hardware track. Sound and global tempo stay selected. Hardware EDIT + OCT− undoes the full pattern replacement; Android's existing app pattern undo is separate. A successful apply invalidates the native write baseline: read native hardware patterns before inspecting or editing the new material. An uncertain request outcome requires a hardware read before retrying.
+
+Older devices show an update message and receive no unknown command; simulator/generic MIDI connections cannot advertise this real bank. See [protocol contract](../../docs/firmware/MUSICAL-STARTER-PROTOCOL.md). Native browser page changes use the SELECT encoder, preserve audition across main/rhythm/pitch, and differ from the physical SEL button.

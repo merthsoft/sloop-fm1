@@ -67,6 +67,8 @@ $CC -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/seq_arp_test" test
 run "sequencer-fed arpeggio: source ownership, microtiming, latch and generated MIDI cleanup" "$OUT/seq_arp_test"
 $CC -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/seq_arp_modes_test" tests/seq_arp_modes_test.c -lm
 run "sequencer arpeggio: four-note chord plus fifteen ties, every runtime mode, generated MIDI grid" "$OUT/seq_arp_modes_test"
+$CC -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/seq_arp_expression_test" tests/seq_arp_expression_test.c -lm
+run "arpeggio expression: source velocities, octave collisions, pulse, recording and preview takeover" "$OUT/seq_arp_expression_test"
 $CC -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/seq_navigation_test" tests/seq_navigation_test.c -lm
 run "native step painting/moves, record snap controls, SEQ navigation and SNOTE arp modes" "$OUT/seq_navigation_test"
 
@@ -91,6 +93,8 @@ $CC -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/sequence_starters_
 run "musical browser: all scales, pitch controls, audition, hold apply and complete undo" "$OUT/sequence_starters_ui_test" "$OUT"
 $CC -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/editor_drum_grooves_test" tests/editor_drum_grooves_test.c -lm
 run "phone drum grooves: capabilities, malformed requests, confirmation and undo" "$OUT/editor_drum_grooves_test"
+$CC -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/editor_musical_starters_test" tests/editor_musical_starters_test.c -lm
+run "phone musical starters: discovery, leased audition, takeover, apply and undo" "$OUT/editor_musical_starters_test"
 $CC -O2 -Wall -Wextra -o "$OUT/harmony_owners_test" tests/harmony_owners_test.c firmware/src/harmony_owners.c
 run "inactive harmony foundation: shared-owner note transitions" "$OUT/harmony_owners_test"
 

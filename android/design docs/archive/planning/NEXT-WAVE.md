@@ -1,5 +1,7 @@
 # Next implementation wave — October 8, 2026
 
+> Reconciled October 9, 2026: This assignment wave is complete. Subsequent Merthsoft.7 work integrates phone musical starters, external MIDI input and arp expression; [STATUS](../../STATUS.md) owns remaining work.
+
 Integration checkpoint: five Android slices are integrated, including persistence, shared
 protections and audition lifecycle recovery. Hardware scene transaction scaffolding is
 validated but compile-disabled pending complete engine hooks. See WAVE-INTEGRATION.md.

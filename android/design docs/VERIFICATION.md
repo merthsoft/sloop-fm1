@@ -1,3 +1,19 @@
+# Integrated Merthsoft.7 — October 9, 2026
+
+- Combined target passes image/RAM/pool bounds, HAL register access and RAM-text checks: image 574,480; static RAM 97,412/98,304; pool 333,948/344,064; RAM text 925 instructions/no calls. Static headroom is 892 bytes; this is separate from the 10,116-byte remaining pool budget.
+- `build/merthsoft7-android-build.log`: complete solution and signed APK, zero warnings/errors. `build/android-domain-integration7/results.json`: all 27 runners pass, including external MIDI ownership/timed cancellation and 306 musical starter protocol checks. Storage runners execute outside the sandbox because atomic temporary-file moves are restricted there; this does not change their assertions.
+- `build/host/seq_navigation-integration7.log`: real physical held-OCT gestures for octave editing and knob-3 moves, own-tie shortening at pattern end, lock collision precedence, exact metadata undo/redo, interval-preserving MIDI bounds, retained tie/rest paint and independent recording snap.
+- `build/host/seq_arp_expression-integration7.log` and `seq2-integration7.log`: live/sequence velocity, selectors, PULSE collisions, release/route/tie/recording lifecycles and retained sequencer behavior.
+- `build/host/sequence_starters_ui-integration7.log`: preview state is byte-identical across internal SELECT-knob page navigation; musical changes still release audition. Entry, hold, replacement, metadata undo and transport/physical takeover checks retained.
+- `build/host/editor_musical_starters-integration7.log`: real production generator, request validation, leased audition, disconnect/reset/expiry, MIDI and physical takeover, held-input refusal, per-track panic bookkeeping, stale selection and hardware undo. Command 74 is independently retained in the chat's focused check.
+- `build/host/ui_pages-integration7.log`: broad UI/audio regression and 20,000-frame fuzz pass. `build/merthsoft7-web.log`: browser protocol/updater tests pass; both protocol 13 and 14 relocate SYN commands to 80–84.
+- `build/merthsoft7-budget.log`: inherited target ISR static budget still fails (34,943 versus 174); previous Merthsoft.6 baseline was 34,612. No budget thresholds were changed. These static counts are not measured real-time deadline evidence. New expression storage is bounded; memory/pool checks are not a complete stack/high-water measurement.
+- Signed APK installed on Pixel serial 36121JEHN07361. Cold launch returns PID 11731; no fatal crash in filtered AndroidRuntime/DOTNET/monodroid log. System UI hierarchy confirms the phone is locked, so new screen interaction, controller hardware input and phone/FM1 round-trip audition are not claimed. Existing hardware acceptance remains accepted for earlier behavior.
+- Native README frames regenerated from the current host UI. Existing October 9 fresh Pixel screenshots remain the earlier README capture checkpoint. Local documentation links/images checked; only existing GitHub-relative issues/releases links are outside the filesystem.
+- Installer served at `http://127.0.0.1:8793/webapp/installer/`, HTTP 200 and version 2.5 Merthsoft.7 verified. Package SHA-256 `5383f87299acb314bda595a634879ae75aa1de2fd21ad70d5829db5bdd9c0c30`.
+
+## Merthsoft.6 checkpoint
+
 # Tie/rest painting and native starters — October 9, 2026
 
 **2.5 Merthsoft.6** target build passes: image 571,472 bytes, RAM 97,348/98,304,

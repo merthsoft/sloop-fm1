@@ -87,6 +87,24 @@ int main(int argc,char **argv)
     assert(!sequence_browser&&cur_page()->scope==SC_RECORD);
     ui.page=(uint8_t)i;page_entered();
     tap(B_OCTDN);assert(sequence_preview.active);
+    sequence_preview_block(0);
+    assert(sequence_preview.n);
+    {
+        /* SELECT changes the controls in view, not audition ownership or phase. */
+        uint8_t saved[sizeof sequence_preview];
+        memcpy(saved,&sequence_preview,sizeof saved);
+        for(uint32_t page=1;page<=2;page++) {
+            encs[panel.enc[EN_SELECT]]=1;sequence_screen_input(0,0);
+            assert(sequence_page==page&&!memcmp(saved,&sequence_preview,sizeof saved));
+        }
+        for(int page=1;page>=0;page--) {
+            encs[panel.enc[EN_SELECT]]=-1;sequence_screen_input(0,0);
+            assert(sequence_page==page&&!memcmp(saved,&sequence_preview,sizeof saved));
+        }
+        encs[panel.enc[EN_K2]]=1;sequence_screen_input(0,0);
+        assert(!sequence_preview.active&&!sequence_preview.n);
+    }
+    tap(B_OCTDN);assert(sequence_preview.active);
     puts("sequence UI: physical listen PASS");fflush(stdout);
     tap(B_PLAY);assert(song.playing&&!sequence_preview.active&&!sequence_browser);
     tap(B_PLAY);assert(!song.playing);

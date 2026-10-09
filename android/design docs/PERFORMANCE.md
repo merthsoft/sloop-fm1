@@ -258,3 +258,54 @@ Shared engine/editor and Activity/connection lifecycle hooks remain parent integ
 their exact instructions and wire contract are in
 [PERFORMANCE-WIRE.md](../src/Sloop.Protocol/PERFORMANCE-WIRE.md). No phone/FM1 acceptance
 or new measured audio deadline claim is made by these host-only results.
+
+## External controller input — 2026-10-09
+
+Perform's External controller button enables a separate receive-only Android MIDI 1
+source with explicit device and output-port selection. Default is off. Literal mode
+preserves controller pitches and note-on velocity, routing all incoming source
+channels to Perform's selected track (or generic output-channel override). It uses
+block notes regardless of touch surface/style; no app key/octave transposition occurs.
+
+Chord-root mode accepts exact pitch classes in the selected seven-note harmony scale,
+uses the controller root's register, current key/scale, chord joystick quality,
+inversion, play style, tempo/division/strum timing, and optional bass track. Major/minor
+pentatonic use major/natural-minor harmony like touch chords. Chromatic roots and the
+drum track produce no chord. This bounded mode does not implement controller latch,
+automatic voice leading, octave-follow transposition, MIDI clock, pitch bend,
+aftertouch, arbitrary CC mapping, or a general chromatic harmony engine. Held controller
+voicings stay at their attack-time settings; joystick changes affect the next attack.
+
+The shared PerformancePlayer owns external notes under external:channel:pitch owners,
+so touch owners and overlapping chords retain shared pitches. Incoming velocities are
+preserved for fresh audible attacks; a pitch already sounding from another owner does
+not retrigger/change velocity. Repeated note-ons are counted with one sounding owner
+and need matching releases; sustain is per incoming source channel. Note-on velocity
+zero is release. CC64, CC120, CC123 and CC121 support sustain, all sound off, all notes
+off, and pedal reset respectively. CC120/123 release that source channel immediately,
+including sustained notes. Note-off velocity is not forwarded (existing player emits 0).
+
+A byte-stream decoder handles fragments, running status, interleaved realtime and
+ignored SysEx/system messages. Input packets are copied and queued on the main Handler;
+no workspace redraw occurs on MIDI arrival and no UI lock surrounds output. At most
+64 callback batches can be pending; overflow disables input and releases its owners.
+Reset discards queued batches and partial decoder state. Track/workspace/mode/settings
+changes and release clear ownership; octave register revoice also clears controller
+notes. Output connection session changes and backgrounding close input, pending opens time out
+or are invalidated, and device removal/flush release notes. New playing requires a
+fresh attack; stale releases cannot release touch owners. Timed strums/arps/repeats
+cancel through PerformancePlayer. Capture observes resulting output notes via the
+existing performer, with the same overlap/velocity limitations as touch recording.
+
+Integration: MainActivity.MidiInput.cs owns UI and controller routing;
+Services/AndroidMidiInput.cs owns discovery/open/removal/receive and exposes the
+read-only Fm1Connection.MidiDestinationDeviceId and internal MidiDestinationSession via a partial. PerformEditor calls
+AddMidiInputControl, ResetMidiInputNotes in StopPerformance/register revoice.
+MainActivity synchronizes session identity in OnConnectionChanged, closes input in OnStop and disposes in OnDestroy. Busy/status transitions reset notes through StopPerformance but retain the input port; incoming input is suppressed while CanPerform is false.
+Other audition/route integrations must call StopPerformance before taking the output;
+no Sequence or firmware preview code is changed by this component.
+
+Hardware-free checks: Sloop.ExternalMidiInput.Tests covers decoder fragmentation,
+running status, realtime/SysEx/system common, velocity-zero release, sustain/reset,
+repeated/shared touch notes, per-source channel cancellation, velocity preservation,
+root-register/key/chord quality and timed strum cancellation with balanced note-offs.

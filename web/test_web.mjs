@@ -571,7 +571,7 @@ async function editorV5() {
     && names.indexOf("ED_MICRO_GET") + 1 === C.MICRO_GET && names.indexOf("ED_MICRO_SET") + 1 === C.MICRO_SET
     && names.indexOf("ED_FILL_GET") + 1 === C.FILL_GET && names.indexOf("ED_FILL_SET") + 1 === C.FILL_SET
     && /ED_FM6_GET = 68, ED_FM6_PUT, ED_FM6_LIST, ED_FM6_ERASE/.test(ec) && C.FM6_GET === 68 && C.FM6_ERASE === 71
-    && /#define ED_PROTO 13u/.test(ec) && /ed_b\(ED_PROTO\);/.test(ec)
+    && /#define ED_PROTO 14u/.test(ec) && /ed_b\(ED_PROTO\);/.test(ec)
     && /enum \{ ED_DSYN_LIST = 80, ED_DSYN_GET, ED_DSYN_PUT, ED_DSYN_STORE, ED_DSYN_PLAY \};/.test(readFileSync(join(HERE, "../firmware/src/editor_dsyn.c"), "utf8"))
     && C.DSYN_LIST === 72 && C.DSYN_PLAY === 76, "v5..v10: command numbers and INFO == editor.c / editor_dsyn.c");
   const enumNames = (id) => (new RegExp(`${id}\\[\\] = \\{([^}]*)\\}`).exec(pc) || [])[1].split(",").map((x) => x.trim().replace(/"/g, ""));
@@ -1350,7 +1350,7 @@ async function updater() {
   ok(e6 && /official FM-1 V15/.test(e6.message), "fm1pkg.js: only the exact official V15 is accepted (SHA-256)");
 }
 
-async function mergedDsynRouting() {
+async function mergedDsynRouting(protocol = 13) {
   const m = E.makeMockDevice();
   const inp = [...m.access.inputs.values()][0], out = [...m.access.outputs.values()][0];
   const sent = [];
@@ -1360,13 +1360,13 @@ async function mergedDsynRouting() {
   }, { timeout: 300 });
   inp.onmidimessage = (event) => {
     const f = E.unframe(event.data);
-    if (f.cmd === E.CMD.INFO) f.a[f.a.length - 1] = 13;
+    if (f.cmd === E.CMD.INFO) f.a[f.a.length - 1] = protocol;
     else if (f.cmd >= 72 && f.cmd <= 76) f.cmd += 8;
     link.receive(E.frame(f.cmd, f.a));
   };
   try {
     const info = E.parse[E.CMD.INFO](await link.request(E.req.info()));
-    ok(info.proto === 13 && link.protocol === 13, "merged protocol: INFO negotiates SYN command relocation");
+    ok(info.proto === protocol && link.protocol === protocol, `merged protocol ${protocol}: INFO negotiates SYN command relocation`);
     const list = E.parse[E.CMD.DSYN_LIST](await link.request(E.req.dsynList()));
     const kit = E.parse[E.CMD.DSYN_GET](await link.request(E.req.dsynGet(64)));
     await link.request(E.req.dsynSound(0, 0, kit.sounds[0]));
@@ -1390,6 +1390,7 @@ await editorBackup();
 await editor25();
 await editorDsyn();
 await mergedDsynRouting();
+await mergedDsynRouting(14);
 await editorCart();
 editorTabs();
 editorIcons();

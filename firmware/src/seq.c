@@ -45,6 +45,11 @@ static const uint16_t SCALE_MASK[] = {
 /* Separate ownership: live HOLD/physical counts never include sequence pitches.
  * A complete literal snapshot replaces the previous step in one ISR commit. */
 static harmony_seq_source seq_harmony[NPART];
+/* Runtime expression only: indexed alongside existing source pitch lists. */
+static uint8_t arp_live_vel[NPART][16], arp_seq_vel[NPART][4];
+static uint8_t seq_direct_vel[NPART][4];
+_Static_assert(sizeof arp_live_vel + sizeof arp_seq_vel + sizeof seq_direct_vel == 72,
+               "bounded arp expression RAM");
 static int seq_arp_route(const track_t *t)
 { return !is_drum(t) && t->p[P_AMODE] && t->p[P_AORDER] >= AORDER_SEQ_NOTE; }
 static void seq_harmony_clear(track_t *t)
@@ -1004,23 +1009,29 @@ static void erase_now(track_t *t)             /* a key just went down */
 static int erasing(const track_t *t) { return trk_index(t) == er_trk && (er_lanes || er_notes[0] || er_notes[1] || er_notes[2] || er_notes[3]); }
 
 /* ------------------------------------------------------------- arp --- */
-static void arp_add(track_t *t, uint32_t note)
+static void arp_add_velocity(track_t *t, uint32_t note, uint32_t vel)
 {
     uint32_t i;
     if (t->p[P_AHOLD] && t->arp_phys == 0u)
         t->nheld = 0;                               /* new chord replaces the latched one */
     t->arp_phys++;                                  /* every key-down: arp_remove counts every key-up */
     for (i = 0; i < t->nheld; i++)
-        if (t->held[i] == note)
-            return;                                 /* repeated note-on: not a new note */
+        if (t->held[i] == note) {
+            arp_live_vel[trk_index(t)][i] = (uint8_t)vel;
+            return;
+        }                                           /* latest live attack, same membership */
     t->arp_shuffle_n = 0;
-    if (t->nheld < 16u)
+    if (t->nheld < 16u) {
+        arp_live_vel[trk_index(t)][t->nheld] = (uint8_t)vel;
         t->held[t->nheld++] = (uint8_t)note;
+    }
     if (t->nheld == 1u) {
         t->arp_new = 1;                             /* the first note: now (or on the grid just ahead) */
         t->arp_idx = 0xFFFFFFFFu;
     }
 }
+
+static void arp_add(track_t *t, uint32_t note) { arp_add_velocity(t, note, 100); }
 
 static void arp_remove(track_t *t, uint32_t note)
 {
@@ -1030,26 +1041,35 @@ static void arp_remove(track_t *t, uint32_t note)
     if (t->p[P_AHOLD])
         return;
     for (i = 0; i < t->nheld; i++)
-        if (t->held[i] != note)
+        if (t->held[i] != note) {
+            arp_live_vel[trk_index(t)][k] = arp_live_vel[trk_index(t)][i];
             t->held[k++] = t->held[i];
+        }
     t->nheld = (uint8_t)k;
     t->arp_shuffle_n = 0;
 }
 
 /* Build the bounded octave-expanded pool for note selection and chord pulses. */
-static __attribute__((noinline)) uint32_t arp_list(const track_t *t, uint8_t *list)
+static __attribute__((noinline)) uint32_t arp_expression_list(const track_t *t, uint8_t *list, uint8_t *velocity)
 {
     uint32_t cnt, len = 0, i, j, o;
-    for (i = 0; i < t->nheld; i++)
+    for (i = 0; i < t->nheld; i++) {
         list[i] = t->held[i];
+        velocity[i] = arp_live_vel[trk_index(t)][i];
+    }
     cnt = t->nheld;
     if (seq_arp_route(t)) {
         uint32_t k = trk_index(t);
         /* The existing generator has a 64-tone budget. Sequence pitches come
          * after live press order; at saturation the first 16 unique roots win. */
-        for (i = 0; i < seq_harmony[k].n && cnt < 16u; i++) {
+        for (i = 0; i < seq_harmony[k].n; i++) {
             for (j = 0; j < cnt && list[j] != seq_harmony[k].note[i]; j++) ;
-            if (j == cnt) list[cnt++] = seq_harmony[k].note[i];
+            if (j < cnt) {
+                if (velocity[j] < arp_seq_vel[k][i]) velocity[j] = arp_seq_vel[k][i];
+            } else if (cnt < 16u) {
+                velocity[cnt] = arp_seq_vel[k][i];
+                list[cnt++] = seq_harmony[k].note[i];
+            }
         }
     }
     /* ORD always means press order; pitch-based additions always use sorted notes.
@@ -1058,16 +1078,20 @@ static __attribute__((noinline)) uint32_t arp_list(const track_t *t, uint8_t *li
         (!(t->p[P_AORDER] & 1) || t->p[P_AMODE] >= ARP_OUTSIDE))
         for (i = 1; i < cnt; i++)
             for (j = i; j > 0 && list[j - 1] > list[j]; j--) {
+                uint8_t v = velocity[j]; velocity[j] = velocity[j - 1]; velocity[j - 1] = v;
                 uint8_t x = list[j];
                 list[j] = list[j - 1];
                 list[j - 1] = x;
             }
     for (o = 0; o < (uint32_t)t->p[P_AOCT]; o++)
-        for (i = 0; i < cnt && len < 64u; i++)
+        for (i = 0; i < cnt && len < 64u; i++) {
+            velocity[len] = velocity[i];
             list[len++] = (uint8_t)clamp((int32_t)list[i] + 12 * (int32_t)o, 0, 127);
+        }
     if (t->p[P_AMODE] >= ARP_OUTSIDE)
         for (i = 1; i < len; i++)
             for (j = i; j > 0 && list[j - 1u] > list[j]; j--) {
+                uint8_t v = velocity[j]; velocity[j] = velocity[j - 1]; velocity[j - 1] = v;
                 uint8_t x = list[j];
                 list[j] = list[j - 1u];
                 list[j - 1u] = x;
@@ -1075,12 +1099,15 @@ static __attribute__((noinline)) uint32_t arp_list(const track_t *t, uint8_t *li
     return len;
 }
 
+static uint32_t arp_list(const track_t *t, uint8_t *list)
+{ uint8_t velocity[64]; return arp_expression_list(t, list, velocity); }
+
 /* Keep selectors out of line: inlining their growth can pull mix_block into
  * the target audio ISR and distort its loop budget. */
-static __attribute__((noinline)) uint32_t arp_next(track_t *t)
+static __attribute__((noinline)) uint32_t arp_next_velocity(track_t *t, uint32_t *vel)
 {
-    uint8_t list[64];
-    uint32_t len = arp_list(t, list), i, j;
+    uint8_t list[64], velocity[64];
+    uint32_t len = arp_expression_list(t, list, velocity), i, j;
     if (!len)
         return 0;                                  /* caller normally guards empty input */
     t->arp_idx++;
@@ -1152,8 +1179,12 @@ static __attribute__((noinline)) uint32_t arp_next(track_t *t)
         j = t->arp_idx % len;
         break;
     }
+    *vel = velocity[j];
     return list[j];
 }
+
+static __attribute__((noinline)) uint32_t arp_next(track_t *t)
+{ uint32_t vel; return arp_next_velocity(t, &vel); }
 
 static void arp_release(track_t *t)
 {
@@ -1165,13 +1196,13 @@ static void arp_release(track_t *t)
     t->arp_n = 0;
 }
 
-static void arp_emit(track_t *t, uint32_t note)
+static void arp_emit(track_t *t, uint32_t note, uint32_t vel)
 {
     t->arp_notes[t->arp_n++] = (uint8_t)note;
-    trk_note_on(t, note, 100);
-    seq_out_on(t, note, 100);
+    trk_note_on(t, note, vel);
+    seq_out_on(t, note, vel);
     if (((song.rec >> trk_index(t)) & 1u) && song.playing)
-        rec_note(t, note, 100, 0, 0);
+        rec_note(t, note, vel, 0, 0);
 }
 
 /* the arp, once per block: on the transport's grid of RATE (with its SWING) while playing, from the
@@ -1225,13 +1256,19 @@ static void arp_tick(track_t *t, uint32_t adv)
     if ((uint32_t)(rng() & 127u) <= (uint32_t)t->p[P_APROB]) {
         t->arp_off = slen * (uint32_t)t->p[P_AGATE] / 128u;
         if (t->p[P_AMODE] == ARP_PULSE) {
-            uint8_t list[64];
-            uint32_t i, len = arp_list(t, list);
-            for (i = 0; i < len; i++)
-                if (!i || list[i] != list[i - 1u])   /* octave overlap / upper-edge clamp: one pitch once */
-                    arp_emit(t, list[i]);
+            uint8_t list[64], velocity[64];
+            uint32_t i, len = arp_expression_list(t, list, velocity);
+            for (i = 0; i < len; i++) {
+                uint32_t j, vel = velocity[i];
+                for (j = 0; j < i && list[j] != list[i]; j++) ;
+                if (j != i) continue;               /* one pulse attack per expanded pitch */
+                for (j = i + 1u; j < len; j++)
+                    if (list[j] == list[i] && vel < velocity[j]) vel = velocity[j];
+                arp_emit(t, list[i], vel);           /* strongest octave overlap/clamped tone */
+            }
         } else {
-            arp_emit(t, arp_next(t));
+            uint32_t vel, note = arp_next_velocity(t, &vel);
+            arp_emit(t, note, vel);
         }
     }
 }
@@ -1262,6 +1299,7 @@ static const uint8_t *in_chord;                    /* input_on's note is note in
 static uint32_t in_chord_n, in_chord_i;
 static void input_on(track_t *t, uint32_t note, uint32_t vel)
 {
+    if (sequence_preview_end) sequence_preview_end();
     if (is_drum(t)) {                             /* (a GM note on the drum track: its lane) */
         drum_input(lane_of_note(note), vel_lvl(vel), 0, 1);
         return;
@@ -1271,7 +1309,7 @@ static void input_on(track_t *t, uint32_t note, uint32_t vel)
     if (ft_on && t == &trk[ft_trk % NTRK])
         ft_note_on(note, vel);
     if (t->p[P_AMODE]) {
-        arp_add(t, note);                         /* (the arp records the notes it plays) */
+        arp_add_velocity(t, note, vel);                /* (the arp records the notes it plays) */
         return;
     }
     if (((song.rec >> trk_index(t)) & 1u) && song.playing)
@@ -2086,7 +2124,7 @@ static uint32_t step_vel(const step_t *s, uint32_t i)
 /* play one synth step: TIE extends, REST releases, NOTE (re)triggers; a SLIDE on the previous
  * step makes this one legato with a glide (acid style). skip: bit k = note k already sounds
  * from live recording (not triggered, not released here). len: the step's length (units). */
-static void seq_step(track_t *t, const step_t *s, uint32_t slen, uint32_t skip)
+static void seq_step_velocity(track_t *t, const step_t *s, uint32_t slen, uint32_t skip, const uint8_t *velocity)
 {
     uint32_t i, j, gate = slen * (uint32_t)t->p[P_SGATE] / 128u;
     uint32_t slide_in = t->seq_hold && t->seq_n;
@@ -2104,7 +2142,11 @@ static void seq_step(track_t *t, const step_t *s, uint32_t slen, uint32_t skip)
             for (i = 0; i < s->n && i < 4u; i++) {
                 if (s->note[i] > 127u) continue;
                 for (j = 0; j < seq_harmony[k].n && seq_harmony[k].note[j] != s->note[i]; j++) ;
-                if (j == seq_harmony[k].n) seq_harmony[k].note[seq_harmony[k].n++] = s->note[i];
+                uint32_t vel = velocity ? velocity[i] : step_vel(s, i);
+                if (j == seq_harmony[k].n) {
+                    arp_seq_vel[k][j] = (uint8_t)vel;
+                    seq_harmony[k].note[seq_harmony[k].n++] = s->note[i];
+                } else if (arp_seq_vel[k][j] < vel) arp_seq_vel[k][j] = (uint8_t)vel;
             }
         }
         t->arp_shuffle_n = 0;
@@ -2138,11 +2180,11 @@ static void seq_step(track_t *t, const step_t *s, uint32_t slen, uint32_t skip)
     for (i = 0; i < s->n; i++)
         if (!((skip >> i) & 1u)) {
             if (slide_in)
-                trk_note_on(t, s->note[i], step_vel(s, i));
+                trk_note_on(t, s->note[i], (velocity ? velocity[i] : step_vel(s, i)));
             else                                    /* (STRUM: a chord's notes one after the other) */
-                trk_note_chord(t, s->note, s->n, i, step_vel(s, i));
+                trk_note_chord(t, s->note, s->n, i, (velocity ? velocity[i] : step_vel(s, i)));
             if (!slide_in || !(mo_set[trk_index(t) % NTRK][s->note[i] >> 5] & (1u << (s->note[i] & 31u))))
-                seq_out_on(t, s->note[i], step_vel(s, i));   /* (a slide into the same note: one MIDI note) */
+                seq_out_on(t, s->note[i], (velocity ? velocity[i] : step_vel(s, i)));   /* (a slide into the same note: one MIDI note) */
         }
     if (slide_in)                                   /* release what is not held over */
         for (i = 0; i < t->seq_n; i++) {
@@ -2155,11 +2197,16 @@ static void seq_step(track_t *t, const step_t *s, uint32_t slen, uint32_t skip)
         }
     t->seq_n = 0;
     for (i = 0; i < s->n; i++)
-        if (!((skip >> i) & 1u))
+        if (!((skip >> i) & 1u)) {
+            seq_direct_vel[trk_index(t)][t->seq_n] = (uint8_t)(velocity ? velocity[i] : step_vel(s, i));
             t->seq_notes[t->seq_n++] = s->note[i];
+        }
     t->seq_off = gate;
     t->seq_hold = !s->rat && ((s->flags & SF_SLIDE) != 0 || next_tie);   /* next step a TIE: keep the notes to it */
 }
+
+static void seq_step(track_t *t, const step_t *s, uint32_t slen, uint32_t skip)
+{ seq_step_velocity(t, s, slen, skip, 0); }
 
 /* play one drum step: each lane a hit (skip: lanes already played by live recording, or rolling) */
 static void drum_step(track_t *t, const dstep_t *s, uint32_t skip)
@@ -2214,8 +2261,10 @@ static void seq_ratchets(track_t *t, uint32_t into, uint32_t slen)
                 t->seq_off = slen / hits * (uint32_t)t->p[P_SGATE] / 128u;
                 for (j = 0; j < t->seq_n && t->seq_notes[j] != s->note[i]; j++)
                     ;
-                if (j == t->seq_n && t->seq_n < 4u)
-                    t->seq_notes[t->seq_n++] = s->note[i];   /* (its gate ends it) */
+                if (j < 4u) seq_direct_vel[trk_index(t)][j] = (uint8_t)step_vel(s, i);
+                if (j == t->seq_n && t->seq_n < 4u) {
+                    t->seq_notes[t->seq_n++] = s->note[i];
+                } /* (its gate ends it) */
             }
         }
     }
@@ -2335,8 +2384,11 @@ static uint8_t midi_sel_on[16][128];                  /* per channel and note: t
 static track_t *midi_route(uint32_t ch, uint32_t note, int on)
 {
     track_t *t = midi_track(ch);
-    if (ch < NPART || (song.g[G_DRCH] && ch + 1u == (uint32_t)song.g[G_DRCH]))
+    if (ch < NPART || (song.g[G_DRCH] && ch + 1u == (uint32_t)song.g[G_DRCH])) {
+        /* Also expose fixed-channel held input to stopped audition guards. */
+        midi_sel_on[ch & 15u][note & 127u] = on ? (uint8_t)(trk_index(t) + 1u) : 0;
         return t;                                     /* a part's own channel, or the drum channel */
+    }
     if (on)
         midi_sel_on[ch & 15u][note & 127u] = (uint8_t)(song.sel + 1u);
     else if (midi_sel_on[ch & 15u][note & 127u]) {
@@ -2573,6 +2625,10 @@ static void events_block(uint32_t n)
             if (i < NPART) { chord_latch_mods[i] = 0; arp_chord_latch_n[i] = 0; }
             arp_release(t);
             trk_all_off(t);
+            for (uint32_t channel = 0; channel < 16; channel++)
+                for (uint32_t pitch = 0; pitch < 128; pitch++)
+                    if (midi_sel_on[channel][pitch] == i + 1u)
+                        midi_sel_on[channel][pitch] = 0;
             t->nheld = 0;
             t->arp_phys = 0;
             t->arp_n = 0;
@@ -2581,30 +2637,15 @@ static void events_block(uint32_t n)
             engine_block(t);                          /* engine switch: fade, then switch (voice.c) */
         if (i < NPART && seq_harmony[i].routed != seq_arp_route(t)) {
             step_t held = {.n = 0};
+            uint8_t velocity[4];
             uint32_t route = (uint32_t)seq_arp_route(t), j;
             /* Transfer the actually sounding source across a route change.
              * Re-reading a TIE after clearing ownership loses its chord until
              * the next NOTE. Do not infer notes from skipped/rest steps. */
             held.n = route ? t->seq_n : seq_harmony[i].n;
-            for (j = 0; j < held.n; j++)
+            for (j = 0; j < held.n; j++) {
                 held.note[j] = route ? t->seq_notes[j] : seq_harmony[i].note[j];
-            if (held.n && !route) {
-                uint32_t back, len = trk_len(t);
-                for (back = 0; back < len; back++) {
-                    const step_t *source = &t->step[(t->seq_idx + len - back) % len];
-                    if (source->time == ST_TIE) continue;
-                    held.vel = source->vel;
-                    for (j = 0; j < held.n; j++) {
-                        uint32_t match;
-                        for (match = 0; match < source->n && match < 4u; match++)
-                            if (source->note[match] == held.note[j]) {
-                                held.lvl |= ((source->lvl >> (2u * match)) & 3u) << (2u * j);
-                                break;
-                            }
-                    }
-                    held.flags = source->flags & SF_ACCENT;
-                    break;
-                }
+                velocity[j] = route ? seq_direct_vel[i][j] : arp_seq_vel[i][j];
             }
             seq_harmony_clear(t);
             seq_release(t);
@@ -2613,7 +2654,7 @@ static void events_block(uint32_t n)
             if (song.playing && held.n) {
                 uint32_t into, slen;
                 trk_grid(t, &into, &slen);
-                seq_step(t, &held, slen, 0);
+                seq_step_velocity(t, &held, slen, 0, velocity);
             } else {
                 /* No sounding source: adopt the current grid normally. */
                 t->seq_abs = SEQ_NONE;
@@ -2660,8 +2701,10 @@ static void events_block(uint32_t n)
                                                        * end what was held when it was set) */
         t = midi_route(ch, d1, st == 0x90u && d2);
         if (is_drum(t)) {
-            if (st == 0x90u && d2)
+            if (st == 0x90u && d2) {
+                if (sequence_preview_end) sequence_preview_end();
                 drum_input(lane_of_note(d1), vel_lvl(d2), 0, 1);
+            }
         } else if (st == 0x90u && d2) {
             input_on(t, d1, d2);
         } else {

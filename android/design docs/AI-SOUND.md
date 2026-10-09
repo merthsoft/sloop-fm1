@@ -31,7 +31,9 @@ they do not execute the firmware codec on hardware or establish audible quality.
 
 Android controls/project references, persistent patch storage and GET/PUT/readback adapters
 are integrated. Hardware RAM Keep/Restore and process-scoped audition recovery are implemented.
-Hardware bank saving, local rendering and optional models remain pending. Audition uses MIDI
+Stopped-only FM6 base-voice bank saving is implemented through the existing bank protocol;
+physical bank-save validation remains outstanding. Local rendering and optional models
+remain pending. Audition uses MIDI
 notes for the current hardware sound. Mono/poly preference is metadata; no track
 allocation changes are made. Effect uses a disclosed glass-bell approximation without
 effects processing. All-carrier brightness edits currently produce a disclosed no-op;

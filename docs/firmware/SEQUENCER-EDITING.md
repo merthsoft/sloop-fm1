@@ -1,6 +1,8 @@
 # Native recording snap and STEP editing
 
-Implemented in 2.5 Merthsoft.6. No wire parameter IDs or project formats change.
+Recording snap and tie/rest painting shipped in 2.5 Merthsoft.6. The controls below
+reflect Merthsoft.7, which adds octave edits, moves event editing to knob 3 and allows
+forward moves into an event's own ties. No wire parameter IDs or project formats change.
 
 ## Painting lengths and silence
 
@@ -14,10 +16,10 @@ drums; other pages retain their normal OCT actions.
 
 ## Moving an event
 
-Hold either OCT button and turn knob 2 left/right to move the selected note/chord
-by whole steps. Selecting a tie finds its preceding onset and moves that entire
-onset/tie chain. Movement clamps at pattern boundaries without wrapping.
-Destination cells overlapping the moving chain are allowed; other cells must be
+Hold either OCT button and turn knob 3 left/right to move the selected note/chord
+by whole steps. Selecting a tie finds its preceding onset and edits that event.
+Movement clamps at pattern boundaries without wrapping.
+Moving forward into the event's own tie run moves its onset later and keeps its original end; the vacated prefix becomes clean rests. Onset timing, conditions and locks move to the new onset, with onset locks taking precedence over matching destination locks. The remaining ties retain their metadata. Other moves shift the entire chain. Destination cells overlapping the moving chain are allowed; other cells must be
 rests without notes, dynamics, flags, locks, fill conditions or timing data.
 Otherwise STEP OCCUPIED leaves the pattern and cursor unchanged.
 
@@ -56,3 +58,7 @@ locks, collision refusal, track isolation and complete metadata undo.
 `tests/seq2_test.c` checks independent eighth/quarter targets, future/past held
 onsets, chord grouping and loop-boundary recording, alongside the existing transport,
 overdub, microtiming and arpeggiator regressions.
+
+## Whole-octave pitch editing
+
+Hold either OCT button and turn knob 2 to shift the selected note/chord in whole octaves. A selected tie resolves to its preceding onset. All pitches move together; MIDI bounds clamp the number of octaves without collapsing intervals. Dynamics, ties, timing, conditions and locks remain intact. One hold shares one undo session with the other STEP gestures. Recording, armed entry, free takes and drums do not use this control; ordinary unmodified knob 2 still edits semitones. OCT taps keep their existing STEP behavior.

@@ -1,5 +1,7 @@
 # Combined integration — 2026-10-07
 
+> Reconciled October 9, 2026: The integration instructions below are historical. Current integration includes FM6 bank saving, phone musical starters, external MIDI input and expressive arpeggios. See [STATUS](../../STATUS.md) and [verification](../../VERIFICATION.md).
+
 All four parallel slices are wired into the Android shell. The solution includes their new
 projects and integration test runners; all earlier uncommitted work is preserved.
 

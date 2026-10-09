@@ -43,7 +43,7 @@ The relevant implementation is in `src/seq.c`, `src/voice.c`, `src/core.h`, `src
 | Arp input | Held notes; local chord expansion feeds this list | Add sequencer and shared-harmony sources |
 | MIDI input | Literal pitches enter `input_on`; local keys expand earlier | Chord-root MIDI input needs the same harmonic transform as local keys |
 | MIDI output | Local keys always emit; generated notes emit in SEQ output mode | Source and generated output need independent routing |
-| Expression | Arp output uses velocity 100 | Preserve input velocity and support accent patterns |
+| Expression | Merthsoft.7 preserves live and sequence attack velocity, including accents, across arp modes and routes | Additional expressive controls remain future work; see [implemented expression](ARP-EXPRESSION.md) |
 | Probability | Failed hit does not call `arp_next` | Make phrase advancement on rests a deliberate policy |
 | Note lifetime | Arp pitch list deduplicates; physical press count is separate | Shared pitches need source ownership |
 | Strum | Internal note starts can be delayed; MIDI starts are emitted by callers immediately | One scheduled event must drive both destinations |
@@ -479,7 +479,15 @@ Validation and integration:
 
 Deferred tradeoffs: full live source/channel/trigger ownership, independent source
 routing/order controls, explicit direct+arp mode, source/generated MIDI aggregation,
-input velocities, scheduled strum output, semantic descriptors and cross-track followers.
+full live-owner velocity arbitration, scheduled strum output, semantic descriptors and cross-track followers.
+
+Implemented expression slice: live MIDI and sequenced per-note dynamics now reach
+all arp modes, octave expansion, PULSE, generated MIDI and recording. Shared
+live/sequence pitches use strongest velocity; route changes transfer sounding
+snapshots across ties. This adds 72 static bytes without changing persistent
+layouts. Detailed policy, overlap/clamp behavior, tests and remaining limitations
+are documented in [ARP-EXPRESSION.md](ARP-EXPRESSION.md). Full source identity and
+semantic chord architecture remain future work.
 
 Combined integration checkpoint: firmware 2.4.15 links with image 580296 bytes and RAM
 93444/98304, unchanged pool and 925-instruction call-free RAM text. HAL checks pass;

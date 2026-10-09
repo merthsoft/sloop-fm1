@@ -55,7 +55,7 @@ static void sequence_screen_draw(void)
         fmt_int(b,sequence_octave + 4); cv_text(4,60,&FONT_S,"OCT",TE_G4);
         cv_text(36,60,&FONT_S,b,C_WHITE);
         cv_text(60,60,&FONT_S,sequence_page == 2 ?
-            (sequence_vlead?"VLEAD ON":"VLEAD OFF") : "SELECT: PAGE",TE_G3);
+            (sequence_vlead?"VLEAD ON":"VLEAD OFF") : "TURN SELECT",TE_G3);
     }
     if (sequence_preview.active) cv_text(188,60,&FONT_S,"PLAY",C_WHITE);
     if (ui.msg_t) { cv_rect(0,0,240,20,C_WHITE); cv_text(4,2,&FONT_S,ui.msg,C_BLACK); }
@@ -69,7 +69,9 @@ static void sequence_screen_input(uint32_t pressed,uint32_t home)
         int32_t next=(int32_t)sequence_page+s;
         if(next<0) { page_walk(-1); return; }
         if(next>2) { page_walk(1); return; }
-        sequence_page=(uint8_t)next; changed=1;
+        /* Browsing controls must not restart or release the running audition. */
+        sequence_page=(uint8_t)next;
+        sequence_confirm=0; sequence_hold_t0=0; ui.force=1;
     }
     for(k=0;k<4;k++) if ((s=panel_enc(EN_K1+k))) {
         if (sequence_page == 2 && k == 0u) {

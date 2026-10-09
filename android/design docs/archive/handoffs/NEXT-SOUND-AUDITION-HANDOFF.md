@@ -1,5 +1,7 @@
 # Sound audition handoff — October 8, 2026
 
+> Reconciled October 9, 2026: Reversible RAM audition and stopped-only FM6 base-voice bank saving are integrated. Physical bank-save validation remains outstanding. See [Sound](../../SOUND.md).
+
 ## Integration follow-up
 
 SoundAuditionRetention.Current now holds the three original baselines for the app process.

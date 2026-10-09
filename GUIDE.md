@@ -459,7 +459,8 @@ There are three ways to enter steps:
 | KNOB 1 **STEP** | moves the cursor |
 | Hold **OCT+** + KNOB 1 **STEP** clockwise | extends after the selected note/chord with ties, one per step; stops at the pattern's end. Turning backward moves without erasing. Undo the whole gesture with EDIT + OCT−. |
 | Hold **OCT−** + KNOB 1 **STEP** clockwise | writes rests into each following step; the starting step stays intact. The same end-stop, backward movement and undo apply. On STEP, the OCT buttons are painting modifiers; use another page to change playing octave. |
-| Hold either **OCT** button + KNOB 2 | moves the selected note/chord and its following ties by whole steps; timing, fill conditions and parameter locks travel with it. Stopped only; occupied destinations are protected. EDIT + OCT−/OCT+ undoes/redoes the complete gesture. |
+| Hold either **OCT** button + KNOB 2 | shifts the selected note/chord by whole octaves; selecting a tie edits its onset. Intervals and metadata stay intact; MIDI bounds limit the shift. |
+| Hold either **OCT** button + KNOB 3 | moves the selected note/chord by whole steps; moving into its own tie run keeps its old end, while other moves shift the full chain. Timing, fill conditions and locks travel with the event. Stopped only; unrelated occupied destinations are protected. EDIT + OCT−/OCT+ undoes/redoes the gesture. |
 | KNOB 2 **NOTE** | transposes the step (an empty step gets your last note) |
 | KNOB 3 **TIME** | **NOTE**, **TIE** (holds the previous note on) or **REST** |
 | KNOB 4 **FLAG** | **–**, **ACC** (accent), **SLD** (slide to the next note), **A+S** (both) |
@@ -1211,12 +1212,12 @@ between direct sequence playback and the arp without waiting for the next NOTE.
 ### Native starter libraries
 
 On a synth track, tap **SEQ** through STEP → PATTERN → RECORD → SEQUENCES → SONG.
-SELECT reaches the same five pages in either direction; SONG is the arrangement
+The SELECT knob reaches the same five pages in either direction; SONG is the arrangement
 screen. SEQUENCES offers 24 four-bar progressions, including classic turns,
 sevenths, gospel, disco, garage, Latin rhythms, house offbeats and funk. Knobs select
 starter, root, scale and CHORD/BASS/ARP NOTES output. A CHR track starts this browser
 in Major without changing its actual scale. Its rhythm page offers rotation, offset,
-syncopation and Feel. The next SELECT position opens **seq pitch**: knob 1 **OCTAVE**,
+syncopation and Feel. The next SELECT knob position opens **seq pitch**: knob 1 **OCTAVE**,
 2 **ROOT**, 3 **SCALE**, 4 **VLEAD**. Octave controls the generated pattern independently
 of the physical playing octave. VLEAD chooses nearby chord inversions, also used by
 ARP NOTES; BASS remains on roots. Preview and Apply use the same pitches.
@@ -1230,3 +1231,9 @@ In either browser, **OCT-** auditions without replacing the pattern. **OCT+** ap
 while stopped; replacing existing work requires another OCT+ press or a 700 ms hold.
 Changing the selection cancels confirmation. Apply produces ordinary editable steps;
 the existing undo restores the replaced steps and their timing/lock metadata.
+
+### Merthsoft.7 STEP shortcuts and companion additions
+
+On synth STEP, hold either OCT button and turn **knob 2** for whole-octave pitch changes, or **knob 3** to move an event left/right. Moving forward into its own tie run shifts the onset later while keeping its end; other moves shift the complete onset/tie chain. Hold OCT+ or OCT− with knob 1 to paint ties/rests. Movements require stopped transport; octave editing preserves intervals and metadata.
+
+Turn the **SELECT knob** within the musical browser to visit sequences, seq rhythm and seq pitch without interrupting audition. The physical SEL button opens chord/scale controls. The Android Sequence workspace can browse the firmware musical bank, audition through FM1, and confirm replacement with the same settings; firmware 2.5 Merthsoft.7 is required. Android Perform offers opt-in external MIDI device/port input for literal keys or bounded scale-root chords. Arpeggio output on FM1 carries live/sequenced attack velocity.

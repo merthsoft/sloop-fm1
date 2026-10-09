@@ -5,6 +5,8 @@ Current native firmware features and their implementation contracts live here;
 existing upstream website artifact, not the current Merthsoft build.
 
 - [Musical sequence starters](SEQUENCE-STARTERS-DESIGN.md)
+- [Phone musical starter protocol](MUSICAL-STARTER-PROTOCOL.md)
+- [Arpeggio expression](ARP-EXPRESSION.md)
 - [Recording snap and STEP editing](SEQUENCER-EDITING.md)
 - [Drum grooves](DRUM-GROOVES-DESIGN.md)
 - [Rhythm shaping](RHYTHM-SHAPING-DESIGN.md)

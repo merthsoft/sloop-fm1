@@ -22,18 +22,45 @@ int main(void)
     paint->micro[11]=-7;step_fill_set(paint,12,FC_FILL);
     assert(lock_set(paint,10,P_LEVEL,88));
     step_t before_move[NSTEP];memcpy(before_move,paint->step,sizeof before_move);
-    press(B_OCTUP);encs[panel.enc[EN_K2]]=2;frame();
-    assert(ui.cursor==12&&paint->step[10].time==ST_REST&&paint->step[11].time==ST_REST);
-    assert(paint->step[12].n==2&&paint->step[13].time==ST_TIE&&paint->step[14].time==ST_TIE);
-    assert(paint->micro[13]==-7&&step_fill(paint,14)==FC_FILL&&step_locked(paint,12));
-    encs[panel.enc[EN_K2]]=-1;frame();assert(ui.cursor==11&&paint->micro[12]==-7);
-    paint->step[14].time=ST_NOTE;paint->step[14].n=1;paint->step[14].note[0]=72;
-    encs[panel.enc[EN_K2]]=1;frame();assert(ui.cursor==11&&paint->step[14].note[0]==72);
-    step_clear(&paint->step[14]);release(B_OCTUP);
+    press(B_OCTUP);encs[panel.enc[EN_K3]]=4;frame();
+    assert(ui.cursor==14&&paint->step[10].time==ST_REST&&paint->step[11].time==ST_REST);
+    assert(paint->step[14].n==2&&paint->step[15].time==ST_TIE&&paint->step[16].time==ST_TIE);
+    assert(paint->micro[15]==-7&&step_fill(paint,16)==FC_FILL&&step_locked(paint,14));
+    encs[panel.enc[EN_K3]]=-1;frame();assert(ui.cursor==13&&paint->micro[14]==-7);
+    paint->step[16].time=ST_NOTE;paint->step[16].n=1;paint->step[16].note[0]=72;
+    encs[panel.enc[EN_K3]]=3;frame();assert(ui.cursor==13&&paint->step[16].note[0]==72);
+    step_clear(&paint->step[16]);release(B_OCTUP);
     assert(undo_swap(0)&&!memcmp(before_move,paint->step,sizeof before_move));
     assert(paint->micro[11]==-7&&step_fill(paint,12)==FC_FILL&&step_locked(paint,10));
-    assert(undo_swap(1)&&paint->micro[12]==-7&&step_locked(paint,11));
+    assert(undo_swap(1)&&paint->micro[14]==-7&&step_locked(paint,13));
     assert(trk[0].step[10].time==ST_REST);
+    /* Own ties are usable targets even when sustain reaches the pattern end. */
+    steps_clear(paint);paint->p[P_SLEN]=16;cursor_set(0);
+    paint->step[0]=(step_t){.note={60,64,67},.n=3,.time=ST_NOTE,.vel=87,.flags=SF_ACCENT};
+    for(uint32_t i=1;i<16;i++)paint->step[i].time=ST_TIE;
+    paint->micro[0]=-5;paint->micro[8]=7;step_fill_set(paint,0,FC_NOFILL);
+    assert(lock_set(paint,0,P_LEVEL,88)&&lock_set(paint,2,P_LEVEL,33)&&lock_set(paint,8,P_PAN,22));
+    memcpy(before_move,paint->step,sizeof before_move);
+    press(B_OCTUP);encs[panel.enc[EN_K3]]=2;frame();release(B_OCTUP);
+    assert(ui.cursor==2&&paint->step[0].time==ST_REST&&paint->step[1].time==ST_REST);
+    assert(paint->step[2].n==3&&paint->step[2].vel==87&&paint->micro[2]==-5);
+    assert(paint->micro[8]==7&&step_fill(paint,2)==FC_NOFILL&&step_locked(paint,8));
+    for(uint32_t i=3;i<16;i++)assert(paint->step[i].time==ST_TIE);
+    uint32_t same_locks=0;for(uint32_t i=0;i<NLOCK;i++)if(paint->lock[i].step==2&&paint->lock[i].param==P_LEVEL){same_locks++;assert(paint->lock[i].val==88);}
+    assert(same_locks==1&&undo_swap(0)&&!memcmp(before_move,paint->step,sizeof before_move));
+    assert(paint->micro[0]==-5&&paint->micro[2]==0&&step_locked(paint,0)&&step_locked(paint,2));
+    assert(undo_swap(1)&&paint->step[2].n==3);
+    /* Octave sweeps preserve intervals, attributes and ties, with one undo. */
+    press(B_OCTDN);encs[panel.enc[EN_K2]]=1;frame();
+    assert(paint->step[2].note[0]==72&&paint->step[2].note[1]==76&&paint->step[2].note[2]==79);
+    encs[panel.enc[EN_K2]]=-2;frame();release(B_OCTDN);
+    assert(paint->step[2].note[0]==48&&paint->step[2].vel==87&&paint->micro[2]==-5);
+    assert(undo_swap(0)&&paint->step[2].note[0]==60);
+    cursor_set(15);press(B_OCTUP);encs[panel.enc[EN_K2]]=100;frame();release(B_OCTUP);
+    assert(paint->step[2].note[0]==120&&paint->step[2].note[2]==127&&ui.cursor==15);
+    press(B_OCTUP);encs[panel.enc[EN_K2]]=1;frame();release(B_OCTUP);
+    assert(paint->step[2].note[0]==120&&!strcmp(ui.msg,"OCTAVE LIMIT"));
+    assert(undo_swap(0)&&paint->step[2].note[0]==60);
     /* Tie painting uses actual OCT+/STEP controls, crosses the 16-step bank,
      * preserves the source chord and unrelated step data, and has one undo. */
     steps_clear(paint);cursor_set(0);

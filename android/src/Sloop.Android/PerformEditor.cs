@@ -43,6 +43,7 @@ public sealed partial class MainActivity
     }
     void RevoicePerformanceRegister()
     {
+        ResetMidiInputNotes();
         previousVoicing=null;
         // A latched chord keeps its sounding register until the next chord press.
         if(performOptions.Surface==PerformSurface.Chords&&performOptions.Latch)return;
@@ -63,6 +64,7 @@ public sealed partial class MainActivity
     }
     void StopPerformance()
     {
+        ResetMidiInputNotes();
         ClearHardwarePerformanceTouches();
         performFingers.Clear();latchedDegree=null;latchedOctave=null;previousVoicing=null;performShape=ChordShape.Diatonic;
         chordJoystick?.ClearTouches();xySurface?.ClearTouches();
@@ -79,6 +81,7 @@ public sealed partial class MainActivity
         connection.EnablePerformanceCapture();
         connection.Performer.Failed-=OnPerformanceFailure;
         connection.Performer.Failed+=OnPerformanceFailure;
+        AddMidiInputControl();
         var o=performOptions;
         performReadout=Label(connection.CanPerform?$"{(connection.Snapshot.IsGenericMidi?"Generic MIDI":"FM1 MIDI")} · channel {PerformChannel+1}":"Offline touch preview · connect MIDI for sound",12);performReadout.SetLines(2);content.AddView(performReadout);
         var controls=new LinearLayout(this){Orientation=Orientation.Horizontal};

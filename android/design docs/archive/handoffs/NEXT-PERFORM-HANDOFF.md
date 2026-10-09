@@ -1,5 +1,7 @@
 # Perform controls handoff — October 8, 2026
 
+> Reconciled October 9, 2026: External controller input and sustain ownership are now integrated in bounded literal/in-scale chord modes. Controller CC forwarding, chord latch and automatic input voice leading remain future work. See [Performance](../../PERFORMANCE.md).
+
 ## Implemented files
 - android/src/Sloop.Android/PerformEditor.cs: optional Mapping/Macro fields on existing PerformOptions; mapped labels/chords; configurable joystick; stop cleanup; retained latch octave for joystick edits.
 - android/src/Sloop.Android/PerformanceControlEditor.cs: settings and single-owner XY surface with scrolling rail.

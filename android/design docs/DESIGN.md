@@ -4,7 +4,10 @@ Current delivery: [STATUS.md](STATUS.md). Build and test evidence: [VERIFICATION
 
 MIDI/octave checkpoint (2026-10-07): Generic MIDI output mode is implemented for Android-enumerated destinations, alongside the SLOOP-specific connection. Performance and app-pattern playback use standard MIDI; patch/native-pattern/sample exchange remains SLOOP-only. Direct octave/channel controls and protocol-10 FM1 octave following are implemented.
 
-Status: accepted architecture with implemented Android workspaces; checkpoint 2026-10-07.
+Status: accepted architecture with implemented Android workspaces; reconciled October 9, 2026
+against 2.5 Merthsoft.7. External MIDI input and native musical starter browsing,
+leased audition and stopped-only application are integrated; see the owning
+[Performance](PERFORMANCE.md) and [Sequencing](SEQUENCING.md) designs for limits.
 Android is the primary platform. The complete product scope below includes future work.
 
 Implemented: manual FM6 editing and bounded offline sound prompts; app/native pattern

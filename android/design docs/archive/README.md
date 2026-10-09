@@ -60,3 +60,16 @@ Use [current status](../STATUS.md), [component index](../README.md) and [verific
 
 - [2.4.14 integration evidence](checkpoints/INTEGRATION-2.4.14.md)
 - [2.4.14 release](releases/RELEASE-2.4.14.md)
+
+## Merthsoft release checkpoints
+
+- [Merthsoft.1](releases/RELEASE-2.5-Merthsoft.1.md): upstream 2.5 integration.
+- [Merthsoft.2](releases/RELEASE-2.5-Merthsoft.2.md): piano-key arp latch.
+- [Merthsoft.3](releases/RELEASE-2.5-Merthsoft.3.md): black-key FX controls.
+- [Merthsoft.6](releases/RELEASE-2.5-Merthsoft.6.md): recording snap, painting and expanded starters; includes the Merthsoft.4/.5 feature summary.
+
+Reconciled October 9 against Merthsoft.7. Archived assignments are completed coordination
+records, not a current backlog. External MIDI input with sustain ownership, native
+phone musical starters and arp expression are now integrated; follow the active
+[Performance](../PERFORMANCE.md), [Sequencing](../SEQUENCING.md) and
+[firmware designs](<../../../docs/firmware/README.md>) for their current limits.

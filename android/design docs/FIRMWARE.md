@@ -4,7 +4,7 @@ Current delivery: [STATUS.md](STATUS.md). Build and test evidence: [VERIFICATION
 
 ## Current firmware
 
-Production firmware is **2.4.15 Merthsoft**, with INFO protocol **12**, three synth tracks and
+Production firmware is **2.5 Merthsoft.7**, with INFO protocol **14**, three synth tracks and
 one drum track. Protocol 9 FM6/native-pattern exchange, sample-slot backup/upload, USB audio
 playback and MIDI note performance are integrated. Protocol 10 command 43 reports the
 physical octave offset; Android follows it without firmware transposing ordinary external MIDI.
@@ -16,19 +16,16 @@ presses toggle each quality until pressed again, including across new root chord
 a modifier preserves it. Qualities are owned per synth and clear on latch disable, CHROM,
 STOP or panic. With ARP enabled, toggled qualities also revoice the retained arp chord after physical root release; modifiers update the arp note pool without restarting the arp clock. With latch disabled modifiers remain momentary.
 
-Latest target sizes are recorded in the release notes; pool
-334,560/344,064. RAM text is 925 instructions with no calls. See [release notes](RELEASE-NOTES.md).
+Latest target sizes and memory headroom are recorded in [release notes](RELEASE-NOTES.md). RAM text is 925 instructions with no calls.
 The existing CPU budget failures were not relaxed; they remain an engineering follow-up.
 User hardware acceptance is recorded in STATUS, independently of measured deadline evidence.
 
-CC and pitch-bend are currently ignored by the firmware note-input loop. Android XY macros
-emit standard MIDI CC for compatible generic receivers; expressive FM1 parameter support
-requires coordinated firmware/app work. Protocol 12 negotiates remote performance (73), drum groove bank (74) and USB return controls/diagnostics (75).
+Firmware accepts its upstream standard MIDI CC map for track parameters. Android XY macros emit standard MIDI CC; unsupported controllers and pitch bend remain outside this slice. Protocol 14 retains remote performance (73), drum grooves (74), USB return controls (75) and relocated SYN kits (80–84), and adds leased musical starter discovery/audition/application (76). Arpeggios now preserve source velocity across audio, generated MIDI and recording.
 
 ## Atomic hardware scenes: remaining requirements
 
 The command-72 schema/client and bounded RAM staging implementation are tested scaffolding.
-Production defaults to `FELUCCA_SCENE_TX=0`: the handler/buffer are compiled out, INFO reports 12 for other extensions,
+Production defaults to `FELUCCA_SCENE_TX=0`: the handler/buffer are compiled out, INFO reports 14 for other extensions,
 and live atomic application is unavailable. Experimental builds report zero capabilities and
 Unsupported Begin until all engine hooks exist. Existing stopped-only sound transfer remains.
 Wire contract: [SCENE-TRANSACTION.md](../src/Sloop.Protocol/SCENE-TRANSACTION.md).

@@ -5,12 +5,14 @@ future design contracts; dated release/handoff/test results remain historical ev
 
 ## Latest firmware
 
+**2.5 Merthsoft.7** integrates phone browsing, audition and confirmed application of the native musical bank with key/scale/octave/mode/VLEAD and rhythm shaping. Command 76 requires protocol 14 and capability discovery; its lease expires on disconnect, takeover or missing renewal. Arpeggios preserve source velocity across audio, MIDI and recording, with strongest live/sequence shared-pitch expression. Android Perform now offers opt-in external controller device/port input, literal pitches or bounded scale-root chords, sustain and safe lifecycle cleanup. On native STEP, held OCT + knob 2 edits whole octaves and knob 3 moves events, including later onsets inside their own tie runs. Turning the SELECT knob between starter subpages preserves preview.
+
 **2.5 Merthsoft.6** adds STEP-page tie/rest painting: select the starting note,
 hold OCT+ (ties) or OCT− (rests), and turn STEP clockwise. Each crossed step is
 written without changing the starting step; the cursor stops at the pattern end.
 Backward movement preserves existing steps. One hold is one undo session; ordinary
 cursor wrapping and OCT controls outside STEP remain unchanged.
-Holding either OCT button with knob 2 moves a complete note/tie chain while stopped,
+The original Merthsoft.6 knob-2 move gesture (now knob 3) moves a complete note/tie chain while stopped,
 including timing, conditions and locks, with collision protection and metadata undo.
 RECORD-page SNAP chooses TRACK/1/8/1/4 independently of playback DIV; it is a per-track
 preference until reboot. Incompatible/finer grids show DIV LIMIT and use track snapping.
@@ -111,8 +113,7 @@ Revisit hardware only for a new failure or a material feature change; do not rep
 - Twenty-four native musical sequence starters with root/scale, chord/bass/arp-note modes,
   non-destructive preview, complete replacement undo, native rhythm controls, separate
   generated octave and optional voice leading. Native recording snap and event moves are integrated.
-  Musical starters and rhythm controls currently use hardware UI; phone command 74
-  continues to discover/apply canonical drum grooves.
+  Musical starters and rhythm controls are available on hardware and through phone command 76; command 74 continues to discover/apply canonical drum grooves.
 - Opt-in sequencer-fed arpeggios through ARP 2 ORD SNOTE/SPLAY, with independent
   sequence/live membership, NOTE/TIE/REST lifecycle and balanced generated output.
   General local/USB/TRS owner aggregation and semantic harmony/followers remain future work.
@@ -128,19 +129,20 @@ Revisit hardware only for a new failure or a material feature change; do not rep
 - Harmony: full live source ownership, independent source/output routing and semantic chord followers.
 - Composition: more flexible progressions/rhythms and free-form
   interpretation. Drafts currently save on this phone outside session archives; no local language model is included.
-- Perform: external controller input and CC gesture recording.
+- Perform: CC gesture recording and broader external-input expressive modes.
 - Sound: proven-device reconnect recovery, broader engine editing and local rendering.
 - Hardware scenes: atomic boundary application of hardware sound/pattern/tempo; current
   stopped-only sound transfer does not provide that operation or upload scene samples.
   The protocol/staging scaffold is tested but disabled in production until complete engine hooks exist.
+- Firmware resources: audit unused/duplicated runtime buffers and safe mutual-exclusion storage sharing before further sizable additions; current static headroom is 892 bytes. Keep changes scoped for upstream merges.
 - Platform/storage: optional local model runtime, Windows/iOS, background services, migrations,
   indexing/collection and durable undo. These are later work, not current launch blockers.
 
 ## Verification record
 
-Latest Android solution/APK build passes with zero warnings/errors; all 25 domain runners pass.
+Latest Android solution/APK build passes with zero warnings/errors; all 27 domain runners pass.
 Firmware target build and focused host regressions pass with C assertions explicitly enabled.
-The updated APK is installed on the Pixel; cold launch, cross-session library browsing and SAF draft export/import review/adoption pass.
+The Merthsoft.7 APK is installed on the Pixel and cold-launch process survives; new interactive checks wait for an unlocked phone. Earlier cross-session library browsing and SAF draft export/import review/adoption checks passed.
 Existing target audio ISR cost budgets still fail and were not relaxed.
 See [VERIFICATION.md](VERIFICATION.md) for evidence and limits.
 
