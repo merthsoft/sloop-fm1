@@ -47,6 +47,31 @@ int main(void)
       assert(sequence_starter_step(0,1,0,1,0,1,&shape).time==ST_REST);
       assert(sequence_starter_step(0,0,0,1,0,1,&shape).note[0]==48);
       assert(sequence_starter_step(0,0,2,2,-1,0,&shape).note[1]==53); }
+    /* Every starter must have a real chord-tone arpeggio, including sparse ones.
+     * Count generated attacks and pitches rather than comparing mode flags. */
+    for(g=0;g<NSEQUENCE_STARTERS;g++) {
+        uint32_t bass_hits=0,arp_hits=0,tones=0;
+        uint32_t degree=SEQUENCE_STARTERS[g].degree[0];
+        for(i=0;i<16;i++) {
+            step_t bass=sequence_starter_step(g,i,0,1,0,STARTER_BASS,&shape);
+            step_t arp=sequence_starter_step(g,i,0,1,0,STARTER_ARP,&shape);
+            if(bass.n) { bass_hits++; assert(bass.n==1&&bass.note[0]==sequence_degree_note(degree,0,1,-1)); }
+            if(arp.n) {
+                arp_hits++; assert(arp.n==1);
+                for(j=0;j<(SEQUENCE_STARTERS[g].seventh?4u:3u);j++)
+                    if(arp.note[0]==sequence_degree_note(degree+2*j,0,1,0)) tones|=1u<<j;
+            }
+        }
+        assert(arp_hits>=8 && arp_hits>bass_hits);
+        assert(tones==(SEQUENCE_STARTERS[g].seventh?15u:7u));
+    }
+    { static const uint8_t expected[]={60,64,67,60,64,67,60,64};
+      for(i=0;i<8;i++) {
+          step_t arp=sequence_starter_step(0,i*2,0,1,0,STARTER_ARP,&shape);
+          assert(arp.time==ST_NOTE&&arp.n==1&&arp.note[0]==expected[i]);
+      }
+      assert(sequence_starter_step(0,16,0,1,0,STARTER_ARP,&shape).note[0]==67);
+    }
     shape.rotate=3;
     for(i=0;i<NSTEP;i++) {
         step_t a=sequence_starter_step(8,i,0,1,0,0,&shape);

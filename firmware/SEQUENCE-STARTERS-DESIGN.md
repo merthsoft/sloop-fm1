@@ -8,7 +8,7 @@ Twelve starters cover I–V–vi–IV, I–vi–IV–V, ii–V–I, a minor jour
 
 Knobs on the main browser page choose starter, root, scale, and rendering mode. Root and scale begin with the selected track's settings; changing them in the browser affects the generated notes, leaving the sound's parameters untouched. The current physical octave selects register. CHR uses the actual twelve-note scale, not an implicit minor fallback. Chord tones stack every other scale degree, including on pentatonic and other scales.
 
-CHORD renders triads or sevenths. The sustained POP FOUR, CLASSIC TURN, and MINOR JOURNEY starters hold their chord through ties; rhythmic starters use separated stabs. BASS renders one root an octave lower. ARP NOTES renders individual chord tones in the starter's rhythm; it creates editable notes without changing the instrument's ARP settings. Existing voice mode, engine voice limits, envelopes, sequencer gate, and sequence-fed arpeggiator behavior still apply. Choose a polyphonic voice mode to hear complete chords.
+CHORD renders triads or sevenths. The sustained POP FOUR, CLASSIC TURN, and MINOR JOURNEY starters hold their chord through ties; rhythmic starters use separated stabs. BASS renders one root an octave lower on the original rhythm. ARP NOTES adds an eighth-note pulse while retaining the starter's syncopated attacks and cycles through each chord's three or four tones in attack order. It creates editable notes without changing the instrument's ARP settings. This keeps sparse starters from producing only roots in both BASS and ARP modes. Existing voice mode, engine voice limits, envelopes, sequencer gate, and sequence-fed arpeggiator behavior still apply. Choose a polyphonic voice mode to hear complete chords.
 
 ## Rhythm page
 

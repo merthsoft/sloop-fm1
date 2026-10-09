@@ -50,8 +50,11 @@ static step_t sequence_starter_step(uint32_t id, uint32_t i, uint32_t root,
                                    const rhythm_shape_t *shape)
 {
     const sequence_starter_t *p = &SEQUENCE_STARTERS[id % NSEQUENCE_STARTERS];
-    uint64_t occupied = (uint64_t)p->hits | ((uint64_t)p->hits << 16) |
-                        ((uint64_t)p->hits << 32) | ((uint64_t)p->hits << 48);
+    /* ARP adds an eighth-note pulse to the starter's syncopated attacks.
+     * Sparse chord rhythms must still walk the chord rather than repeat its root. */
+    uint32_t hits = p->hits | (mode == STARTER_ARP ? 0x5555u : 0u);
+    uint64_t occupied = (uint64_t)hits | ((uint64_t)hits << 16) |
+                        ((uint64_t)hits << 32) | ((uint64_t)hits << 48);
     uint32_t src, degree, j, count;
     step_t s = {{0},0,ST_REST,0,0,0,0};
     if (i >= NSTEP) return s;
@@ -64,7 +67,12 @@ static step_t sequence_starter_step(uint32_t id, uint32_t i, uint32_t root,
     s.time = ST_NOTE; s.vel = (src % 4u) ? 92 : 108;
     if (!(src % 4u)) s.flags = SF_ACCENT;
     if (mode == STARTER_BASS) { octave--; s.n = 1; }
-    else if (mode == STARTER_ARP) { degree += (src % 16u / 2u % 3u) * 2u; s.n = 1; }
+    else if (mode == STARTER_ARP) {
+        uint32_t attack = 0;
+        for (j = 0; j < src % 16u; j++) attack += (hits >> j) & 1u;
+        degree += (attack % (p->seventh ? 4u : 3u)) * 2u;
+        s.n = 1;
+    }
     else s.n = p->seventh ? 4 : 3;
     count = s.n; s.n = 0;
     for (j = 0; j < count; j++) {
