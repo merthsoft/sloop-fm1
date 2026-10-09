@@ -1,4 +1,4 @@
-> Merthsoft fork release: **2.5 Merthsoft.7**. `2.5` identifies the upstream SLOOP base; only `Merthsoft.N` increments for our releases until we adopt a newer upstream base. Our Android and firmware integration lives on the `android` branch. Original Android work uses the Unlicense, with retained third-party obligations described in [Android licensing](android/LICENSING.md).
+> Merthsoft fork release: **2.5 Merthsoft.8**. `2.5` identifies the upstream SLOOP base; only `Merthsoft.N` increments for our releases until we adopt a newer upstream base. Our Android and firmware integration lives on the `android` branch. Original Android work uses the Unlicense, with retained third-party obligations described in [Android licensing](android/LICENSING.md).
 
 <p align="center"><img src="assets/logo/sloop-logo.png" alt="SLOOP" width="420"></p>
 
@@ -24,6 +24,7 @@ SLOOP turns the FM-1 into a four-track groovebox you play live: **three synths a
 ## Contents
 
 - [Merthsoft firmware and the one-minute workflow](#merthsoft-firmware)
+- [Visualizers added in this fork](#visualizers-added-in-this-fork)
 - [SLOOP Mobile for Android](#sloop-mobile-for-android)
 
 1. [What's new in 2.5 and 2.4](#whats-new-in-25)
@@ -48,7 +49,7 @@ SLOOP turns the FM-1 into a four-track groovebox you play live: **three synths a
 
 ## Merthsoft firmware
 
-This fork keeps SLOOP's synth engines and adds ways to build and perform a complete loop quickly on the FM-1. **No phone is required for these firmware features.** The current release is **2.5 Merthsoft.7**: `2.5` is the upstream base, and `Merthsoft.N` identifies our additions.
+This fork keeps SLOOP's synth engines and adds ways to build and perform a complete loop quickly on the FM-1. **No phone is required for these firmware features.** The current release is **2.5 Merthsoft.8**: `2.5` is the upstream base, and `Merthsoft.N` identifies our additions.
 
 ### The one-minute workflow
 
@@ -68,17 +69,47 @@ The libraries are starting points: applying creates ordinary editable sequencer 
 
 *Turn the SELECT knob twice inside SEQUENCES to reach seq pitch. Knob 1 sets octave and knob 4 VLEAD. Changing browser pages keeps audition playing.*
 
+### What this fork adds to upstream SLOOP 2.5
+
+These are the implemented Merthsoft additions; the upstream engine, preset and base groovebox features are described separately below.
+
+- **Persistent scale lights:** hold physical **SEL** and press **OCT+** to toggle a dim keyboard guide for the selected ROOT/SCALE. Playing notes stays bright. It follows key/scale changes, survives reboot, and leaves drum/step/FX controls clear. CHR lights every pitch class; it does not change the sound or quantize notes.
 - **24 drum grooves:** four-on-the-floor, breaks, a four-bar Amen, funk, broken house, Afro clave, electro, boom bap and more. Preview using your current kit, then apply with complete pattern/metadata undo. The phone can browse and apply the canonical groove bank too.
 - **24 musical starters:** standard progressions alongside soul sevenths, Dorian pockets, funk, offbeat stabs, gospel, disco, garage, Latin turns, rising/descending movement and Lydian colors. Choose **CHORD**, lower-root **BASS**, or **ARP NOTES**, which cycles chord tones on eighth-note pulses while retaining syncopated attacks. A CHR track starts the browser in Major; its pitch page controls octave and optional voice leading independently of the physical OCT buttons.
 - **Rhythm shaping:** rotate a pattern, offset drum lanes, move eligible attacks off the beat with syncopation, and add microtiming feel. Preview auditions the shaped result before replacement.
 - **Fast ties and rests (Merthsoft.6):** on STEP, select the starting note/chord, hold **OCT+**, and sweep **knob 1** clockwise to tie each following step. Hold **OCT−** instead to paint rests. The starting step stays intact; painting stops at the pattern's end. Backtracking moves without erasing, and the whole gesture has one undo.
 - **Recording and timing correction:** RECORD-page **SNAP** records to eighths or quarters while keeping the playback DIV intact. On STEP, hold either OCT button: **knob 2** shifts whole octaves and **knob 3** moves a note/chord by whole steps with its timing, conditions and locks. Moving into its own ties keeps the original end; other moves shift the complete tie chain. Occupied destinations are protected and gestures support undo/redo.
 - **Playable latch:** hold **ARP** or physical **SEL** (labelled SCL in SLOOP) for 700 ms while holding notes to toggle latch without stopping your playing. It works with chord mode and manually played arpeggios. Non-CHROM chord modifiers toggle on latched chords; CHROM allows literal black-key roots.
+- **Chord latch and literal roots:** SCL page 2 knob 4 exposes LATCH. In non-CHROM chord mode, modifier presses update the sounding latched chord immediately and remain toggled until pressed again. **KEYS/QNT CHROM** allows every piano key, including black keys, to be a literal chord root; the other keyboard modes keep their modifier controls.
 - **Sequencer-fed arpeggios:** ARP 2 **ORD SNOTE/SPLAY** lets sequenced chords feed the arpeggiator, including sustained tie chains. Live and sequence input remain independent.
+- **Expressive arpeggios:** incoming and sequenced velocity/accent survives arp modes, octave expansion, ties and latch across audio, MIDI output and recording. Overlapping live/sequence pitches use the stronger current velocity; PULSE merges octave collisions rather than doubling attacks. Physical keyboard attacks retain their fixed velocity.
+- **Shared starter voice leading:** optional VLEAD uses the live chord inversion policy for generated CHORD/ARP NOTES sequences, anchored deterministically so Preview and Apply match. BASS stays on roots. This does not add semantic chord tracking or harmony-following tracks.
 - **Black-key punch FX controls:** rate, triplet, strength, blend, latch and retrigger augment the 16 white-key effects.
 - **Undo accidental song loads:** while stopped, **EDIT + OCT−** restores the project preceding the latest saved-slot load, section selection or working-project backup restore; **OCT+** redoes it. This history is held in RAM and subsequent sequence edits or recording supersede it.
-- **USB companion support:** sample playback through the FM-1's speaker/headphones, verified sample transfer, remote performance controls and the Android workstation below.
+- **New project from SAVE:** the SAVE-held song menu includes **NEW**, with confirmation while stopped, so starting over does not require overwriting a saved slot.
+- **USB playback and return controls:** phone/app audio can play through the FM-1's speaker/headphones alongside the instrument. Negotiated gain/mute and return diagnostics are exposed to the companion; 44.1 kHz playback negotiates independently of upstream's 48 kHz capture.
+- **Remote performance controls:** the phone can trigger held/next-bar fills and the sixteen punch effects. Leases, panel priority, STOP and disconnect cleanup prevent abandoned remote controls from sticking.
+- **Companion protocol and safe exchange:** hardware octave reporting, FM6/native-pattern editing, sample backup/upload/readback, persistent FM6 base-voice bank saving, and canonical drum/musical library discovery support the Android workstation below. Protocol 14 retains companion command IDs and relocates upstream SYN kit commands to 80–84; the web editor negotiates the mapping. Atomic live hardware scene switching remains future work.
 - **More ROM headroom:** lossless one-bit font packing removes **16,128 bytes** of bitmap data while preserving the original pixels. The splash screen is retained.
+- **Six additional visualizers:** Polyrhythm, Note Trails, Groove, Stereo Field, Song Journey and Beat Terrain make track timing, pitches, stereo and arrangement visible. Fourteen styles remain in total; Dungeon, Tape, LCD, Bounce, Sloop and Constellation views and landscape locking are removed. Saved IDs for removed styles fall back to Scope without renumbering retained styles.
+
+### Visualizers added in this fork
+
+On **TRACKS**, tap **HOME** to open the visualizer; turn **SELECT** to change style.
+Tap HOME or a page button to leave. Playing, transport and held control layers still work.
+
+| Polyrhythm | Note Trails | Groove |
+| --- | --- | --- |
+| <img src="assets/screens/merthsoft/visualizers/vis-09-POLYRHYTHM.png" width="240" alt="Four colored rings showing track steps and playheads"> | <img src="assets/screens/merthsoft/visualizers/vis-10-NOTE-TRAILS.png" width="240" alt="Scrolling colored synth pitches and drum lanes"> | <img src="assets/screens/merthsoft/visualizers/vis-11-GROOVE.png" width="240" alt="Four-track timing grid with swung and nudged attacks"> |
+| Pattern lengths, active steps and independent playheads. | Chords and note releases across three synths, with drums below. | Swing, microtiming, hit levels and ratchets around the step grid. |
+
+| Stereo Field | Song Journey | Beat Terrain |
+| --- | --- | --- |
+| <img src="assets/screens/merthsoft/visualizers/vis-12-STEREO-FIELD.png" width="240" alt="Stereo cloud with left-right balance and width indicators"> | <img src="assets/screens/merthsoft/visualizers/vis-13-SONG-JOURNEY.png" width="240" alt="Song section cards A through D and arrangement progress"> | <img src="assets/screens/merthsoft/visualizers/vis-14-BEAT-TERRAIN.png" width="240" alt="Colored spectrum-driven wireframe terrain"> |
+| Stereo spread and left/right balance. | Song or quick-chain order, current section and remaining bars; READY when idle. | Spectrum-driven hills moving with the beat. |
+
+*Fresh Merthsoft.8 framebuffer captures from the production UI/audio harness, October 9, 2026.*
+See the [complete 14-style gallery](docs/firmware/VISUALIZERS.md) for the retained upstream styles, controls and capture details.
 
 To install **this fork**, build its firmware and local browser installer with [`build-sloop.ps1`](build-sloop.ps1); see [building](#building-and-tests) for prerequisites. The upstream browser installer linked above installs upstream SLOOP. See the [guide](GUIDE.md), [musical starters](docs/firmware/SEQUENCE-STARTERS-DESIGN.md), [drum grooves](docs/firmware/DRUM-GROOVES-DESIGN.md) and [rhythm shaping](docs/firmware/RHYTHM-SHAPING-DESIGN.md) for the controls and limits.
 

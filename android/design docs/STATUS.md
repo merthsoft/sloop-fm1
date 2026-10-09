@@ -5,6 +5,13 @@ future design contracts; dated release/handoff/test results remain historical ev
 
 ## Latest firmware
 
+**2.5 Merthsoft.8** adds persistent keyboard scale lights: hold physical SEL and
+press OCT+ to toggle a dim guide using song ROOT/SCALE, leaving pressed notes bright.
+It does not alter octave, latch or sound; drum/grid/control layers retain their LEDs.
+The preference uses existing device settings, with writes deferred during playback.
+See [scale-light design](../../docs/firmware/KEYBOARD-SCALE-LIGHTS.md).
+
+
 **2.5 Merthsoft.7** integrates phone browsing, audition and confirmed application of the native musical bank with key/scale/octave/mode/VLEAD and rhythm shaping. Command 76 requires protocol 14 and capability discovery; its lease expires on disconnect, takeover or missing renewal. Arpeggios preserve source velocity across audio, MIDI and recording, with strongest live/sequence shared-pitch expression. Android Perform now offers opt-in external controller device/port input, literal pitches or bounded scale-root chords, sustain and safe lifecycle cleanup. On native STEP, held OCT + knob 2 edits whole octaves and knob 3 moves events, including later onsets inside their own tie runs. Turning the SELECT knob between starter subpages preserves preview.
 
 **2.5 Merthsoft.6** adds STEP-page tie/rest painting: select the starting note,

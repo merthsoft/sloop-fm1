@@ -79,6 +79,7 @@ enum { LIGHTS_OFF, LIGHTS_LOW, LIGHTS_MID, LIGHTS_HIGH, LIGHTS_N };
 enum { KEYS_OFF, KEYS_C, KEYS_WHITE, KEYS_ALL, KEYS_N };   /* (ALL: SLOOP 2.4; an older SLOOP reads it as OFF) */
 static uint8_t lights_lvl, lights_keys;
 static uint8_t lights_notes;                   /* 1: on a synth track the sounding notes light their keys */
+static uint8_t lights_scale;                   /* SEL + OCT+: persistent scale guide, settings bit 22 */
 static uint8_t lights_sync;                    /* GLO > SYSTEM > SYNC (G_SYNC), kept here: 0 INT, 1 USB, 2 TRS */
 static uint8_t lights_mout;                    /* GLO > SYSTEM > MIDI (G_MIDI): 1 = the sequencer goes to MIDI OUT too */
 static uint8_t lights_min;                     /* GLO > SYSTEM > IN (G_ROUTE): 1 = MIDI in takes the clock only, no notes */
@@ -94,13 +95,15 @@ static uint32_t lights_word(void)
     return (uint32_t)lights_lvl | (uint32_t)lights_keys << 4 | (uint32_t)(lights_notes != 0u) << 8 |
            (uint32_t)(rec_tempo != 0u) << 9 | (uint32_t)(rec_count != 0u) << 10 | (uint32_t)(usb_full != 0u) << 11 |
            (uint32_t)(lights_sync % 3u) << 12 | (uint32_t)(lights_mout != 0u) << 14 | (uint32_t)(lights_min != 0u) << 15 |
-           (uint32_t)(usb_serial != 0u) << 16 | (uint32_t)VIS_STYLE_IDS[vis_style % VIS_STYLE_COUNT] << 17;
+            (uint32_t)(usb_serial != 0u) << 16 | (uint32_t)VIS_STYLE_IDS[vis_style % VIS_STYLE_COUNT] << 17 |
+            (uint32_t)(lights_scale != 0u) << 22;
 }
 static void lights_from_word(uint32_t w)
 {
     lights_lvl = (uint8_t)((w & 15u) < LIGHTS_N ? (w & 15u) : LIGHTS_OFF);
     lights_keys = (uint8_t)(((w >> 4) & 15u) < KEYS_N ? ((w >> 4) & 15u) : KEYS_OFF);
     lights_notes = (uint8_t)((w >> 8) & 1u);
+    lights_scale = (uint8_t)((w >> 22) & 1u);
     rec_tempo = (uint8_t)((w >> 9) & 1u);       /* the REC screen: MODE, START (seq.c) */
     rec_count = (uint8_t)((w >> 10) & 1u);
     usb_full = (uint8_t)((w >> 11) & 1u);       /* menu USB AUDIO (fx.c) */

@@ -1,5 +1,20 @@
 # Integrated Merthsoft.7 — October 9, 2026
 
+## Merthsoft.8 scale-light checkpoint — October 9, 2026
+
+Target build passes: image 574,720 bytes; static RAM 97,412/98,304; pool
+333,948/344,064; RAM text 925 instructions/no calls; HAL access check clean.
+Package SHA-256: `c4900695f509d2102c9099b8bb569826dd12a4ed862a44dd948f25a925e00cbe`.
+The focused scale-light production UI/audio regression and broad UI/audio suite with
+20,000-frame fuzz pass. Physical LED brightness has not been measured. Android and
+protocol code are unchanged; their most recent validation is the Merthsoft.7 checkpoint
+below. Existing ISR cost-budget failures remain unresolved.
+
+All 14 retained visualizer captures were exported losslessly from this same fresh
+production UI/audio run and visually reviewed. The README shows the six additional
+styles; the [full gallery](../../docs/firmware/VISUALIZERS.md) includes upstream styles
+and documents the idle Song Journey capture accurately.
+
 - Combined target passes image/RAM/pool bounds, HAL register access and RAM-text checks: image 574,480; static RAM 97,412/98,304; pool 333,948/344,064; RAM text 925 instructions/no calls. Static headroom is 892 bytes; this is separate from the 10,116-byte remaining pool budget.
 - `build/merthsoft7-android-build.log`: complete solution and signed APK, zero warnings/errors. `build/android-domain-integration7/results.json`: all 27 runners pass, including external MIDI ownership/timed cancellation and 306 musical starter protocol checks. Storage runners execute outside the sandbox because atomic temporary-file moves are restricted there; this does not change their assertions.
 - `build/host/seq_navigation-integration7.log`: real physical held-OCT gestures for octave editing and knob-3 moves, own-tie shortening at pattern end, lock collision precedence, exact metadata undo/redo, interval-preserving MIDI bounds, retained tie/rest paint and independent recording snap.

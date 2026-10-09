@@ -654,7 +654,7 @@ The song's settings can only be edited while it is stopped (*STOP FIRST*). An em
 | Screen | How to get there | What it shows · what the knobs do |
 | --- | --- | --- |
 | **TRACKS** | tap **HOME** | the performance view: tempo, swing, transport, bar.beat; each track with its sound, steps, playhead, mute / solo / rec badges and level. Dials: KNOB 1 **swing** (global) · KNOB 2 **level** (selected track; on a muted track: unmutes it) · KNOB 3 **steps** (its length) · KNOB 4 **pan** |
-| **Visualiser** | tap **HOME** on TRACKS | twenty-one full-screen visualisers; see [The visualiser](#19-the-visualiser) |
+| **Visualiser** | tap **HOME** on TRACKS | fourteen full-screen visualisers; see [The visualiser](#19-the-visualiser) |
 | **Layer** | hold a layer button | 16 tiles (the white keys) and the four dials, in the layer's colour |
 | **DRUMS** (grid / kit / groove) | tap **EDIT** or **SEQ** on TRACKS with the drum track | see [The DRUMS screen](#the-drums-screen) |
 | **REC READY / FREE TAKE / COUNT-IN** | **REC** while stopped | the tracks, then **mode · length · start** on KNOB 1–3 (4-3-2-1 during a count-in); in a free take: the seconds and the loop it would make |
@@ -864,7 +864,7 @@ On the TRACKS screen, **tap HOME**: the whole screen becomes a visualiser of wha
 | 13 | **SONG JOURNEY** | song order or quick chain, current entry and remaining bars |
 | 14 | **BEAT TERRAIN** | spectrum-driven wireframe hills, moving at the tempo |
 
-The visualiser sees the mix **as if MASTER were all the way up**: with MASTER turned down, even to 0, it still moves at full size. It costs the sound nothing.
+The visualiser sees the mix **as if MASTER were all the way up**: with MASTER turned down, even to 0, it still moves at full size. Drawing runs in the UI loop using existing audio/transport snapshots, without adding per-sample rendering to the audio path. See the [14-style screenshot gallery](docs/firmware/VISUALIZERS.md).
 
 ---
 
@@ -1140,7 +1140,7 @@ On the installer page, open **Return to the official firmware (V15)**: save a ba
 | **ARP** | note repeat | RATE | — | — | — | OCT− / OCT+: ghost / hard (drums) |
 | **SEQ** | steps · black keys 1–4: page | SOUND / NOTE | DIV | SWING | LENGTH | OCT− / OCT+: page |
 | **SEQ + step** | more steps | drums: which sound · synths: NOTE | LEVEL | RATCHET | NUDGE | PRESETS lock · ALGORITHM lock parameter · OCT+ fill condition · OCT− clear nudge, locks, condition |
-| **SEL** | key of the song | CHORD | SCALE | KEYS | TRANSPOSE | — |
+| **SEL** | key of the song | CHORD | SCALE | KEYS | TRANSPOSE | OCT+: toggle scale lights |
 | **GLO** | 1–4 mute · 5–8 solo · 9 fill · 10 fill bar · 16 tap tempo | level 1 | level 2 | level 3 | level 4 | SELECT: tempo |
 | **SAVE** | 1–4 play A–D (several: chain) · 5–8 save A–D · 13 loop / song · 14 SONG REC · 16 song screen | — | — | — | — | — |
 | **any layer + HOME** | lock it open | | | | | any other button unlocks |
@@ -1231,6 +1231,18 @@ In either browser, **OCT-** auditions without replacing the pattern. **OCT+** ap
 while stopped; replacing existing work requires another OCT+ press or a 700 ms hold.
 Changing the selection cancels confirmation. Apply produces ordinary editable steps;
 the existing undo restores the replaced steps and their timing/lock metadata.
+
+### Persistent keyboard scale guide (Merthsoft.8)
+
+Hold physical **SEL** (labelled SCL by SLOOP), then press **OCT+** to toggle
+**SCALE LIGHTS**. Release both and keep playing: scale notes glow dimly and pressed
+notes remain bright. The guide follows the song ROOT/SCALE selected in SEL; CHR
+includes all twelve pitch classes. It marks physical pitch classes, without changing
+transposition, octave, chord mapping or quantization. Drum/grid and held/locked
+performance layers retain their own LED meanings. Toggle again to turn it off.
+This gesture changes neither octave nor latch, even while notes are held. The setting
+is saved with device preferences; if changed during playback, stop before powering off
+so the deferred settings write can finish.
 
 ### Merthsoft.7 STEP shortcuts and companion additions
 

@@ -171,6 +171,8 @@ static uint32_t keys_lit(void)
  * drum track (the sounds of the pattern): those glow, and what sounds is lit (keys_lit) */
 static uint32_t keys_notes_dim(void)
 {
+    if (lights_scale && ui.layer == LY_PLAY && !is_drum(TSEL) && !kb_grid)
+        return scale_keys(0);
     if (!lights_notes)
         return 0u;
     switch (ui.layer) {
@@ -666,6 +668,14 @@ static int layers_input(uint32_t note_edges, uint32_t *pressed, uint32_t home)
         }
         if (d && note_edges)
             used[l] = 1;                                  /* a key while held: not a tap */
+        if (l == LY_SCALE && d && (*pressed & (1u << panel.btn[B_OCTUP])) && !ui.confirm) {
+            lights_scale ^= 1u;
+            settings_later = 1;
+            used[l] = 1;
+            latch_part[l] = NPART;
+            *pressed &= ~(1u << panel.btn[B_OCTUP]);
+            ui_message(lights_scale ? "SCALE LIGHTS ON" : "SCALE LIGHTS OFF");
+        }
         if (d && latch_part[l] < NPART) {
             uint32_t part = latch_part[l];
             if (used[l] || song.sel != part || !latch_notes_physically_held(part) || ui.menu || ui.confirm ||

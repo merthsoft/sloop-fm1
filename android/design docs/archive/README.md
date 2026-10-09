@@ -73,3 +73,5 @@ records, not a current backlog. External MIDI input with sustain ownership, nati
 phone musical starters and arp expression are now integrated; follow the active
 [Performance](../PERFORMANCE.md), [Sequencing](../SEQUENCING.md) and
 [firmware designs](<../../../docs/firmware/README.md>) for their current limits.
+
+- [Merthsoft.7](releases/RELEASE-2.5-Merthsoft.7.md): phone musical starters, external MIDI input, arp expression and revised STEP shortcuts.
