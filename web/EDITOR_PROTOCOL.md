@@ -461,5 +461,5 @@ Commands 73 (leased remote fills/punch), 74 (firmware drum groove capabilities/l
 and 75 (USB return gain/mute/diagnostics) negotiate their own schema/capabilities.
 Older command layouts are unchanged; command 72 remains disabled in production.
 See [performance wire](../android/src/Sloop.Protocol/PERFORMANCE-WIRE.md),
-[groove bank](../firmware/DRUM-GROOVES-DESIGN.md), and
-[USB playback](../firmware/USB-PLAYBACK-IMPLEMENTATION.md).
+[groove bank](../docs/firmware/DRUM-GROOVES-DESIGN.md), and
+[USB playback](../docs/firmware/USB-PLAYBACK-IMPLEMENTATION.md).

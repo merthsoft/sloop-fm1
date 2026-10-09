@@ -940,6 +940,11 @@ static void draw_columns(void)
         } else {
             param_format(d, *vp, val, &unit);
         }
+        if (cur_page()->scope == SC_RECORD && c == 0u && *vp) {
+            uint32_t snap_units = div_units(*vp == REC_SNAP_EIGHTH ? 1u : 0u);
+            uint32_t track_units = div_units(trk_div(TSEL));
+            if (snap_units < track_units || snap_units % track_units) unit = "DIV LIMIT";
+        }
         draw_column(c, cur_page()->fam == FAM_SCL && cur_page()->id[c] == P_AHOLD ? "LATCH" : d->label, val, unit, VAL(c), d->fmt == F_ENUM && d->max < 2 ? -1 : RATIO(d, *vp),
                     param_icon(d, *vp));
     }

@@ -272,7 +272,7 @@ busy devices reject replacement. Kit and global tempo stay selected. Hardware Un
 the replaced pattern; project adoption invalidates stale undo. Native read/write baselines
 are cleared after apply, so read hardware again before editing it from the phone.
 Generic MIDI and the limited simulator do not advertise this feature. An uncertain result
-is not automatically retried. See [hardware design](../../firmware/DRUM-GROOVES-DESIGN.md).
+is not automatically retried. See [hardware design](../../docs/firmware/DRUM-GROOVES-DESIGN.md).
 
 Firmware 2.4.14 expands the shared bank to sixteen entries, including a four-bar
 Amen-inspired pattern. Phone discovery needs no new app code; full native pattern
@@ -288,4 +288,4 @@ separate, with overlapping sequence/live pitches deduplicated in the bounded arp
 TIE retains the snapshot; REST and rejected fill steps clear it even with HOLD enabled.
 Legacy NOTE/PLAY and ARP OFF keep direct native step playback. Routing shares ORD and
 factory sound recall may reset it. Existing generated velocity/timing and MIDI output rules
-remain. See the [full contract](../../firmware/CHORD-ARPEGGIO-DESIGN.md).
+remain. See the [full contract](../../docs/firmware/CHORD-ARPEGGIO-DESIGN.md).

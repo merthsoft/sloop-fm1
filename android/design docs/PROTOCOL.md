@@ -89,4 +89,4 @@ restriction of bulk work during performance. Log bounded metadata, not full priv
 
 Protocol 12 adds negotiated commands 73 (remote performance), 74 (shared drum groove bank),
 and 75 (USB return controls/diagnostics). INFO version alone does not enable command 72 scenes.
-See [firmware extensions](FIRMWARE.md) and [groove design](../../firmware/DRUM-GROOVES-DESIGN.md).
+See [firmware extensions](FIRMWARE.md) and [groove design](../../docs/firmware/DRUM-GROOVES-DESIGN.md).

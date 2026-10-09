@@ -297,6 +297,7 @@ static void sort_notes(uint8_t *c, uint32_t n)
         }
 }
 /* the chord of white key n with the modifiers held, voiced (VLEAD); its notes (<= 4) into c[] */
+#include "harmony_voicing.h"
 static uint32_t chord_play_notes(track_t *t, uint32_t n, uint32_t mods, uint8_t *c)
 {
     if (t->p[P_QUANT] == 3) mods = 0;   /* every black key is a root in CHROM, including held former modifiers */
@@ -340,31 +341,7 @@ static uint32_t chord_play_notes(track_t *t, uint32_t n, uint32_t mods, uint8_t 
     }
     sort_notes(c, k);
     if (t->p[P_VLEAD] && part < NPART && vl_n[part] && k) {   /* the inversion and octave nearest the last chord */
-        uint8_t best[4], cand[4];
-        int32_t bcost = 0x7FFFFFFF, inv, oct;
-        for (inv = 0; inv < (type == CH_OCTAVE ? 1 : (int32_t)k); inv++)
-            for (oct = -1; oct <= 1; oct++) {
-                int32_t cost = 0, ok = 1;
-                for (j = 0; j < k; j++) {
-                    int32_t v = c[j] + 12 * oct + (j < (uint32_t)inv ? 12 : 0);
-                    if (v < 24 || v > 108)
-                        ok = 0;
-                    cand[j] = (uint8_t)(v < 0 ? 0 : v > 127 ? 127 : v);
-                }
-                if (!ok)
-                    continue;
-                sort_notes(cand, k);
-                for (j = 0; j < k; j++) {
-                    int32_t d = (int32_t)cand[j] - vl_prev[part][j < vl_n[part] ? j : vl_n[part] - 1u];
-                    cost += d < 0 ? -d : d;
-                }
-                if (cost < bcost) {
-                    bcost = cost;
-                    memcpy(best, cand, k);
-                }
-            }
-        if (bcost != 0x7FFFFFFF)
-            memcpy(c, best, k);
+        harmony_voice_lead(c, k, vl_prev[part], vl_n[part], type == CH_OCTAVE);
     }
     if ((mods & CM_INV) && type == CH_OCTAVE && k && c[k - 1u] + 12u < 128u) {
         for (j = 0; j < k; j++)                     /* octave doubling: raise the pair, keep its spacing */
@@ -468,6 +445,20 @@ static uint32_t undo_erase_sess;
 static uint32_t rec_target(const track_t *t, uint32_t *later)
 {
     uint32_t into, slen, abs = trk_grid(t, &into, &slen), half = slen / 2u, lat = REC_LAT * (uint32_t)song.g[G_BPM];
+    uint32_t snap = rec_snap[trk_index(t)], div = trk_div(t);
+    if (snap == REC_SNAP_EIGHTH || snap == REC_SNAP_QUARTER) {
+        uint32_t sd = snap == REC_SNAP_EIGHTH ? 1u : 0u;
+        uint32_t su = div_units(sd), tu = div_units(div);
+        if (su > tu && su % tu == 0u) {
+            uint32_t target = grid_at(sd, swings(sd) ?
+                swing_units(t->p[P_SSWING] + song.g[G_SWING], su) : 0u, &into, &slen);
+            half = slen / 2u;
+            if (into > half + (lat < half ? lat : half)) target++;
+            target *= su / tu;
+            *later = target > abs;
+            return target;
+        }
+    }
     if (into > half + (lat < half ? lat : half))
         abs++;
     *later = abs != t->seq_abs;
@@ -507,9 +498,10 @@ static void step_add(track_t *t, uint32_t idx, uint32_t note, uint32_t vel, uint
  * never over a step with notes (overdub keeps them); a release before the middle of the last one
  * puts that step back (rec_release), so a short note stays one step. A note recorded into another
  * step ends the hold before (the step model ties the notes of one step only). */
+static void rec_hold(track_t *t, uint32_t idx, uint32_t len, uint32_t abs);
 static void rec_note(track_t *t, uint32_t note, uint32_t vel, uint32_t rat, int hold)
 {
-    uint32_t len = trk_len(t), later, abs = rec_target(t, &later), idx = abs % len, k;
+    uint32_t len = trk_len(t), later, abs = rec_target(t, &later), idx = abs % len, k, new_hold;
     undo_mark(t, UNDO_REC(t));
     step_add(t, idx, note, vel, vel_lvl(vel), rat);
     t->seq_active = 1;
@@ -522,15 +514,22 @@ static void rec_note(track_t *t, uint32_t note, uint32_t vel, uint32_t rat, int 
     }
     if (!hold)
         return;
-    if (!t->rh_n || t->rh_start != idx) {           /* a new hold (one in another step ends) */
+    new_hold = !t->rh_n || t->rh_start != idx;
+    if (new_hold) {                               /* a new hold (one in another step ends) */
         t->rh_n = 0;
         t->rh_start = (uint8_t)idx;
+        t->rh_start_abs = abs;
         t->rh_ties = 0;
     }
     for (k = 0; k < t->rh_n && t->rh_note[k] != note; k++)
         ;
     if (k == t->rh_n && t->rh_n < 4u)
         t->rh_note[t->rh_n++] = (uint8_t)note;      /* a chord: held until its last key is up */
+    if (new_hold && rec_snap[trk_index(t)] != REC_SNAP_TRACK) {
+        uint32_t into, slen, now = trk_grid(t, &into, &slen), j;
+        for (j = abs + 1u; j <= now && j - abs < len; j++)
+            rec_hold(t, j % len, len, j);
+    }
 }
 
 /* live recording into the drum track: lane, level, ratchet */
@@ -558,7 +557,7 @@ static void rec_hold(track_t *t, uint32_t idx, uint32_t len, uint32_t abs)
         t->rh_n = 0;                                /* disarmed, or the whole pattern is this note */
         return;
     }
-    if (idx == t->rh_start)
+    if (abs <= t->rh_start_abs || idx == t->rh_start)
         return;                                     /* (recorded ahead into the step now starting) */
     s = &t->step[idx];
     if (s->time == ST_NOTE && s->n) {

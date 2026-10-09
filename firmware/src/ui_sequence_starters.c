@@ -18,6 +18,9 @@ static void sequence_screen_open(void)
     if (song.sel >= NPART) return;
     sequence_root = (uint8_t)clamp(trk[song.sel].p[P_ROOT],0,11);
     sequence_scale = (uint8_t)clamp(trk[song.sel].p[P_SCALE],0,NSCALES-1);
+    if (!sequence_scale) sequence_scale = 1; /* chromatic isn't a useful default progression */
+    sequence_octave = (int8_t)clamp(song.octave,-3,3);
+    sequence_vlead = (uint8_t)!!trk[song.sel].p[P_VLEAD];
     sequence_browser = 1; sequence_page = sequence_confirm = 0;
     sequence_preview_tick = sequence_preview_block; sequence_preview_end = sequence_preview_stop;
     sequence_hold_t0 = 0; ui.force = 1;
@@ -27,7 +30,7 @@ static void sequence_screen_draw(void)
     static uint32_t head;
     const sequence_starter_t *p = &SEQUENCE_STARTERS[sequence_sel];
     char b[16]; uint32_t k;
-    te_header(sequence_page ? "seq rhythm" : "sequences",TE_COL[song.sel % NPART],&head);
+    te_header(sequence_page == 2 ? "seq pitch" : sequence_page ? "seq rhythm" : "sequences",TE_COL[song.sel % NPART],&head);
     cv_begin(240,120,C_BLACK);
     cv_text(4,4,&FONT_S,p->name,C_WHITE);
     cv_text(4,24,&FONT_S,"4 BARS / 64 STEPS",TE_G4);
@@ -41,14 +44,19 @@ static void sequence_screen_draw(void)
     cv_blit(0,40);
     cv_begin(240,80,C_BLACK);
     cv_text(4,0,&FONT_S,sequence_confirm ? "OCT+ AGAIN / HOLD" : "OCT+ APPLY OCT- LISTEN",C_WHITE);
-    cv_text(4,20,&FONT_S,sequence_page ? "1 ROTATE  2 OFFSET" : "1 STARTER 2 ROOT",TE_G3);
-    cv_text(4,40,&FONT_S,sequence_page ? "3 SYNCOPATE 4 FEEL" : "3 SCALE   4 MODE",TE_G3);
-    if (sequence_page) {
+    cv_text(4,20,&FONT_S,sequence_page == 2 ? "1 OCTAVE  2 ROOT" : sequence_page ? "1 ROTATE  2 OFFSET" : "1 STARTER 2 ROOT",TE_G3);
+    cv_text(4,40,&FONT_S,sequence_page == 2 ? "3 SCALE   4 VLEAD" : sequence_page == 1 ? "3 SYNCOPATE 4 FEEL" : "3 SCALE   4 MODE",TE_G3);
+    if (sequence_page == 1) {
         fmt_int(b,sequence_shape.rotate); cv_text(4,60,&FONT_S,b,TE_G4);
         fmt_int(b,sequence_shape.offset); cv_text(52,60,&FONT_S,b,TE_G4);
         fmt_int(b,sequence_shape.sync); cv_text(100,60,&FONT_S,b,TE_G4);
         fmt_int(b,sequence_shape.feel); cv_text(148,60,&FONT_S,b,TE_G4);
-    } else cv_text(4,60,&FONT_S,"SELECT: PAGE / HOME: EXIT",TE_G3);
+    } else {
+        fmt_int(b,sequence_octave + 4); cv_text(4,60,&FONT_S,"OCT",TE_G4);
+        cv_text(36,60,&FONT_S,b,C_WHITE);
+        cv_text(60,60,&FONT_S,sequence_page == 2 ?
+            (sequence_vlead?"VLEAD ON":"VLEAD OFF") : "SELECT: PAGE",TE_G3);
+    }
     if (sequence_preview.active) cv_text(188,60,&FONT_S,"PLAY",C_WHITE);
     if (ui.msg_t) { cv_rect(0,0,240,20,C_WHITE); cv_text(4,2,&FONT_S,ui.msg,C_BLACK); }
     cv_blit(0,160);
@@ -60,11 +68,15 @@ static void sequence_screen_input(uint32_t pressed,uint32_t home)
     if ((s=panel_enc(EN_SELECT))) {
         int32_t next=(int32_t)sequence_page+s;
         if(next<0) { page_walk(-1); return; }
-        if(next>1) { page_walk(1); return; }
+        if(next>2) { page_walk(1); return; }
         sequence_page=(uint8_t)next; changed=1;
     }
     for(k=0;k<4;k++) if ((s=panel_enc(EN_K1+k))) {
-        if (!sequence_page) {
+        if (sequence_page == 2 && k == 0u) {
+            sequence_octave=(int8_t)clamp(sequence_octave+s,-3,3);
+        } else if (sequence_page == 2 && k == 3u) {
+            sequence_vlead=(uint8_t)clamp(sequence_vlead+s,0,1);
+        } else if (sequence_page != 1) {
             uint8_t *v = k==0 ? &sequence_sel : k==1 ? &sequence_root : k==2 ? &sequence_scale : &sequence_mode;
             int max = k==0 ? NSEQUENCE_STARTERS-1 : k==1 ? 11 : k==2 ? NSCALES-1 : 2;
             *v=(uint8_t)clamp((int32_t)*v+s,0,max);
@@ -88,7 +100,8 @@ static void sequence_screen_input(uint32_t pressed,uint32_t home)
             fm1_irq_off();
             sequence_preview.track=song.sel; sequence_preview.starter=sequence_sel;
             sequence_preview.root=sequence_root; sequence_preview.scale=sequence_scale;
-            sequence_preview.mode=sequence_mode; sequence_preview.octave=song.octave;
+            sequence_preview.mode=sequence_mode; sequence_preview.octave=sequence_octave;
+            sequence_preview.vlead=sequence_vlead;
             sequence_preview.shape=sequence_shape; sequence_preview.step=0;
             sequence_preview.phase=0; sequence_preview.first=1; sequence_preview.active=1;
             fm1_irq_on();

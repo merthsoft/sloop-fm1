@@ -1,0 +1,17 @@
+# Firmware design and implementation
+
+Current native firmware features and their implementation contracts live here;
+`firmware/` holds source. The public firmware package in this directory is an
+existing upstream website artifact, not the current Merthsoft build.
+
+- [Musical sequence starters](SEQUENCE-STARTERS-DESIGN.md)
+- [Recording snap and STEP editing](SEQUENCER-EDITING.md)
+- [Drum grooves](DRUM-GROOVES-DESIGN.md)
+- [Rhythm shaping](RHYTHM-SHAPING-DESIGN.md)
+- [Chord and arpeggio architecture](CHORD-ARPEGGIO-DESIGN.md) — includes future work
+- [Punch FX](PUNCH-FX-DESIGN.md)
+- [USB playback](USB-PLAYBACK-IMPLEMENTATION.md)
+- [Lossless font packing](FONT-PACKING-DESIGN.md)
+
+Use the [player guide](../../GUIDE.md) for controls and the
+[current status](<../../android/design docs/STATUS.md>) for the integrated feature list.

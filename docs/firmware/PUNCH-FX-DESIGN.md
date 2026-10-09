@@ -1,7 +1,7 @@
 # Punch-in FX black-key controls
 
 Implemented in **2.5 Merthsoft.3**, October 9, 2026. The 16 white-key effect IDs and
-remote performance protocol remain unchanged. See [the playing guide](../GUIDE.md#black-key-punch-modifiers-25-merthsoft3)
+remote performance protocol remain unchanged. See [the playing guide](../../GUIDE.md#black-key-punch-modifiers-25-merthsoft3)
 for the physical mapping; octave numbers use the FM1 labels.
 
 ## Interaction and ownership

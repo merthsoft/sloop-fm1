@@ -18,9 +18,13 @@ int main(int argc,char **argv)
     outdir=argc>1?argv[1]:"build/host";song.sel=1;
     for(g=0;g<NSEQUENCE_STARTERS;g++)for(scale=0;scale<NSCALES;scale++)
         for(mode=0;mode<3;mode++)for(i=0;i<NSTEP;i++) {
-            step_t s=sequence_starter_step(g,i,11,scale,3,mode,0);
+            step_t s=sequence_starter_voiced(g,i,11,scale,3,mode,0,1);
             assert(s.n<=4);
-            for(j=0;j<s.n;j++)assert(s.note[j]<=127&&(!j||s.note[j]>s.note[j-1]));
+            for(j=0;j<s.n;j++) {
+                if(s.note[j]>127||(j&&s.note[j]<=s.note[j-1]))
+                    fprintf(stderr,"starter %u scale %u mode %u step %u: notes %u %u %u %u\n",g,scale,mode,i,s.note[0],s.note[1],s.note[2],s.note[3]);
+                assert(s.note[j]<=127&&(!j||s.note[j]>s.note[j-1]));
+            }
         }
     trk[1].step[3].n=1;trk[1].step[3].note[0]=64;trk[1].step[3].time=ST_NOTE;
     trk[1].micro[3]=-13;step_fill_set(&trk[1],3,FC_FILL);
@@ -30,6 +34,7 @@ int main(int argc,char **argv)
     for(i=0;i<NPAGES;i++)if(PAGES[i].scope==SC_STARTER)break;
     assert(i<NPAGES);ui.home=0;ui.page=(uint8_t)i;page_entered();
     assert(sequence_browser&&sequence_preview_tick);
+    assert(sequence_scale==1&&trk[1].p[P_SCALE]==0);
     sequence_sel=0;sequence_root=0;sequence_scale=1;sequence_mode=0;
     sequence_shape=(rhythm_shape_t){0,0,0,255,0};
     sequence_screen_draw();ppm("live-sequence-starters");
@@ -74,10 +79,12 @@ int main(int argc,char **argv)
     song.playing=0;fm1_in.buttons=0;
     sequence_page=1;sequence_screen_draw();ppm("live-sequence-rhythm");
     encs[panel.enc[EN_SELECT]]=1;sequence_screen_input(0,0);
+    assert(sequence_browser&&sequence_page==2);
+    encs[panel.enc[EN_SELECT]]=1;sequence_screen_input(0,0);
     assert(!sequence_browser&&cur_page()->scope==SC_SONG);
     ui.page=(uint8_t)i;page_entered();assert(sequence_browser);
     encs[panel.enc[EN_SELECT]]=-1;sequence_screen_input(0,0);
-    assert(!sequence_browser&&cur_page()->scope==SC_TRACK);
+    assert(!sequence_browser&&cur_page()->scope==SC_RECORD);
     ui.page=(uint8_t)i;page_entered();
     tap(B_OCTDN);assert(sequence_preview.active);
     puts("sequence UI: physical listen PASS");fflush(stdout);
@@ -87,6 +94,11 @@ int main(int argc,char **argv)
     tap(B_SEQ);assert(!sequence_browser&&cur_page()->scope==SC_SONG);
     ui.home=0;ui.page=(uint8_t)i;page_entered();
     encs[panel.enc[EN_SELECT]]=1;frame();assert(sequence_browser&&sequence_page==1);
+    encs[panel.enc[EN_SELECT]]=1;frame();assert(sequence_browser&&sequence_page==2);
+    int8_t physical_octave=song.octave;
+    encs[panel.enc[EN_K1]]=1;frame();assert(sequence_octave==physical_octave+1);
+    assert(song.octave==physical_octave);
+    sequence_screen_draw();ppm("live-sequence-pitch");
     encs[panel.enc[EN_SELECT]]=1;frame();assert(!sequence_browser&&cur_page()->scope==SC_SONG);
     ui.home=0;ui.page=(uint8_t)i;page_entered();
     sequence_screen_close();assert(!sequence_preview_end);

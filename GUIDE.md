@@ -156,7 +156,7 @@ The layers are **FX** (punch-in effects), **EDIT** (erase), **ARP** (note repeat
 | **SEL** | SEL pages (SEL, SEL 2) | key / chord layer |
 | **EDIT** | EDIT pages (EDIT 1, EDIT 2, VOICE, VOICE 2) · on TRACKS with the drum track: the **DRUMS** screen · on DRUMS: grid → kit → groove · on the STEP page: clear the step | erase layer |
 | **ARP** | ARP pages (ARP, ARP 2) | note-repeat layer |
-| **SEQ** | SEQ pages (STEP, PATTERN, SONG) · on TRACKS with the drum track: the **DRUMS** screen · on DRUMS: grid → kit → groove | step layer |
+| **SEQ** | SEQ pages (STEP, PATTERN, RECORD, SEQUENCES, SONG) · on TRACKS with the drum track: the **DRUMS** screen · on DRUMS: grid → kit → groove | step layer |
 | **GLO** | GLO pages (GLOBAL, MASTER, SYSTEM, DRUMS) | mix layer |
 | **OCT− / OCT+** | synth track: octave down / up (−3 … +3) · both together: octave 0 | drum track: **ghost** (OCT−) / **hard** (OCT+) hits while held |
 | **ALGORITHM** | select track 1–4, on every screen (inside a layer it waits; not during a free take, on the SONG screen or in the menu) | — |
@@ -457,6 +457,9 @@ There are three ways to enter steps:
 | --- | --- |
 | **keys** | the keys pressed together become the cursor's step (POLY: up to 4 notes; MONO, LEG and UNI: the last one); in chord mode a key writes its whole chord, CHORD+ changes included; let go of all keys and the cursor moves on |
 | KNOB 1 **STEP** | moves the cursor |
+| Hold **OCT+** + KNOB 1 **STEP** clockwise | extends after the selected note/chord with ties, one per step; stops at the pattern's end. Turning backward moves without erasing. Undo the whole gesture with EDIT + OCT−. |
+| Hold **OCT−** + KNOB 1 **STEP** clockwise | writes rests into each following step; the starting step stays intact. The same end-stop, backward movement and undo apply. On STEP, the OCT buttons are painting modifiers; use another page to change playing octave. |
+| Hold either **OCT** button + KNOB 2 | moves the selected note/chord and its following ties by whole steps; timing, fill conditions and parameter locks travel with it. Stopped only; occupied destinations are protected. EDIT + OCT−/OCT+ undoes/redoes the complete gesture. |
 | KNOB 2 **NOTE** | transposes the step (an empty step gets your last note) |
 | KNOB 3 **TIME** | **NOTE**, **TIE** (holds the previous note on) or **REST** |
 | KNOB 4 **FLAG** | **–**, **ACC** (accent), **SLD** (slide to the next note), **A+S** (both) |
@@ -465,6 +468,8 @@ There are three ways to enter steps:
 Not while recording or armed (the keys record live then). On the drum track, the STEP page shows *DRUM TRACK*: use the DRUMS grid or the SEQ layer.
 
 The **PATTERN** page (tap SEQ again) holds the track's **LEN**, **DIV**, **SWG** (swing) and **GATE** (how long each note lasts).
+
+The **RECORD** page (next SEQ tap) has **SNAP** on knob 1: **TRACK** retains normal nearest-step recording, **1/8** and **1/4** snap new recordings to eighths or quarters without changing playback DIV or LEN. It is a per-track preference until power-off, applies to live recording into an existing loop on synth or drum tracks, and leaves free-take timing unchanged. Use a playback DIV that divides the requested snap grid, such as 1/16 or 1/32. A finer or incompatible requested grid shows **DIV LIMIT** and falls back to the playback grid. DIV, LEN and GATE remain available on knobs 2–4.
 
 ### Nudge (micro timing)
 
@@ -1205,11 +1210,16 @@ between direct sequence playback and the arp without waiting for the next NOTE.
 
 ### Native starter libraries
 
-On a synth track, tap **SEQ** through STEP → PATTERN → SEQUENCES → SONG.
-SELECT reaches the same four pages in either direction; SONG is the arrangement
-screen. SEQUENCES offers twelve four-bar progressions, including classic turns,
-sevenths, house offbeats and funk. Knobs select starter, root, scale and CHORD/BASS/ARP
-NOTES output. Its rhythm page offers rotation, offset, syncopation and Feel.
+On a synth track, tap **SEQ** through STEP → PATTERN → RECORD → SEQUENCES → SONG.
+SELECT reaches the same five pages in either direction; SONG is the arrangement
+screen. SEQUENCES offers 24 four-bar progressions, including classic turns,
+sevenths, gospel, disco, garage, Latin rhythms, house offbeats and funk. Knobs select
+starter, root, scale and CHORD/BASS/ARP NOTES output. A CHR track starts this browser
+in Major without changing its actual scale. Its rhythm page offers rotation, offset,
+syncopation and Feel. The next SELECT position opens **seq pitch**: knob 1 **OCTAVE**,
+2 **ROOT**, 3 **SCALE**, 4 **VLEAD**. Octave controls the generated pattern independently
+of the physical playing octave. VLEAD chooses nearby chord inversions, also used by
+ARP NOTES; BASS remains on roots. Preview and Apply use the same pitches.
 
 On drums, tap **SEQ** or **EDIT** through GRID → KIT → GROOVE → SHAPE.
 The bank contains 24 beats, including Amen, funk, broken house, Afro clave,

@@ -5,6 +5,23 @@ future design contracts; dated release/handoff/test results remain historical ev
 
 ## Latest firmware
 
+**2.5 Merthsoft.6** adds STEP-page tie/rest painting: select the starting note,
+hold OCT+ (ties) or OCT− (rests), and turn STEP clockwise. Each crossed step is
+written without changing the starting step; the cursor stops at the pattern end.
+Backward movement preserves existing steps. One hold is one undo session; ordinary
+cursor wrapping and OCT controls outside STEP remain unchanged.
+Holding either OCT button with knob 2 moves a complete note/tie chain while stopped,
+including timing, conditions and locks, with collision protection and metadata undo.
+RECORD-page SNAP chooses TRACK/1/8/1/4 independently of playback DIV; it is a per-track
+preference until reboot. Incompatible/finer grids show DIV LIMIT and use track snapping.
+The musical bank has 24 entries, starts CHR tracks in Major without changing track scale,
+and has a third pitch page for independent octave and optional voice leading. The shared
+nearest-inversion helper serves live chords and deterministic starter rendering.
+
+**2.5 Merthsoft.5** distinguishes ARP NOTES from BASS across every musical starter:
+ARP adds eighth-note attacks while retaining syncopation and cycles all triad/seventh
+tones by attack order; BASS keeps lower roots and the original rhythm.
+
 **2.5 Merthsoft.4** adds twelve native musical sequence starters, expands the drum bank
 to 24 grooves, and adds rhythm shaping and non-destructive audition. Native OCT+ holds
 confirm replacement after 700 ms. Both libraries use the same complete pattern/metadata
@@ -13,14 +30,14 @@ physical taps and SELECT; its browser includes a rhythm subpage. Drum pages are 
 KIT, GROOVE and SHAPE. SNOTE route changes preserve a currently sustained chord when
 turning ARP off/on, including per-note dynamics. Lossless one-bit font packing saves
 16,128 bytes of bitmap data while preserving pixels and legacy header compatibility.
-See [sequence starters](../../firmware/SEQUENCE-STARTERS-DESIGN.md),
-[drum grooves](../../firmware/DRUM-GROOVES-DESIGN.md) and
-[rhythm shaping](../../firmware/RHYTHM-SHAPING-DESIGN.md).
+See [sequence starters](../../docs/firmware/SEQUENCE-STARTERS-DESIGN.md),
+[drum grooves](../../docs/firmware/DRUM-GROOVES-DESIGN.md) and
+[rhythm shaping](../../docs/firmware/RHYTHM-SHAPING-DESIGN.md).
 
 **2.5 Merthsoft.3** adds black-key punch controls: Slower/Faster, Triplet, Gentle/Extreme,
 Blend, Latch and Retrigger. Momentary controls clear on FX exit; latch survives key/layer
 release and clears on toggle or STOP. Controls retain physical/remote FX priority and do
-not emit or record synth notes. FX tiles show mappings. See [component design](../../firmware/PUNCH-FX-DESIGN.md).
+not emit or record synth notes. FX tiles show mappings. See [component design](../../docs/firmware/PUNCH-FX-DESIGN.md).
 
 
 **2.5 Merthsoft.2** extends the 700 ms ARP/SEL hold gesture to manually played arpeggios
@@ -91,8 +108,9 @@ Revisit hardware only for a new failure or a material feature change; do not rep
 - Negotiated USB return gain/mute and diagnostics.
 - Twenty-four native drum groove starters, including four-bar Amen and non-destructive hardware preview, accessible on hardware and from the phone drum
   Sequence workspace. Stopped-only replacement preserves kit/tempo and supports hardware undo.
-- Twelve native musical sequence starters with root/scale, chord/bass/arp-note modes,
-  non-destructive preview, complete replacement undo, and native rhythm controls.
+- Twenty-four native musical sequence starters with root/scale, chord/bass/arp-note modes,
+  non-destructive preview, complete replacement undo, native rhythm controls, separate
+  generated octave and optional voice leading. Native recording snap and event moves are integrated.
   Musical starters and rhythm controls currently use hardware UI; phone command 74
   continues to discover/apply canonical drum grooves.
 - Opt-in sequencer-fed arpeggios through ARP 2 ORD SNOTE/SPLAY, with independent

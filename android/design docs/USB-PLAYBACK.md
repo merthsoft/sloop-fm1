@@ -56,7 +56,7 @@ the comparable validation-build baseline, leaving 10,124 bytes of data/BSS RAM i
 The shared runner includes focused playback tests and static diagnostics include uac_play_mix.
 Baseline and playback audio ISR budgets still fail; helper/FM6 entries have no accepted budgets.
 Budgets were not raised and physical performance signoff remains open. See the
-[implementation note](../../firmware/USB-PLAYBACK-IMPLEMENTATION.md) for resource accounting,
+[implementation note](../../docs/firmware/USB-PLAYBACK-IMPLEMENTATION.md) for resource accounting,
 reproducible checks, review artifacts and limitations.
 
 ## Capture bus and feedback

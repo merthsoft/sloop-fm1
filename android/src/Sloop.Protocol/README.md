@@ -12,5 +12,5 @@ FM6 exchange and persistent banks, remote performance, drum grooves and USB retu
 Protocol-12 extensions negotiate support; generic MIDI performs no SLOOP queries.
 Atomic scene command 72 remains a tested client/staging scaffold disabled in production.
 See [performance wire](PERFORMANCE-WIRE.md), [sound banks](SOUND-BANKS.md),
-[groove design](../../../firmware/DRUM-GROOVES-DESIGN.md) and
+[groove design](../../../docs/firmware/DRUM-GROOVES-DESIGN.md) and
 [editor protocol](../../../web/EDITOR_PROTOCOL.md).

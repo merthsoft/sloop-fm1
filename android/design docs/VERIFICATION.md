@@ -1,4 +1,28 @@
-# Native starters, navigation and font packing — October 9, 2026
+# Tie/rest painting and native starters — October 9, 2026
+
+**2.5 Merthsoft.6** target build passes: image 571,472 bytes, RAM 97,348/98,304,
+pool 333,948/344,064, RAM text 925 instructions/no calls and HAL access checks clean.
+`tests/seq_navigation_test.c` exercises production controls with audio running:
+tie/rest painting, cross-bank sweeps, unchanged source chord and flags/levels,
+backtracking, end stops, separate hold sessions, full step undo/redo, normal cursor
+wrapping, octave controls off STEP, page navigation and SNOTE ARP mode changes.
+It passes undefined-behavior trap instrumentation with only `shift-base` excluded;
+existing DSP negative signed left shifts prevent a full-UBSan whole-audio claim.
+The 24-starter pure generator passes full UBSan, including fixed POP FOUR nearest
+voicings, disabled-mode identity and unchanged bass. The broad sequencer suite passes
+coarse eighth/quarter capture, future/past held notes, chord grouping, loop wrapping
+and incompatible-grid fallback, plus its retained recording/live-voicing regressions.
+The browser suite passes Major initialization, independent octave, navigation,
+apply/hold/undo and audition ownership. These runners are in the normal test script.
+The broad UI/audio regression and 20,000-frame fuzz pass. The all-scale native browser regression also guards against duplicate voices in sparse-scale inversions.
+No new hardware flash is claimed. The README's four Android images are fresh captures
+from the connected Pixel on October 9; no older captures are used. Native library
+images are current actual host framebuffer renders.
+
+Merthsoft.5 pure-generator and native UI tests passed for distinct BASS/ARP rendering,
+all starter chord tones, retained syncopation and the explicit POP FOUR note sequence.
+
+## Merthsoft.4 checkpoint
 
 **2.5 Merthsoft.4** integrates twelve musical starters, 24 drum grooves, native rhythm
 controls and audition, 700 ms apply holds, and shared metadata undo.

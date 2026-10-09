@@ -268,6 +268,7 @@ typedef struct track {
     uint8_t rh_ties;             /* TIE steps written after it */
     uint8_t rh_last;             /* the last of them; rh_bak: what it held (an early release puts it back) */
     uint32_t rh_last_abs;        /* (its step of the transport grid) */
+    uint32_t rh_start_abs;       /* coarse recording snap may choose a future onset */
     step_t rh_bak;
     uint32_t pass;               /* loops played since PLAY (a recording pass: one undo) */
     /* mono */
@@ -316,6 +317,9 @@ static song_t song;
 #endif
 #define BEAT_U ((uint32_t)FS * 60u)
 static volatile uint32_t clk_beat, clk_pos;
+/* Recording preference only; no project/parameter format changes. Resets on boot. */
+enum { REC_SNAP_TRACK, REC_SNAP_EIGHTH, REC_SNAP_QUARTER, REC_SNAP_COUNT };
+static int16_t rec_snap[NTRK];
 static const uint8_t DIV_DEN[6] = {1, 2, 4, 8, 3, 6};    /* N_DIV 0..5: beats = 1 / DEN */
 #define NDIV_SHORT 6u            /* the divisions inside a beat (N_DIV, the arp's RATE) */
 #define NDIV_STEP 9u             /* N_SDIV: + 1/2 note, a bar, two bars (whole beats: DIV_BEATS) */

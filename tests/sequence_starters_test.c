@@ -27,7 +27,26 @@ int main(void)
 {
     uint32_t g,i,j,mode,scale; rhythm_shape_t shape={0,0,0,255,0};
     track_t untouched;
-    assert(NSEQUENCE_STARTERS==12);
+    assert(NSEQUENCE_STARTERS==24);
+    /* Fixed musical oracle: POP FOUR keeps common tones in close voicings. */
+    {
+        static const uint8_t expected[4][3]={{60,64,67},{59,62,67},{60,64,69},{60,65,69}};
+        for(i=0;i<4;i++) {
+            step_t v=sequence_starter_voiced(0,16*i,0,1,0,STARTER_CHORD,&shape,1);
+            assert(v.n==3&&!memcmp(v.note,expected[i],3));
+            step_t a=sequence_starter_voiced(0,16*i,0,1,0,STARTER_ARP,&shape,1);
+            assert(a.n==1&&a.note[0]==expected[i][0]);
+        }
+        for(g=0;g<NSEQUENCE_STARTERS;g++)for(scale=0;scale<NSCALES;scale++)
+            for(mode=0;mode<3;mode++)for(i=0;i<NSTEP;i++) {
+                step_t plain=sequence_starter_step(g,i,0,scale,0,mode,&shape);
+                step_t off=sequence_starter_voiced(g,i,0,scale,0,mode,&shape,0);
+                step_t voiced=sequence_starter_voiced(g,i,0,scale,0,mode,&shape,1);
+                assert(!memcmp(&plain,&off,sizeof plain));
+                if(mode==STARTER_BASS)assert(!memcmp(&plain,&voiced,sizeof plain));
+                for(j=0;j<voiced.n;j++)assert(voiced.note[j]<128&&(!j||voiced.note[j]>voiced.note[j-1]));
+            }
+    }
     for(g=0;g<NSEQUENCE_STARTERS;g++) for(scale=0;scale<NSCALES;scale++)
         for(mode=0;mode<3;mode++) for(i=0;i<NSTEP;i++) {
             step_t s=sequence_starter_step(g,i,11,scale,3,mode,&shape);
@@ -62,7 +81,8 @@ int main(void)
                     if(arp.note[0]==sequence_degree_note(degree+2*j,0,1,0)) tones|=1u<<j;
             }
         }
-        assert(arp_hits>=8 && arp_hits>bass_hits);
+        assert(arp_hits>=8 && arp_hits>=bass_hits);
+        if(bass_hits<8) assert(arp_hits>bass_hits);
         assert(tones==(SEQUENCE_STARTERS[g].seventh?15u:7u));
     }
     { static const uint8_t expected[]={60,64,67,60,64,67,60,64};

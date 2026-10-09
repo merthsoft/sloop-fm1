@@ -1485,8 +1485,47 @@ static void t_drdly(void)
           "2.5: GLO > DRUMS > DLY: the drums echo in the tempo delay (more with more DLY, through the FILTER too); 0: none");
 }
 
+static void t_record_snap(void)
+{
+    track_t *t=&trk[0];uint32_t later;
+    reset(120);t->p[P_SDIV]=2;t->p[P_SLEN]=16;
+    clk_beat=0;clk_pos=div_units(2)*7u/10u;
+    assert(rec_target(t,&later)==1&&later);
+    rec_snap[0]=REC_SNAP_EIGHTH;
+    assert(rec_target(t,&later)==0&&!later);
+    clk_pos=div_units(2)*13u/10u;
+    assert(rec_target(t,&later)==2&&later);
+    rec_snap[0]=REC_SNAP_QUARTER;
+    clk_pos=div_units(2)*17u/10u;assert(rec_target(t,&later)==0&&!later);
+    clk_pos=div_units(2)*23u/10u;assert(rec_target(t,&later)==4&&later);
+    assert(t->p[P_SDIV]==2&&t->p[P_SLEN]==16&&rec_snap[1]==REC_SNAP_TRACK);
+    song.rec=1;
+    rec_note(t,60,100,0,1); /* future coarse onset: no ties before it */
+    assert(t->step[4].time==ST_NOTE&&t->rh_start_abs==4);
+    rec_hold(t,3,16,3);assert(t->step[3].time==ST_REST);
+    rec_hold(t,4,16,4);assert(t->step[4].time==ST_NOTE);
+    rec_hold(t,5,16,5);assert(t->step[5].time==ST_TIE&&t->rh_ties==1);
+    steps_clear(t);t->rh_n=0;
+    clk_pos=div_units(2)*17u/10u;
+    rec_note(t,60,100,0,1); /* past snapped onset fills held duration to now */
+    assert(t->step[0].time==ST_NOTE&&t->step[1].time==ST_TIE&&t->rh_ties==1);
+    rec_note(t,64,100,0,1);assert(t->step[0].n==2&&t->rh_ties==1);
+    clk_beat=3;clk_pos=BEAT_U*9u/10u;
+    assert(rec_target(t,&later)==16&&later); /* loop-boundary target */
+    rec_snap[TRK_DRUM]=REC_SNAP_EIGHTH;TDRUM->p[P_SDIV]=2;
+    assert(rec_target(TDRUM,&later)==16&&later);
+    clk_beat=0;clk_pos=BEAT_U*4u/10u;t->p[P_SDIV]=4;
+    rec_snap[0]=REC_SNAP_TRACK;uint32_t triplet=rec_target(t,&later);
+    rec_snap[0]=REC_SNAP_EIGHTH;assert(rec_target(t,&later)==triplet);
+    t->p[P_SDIV]=0;rec_snap[0]=REC_SNAP_TRACK;uint32_t quarter=rec_target(t,&later);
+    rec_snap[0]=REC_SNAP_EIGHTH;assert(rec_target(t,&later)==quarter);
+    rec_snap[0]=rec_snap[TRK_DRUM]=REC_SNAP_TRACK;song.rec=0;
+    check(1,"independent eighth/quarter recording snap, future/past held notes, chord grouping and loop wrap");
+}
+
 int main(void)
 {
+    t_record_snap();
     t_arp_modes();
     t_remaining_arp_modes();
     t_arp_pulse();

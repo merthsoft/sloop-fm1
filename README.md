@@ -1,4 +1,4 @@
-> Merthsoft fork release: **2.5 Merthsoft.5**. `2.5` identifies the upstream SLOOP base; only `Merthsoft.N` increments for our releases until we adopt a newer upstream base. Our Android and firmware integration lives on the `android` branch. Original Android work uses the Unlicense, with retained third-party obligations described in [Android licensing](android/LICENSING.md).
+> Merthsoft fork release: **2.5 Merthsoft.6**. `2.5` identifies the upstream SLOOP base; only `Merthsoft.N` increments for our releases until we adopt a newer upstream base. Our Android and firmware integration lives on the `android` branch. Original Android work uses the Unlicense, with retained third-party obligations described in [Android licensing](android/LICENSING.md).
 
 <p align="center"><img src="assets/logo/sloop-logo.png" alt="SLOOP" width="420"></p>
 
@@ -6,7 +6,7 @@
 Free and open source (GPL-3.0), based on <a href="https://github.com/hugelton/Felucca">Felucca</a> by Leo Kuroshita / Hügelton Instruments.</p>
 
 <p align="center">
-<a href="https://isod89.github.io/sloop-fm1/"><b>Install from the browser</b></a> ·
+<a href="https://isod89.github.io/sloop-fm1/"><b>Upstream browser installer</b></a> ·
 <a href="GUIDE.md">Complete guide</a> ·
 <a href="SLOOP.md">Manual</a> ·
 <a href="DEMARRAGE-RAPIDE-FR.md">Guide en français</a> ·
@@ -22,6 +22,9 @@ SLOOP turns the FM-1 into a four-track groovebox you play live: **three synths a
 > **Status:** 2.5 (two new engines, PHYS and NOISE, 77 new sounds, a drum synth, DX7 cartridges in one go, MIDI CCs, 48 kHz USB audio, and the fixes of 2.4.1). Still a beta: install at your own risk, and please [report](../../issues) what you find. Your projects, presets, samples and settings are kept when you update, and you can go back at any time (see [Going back](#going-back)).
 
 ## Contents
+
+- [Merthsoft firmware and the one-minute workflow](#merthsoft-firmware)
+- [SLOOP Mobile for Android](#sloop-mobile-for-android)
 
 1. [What's new in 2.5 and 2.4](#whats-new-in-25)
 2. [Screenshots](#screenshots)
@@ -42,6 +45,72 @@ SLOOP turns the FM-1 into a four-track groovebox you play live: **three synths a
 17. [Licence](#licence)
 
 ---
+
+## Merthsoft firmware
+
+This fork keeps SLOOP's synth engines and adds ways to build and perform a complete loop quickly on the FM-1. **No phone is required for these firmware features.** The current release is **2.5 Merthsoft.6**: `2.5` is the upstream base, and `Merthsoft.N` identifies our additions.
+
+### The one-minute workflow
+
+1. With playback stopped, select the **drum track**, open its **GROOVE** page, and choose a beat. **OCT−** auditions it without replacing your pattern; **OCT+** applies it. Hold OCT+ for 700 ms or press it twice to confirm replacing existing material.
+2. Select a **synth track**, then tap **SEQ** through STEP → PATTERN → RECORD → **SEQUENCES**. Choose **POP FOUR**, your root and scale, and **ARP NOTES** for an editable I–V–vi–IV arpeggio. Listen, then apply.
+3. Select another synth and apply the same starter in **BASS** mode. You now have drums, harmony and bass ready to develop with your own melody, sound design and performance.
+
+The libraries are starting points: applying creates ordinary editable sequencer steps. Your selected sounds and tempo stay intact. Preview first, and use **EDIT + OCT−** to undo a replacement.
+
+| Native drum grooves | Musical sequence starters | Rhythm shaping |
+| --- | --- | --- |
+| <img src="assets/screens/merthsoft/firmware-grooves.png" width="240" alt="FM-1 groove browser with FOUR FLOOR and its drum grid"> | <img src="assets/screens/merthsoft/firmware-sequences.png" width="240" alt="FM-1 POP FOUR sequence starter with 1–5–6–4 progression and chord mode"> | <img src="assets/screens/merthsoft/firmware-sequence-rhythm.png" width="240" alt="FM-1 musical sequence rhythm shaping page"> |
+
+*Actual firmware framebuffer captures from the host UI harness.*
+
+<img src="assets/screens/merthsoft/firmware-sequence-pitch.png" width="240" alt="FM-1 sequence pitch page with independent octave and VLEAD controls">
+
+*The sequence pitch page keeps octave and voicing controls separate from OCT−/OCT+ audition and apply.*
+
+- **24 drum grooves:** four-on-the-floor, breaks, a four-bar Amen, funk, broken house, Afro clave, electro, boom bap and more. Preview using your current kit, then apply with complete pattern/metadata undo. The phone can browse and apply the canonical groove bank too.
+- **24 musical starters:** standard progressions alongside soul sevenths, Dorian pockets, funk, offbeat stabs, gospel, disco, garage, Latin turns, rising/descending movement and Lydian colors. Choose **CHORD**, lower-root **BASS**, or **ARP NOTES**, which cycles chord tones on eighth-note pulses while retaining syncopated attacks. A CHR track starts the browser in Major; its pitch page controls octave and optional voice leading independently of the physical OCT buttons.
+- **Rhythm shaping:** rotate a pattern, offset drum lanes, move eligible attacks off the beat with syncopation, and add microtiming feel. Preview auditions the shaped result before replacement.
+- **Fast ties and rests (Merthsoft.6):** on STEP, select the starting note/chord, hold **OCT+**, and sweep **knob 1** clockwise to tie each following step. Hold **OCT−** instead to paint rests. The starting step stays intact; painting stops at the pattern's end. Backtracking moves without erasing, and the whole gesture has one undo.
+- **Recording and timing correction:** RECORD-page **SNAP** records to eighths or quarters while keeping the playback DIV intact. On STEP, hold either OCT button and turn **knob 2** to move a note/chord and its tie chain by whole steps, including timing, conditions and locks. Occupied destinations are protected, and the gesture supports complete undo/redo.
+- **Playable latch:** hold **ARP** or physical **SEL** (labelled SCL in SLOOP) for 700 ms while holding notes to toggle latch without stopping your playing. It works with chord mode and manually played arpeggios. Non-CHROM chord modifiers toggle on latched chords; CHROM allows literal black-key roots.
+- **Sequencer-fed arpeggios:** ARP 2 **ORD SNOTE/SPLAY** lets sequenced chords feed the arpeggiator, including sustained tie chains. Live and sequence input remain independent.
+- **Black-key punch FX controls:** rate, triplet, strength, blend, latch and retrigger augment the 16 white-key effects.
+- **Undo accidental song loads:** while stopped, **EDIT + OCT−** restores the project preceding the latest saved-slot load, section selection or working-project backup restore; **OCT+** redoes it. This history is held in RAM and subsequent sequence edits or recording supersede it.
+- **USB companion support:** sample playback through the FM-1's speaker/headphones, verified sample transfer, remote performance controls and the Android workstation below.
+- **More ROM headroom:** lossless one-bit font packing removes **16,128 bytes** of bitmap data while preserving the original pixels. The splash screen is retained.
+
+To install **this fork**, build its firmware and local browser installer with [`build-sloop.ps1`](build-sloop.ps1); see [building](#building-and-tests) for prerequisites. The upstream browser installer linked above installs upstream SLOOP. See the [guide](GUIDE.md), [musical starters](docs/firmware/SEQUENCE-STARTERS-DESIGN.md), [drum grooves](docs/firmware/DRUM-GROOVES-DESIGN.md) and [rhythm shaping](docs/firmware/RHYTHM-SHAPING-DESIGN.md) for the controls and limits.
+
+## SLOOP Mobile for Android
+
+Bring the FM-1 and your phone: **SLOOP Mobile** is a C#/.NET Android companion for touch performance, sequencing, sound editing, sampling and session management over USB. Connect using a USB data cable and a phone that supports USB host mode. SLOOP mode routes performance by selected synth; **generic MIDI mode** also drives other MIDI receivers.
+
+| Perform | FM6 sound editing |
+| --- | --- |
+| <img src="assets/screens/merthsoft/android-perform.png" width="280" alt="Android Perform workspace with eight chord pads, octave controls and chord-quality joystick"> | <img src="assets/screens/merthsoft/android-fm6.png" width="280" alt="Android FM6 editor showing complete algorithm routing, carriers and operator selection"> |
+
+| Piano roll | Sampling and chopping |
+| --- | --- |
+| <img src="assets/screens/merthsoft/android-sequence.png" width="280" alt="Android piano roll with note grid, timing snap and selection controls"> | <img src="assets/screens/merthsoft/android-sampling.png" width="280" alt="Android waveform chopping workspace with selected region, undo and FM1 upload controls"> |
+
+*Fresh captures from the connected Pixel on October 9, 2026. The phone is connected to the PC for screenshots, so the FM-1 connection is shown offline.*
+
+The app has five workspaces:
+
+| Workspace | What you can do |
+| --- | --- |
+| **Perform** | Eight scale-degree chord pads including I ↑, a HiChord-style quality joystick, keyboard, scale grid, drums, ribbon and an XY MIDI CC macro. Play block chords, strums, arps or repeats; control key, scale, octave, voice leading and latch directly. Capture a performance into a loop. |
+| **Sequence** | Draw, select, move, resize and quantize notes in a touch piano roll with multi-note edits and undo. Exchange native FM-1 patterns, loop MIDI, browse drum grooves, arrange scenes and add stepped CC automation. Generate, edit, save and exchange composition drafts. |
+| **Sound** | Manually edit FM6 algorithms, operators and envelopes; copy/swap operators and exchange SysEx. Try offline sound recipes and reviewed prompt edits, audition a patch against the original, and save a base voice to the hardware bank with verified readback. |
+| **Sample** | Import PCM16 WAV or record from microphone/USB; trim, zoom and chop manually, equally, by transients or by tapping during playback. Review root pitch, tune and gain each chop, audition the encoded result, and send a fitted sample kit to the FM-1 with backup, readback and restore. |
+| **Library** | Save named sessions, browse and reuse samples across sessions, and import/export validated session archives. Performance settings and sample processing choices travel with sessions. Composition drafts have a separate portable export/import flow. |
+
+Prompts currently use **bounded offline procedural recipes and edit rules**. They produce notes, synth settings or reviewable edits; no audio-generation service or local language model is included. The app's MIDI performances use the connected instrument for sound, and USB sample preview can use the FM-1's audio output.
+
+Android is the current target. Windows/iOS, external-controller input, time stretching, combined USR3+4 uploads and atomic live hardware scene switching remain future work. See the [current status](<android/design docs/STATUS.md>) for the full implemented/future split.
+
+Build and install from [`android/src`](android/src/README.md) using .NET 10 and the Android workload; [`Install-Phone.ps1`](android/src/Install-Phone.ps1) builds, installs and launches on an authorized USB-debugging phone. The [design index](<android/design docs/README.md>) and [verification record](<android/design docs/VERIFICATION.md>) document the architecture and checks. Original Android work uses the **Unlicense**; retained GPL/Apache components keep their obligations, including when distributing the combined app. See [Android licensing](android/LICENSING.md). Firmware remains GPL.
 
 ## What's new in 2.5
 

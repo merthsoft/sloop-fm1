@@ -1,5 +1,12 @@
 # FM1 shared harmony, chord, and arpeggio design
 
+2026-10-09: Merthsoft.6 extracts the existing nearest-inversion policy into
+`firmware/src/harmony_voicing.h`, shared by live chords and the optional native
+sequence-starter VLEAD renderer. Starter voicing derives from a fixed first-bar
+anchor and does not mutate live history. This is a shared voicing helper, not
+implementation of the semantic harmony/follower architecture proposed below.
+See [musical starters](SEQUENCE-STARTERS-DESIGN.md).
+
 2026-10-08: **QNT = CHROM** adds literal piano-key chord roots without adding parameters or
 changing project layout. Stored QNT values 0–2 retain prior behavior; appended value 3 bypasses
 white-key remapping and black-key modifiers. OCT/TRN apply; ROOT does not transpose literal
@@ -478,4 +485,4 @@ Combined integration checkpoint: firmware 2.4.15 links with image 580296 bytes a
 93444/98304, unchanged pool and 925-instruction call-free RAM text. HAL checks pass;
 the existing ISR cost check still fails and no thresholds were relaxed. These target
 checks do not establish physical deadline headroom. Current evidence lives in
-[verification](<../android/design docs/VERIFICATION.md>).
+[verification](<../../android/design docs/VERIFICATION.md>).

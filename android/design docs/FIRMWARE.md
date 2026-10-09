@@ -75,7 +75,7 @@ host tests and the target build pass. Hardware testing is accepted by the user f
 includes playback tests; static diagnostics now include uac_play_mix. Existing audio ISR
 budgets still fail for baseline and playback, and no budget was raised. See
 [USB-PLAYBACK.md](USB-PLAYBACK.md) and the
-[implementation note](../../firmware/USB-PLAYBACK-IMPLEMENTATION.md).
+[implementation note](../../docs/firmware/USB-PLAYBACK-IMPLEMENTATION.md).
 
 ## Capability and operation contract
 
@@ -151,7 +151,7 @@ Stop, panic and project adoption clear remote ownership. See [performance wire](
 Command 74 discovers the same sixteen ROM groove starters used by the hardware GROOVE page
 and applies ordinary editable drum steps while stopped. Existing drum material requires confirmation;
 replacement shares hardware undo and does not change the kit or global tempo.
-See [drum groove design](../../firmware/DRUM-GROOVES-DESIGN.md).
+See [drum groove design](../../docs/firmware/DRUM-GROOVES-DESIGN.md).
 Sequencer-to-arp routing is active through ARP 2 ORD SNOTE/SPLAY: literal recorded
 chords contribute independently of the legacy live held list. Direct sequenced chord playback
 is suppressed while ARP is enabled in these modes. NOTE/PLAY retain legacy behavior; ARP OFF
@@ -159,4 +159,4 @@ restores direct playback. TIE retains the sequence snapshot, REST/fill rejection
 and STOP/panic/project adoption release generated output. This uses 18 bytes of bounded state.
 The general ownership table remains inactive; local/USB/TRS same-pitch ownership and
 source/generated MIDI collisions retain their existing limitations. See
-[harmony design](../../firmware/CHORD-ARPEGGIO-DESIGN.md).
+[harmony design](../../docs/firmware/CHORD-ARPEGGIO-DESIGN.md).

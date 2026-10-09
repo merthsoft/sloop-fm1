@@ -16,8 +16,8 @@ Completed chat assignments, handoffs, older checks and releases are in [archive]
 | Sound | [Sound workflow](SOUND.md), [Manual FM6](FM6-EDITOR.md), [Prompt sound design](AI-SOUND.md) |
 | Prompting and development | [Composition](COMPOSITION.md), [Prompt editing](PROMPT-EDITING.md), [Simulation](SIMULATION.md) |
 
-Firmware feature designs: [drum groove bank](../../firmware/DRUM-GROOVES-DESIGN.md)
-and [shared chord/arpeggio foundations](../../firmware/CHORD-ARPEGGIO-DESIGN.md).
+Firmware feature designs live in the [firmware documentation index](../../docs/firmware/README.md),
+including starter libraries, recording/STEP editing and shared harmony foundations.
 
 ## Documentation conventions
 

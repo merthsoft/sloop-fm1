@@ -13,16 +13,89 @@ int main(void)
     panel=PANEL_DEFAULT;layers_init();host_tracks_init();palette_set(4);
     song.sel=1;go_home();frame();
     tap(B_SEQ);expect_page("STEP");
+    track_t *paint=&trk[1];
+    /* Whole-step move keeps a tied chord and all timing/lock metadata together. */
+    steps_clear(paint);paint->p[P_SLEN]=32;cursor_set(10);
+    paint->step[10].time=ST_NOTE;paint->step[10].n=2;
+    paint->step[10].note[0]=60;paint->step[10].note[1]=64;
+    paint->step[11].time=paint->step[12].time=ST_TIE;
+    paint->micro[11]=-7;step_fill_set(paint,12,FC_FILL);
+    assert(lock_set(paint,10,P_LEVEL,88));
+    step_t before_move[NSTEP];memcpy(before_move,paint->step,sizeof before_move);
+    press(B_OCTUP);encs[panel.enc[EN_K2]]=2;frame();
+    assert(ui.cursor==12&&paint->step[10].time==ST_REST&&paint->step[11].time==ST_REST);
+    assert(paint->step[12].n==2&&paint->step[13].time==ST_TIE&&paint->step[14].time==ST_TIE);
+    assert(paint->micro[13]==-7&&step_fill(paint,14)==FC_FILL&&step_locked(paint,12));
+    encs[panel.enc[EN_K2]]=-1;frame();assert(ui.cursor==11&&paint->micro[12]==-7);
+    paint->step[14].time=ST_NOTE;paint->step[14].n=1;paint->step[14].note[0]=72;
+    encs[panel.enc[EN_K2]]=1;frame();assert(ui.cursor==11&&paint->step[14].note[0]==72);
+    step_clear(&paint->step[14]);release(B_OCTUP);
+    assert(undo_swap(0)&&!memcmp(before_move,paint->step,sizeof before_move));
+    assert(paint->micro[11]==-7&&step_fill(paint,12)==FC_FILL&&step_locked(paint,10));
+    assert(undo_swap(1)&&paint->micro[12]==-7&&step_locked(paint,11));
+    assert(trk[0].step[10].time==ST_REST);
+    /* Tie painting uses actual OCT+/STEP controls, crosses the 16-step bank,
+     * preserves the source chord and unrelated step data, and has one undo. */
+    steps_clear(paint);cursor_set(0);
+    paint->p[P_SLEN]=32;
+    for(uint32_t i=0;i<NSTEP;i++) step_clear(&paint->step[i]);
+    paint->step[0].time=ST_NOTE;paint->step[0].n=3;
+    paint->step[0].note[0]=60;paint->step[0].note[1]=64;paint->step[0].note[2]=67;
+    paint->step[16].flags=SF_ACCENT;paint->step[16].lvl=90;
+    step_t original[NSTEP];memcpy(original,paint->step,sizeof original);
+    int8_t octave=song.octave;
+    press(B_OCTUP);assert(song.octave==octave);
+    encs[panel.enc[EN_K1]]=8;frame();
+    encs[panel.enc[EN_K1]]=9;frame();
+    assert(ui.cursor==17&&ui.bank==1);
+    assert(!memcmp(&paint->step[0],&original[0],sizeof(step_t)));
+    for(uint32_t i=1;i<=17;i++)assert(paint->step[i].time==ST_TIE);
+    assert(paint->step[16].flags==SF_ACCENT&&paint->step[16].lvl==90);
+    encs[panel.enc[EN_K1]]=-2;frame();assert(ui.cursor==15);
+    assert(paint->step[17].time==ST_TIE);
+    encs[panel.enc[EN_K1]]=100;frame();assert(ui.cursor==31);
+    assert(paint->step[0].time==ST_NOTE&&paint->step[32].time==ST_REST);
+    release(B_OCTUP);
+    press(B_EDIT);tap(B_OCTDN);release(B_EDIT);
+    assert(!memcmp(original,paint->step,sizeof original));
+    press(B_EDIT);tap(B_OCTUP);release(B_EDIT);
+    for(uint32_t i=1;i<32;i++)assert(paint->step[i].time==ST_TIE);
+    frames(20); /* layer-release encoder quiet period (250 ms) */
+    paint->step[5].time=ST_NOTE;
+    cursor_set(4);press(B_OCTUP);encs[panel.enc[EN_K1]]=1;frame();release(B_OCTUP);
+    assert(paint->step[5].time==ST_TIE);
+    assert(undo_swap(0)); /* a new hold has its own snapshot */
+    assert(paint->step[5].time==ST_NOTE&&paint->step[6].time==ST_TIE);
+    cursor_set(4);press(B_OCTDN);assert(song.octave==octave);
+    encs[panel.enc[EN_K1]]=3;frame();
+    assert(paint->step[4].time==ST_TIE);
+    for(uint32_t i=5;i<=7;i++)assert(paint->step[i].time==ST_REST);
+    encs[panel.enc[EN_K1]]=-2;frame();assert(ui.cursor==5);
+    assert(paint->step[7].time==ST_REST);
+    release(B_OCTDN);assert(undo_swap(0));
+    assert(paint->step[5].time==ST_NOTE&&paint->step[6].time==ST_TIE);
+    assert(undo_swap(1));assert(paint->step[5].time==ST_REST);
+    cursor_set(31);encs[panel.enc[EN_K1]]=1;frame();assert(ui.cursor==0);
+    tap(B_OCTUP);assert(song.octave==octave&&ui.cursor==0);
+    tap(B_ENV);tap(B_OCTUP);assert(song.octave==octave+1);
+    tap(B_SEQ);expect_page("STEP");
+    paint->p[P_SLEN]=16;cursor_set(0);
     select_turn(1);expect_page("PATTERN");
+    select_turn(1);expect_page("RECORD");
+    encs[panel.enc[EN_K1]]=1;frame();assert(rec_snap[1]==REC_SNAP_EIGHTH);
+    assert(rec_snap[0]==REC_SNAP_TRACK&&paint->p[P_SDIV]==2);
+    encs[panel.enc[EN_K1]]=-1;frame();assert(rec_snap[1]==REC_SNAP_TRACK);
     select_turn(1);expect_page("SEQUENCES");assert(sequence_browser);
     select_turn(1);expect_page("SEQUENCES"); /* shaping subpage */
+    select_turn(1);expect_page("SEQUENCES"); /* pitch subpage */
     select_turn(1);expect_page("SONG");assert(!sequence_browser);
     select_turn(-1);expect_page("SEQUENCES");
+    select_turn(-1);expect_page("RECORD");
     select_turn(-1);expect_page("PATTERN");
     select_turn(-1);expect_page("STEP");
     go_home();frame();
-    static const char *const order[]={"STEP","PATTERN","SEQUENCES","SONG","STEP"};
-    for(uint32_t i=0;i<5;i++) {tap(B_SEQ);expect_page(order[i]);assert(song.sel==1);}
+    static const char *const order[]={"STEP","PATTERN","RECORD","SEQUENCES","SONG","STEP"};
+    for(uint32_t i=0;i<6;i++) {tap(B_SEQ);expect_page(order[i]);assert(song.sel==1);}
     select_turn(9);expect_page("SONG");tap(B_ENV);expect_page("ENV");
     tap(B_ENV);expect_page("ENV DEST");
     tap(B_SEQ);select_turn(9);expect_page("SONG");tap(B_LFO);expect_page("LFO");
@@ -46,6 +119,6 @@ int main(void)
         assert(seq_harmony[1].n==4);
     }
     seq_stop();
-    puts("native UI: SEQ button/SELECT reach STEP, PATTERN, SEQUENCES, SONG; ENV/LFO escape; all ARP modes edit selected SNOTE track while playing PASS");
+    puts("native UI: tie/rest painting, banks, end stops, undo/redo; SEQ navigation; selected SNOTE track ARP modes while playing PASS");
     return 0;
 }

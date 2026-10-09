@@ -294,14 +294,34 @@ static void tracks_edit(uint32_t slot, int32_t steps)
     *vp = (int16_t)clamp(*vp + accel(EN_K1 + slot, steps, d->max - d->min), d->min, d->max);
 }
 
+#include "ui_step_move.c"
 static void step_edit(uint32_t slot, int32_t steps)
 {
     step_t *st = &TSEL->step[ui.cursor];
     uint32_t i;
     if (is_drum(TSEL))
         return;                                           /* (the drum track: its grid) */
+    if (slot == 1u && (fm1_in.buttons & ((1u << panel.btn[B_OCTUP]) | (1u << panel.btn[B_OCTDN])))) {
+        step_move(steps);
+        return;
+    }
     switch (slot) {
     case 0:                                               /* STEP: the cursor */
+        if ((fm1_in.buttons & ((1u << panel.btn[B_OCTUP]) | (1u << panel.btn[B_OCTDN]))) &&
+            !song.rec && !rec_wait && !ft_on) {
+            /* Extend after the selected note; never wrap and overwrite its root.
+             * Backtracking changes only the cursor, so a painted run is retained. */
+            int32_t end = clamp((int32_t)ui.cursor + steps, 0, trk_len(TSEL) - 1);
+            if (end > ui.cursor) {
+                undo_mark(TSEL, ui.tie_sess);
+                fm1_irq_off();
+                for (i = ui.cursor + 1u; i <= (uint32_t)end; i++)
+                    TSEL->step[i].time = fm1_in.buttons & (1u << panel.btn[B_OCTUP]) ? ST_TIE : ST_REST;
+                fm1_irq_on();
+            }
+            cursor_set(end);
+            break;
+        }
         cursor_set(ui.cursor + steps);
         break;
     case 1:                                               /* NOTE: transpose the step */
@@ -406,7 +426,7 @@ static void edit_param(uint32_t slot, int32_t steps)
         return;
     v = clamp(*vp + accel(EN_K1 + slot, steps, d->max - d->min), d->min, d->max);
     *vp = (int16_t)v;
-    if (pg->scope != SC_GLOBAL && p_lockable(id))
+    if (pg->scope != SC_GLOBAL && !(pg->scope == SC_RECORD && slot == 0u) && p_lockable(id))
         ui.lock_par = (uint8_t)id;                        /* the SEQ layer's lock parameter: the last one touched */
     if (!v)
         return;
@@ -962,6 +982,12 @@ static void ui_input(void)
             uint32_t both = (1u << panel.btn[B_OCTDN]) | (1u << panel.btn[B_OCTUP]);
             if (is_drum(TSEL))
                 break;                                  /* the drum track: ghost / hard while held (seq.c) */
+            if (!ui.home && cur_page()->scope == SC_STEP &&
+                !song.rec && !rec_wait && !ft_on) {
+                ui.tie_sess = (undo_sess += 4u) | 3u;
+                ui_message(b == B_OCTUP ? "HOLD: 1 TIE 2 MOVE" : "HOLD: 1 REST 2 MOVE");
+                break;
+            }
             if ((fm1_in.buttons & both) == both)
                 song.octave = 0;
             else
