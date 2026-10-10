@@ -72,6 +72,8 @@ run "arpeggio expression: source velocities, octave collisions, pulse, recording
 $CC -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/seq_navigation_test" tests/seq_navigation_test.c -lm
 $CC -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/scale_lights_test" tests/scale_lights_test.c -lm
 run "persistent scale lights: physical gesture, pitch classes and settings" "$OUT/scale_lights_test"
+$CC -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/modulation_test" tests/modulation_test.c -lm
+run "live modulation wheel: priority, restoration, bounds and cleanup" "$OUT/modulation_test"
 run "native step painting/moves, record snap controls, SEQ navigation and SNOTE arp modes" "$OUT/seq_navigation_test"
 
 $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/drumkit_test" tests/drumkit_test.c -lm

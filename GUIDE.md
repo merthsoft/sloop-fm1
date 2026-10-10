@@ -950,7 +950,32 @@ The knobs of a MIDI controller set the sound (the standard CC map of Felucca 1.1
 | 74 | the track's FILTER: 64 off, lower a low-pass, higher a high-pass (every engine, the drums too) |
 | 91 · 93 · 94 | the reverb, chorus and delay sends (on the drum channel 91 and 94 are GLO → DRUMS → REV and DLY) |
 
-Other CCs (mod wheel, sustain, pitch bend…) are ignored.
+Merthsoft.10 also accepts **CC1** for transient vibrato on synth tracks; CC120/121/123
+clear modulation. Other unmapped CCs, sustain and pitch bend are ignored by the firmware.
+
+### Live modulation wheel (Merthsoft.10)
+
+Choose a synth track. Set **LFO RATE** around 5–6 Hz and **WAVE SIN** for conventional
+vibrato. While playing, hold **LFO** and turn **knob 1** clockwise to increase MOD
+(0–127, four units per detent); turn it back to reduce it. While held, knob 1 edits
+modulation rather than RATE. Release LFO to remove the physical modulation amount.
+Normal LFO taps and its other knobs keep their page behavior.
+
+Full modulation adds about half a semitone of pitch motion using the track's existing
+LFO waveform and fade, on top of saved PIT depth. Held notes, latched chords and arps
+continue without retriggering. Physical modulation takes priority over incoming CC1
+while held; releasing restores the latest MIDI wheel value, which defaults to zero.
+CC1 follows normal MIDI channel routing; drums ignore it. IN CLOCK ignores CC1 too.
+STOP, track panic and CC120/121/123 clear modulation; a track/layer/menu change cancels
+the physical gesture. USB reset/detach clears USB-owned wheel values, retaining current
+TRS-owned values. These gestures are transient, not saved with patches or recorded as
+sequencer notes, and physical vibrato is not automatically sent as outgoing MIDI CC1.
+
+Android Perform's **Mod wheel** strip sends CC1: slide right to increase and release
+to send zero. Touch cancellation, track/tab change, stop and backgrounding also reset
+it. The strip and XY macro take turns owning CC gestures. With another MIDI destination,
+CC1 uses that instrument's own mapping. Controller input through Android does not yet
+forward CC1; an external wheel connected directly to FM1 does work.
 
 ---
 
@@ -1236,7 +1261,10 @@ the existing undo restores the replaced steps and their timing/lock metadata.
 
 Hold physical **SEL** (labelled SCL by SLOOP), then press **OCT+** to toggle
 **SCALE LIGHTS**. Release both and keep playing: scale notes glow dimly and pressed
-notes remain bright. The guide follows the song ROOT/SCALE selected in SEL; CHR
+notes remain bright. From Merthsoft.9, the guide and held SEL display follow the
+selected synth's ROOT/SCALE shown on its SEL page; ordinary keyboard backlighting
+is suppressed while the guide is active. Held SEL key/scale changes still apply to
+all synths; tapped-page changes remain per-track. CHR
 includes all twelve pitch classes. It marks physical pitch classes, without changing
 transposition, octave, chord mapping or quantization. Drum/grid and held/locked
 performance layers retain their own LED meanings. Toggle again to turn it off.

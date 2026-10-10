@@ -1,4 +1,4 @@
-> Merthsoft fork release: **2.5 Merthsoft.8**. `2.5` identifies the upstream SLOOP base; only `Merthsoft.N` increments for our releases until we adopt a newer upstream base. Our Android and firmware integration lives on the `android` branch. Original Android work uses the Unlicense, with retained third-party obligations described in [Android licensing](android/LICENSING.md).
+> Merthsoft fork release: **2.5 Merthsoft.10**. `2.5` identifies the upstream SLOOP base; only `Merthsoft.N` increments for our releases until we adopt a newer upstream base. Our Android and firmware integration lives on the `android` branch. Original Android work uses the Unlicense, with retained third-party obligations described in [Android licensing](android/LICENSING.md).
 
 <p align="center"><img src="assets/logo/sloop-logo.png" alt="SLOOP" width="420"></p>
 
@@ -49,7 +49,7 @@ SLOOP turns the FM-1 into a four-track groovebox you play live: **three synths a
 
 ## Merthsoft firmware
 
-This fork keeps SLOOP's synth engines and adds ways to build and perform a complete loop quickly on the FM-1. **No phone is required for these firmware features.** The current release is **2.5 Merthsoft.8**: `2.5` is the upstream base, and `Merthsoft.N` identifies our additions.
+This fork keeps SLOOP's synth engines and adds ways to build and perform a complete loop quickly on the FM-1. **No phone is required for these firmware features.** The current release is **2.5 Merthsoft.10**: `2.5` is the upstream base, and `Merthsoft.N` identifies our additions.
 
 ### The one-minute workflow
 
@@ -73,13 +73,14 @@ The libraries are starting points: applying creates ordinary editable sequencer 
 
 These are the implemented Merthsoft additions; the upstream engine, preset and base groovebox features are described separately below.
 
-- **Persistent scale lights:** hold physical **SEL** and press **OCT+** to toggle a dim keyboard guide for the selected ROOT/SCALE. Playing notes stays bright. It follows key/scale changes, survives reboot, and leaves drum/step/FX controls clear. CHR lights every pitch class; it does not change the sound or quantize notes.
+- **Persistent scale lights:** hold physical **SEL** and press **OCT+** to toggle a dim keyboard guide matching the selected synth's SEL-page ROOT/SCALE. It replaces ordinary keyboard backlighting, so off-scale keys stay dark unless played. It follows key/scale changes, survives reboot, and leaves drum/step/FX controls clear. CHR lights every pitch class; it does not change the sound or quantize notes.
 - **24 drum grooves:** four-on-the-floor, breaks, a four-bar Amen, funk, broken house, Afro clave, electro, boom bap and more. Preview using your current kit, then apply with complete pattern/metadata undo. The phone can browse and apply the canonical groove bank too.
 - **24 musical starters:** standard progressions alongside soul sevenths, Dorian pockets, funk, offbeat stabs, gospel, disco, garage, Latin turns, rising/descending movement and Lydian colors. Choose **CHORD**, lower-root **BASS**, or **ARP NOTES**, which cycles chord tones on eighth-note pulses while retaining syncopated attacks. A CHR track starts the browser in Major; its pitch page controls octave and optional voice leading independently of the physical OCT buttons.
 - **Rhythm shaping:** rotate a pattern, offset drum lanes, move eligible attacks off the beat with syncopation, and add microtiming feel. Preview auditions the shaped result before replacement.
 - **Fast ties and rests (Merthsoft.6):** on STEP, select the starting note/chord, hold **OCT+**, and sweep **knob 1** clockwise to tie each following step. Hold **OCT−** instead to paint rests. The starting step stays intact; painting stops at the pattern's end. Backtracking moves without erasing, and the whole gesture has one undo.
 - **Recording and timing correction:** RECORD-page **SNAP** records to eighths or quarters while keeping the playback DIV intact. On STEP, hold either OCT button: **knob 2** shifts whole octaves and **knob 3** moves a note/chord by whole steps with its timing, conditions and locks. Moving into its own ties keeps the original end; other moves shift the complete tie chain. Occupied destinations are protected and gestures support undo/redo.
 - **Playable latch:** hold **ARP** or physical **SEL** (labelled SCL in SLOOP) for 700 ms while holding notes to toggle latch without stopping your playing. It works with chord mode and manually played arpeggios. Non-CHROM chord modifiers toggle on latched chords; CHROM allows literal black-key roots.
+- **Live mod wheel:** hold **LFO** and turn **knob 1** for momentary vibrato, using the current LFO rate/wave/fade. Release restores the underlying sound without changing saved PIT depth. Standard **MIDI CC1** controls the wheel on synth channels, and Android Perform includes a release-to-zero touch strip. Full wheel adds approximately half a semitone; STOP/panic clears it.
 - **Chord latch and literal roots:** SCL page 2 knob 4 exposes LATCH. In non-CHROM chord mode, modifier presses update the sounding latched chord immediately and remain toggled until pressed again. **KEYS/QNT CHROM** allows every piano key, including black keys, to be a literal chord root; the other keyboard modes keep their modifier controls.
 - **Sequencer-fed arpeggios:** ARP 2 **ORD SNOTE/SPLAY** lets sequenced chords feed the arpeggiator, including sustained tie chains. Live and sequence input remain independent.
 - **Expressive arpeggios:** incoming and sequenced velocity/accent survives arp modes, octave expansion, ties and latch across audio, MIDI output and recording. Overlapping live/sequence pitches use the stronger current velocity; PULSE merges octave collisions rather than doubling attacks. Physical keyboard attacks retain their fixed velocity.
@@ -419,7 +420,7 @@ The knobs of a MIDI controller set the sound, on the track the channel plays (as
 | 74 | the track's FILTER: 64 off, lower a low-pass, higher a high-pass (every engine, the drums too) |
 | 91 · 93 · 94 | the reverb, chorus and delay sends (on the drum channel 91 and 94 are GLO → DRUMS → REV and DLY) |
 
-Other CCs (mod wheel, sustain…) are ignored.
+Merthsoft.10 also supports **CC1 modulation** as transient vibrato, separate from saved patch depth, and CC120/121/123 clear modulation. Other unmapped CCs, including sustain, are ignored by the firmware.
 
 ### USB audio: record the FM-1 on a computer
 

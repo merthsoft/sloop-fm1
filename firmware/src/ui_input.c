@@ -79,7 +79,8 @@ static uint32_t keys_sounding(const track_t *t)
 
 static uint32_t scale_keys(uint32_t root_only)   /* SEL: the keys in the scale (or its roots only) */
 {
-    uint32_t i, m = 0, root = (uint32_t)trk[0].p[P_ROOT] % 12u, mask = SCALE_MASK[clamp(trk[0].p[P_SCALE], 0, NSCALES - 1)];
+    const track_t *t = ui_scale_track();
+    uint32_t i, m = 0, root = (uint32_t)t->p[P_ROOT] % 12u, mask = SCALE_MASK[clamp(t->p[P_SCALE], 0, NSCALES - 1)];
     for (i = 0; i < 27u; i++) {
         uint32_t d = (53u + i - root + 120u) % 12u;
         if ((mask >> d) & 1u && (!root_only || !d))
@@ -202,6 +203,8 @@ static uint32_t keys_guide(void)
 static uint32_t lights_keys_mask(void)
 {
     uint32_t k, m = 0;
+    if (lights_scale && ui.layer == LY_PLAY && !is_drum(TSEL) && !kb_grid)
+        return 0u;                                  /* scale guide replaces the generic keyboard backlight */
     if (!lights_lvl || !lights_keys)
         return 0u;
     for (k = 0; k < 27u; k++) {
@@ -877,6 +880,27 @@ static void ui_input(void)
     int32_t s;
     int layered;
     enc_hold = 0;                                       /* (panel.c: every knob readable again this pass) */
+    {
+        static uint8_t down;
+        uint32_t held = (fm1_in.buttons & (1u << panel.btn[B_LFO])) != 0u;
+        uint32_t blocked = ui.menu || ui.confirm || ly_lock != LY_PLAY ||
+            (layer_buttons() & (ly_bit[LY_FX] | ly_bit[LY_ERASE] | ly_bit[LY_ROLL] |
+                ly_bit[LY_STEP] | ly_bit[LY_SCALE] | ly_bit[LY_MIX] | ly_bit[LY_SONG]));
+        if (held && !down && !ui.menu && !ui.confirm && song.sel < NPART) {
+            mod_part = song.sel; mod_amount = 0; mod_physical = 1;
+        }
+        if (!held || blocked || song.sel != mod_part)
+            mod_physical = mod_amount = 0;
+        if (held && !blocked && song.sel == mod_part && song.sel < NPART && (s = panel_enc(EN_K1)) != 0) {
+            if (mod_physical) {
+                char value[8];
+                mod_amount = (uint8_t)clamp(mod_amount + s * 4, 0, 127);
+                fmt_int(value, mod_amount); ui_say("MOD ", value);
+            }                                          /* STOP/panic: consume until lift, never edit RATE */
+            enc_hold |= 1u << EN_K1;
+        }
+        down = (uint8_t)held;
+    }
     if (pressed || notes)
         ui_input_ms = fm1_ms;
     fm6_poll();                                         /* FM6: PTCH turned -> its patch */

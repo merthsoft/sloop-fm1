@@ -10,8 +10,8 @@ public sealed partial class MainActivity
         AddHardwarePerformanceControls();
         xySurface=null;if(!Macro.Enabled)return;
         var m=Macro;int ch=m.Track<0?PerformChannel:m.Track;
-        content.AddView(Label($"XY · channel {ch+1} · X CC{m.XAxis.Controller} {m.XAxis.Minimum}–{m.XAxis.Maximum} · Y CC{m.YAxis.Controller} {m.YAxis.Minimum}–{m.YAxis.Maximum}\nRelease restores {m.XAxis.Default}/{m.YAxis.Default}. FM1 currently ignores CC; use a compatible MIDI destination.",12));
-        xySurface=new(this);xySurface.MoveMacro+=(id,x,y)=>PerformSafely(()=>{if(connection.CanPerform)connection.Macros.Move(id,ch,m,x,y);});
+        content.AddView(Label($"XY · channel {ch+1} · X CC{m.XAxis.Controller} {m.XAxis.Minimum}–{m.XAxis.Maximum} · Y CC{m.YAxis.Controller} {m.YAxis.Minimum}–{m.YAxis.Maximum}\nRelease restores {m.XAxis.Default}/{m.YAxis.Default}. FM1 supports its mapped controllers; CC1 vibrato requires Merthsoft.10.",12));
+        xySurface=new(this);xySurface.MoveMacro+=(id,x,y)=>PerformSafely(()=>{if(connection.CanPerform&&!connection.Modulation.Active)connection.Macros.Move(id,ch,m,x,y);});
         xySurface.ReleaseMacro+=id=>PerformSafely(()=>connection.Macros.Release(id));
         AddPerformanceGestureView(xySurface,120);
     }
@@ -38,11 +38,11 @@ public sealed partial class MainActivity
 }
 sealed class PerformanceXyView:View
 {
-    int? pointer;readonly HashSet<int> ignored=[];readonly Paint paint=new(){AntiAlias=true};
+    int? pointer;readonly HashSet<int> ignored=[];readonly Paint paint=new(){AntiAlias=true};readonly string caption;
     public event Action<int,double,double>? MoveMacro;public event Action<int>? ReleaseMacro;
-    public PerformanceXyView(global::Android.Content.Context context):base(context){Clickable=true;ContentDescription="XY macro: horizontal X, vertical Y; one finger; release restores defaults";}
+    public PerformanceXyView(global::Android.Content.Context context,string caption="X →   Y ↑ · release resets"):base(context){this.caption=caption;Clickable=true;ContentDescription=caption;}
     public void ClearTouches(){if(pointer is {} id){ignored.Add(id);pointer=null;ReleaseMacro?.Invoke(id);}Invalidate();}
-    protected override void OnDraw(Canvas c){base.OnDraw(c);paint.Color=Color.Rgb(35,51,65);c.DrawRect(0,0,Width,Height,paint);paint.Color=Color.White;paint.TextSize=28;c.DrawText("X →   Y ↑ · release resets",12,Height/2f,paint);}
+    protected override void OnDraw(Canvas c){base.OnDraw(c);paint.Color=Color.Rgb(35,51,65);c.DrawRect(0,0,Width,Height,paint);paint.Color=Color.White;paint.TextSize=28;c.DrawText(caption,12,Height/2f,paint);}
     public override bool OnTouchEvent(MotionEvent? e){if(e is null)return false;
         if(e.ActionMasked==MotionEventActions.Cancel){ClearTouches();ignored.Clear();Parent?.RequestDisallowInterceptTouchEvent(false);return true;}
         if(e.ActionMasked is MotionEventActions.Up or MotionEventActions.PointerUp){int id=e.GetPointerId(e.ActionIndex);ignored.Remove(id);if(pointer==id){pointer=null;ReleaseMacro?.Invoke(id);Parent?.RequestDisallowInterceptTouchEvent(false);}PerformClick();return true;}

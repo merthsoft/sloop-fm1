@@ -15,3 +15,12 @@ for(int i=0;i<=1000;i++){double p=i/1000.0;foreach(var curve in Enum.GetValues<M
 var lower=PerformanceHarmony.Chord(0,PerformanceScale.Major,3,map.Degree(6),ChordShape.Diatonic,0,false);var upper=PerformanceHarmony.Chord(0,PerformanceScale.Major,3,map.Degree(7),ChordShape.Diatonic,0,false);Check(upper.Notes[0]-lower.Notes[0]==12);
 var failures=new List<int>();var failing=new PerformanceMacroPlayer(b=>{failures.Add(b[1]);if(b[2]==40)throw new IOException("reset failed");});failing.Move(1,0,macro,1,1);try{failing.Stop();}catch(IOException){}Check(!failing.Active&&failures.Count==4&&failures[^1]==74);
 Console.WriteLine($"Performance controls: {checks} checks passed.");
+var wheelMessages=new List<byte[]>();var wheel=new ModulationPlayer(b=>wheelMessages.Add(b));
+Check(wheel.Move(1,2,80));Check(wheelMessages[^1].SequenceEqual(new byte[]{0xb2,1,80}));
+Check(!wheel.Move(2,2,127));wheel.Move(1,2,80);Check(wheelMessages.Count==1);
+wheel.Release(2);Check(wheel.Active);wheel.Release(1);Check(!wheel.Active&&wheelMessages[^1].SequenceEqual(new byte[]{0xb2,1,0}));
+wheel.Stop();Check(wheelMessages.Count==2);Reject(()=>wheel.Move(1,16,0));Reject(()=>wheel.Move(1,2,128));
+wheel.Move(3,1,127);wheel.Forget();wheel.Stop();Check(wheelMessages.Count==3);
+var brokenWheel=new ModulationPlayer(_=>throw new IOException());try{brokenWheel.Move(1,0,50);}catch(IOException){}
+try{brokenWheel.Stop();}catch(IOException){}Check(!brokenWheel.Active);
+Console.WriteLine($"Performance controls and modulation: {checks} checks passed.");

@@ -75,3 +75,7 @@ phone musical starters and arp expression are now integrated; follow the active
 [firmware designs](<../../../docs/firmware/README.md>) for their current limits.
 
 - [Merthsoft.7](releases/RELEASE-2.5-Merthsoft.7.md): phone musical starters, external MIDI input, arp expression and revised STEP shortcuts.
+
+- [Merthsoft.8](releases/RELEASE-2.5-Merthsoft.8.md): initial persistent scale-guide release before selected-track/background fixes.
+
+- [Merthsoft.9](releases/RELEASE-2.5-Merthsoft.9.md): selected-track scale alignment and generic-backlight suppression.

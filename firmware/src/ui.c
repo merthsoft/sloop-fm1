@@ -3,7 +3,7 @@
 /* Felucca user interface. Four columns map to KNOB 1..4. Rendering is lazy:
  * every element remembers what it last drew and is redrawn only on change. */
 #ifndef FELUCCA_VERSION
-#define FELUCCA_VERSION "2.5 Merthsoft.8"  /* the beat machine firmware for the FM-1 (based on Felucca) */
+#define FELUCCA_VERSION "2.5 Merthsoft.10"  /* the beat machine firmware for the FM-1 (based on Felucca) */
 #endif
 static void project_save(uint32_t slot);
 static void arrangement_save(void);
@@ -275,6 +275,10 @@ static const uint8_t TRK_DEF[NPART][2] = {{0, 0}, {1, 0}, {4, 5}};   /* ANALOG 8
 static uint32_t trk_def_engine(uint32_t i) { return i < NPART ? TRK_DEF[i][0] : 0u; }
 
 static int seq_is_empty(const track_t *t) { return track_empty(t); }
+
+/* SEL page is per synth; the held layer and LEDs show that same track's key.
+ * Drums have no musical scale controls, so retain synth 1 as their fallback. */
+static const track_t *ui_scale_track(void) { return is_drum(TSEL) ? &trk[0] : TSEL; }
 
 static void track_defaults_steps(track_t *t) { steps_clear(t); }
 

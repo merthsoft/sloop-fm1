@@ -12,6 +12,7 @@ public sealed partial class MainActivity
     PerformanceMapping Mapping=>performOptions.Mapping??new();
     PerformanceMacro Macro=>performOptions.Macro??new();
     PerformanceXyView? xySurface;
+    PerformanceXyView? modulationSurface;
     readonly Dictionary<int,(int Cell,int Velocity)> performFingers=[];
     ChordShape performShape;
     int? latchedDegree;
@@ -68,6 +69,8 @@ public sealed partial class MainActivity
         ClearHardwarePerformanceTouches();
         performFingers.Clear();latchedDegree=null;latchedOctave=null;previousVoicing=null;performShape=ChordShape.Diatonic;
         chordJoystick?.ClearTouches();xySurface?.ClearTouches();
+        modulationSurface?.ClearTouches();
+        try{connection.Modulation.Stop();}catch(Exception error){performanceCheck="Modulation reset failed: "+error.Message;}
         try{connection.Macros.Stop();}catch(Exception error){performanceCheck="Macro reset failed: "+error.Message;}
         connection.ReleasePerformance();playingSurface?.ClearTouches();
         if(performReadout is not null)performReadout.Text="Released all app-owned performance notes.";
@@ -110,6 +113,11 @@ public sealed partial class MainActivity
         var voiceLead=new CheckBox(this){Text="Voice lead",Checked=o.VoiceLead};voiceLead.SetTextColor(Color.White);
         voiceLead.CheckedChange+=(_,a)=>performOptions=performOptions with{VoiceLead=a.IsChecked};safety.AddView(voiceLead,new LinearLayout.LayoutParams(0,ViewGroup.LayoutParams.WrapContent,1));content.AddView(safety);
         var release=new Button(this){Text="Release / stop",TextSize=12};release.Click+=(_,_)=>StopPerformance();content.AddView(release);
+        content.AddView(Label("Mod wheel · slide right for vibrato; release to reset",12));
+        var modStrip=new PerformanceXyView(this,"MOD → · release resets");modulationSurface=modStrip;
+        modStrip.MoveMacro+=(pointer,x,y)=>PerformSafely(()=>{if(connection.CanPerform&&!connection.Macros.Active)connection.Modulation.Move(pointer,PerformChannel,(int)Math.Round(x*127));});
+        modStrip.ReleaseMacro+=pointer=>PerformSafely(()=>connection.Modulation.Release(pointer));
+        AddPerformanceGestureView(modStrip,64);
         string[] labels=PerformanceLabels();
         int columns=o.Surface switch{PerformSurface.Chords=>4,PerformSurface.DrumPads=>4,PerformSurface.Keyboard=>12,PerformSurface.Ribbon=>24,_=>6};
         playingSurface=new PerformanceSurfaceView(this,labels,columns,o.Surface==PerformSurface.Keyboard,o.Surface==PerformSurface.Ribbon);

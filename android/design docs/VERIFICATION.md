@@ -1,5 +1,28 @@
 # Integrated Merthsoft.7 — October 9, 2026
 
+## Merthsoft.10 modulation checkpoint — October 9, 2026
+
+Target build passes: image 575,360 bytes; static RAM 97,444/98,304 (860 bytes
+remaining); pool 333,948/344,064; RAM text 925 instructions/no calls; HAL check clean.
+Package SHA-256: `38609157694869baad071fc4050a0185fbb15da8a2972089bb731fc933ccfd28`.
+Focused native modulation and scale-guide regressions pass; modulation covers CC1
+routing, physical priority and release, rate/depth preservation, bounds, note gates,
+USB/TRS packet ownership, USB reset and STOP/panic/reset isolation. Broad UI/audio
+suite with 20,000-frame fuzz passes. Domain performance-controls runner passes
+3,035 checks, including touch ownership, duplicate coalescing, zero-reset, invalid
+values/destinations and send-failure cleanup. Android APK build passes with zero
+warnings/errors. No firmware flash, phone installation or live gesture validation
+is claimed. Existing target ISR cost-budget failures remain unresolved.
+
+## Merthsoft.9 scale-guide corrections — October 9, 2026
+
+Target image 574,832 bytes; static RAM 97,412/98,304; pool 333,948/344,064;
+RAM text 925 instructions/no calls; HAL check passes. Package SHA-256: `3abc96bbf9ed7ba523b9b373a5de5a2ba8a0fc9302c0d6615b1fbaeda3bb7206`.
+Focused regression now checks deliberately different selected/first-track keys/scales,
+held display and knob alignment, and every background mode/level against all root/scale
+masks. Broad UI/audio suite and 20,000-frame fuzz pass. No physical flash/LED measurement
+is claimed; existing ISR budget limitations remain. Android/wire protocol are unchanged.
+
 ## Merthsoft.8 scale-light checkpoint — October 9, 2026
 
 Target build passes: image 574,720 bytes; static RAM 97,412/98,304; pool

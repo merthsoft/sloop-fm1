@@ -2078,6 +2078,7 @@ static void seq_release(track_t *t)
 
 static void seq_stop(void)
 {
+    mod_reset(NTRK);
     if (sequence_preview_end) sequence_preview_end();
     groove_preview.active = 0;
     punch_clear();
@@ -2412,6 +2413,12 @@ static const uint8_t MIDI_CC_MAP[][2] = {
 };
 static void __attribute__((noinline)) midi_cc(track_t *t, uint32_t cc, uint32_t value)
 {
+    if (cc == 1u) {
+        uint32_t part = (uint32_t)(t - trk);
+        if (part < NPART) mod_midi[part] = (uint8_t)(value & 127u);
+        return;
+    }
+    if (cc == 121u || cc == 120u || cc == 123u) { mod_reset((uint32_t)(t - trk)); return; }
     const param_desc_t *d = 0;
     int16_t *slot = 0;
     uint32_t i, id = 0xFFFFu;
@@ -2533,6 +2540,12 @@ static uint32_t mclk_adv(uint32_t n)               /* units to advance this bloc
  * track at the clock, the click, the rolls and the arps; then the clock moves on by n samples */
 static void events_block(uint32_t n)
 {
+    static uint32_t mod_usb_resets;
+    if (usb.detached || mod_usb_resets != usb.resets) {
+        for (uint32_t part = 0; part < NPART; part++)
+            if (mod_source[part] == 1u) mod_midi[part] = mod_source[part] = 0;
+        mod_usb_resets = usb.resets;
+    }
     uint32_t i, pr, adv;
     if (mo_any && !song.g[G_MIDI]) {            /* MIDI = KEYS again: end what the sequencer had sent */
         seq_out_all_off();
@@ -2620,6 +2633,7 @@ static void events_block(uint32_t n)
     for (i = 0; i < NTRK; i++) {
         track_t *t = &trk[i];
         if ((pr >> i) & 1u) {
+            mod_reset(i);
             seq_harmony_clear(t);
             chord_latch_release(i);
             if (i < NPART) { chord_latch_mods[i] = 0; arp_chord_latch_n[i] = 0; }
@@ -2690,8 +2704,13 @@ static void events_block(uint32_t n)
             continue;
         }
         if (st == 0xB0u) {                            /* a CC (IN = CLOCK: none) */
-            if (!song.g[G_ROUTE])
+            if (!song.g[G_ROUTE]) {
+                if (d1 == 1u) {
+                    uint32_t part = (uint32_t)(midi_track(ch) - trk);
+                    if (part < NPART) mod_source[part] = ((pkt >> 4) & 15u) ? 2u : 1u;
+                }
                 midi_cc(midi_track(ch), d1, d2);
+            }
             continue;
         }
         if (st != 0x90u && st != 0x80u)

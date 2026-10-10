@@ -2,6 +2,11 @@
 
 Current delivery: [STATUS.md](STATUS.md). Build and test evidence: [VERIFICATION.md](VERIFICATION.md).
 
+Merthsoft.10 adds a momentary CC1 strip to Perform in both SLOOP and generic modes.
+Release/cancel sends zero; generic receivers determine what CC1 controls. The external
+controller input adapter still does not forward CC1. Native FM1 CC1 support applies
+when a controller is connected directly to FM1. Pitch bend remains outside this slice.
+
 Implemented checkpoint: 2026-10-07.
 
 The connection menu offers SLOOP FM1 and generic MIDI separately. Generic mode opens the

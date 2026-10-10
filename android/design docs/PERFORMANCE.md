@@ -67,8 +67,9 @@ Performance/recording and sequence looping/device edits are mutually exclusive.
 Check destination reads current firmware transforms and MIDI routing without changing them:
 hardware arp/chord/quantize/transpose, MIDI IN=CLOCK and drum/channel mismatches are reported.
 Default synth channels are 1–3 and default drum channel is 10; explicit channel override is
-available in generic MIDI mode. The firmware currently ignores CC and pitch-bend, so this build provides chord
-expression and quantized note slides rather than ineffective bend/mod-wheel controls.
+available in generic MIDI mode. Firmware accepts its mapped CCs and Merthsoft.10 adds
+CC1 vibrato. Pitch bend remains unsupported; chord expression and quantized note slides
+remain available alongside the momentary mod-wheel strip.
 
 Performance choices survive Activity recreation within the process; persistent presets belong
 to session integration. Perform recordings save as ordinary app patterns with undo/redo. Timed playback pauses on cleanup and never silently resumes after reconnect.
@@ -223,10 +224,27 @@ detachment and normal release restore declared defaults. Connection invalidation
 owner and attempts cleanup while transport is available; reconnect never replays gestures.
 Cleanup attempts both axes even if the first send fails. These are declared defaults rather
 than queried hardware baselines. Sustain, channel-mode and RPN/NRPN/data-entry CCs are excluded.
-FM1 currently ignores CC, explicitly disclosed beside the macro. Compatible generic MIDI
-receivers can use it. No local audio or macro recording is claimed.
+FM1 accepts its standard mapped CCs and, from Merthsoft.10, CC1 vibrato. Compatible generic
+MIDI receivers use their own controller mappings. No local audio or macro recording is claimed.
 
-Dedicated Sloop.PerformanceControls.Tests passes 3,024 checks, including range/curve sweeps,
+## Momentary mod-wheel strip — Merthsoft.10
+
+Perform adds a horizontal CC1 strip, routed by selected synth or generic channel.
+Slide right for 0–127 modulation and release to send zero. One pointer owns it;
+additional pointers cannot steal it. Cancel, detach, Stop, track/tab changes and
+backgrounding release ownership and reset it; connection invalidation forgets stale
+state and reconnect never replays the gesture. The strip and XY macro are mutually
+exclusive while active, preventing competing CC1 resets. `ModulationPlayer` shares
+the existing native touch/lifecycle path and adds domain-tested deduplication,
+validation, destination ownership and failure cleanup.
+
+FM1 uses the existing track LFO to add approximately half a semitone at full wheel,
+without changing saved PIT depth or retriggering held/latched/arp notes. Physical
+LFO + knob 1 overrides MIDI while held. External-controller input through the phone
+does not yet forward CC1; direct USB/TRS controllers can use it. Perform's note-only
+recording does not capture modulation gestures. See the [firmware contract](../../docs/firmware/MODULATION-WHEEL.md).
+
+The earlier macro checkpoint passed 3,024 Sloop.PerformanceControls.Tests checks, including range/curve sweeps,
 invalid mappings/CCs, I ↑ separation, ownership, coalescing, defaults, disconnect forgetting,
 and send-failure cleanup. Combined Android build has zero warnings/errors and the APK is installed. Versioned mapping
 and macro settings are persisted and validated through SessionPresetCodec for presets and sessions.

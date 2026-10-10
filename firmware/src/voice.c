@@ -34,6 +34,24 @@ static int32_t lfo_wave(track_t *t, uint32_t ph)
     }
 }
 
+/* Runtime modulation wheel: no patch/project parameters or note retriggers. */
+static uint8_t mod_midi[NPART], mod_physical, mod_part, mod_amount;
+static uint8_t mod_source[NPART]; /* 1 USB, 2 TRS: only USB's current values clear on bus loss */
+static void mod_reset(uint32_t part)
+{
+    if (part == NTRK) { memset(mod_midi, 0, sizeof mod_midi); mod_physical = mod_amount = 0; return; }
+    if (part >= NPART) return;
+    mod_midi[part] = 0;
+    if (mod_physical && mod_part == part) mod_physical = mod_amount = 0;
+}
+static int32_t mod_pitch(const track_t *t, int32_t lfo)
+{
+    uint32_t part = (uint32_t)(t - trk);
+    if (part >= NPART) return 0;
+    uint32_t amount = mod_physical && mod_part == part ? mod_amount : mod_midi[part];
+    return (lfo * (int32_t)amount) >> 11; /* max ~0.5 semitone, 1/4096 semitone units */
+}
+
 static void track_lfo_tick(track_t *t)
 {
     uint32_t old = t->lfo_ph;
@@ -630,6 +648,7 @@ static uint32_t track_render(track_t *t, int32_t *out, uint32_t n)
     const int16_t *p = t->p;
     uint32_t i;
     int32_t lfo = mulq15(t->lfo_val, t->lfo_fade);
+    int32_t wheel_pitch = mod_pitch(t, lfo);
     /* TUNE in cents: whole 1/16 semitones in the pitch, the rest as a fine factor (no dead zone) */
     int32_t tune = song.g[G_TUNE] >= 0 ? song.g[G_TUNE] * 16 / 100 : -((-song.g[G_TUNE] * 16 + 99) / 100);
     int32_t tune_fine = (song.g[G_TUNE] * 16 - tune * 100) * 2367 / 16000;   /* rest, in 1/4096 (1 ct = 2.367) */
@@ -692,7 +711,7 @@ static uint32_t track_render(track_t *t, int32_t *out, uint32_t n)
         if (!env && !m.amp0 && v->stage == 2 && !eng_sampled(e))
             continue;                                   /* held at a silent sustain (SUS 0): nothing to render */
         {   /* the pitch in 1/4096 semitone: glide, LFO, the pitch envelope; the fraction goes into the increment */
-            int32_t q = (v->pitch_cur << 8) + v->pitch_frac + ((lfo * p[P_LD_PIT] * 3) >> 7) +
+            int32_t q = (v->pitch_cur << 8) + v->pitch_frac + ((lfo * p[P_LD_PIT] * 3) >> 7) + wheel_pitch +
                         ((v->penv * p[P_ED_PIT] * 3) >> 7);
             pitch = (q >> 8) + tune;
             m.pitch16 = clamp(pitch, 0, 2047);

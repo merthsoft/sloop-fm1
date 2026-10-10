@@ -5,6 +5,17 @@ future design contracts; dated release/handoff/test results remain historical ev
 
 ## Latest firmware
 
+**2.5 Merthsoft.10** adds transient vibrato through held LFO + knob 1, MIDI CC1 and
+an Android Perform touch strip. Physical priority, release/STOP/panic/reset cleanup
+and USB/TRS source cleanup preserve saved patch values and held-note ownership.
+See [mod-wheel contract](../../docs/firmware/MODULATION-WHEEL.md).
+
+
+**2.5 Merthsoft.9** aligns held SEL and scale LEDs with the selected synth’s SEL-page
+ROOT/SCALE and suppresses generic keyboard backlight while the guide is active.
+Held key/scale edits retain their all-synth broadcast; tapped-page edits stay per-track.
+
+
 **2.5 Merthsoft.8** adds persistent keyboard scale lights: hold physical SEL and
 press OCT+ to toggle a dim guide using song ROOT/SCALE, leaving pressed notes bright.
 It does not alter octave, latch or sound; drum/grid/control layers retain their LEDs.
