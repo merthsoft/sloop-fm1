@@ -27,25 +27,36 @@ static void scheck(int ok, const char *what) { if (!ok) { printf("FAIL %s\n", wh
 static double st_ns(void) { struct timespec t; clock_gettime(CLOCK_MONOTONIC, &t); return t.tv_sec * 1e9 + t.tv_nsec; }
 
 /* ---- font ---- */
-static uint8_t big_data[64 * 24 * 32 / 2 + 64];   /* the old FONT_L: S enlarged and stored (reference only) */
+static uint8_t big_data[64 * 24 * 32 / 2 + 64];   /* S enlarged and stored, in the header's bitmap format */
 static uint16_t big_off[64];
 static felucca_font_t FONT_L2X;
 
 static void font_ref_build(void)
 {
     uint32_t gi, o = 0;
+    memset(big_data, 0, sizeof big_data);
     for (gi = 0; gi < 64u; gi++) {
         uint32_t ws = FONT_S.bw[gi], wb = FONT_L.bw[gi], bs = (ws + 1u) / 2u, bb = (wb + 1u) / 2u, x, y;
         const uint8_t *s = FONT_S.data + FONT_S.off[gi];
         big_off[gi] = (uint16_t)o;
         for (y = 0; y < 32u; y++)
             for (x = 0; x < wb; x++) {
+#if FONT_DATA_BITS == 1
+                uint32_t source = (y / 2u) * ws + x / 2u, dest = y * wb + x;
+                if (s[source / 8u] & (1u << (7u - source % 8u)))
+                    big_data[o + dest / 8u] |= (uint8_t)(1u << (7u - dest % 8u));
+#else
                 uint32_t sx = x / 2u, v = s[(y / 2u) * bs + sx / 2u];
                 v = (sx & 1u) ? (v & 15u) : (v >> 4);
                 if (x & 1u) big_data[o + y * bb + x / 2u] |= (uint8_t)v;
                 else big_data[o + y * bb + x / 2u] = (uint8_t)(v << 4);
+#endif
             }
+#if FONT_DATA_BITS == 1
+        o += (32u * wb + 7u) / 8u;
+#else
         o += 32u * bb;
+#endif
         assert(o <= sizeof big_data);
     }
     FONT_L2X = FONT_L;

@@ -60,4 +60,10 @@ Merthsoft.12 preserves the normal keyboard lighting while LFO/vibrato or
 ENV/tremolo is held: selected-scale dim lights, bright played notes and generic
 backlight preferences retain their normal playing behavior, with no grid landmarks.
 
-Merthsoft.13 grids use scale-aware pitch spelling; see [scale/MIDI grids](SCALE-MIDI-GRIDS.md).
+The panels show one modulation cycle with a moving marker driven by the audio
+phase. Vibrato shows the current pitch offset in cents; tremolo shows the current
+volume percentage. Depth changes the curve excursion. Track, root and scale appear
+in the title, and a compact scale-note guide shows accidentals such as F# in E minor.
+This is a guide only: physical playing, MIDI mapping and scale lights are unchanged.
+The display uses the existing canvas and oscillator helpers; it allocates no history
+buffer and never advances the audio phase.

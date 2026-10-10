@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
 /* A small native browser; caller owns the entry gesture. */
-static uint8_t sequence_browser, sequence_page, sequence_confirm;
+static uint8_t sequence_browser, sequence_page, sequence_confirm, sequence_initialized;
 static uint32_t sequence_hold_t0;
 static const char *const STARTER_MODE_NAMES[] = {"CHORD", "BASS", "ARP NOTES"};
 static void sequence_preview_cancel(void)
@@ -16,16 +16,22 @@ static void sequence_screen_close(void)
 static void sequence_screen_open(void)
 {
     if (song.sel >= NPART) return;
-    sequence_root = (uint8_t)clamp(trk[song.sel].p[P_ROOT],0,11);
-    sequence_scale = (uint8_t)clamp(trk[song.sel].p[P_SCALE],0,NSCALES-1);
-    if (!sequence_scale) sequence_scale = 1; /* chromatic isn't a useful default progression */
-    sequence_octave = (int8_t)clamp(song.octave,-3,3);
-    sequence_vlead = (uint8_t)!!trk[song.sel].p[P_VLEAD];
+    /* Seed once from the first track, then keep the workstation's choices when
+     * building matching chord, bass and arp parts on other tracks. */
+    if (!sequence_initialized) {
+        sequence_root = (uint8_t)clamp(trk[song.sel].p[P_ROOT],0,11);
+        sequence_scale = (uint8_t)clamp(trk[song.sel].p[P_SCALE],0,NSCALES-1);
+        if (!sequence_scale) sequence_scale = 1; /* useful default progression */
+        sequence_octave = (int8_t)clamp(song.octave,-3,3);
+        sequence_vlead = (uint8_t)!!trk[song.sel].p[P_VLEAD];
+        sequence_initialized = 1;
+    }
     sequence_browser = 1; sequence_page = sequence_confirm = 0;
     sequence_preview_tick = sequence_preview_block; sequence_preview_end = sequence_preview_stop;
     sequence_hold_t0 = 0; ui.force = 1;
 }
-static void sequence_screen_draw(void)
+/* Keep these cold screens out of the main UI handlers (measured target size). */
+static void __attribute__((noinline)) sequence_screen_draw(void)
 {
     static uint32_t head;
     const sequence_starter_t *p = &SEQUENCE_STARTERS[sequence_sel];
@@ -61,7 +67,7 @@ static void sequence_screen_draw(void)
     if (ui.msg_t) { cv_rect(0,0,240,20,C_WHITE); cv_text(4,2,&FONT_S,ui.msg,C_BLACK); }
     cv_blit(0,160);
 }
-static void sequence_screen_input(uint32_t pressed,uint32_t home)
+static void __attribute__((noinline)) sequence_screen_input(uint32_t pressed,uint32_t home)
 {
     uint32_t k; int32_t s; int changed=0;
     if (song.sel >= NPART || home == 1u) { sequence_screen_close(); return; }

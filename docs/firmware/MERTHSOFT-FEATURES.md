@@ -1,7 +1,7 @@
 # Playing the Merthsoft firmware
 
 This guide covers the additions to upstream SLOOP 2.5 in the `android` branch,
-through **2.5 Merthsoft.14**. Everything in the native workflow below works without
+including the current scale guides and EDIT pitch tools. Everything below works without
 a phone. The [complete player guide](../../GUIDE.md) also covers upstream features;
 the [Android overview](../../README.md#sloop-mobile-for-android) covers the companion.
 
@@ -33,6 +33,8 @@ the complete replacement and **EDIT + OCT+** redoes it while stopped.
 ## Shape the rhythm and register
 
 Turn **SELECT** inside SEQUENCES to visit its main, rhythm and pitch pages.
+Key, scale, octave, starter, mode, VLEAD and rhythm choices stay shared across synth
+tracks until power-off, so matching chord, bass and arp parts keep the same key.
 Page changes preserve the audition; changing a configuration knob stops it.
 The physical SEL button opens chord settings instead. Tapping SEQ leaves the
 browser for SONG; that final screen belongs to the sequence family.
@@ -70,6 +72,15 @@ See [musical starters](SEQUENCE-STARTERS-DESIGN.md), [drum grooves](DRUM-GROOVES
 and [rhythm shaping](RHYTHM-SHAPING-DESIGN.md) for bank and replacement details.
 
 ## Record and correct notes quickly
+
+For the whole synth pattern, hold **EDIT** and turn **knob 4** for octaves;
+knob 3 remains semitones. SHIFT/TRANSPOSE/OCTAVE readouts follow the last gesture
+and its undo/redo. The scale guide shows key-signature accidentals while small
+physical-key hints preserve the existing erase controls.
+
+| EDIT shift and pitch totals | E-minor vibrato guide |
+| --- | --- |
+| <img src="../../assets/screens/merthsoft/guide/feature-edit-octave.png" width="240" alt="EDIT panel showing one-step shift, minus eleven semitones and minus one octave-knob increment"> | <img src="../../assets/screens/merthsoft/guide/feature-vibrato-scale-guide.png" width="240" alt="Vibrato E-minor guide with F-sharp and physical-key hints"> |
 
 | RECORD snap | Sequencer-fed arp |
 | --- | --- |
@@ -161,7 +172,7 @@ The guide is visual: it does not itself quantize or transpose your playing.
 | --- | --- |
 | <img src="../../assets/screens/merthsoft/guide/feature-scale-grid.png" width="240" alt="C minor grid with Eb Ab Bb labels"> | <img src="../../assets/screens/merthsoft/guide/feature-midi-scale.png" width="240" alt="SYSTEM MIDI SCALE set to KEYBOARD"> |
 
-Held SEL/LFO/ENV grids show the actual mapped pitches and appropriate accidentals.
+Held SEL shows mapped pitches and appropriate accidentals; LFO/ENV show modulation waveforms with a compact key guide.
 **KEYS = WHITE** walks scale degrees. Optional **HOME menu → SYSTEM → MIDI
 SCALE → KEYBOARD** maps incoming USB/TRS synth pitches by that receiving track's
 keyboard settings. It defaults OFF, useful for phones/DAWs already sending the
@@ -186,6 +197,10 @@ also unlocks; press it again to open its normal page. STOP, track panic, menus
 and selected-track changes clear the effect and dismiss the locked panel.
 Unlock before selecting another track through the panel buttons. One panel locks
 at a time; a lock lasts only for this performance, not across a project save/reboot.
+
+The waveform shows one cycle and a live phase marker, with pitch cents for vibrato
+and volume percentage for tremolo. Track/key context and a compact scale guide
+remain visible; the keyboard keeps its existing mapping.
 
 Knobs 1–4 are **free Hz, depth, waveform, beat sync**. SYNC offers OFF, 1/4, 1/8,
 1/16, 1/32, 8T, 16T, 1/2, 1BAR and 2BAR. Turning knob 1 returns to free Hz.
@@ -279,7 +294,7 @@ Lossless one-bit font packing saves **16,128 bytes** of bitmap storage with the
 same pixels; the splash is retained. No extra full-pattern buffers were added for
 the ROM starter libraries or live modulation locks.
 
-Native images in this guide are fresh **Merthsoft.14 production-code framebuffer
+Native images in this guide are fresh **production-code framebuffer
 renders**; Android images are fresh captures from the connected Pixel. Both were
 visually reviewed October 10, 2026. The native renders use host panel/storage ports,
 not photographs or redesigned mockups. No hardware scale-light photo is included.

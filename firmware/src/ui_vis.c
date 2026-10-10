@@ -17,18 +17,19 @@ static const char *const VIS_NAME[VIS_N] = {"OSCILLOSCOPE", "SPECTRUM", "SPECTRO
 #define VIS_SG_W 48u                                /* spectrogram: 48 columns of 5 px, 72 rows of 3 px */
 #define VIS_SG_H 72u
 static int16_t vis_re[VIS_FFT] __attribute__((section(".pool"))), vis_im[VIS_FFT] __attribute__((section(".pool")));
-/* Waveform snapshots and note trails are used by mutually exclusive styles. */
+/* These histories belong to mutually exclusive styles; clear on style changes. */
 static union {
     struct { int16_t l[VIS_FFT], r[VIS_FFT]; } scope;
     struct { uint32_t notes[48][3][4]; uint16_t drums[48]; } trails;
+    uint8_t lj[3][256][2];                         /* three Lissajous frames */
 } vis_frame;
 #define vis_l vis_frame.scope.l
 #define vis_r vis_frame.scope.r
 #define vis_notes vis_frame.trails.notes
 #define vis_drum_notes vis_frame.trails.drums
+#define vis_lj vis_frame.lj
 static uint8_t vis_frame_style = 255;
 static uint8_t vis_sg[VIS_SG_H][VIS_SG_W] __attribute__((section(".pool")));
-static uint8_t vis_lj[3][256][2];                   /* Lissajous: the last three frames' points */
 static uint8_t vis_notes_head;
 static struct {
     int32_t scale, ljscale, peak;                   /* auto-scales (smoothed peaks), this frame's peak */
@@ -213,19 +214,24 @@ static void vis_bands(int16_t *out)
     }
 }
 
-static void vis_update(void)
+/* Keeping frame preparation separate reduces target UI code size. */
+static void __attribute__((noinline)) vis_update(void)
 {
     uint32_t i, w, hit, now = fm1_ms;
     int32_t pk[4], mpk = 0;
     if (vis_frame_style != vis_style) {
         if (vis_style == 9u) memset(&vis_frame.trails, 0, sizeof vis_frame.trails);
+        if (vis_style == 3u) memset(vis_lj, 0, sizeof vis_lj);
         vis_frame_style = vis_style;
     }
     /* the scope: the last 512 frames (left, right) */
     w = scope_w;
     for (i = 0; i < VIS_FFT; i++) {
         int16_t sample = scope_buf[(w + i) & (SCOPE_N - 1u)];
-        if (vis_style != 9u) {
+        if (vis_style == 3u) { /* FFT scratch is idle in Lissajous mode. */
+            vis_re[i] = sample;
+            vis_im[i] = scope_bufr[(w + i) & (SCOPE_N - 1u)];
+        } else if (vis_style != 9u) {
             vis_l[i] = sample;
             vis_r[i] = scope_bufr[(w + i) & (SCOPE_N - 1u)];
         }
@@ -322,7 +328,7 @@ static void vis_update(void)
         int32_t m = 1;
         uint8_t (*p)[2];
         for (i = 0; i < VIS_FFT; i += 2u) {
-            int32_t s = vis_l[i] + vis_r[i];
+            int32_t s = vis_re[i] + vis_im[i];
             if (s < 0) s = -s;
             if (s > m) m = s;
         }
@@ -332,7 +338,7 @@ static void vis_update(void)
         vs.lj_n = (uint8_t)((vs.lj_n + 1u) % 3u);
         p = vis_lj[vs.lj_n];
         for (i = 0; i < 256u; i++) {
-            int32_t l = vis_l[i * 2u], r = vis_r[i * 2u];
+            int32_t l = vis_re[i * 2u], r = vis_im[i * 2u];
             p[i][0] = (uint8_t)clamp(120 + (l - r) * 170 / vs.ljscale, 0, 239);
             p[i][1] = (uint8_t)clamp(120 - (l + r) * 95 / vs.ljscale, 0, 239);
         }

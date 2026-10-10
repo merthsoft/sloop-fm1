@@ -49,5 +49,10 @@ does not freeze the picture. This describes scheduling, not a measured zero CPU 
 Existing target ISR-budget limitations remain in the verification record.
 
 The UI suite checks all 14 styles draw, selection wrapping, persistence and removed-ID
-fallback, shared waveform/trail storage switching, MASTER-at-zero visualization,
+fallback, shared waveform/trail/Lissajous storage switching, MASTER-at-zero visualization,
 hidden-knob isolation and layer/navigation behavior. Its 20,000-frame fuzz passes.
+
+Lissajous history now shares the waveform/trail union, with its stereo snapshot in
+the otherwise idle FFT scratch arrays. Mode entry clears shared history; subsequent
+frames retain it. This saves 1,536 static RAM bytes with no pool growth. All fourteen
+reference captures remain byte-identical; see [optimization evidence](OPTIMIZATION.md).

@@ -47,11 +47,21 @@ static void layers_init(void)
 static uint32_t key_of_white(uint32_t w) { return key_of_lane(w & 15u); }   /* white key w -> key index */
 
 /* ------------------------------------------------------------ tools --- */
+static struct { uint32_t sess; int16_t shift, transpose, octave; uint8_t track; } edit_delta;
+static void edit_delta_mark(track_t *t)
+{
+    if (edit_delta.sess != undo.sess || edit_delta.track != trk_index(t)) {
+        edit_delta.sess = undo.sess; edit_delta.track = (uint8_t)trk_index(t);
+        edit_delta.shift = edit_delta.transpose = edit_delta.octave = 0;
+    }
+}
 /* EDIT layer knobs; each a step of one undo (the layer's hold) */
 static void layer_undo_mark(track_t *t)
 {
     if (!ui.step_sess)
         ui.step_sess = (undo_sess += 4u) | 3u;
+    if (undo.undone && edit_delta.sess == ui.step_sess)
+        edit_delta.shift = edit_delta.transpose = edit_delta.octave = 0;
     undo_mark(t, ui.step_sess);
 }
 static void pattern_rotate(track_t *t, int32_t d)       /* every step one later (d > 0) / earlier */
@@ -59,6 +69,8 @@ static void pattern_rotate(track_t *t, int32_t d)       /* every step one later 
     uint32_t len = trk_len(t), i;
     step_t keep;
     layer_undo_mark(t);
+    edit_delta_mark(t);
+    edit_delta.shift = (int16_t)clamp(edit_delta.shift + (d > 0 ? 1 : -1), -32767, 32767);
     fm1_irq_off();
     if (d > 0) {
         keep = t->step[len - 1u];
@@ -92,16 +104,30 @@ static void pattern_length(track_t *t, int32_t d)       /* x2 (the pattern again
         ui_say("STEPS ", b);
     }
 }
-static void pattern_transpose(track_t *t, int32_t d)    /* every note a semitone up / down (synth parts) */
+static void pattern_transpose(track_t *t, int32_t d)    /* one uniform shift; preserve chord intervals at bounds */
 {
-    uint32_t i, j;
+    uint32_t i, j, low = 127, high = 0, notes = 0;
     if (is_drum(t))
         return;
+    for (i = 0; i < NSTEP; i++)
+        for (j = 0; j < t->step[i].n && j < 4u; j++) {
+            uint32_t n = t->step[i].note[j];
+            if (n < low) low = n;
+            if (n > high) high = n;
+            notes++;
+        }
+    if (!notes) return;
+    if (d % 12 == 0) d = clamp(d / 12, -(int32_t)(low / 12u), (int32_t)((127u-high) / 12u)) * 12;
+    else d = clamp(d, -(int32_t)low, (int32_t)(127u-high));
+    if (!d) { ui_message("PITCH LIMIT"); return; }
     layer_undo_mark(t);
+    edit_delta_mark(t);
+    edit_delta.transpose = (int16_t)clamp(edit_delta.transpose + d, -32767, 32767);
+    if (d % 12 == 0) edit_delta.octave = (int16_t)clamp(edit_delta.octave + d / 12, -32767, 32767);
     fm1_irq_off();
     for (i = 0; i < NSTEP; i++)
         for (j = 0; j < t->step[i].n && j < 4u; j++)
-            t->step[i].note[j] = (uint8_t)clamp(t->step[i].note[j] + (d > 0 ? 1 : -1), 0, 127);
+            t->step[i].note[j] = (uint8_t)(t->step[i].note[j] + d);
     fm1_irq_on();
 }
 
@@ -519,7 +545,9 @@ static void layer_knobs(uint32_t layer)
             else if (k == 1u)
                 pattern_length(t, s);
             else if (k == 2u)
-                pattern_transpose(t, s);
+                pattern_transpose(t, s > 0 ? 1 : -1);
+            else if (k == 3u)
+                pattern_transpose(t, 12 * s);
             break;
         case LY_ROLL:
             if (k == 0u)
@@ -654,8 +682,77 @@ static const char *lock_label(const track_t *t, uint32_t id)   /* the lock param
 }
 
 static uint8_t layer_shown;                              /* the screen holds a layer (or a hold) */
+/* A key-signature guide, independent of the physical keyboard's mapping. */
+static uint32_t layer_guide_note(const track_t *t, uint32_t k)
+{
+    int32_t base = 53 + (int32_t)k + 12 * song.octave;
+    uint32_t pc = (uint32_t)(53u + k) % 12u, mask = scale_mask(t);
+    char name[4];
+    if (!t->p[P_SCALE]) return (uint32_t)clamp(base, 0, 127);
+    for (uint32_t p = 0; p < 12; p++) {
+        if (!(mask & (1u << p))) continue;
+        uint32_t pitch = ((uint32_t)t->p[P_ROOT] + p) % 12u;
+        scale_pitch_name(name, t, pitch);
+        if (name[0] == N_NOTE[pc][0]) {
+            int32_t d = (int32_t)pitch - (int32_t)pc;
+            if (d > 6) d -= 12;
+            if (d < -6) d += 12;
+            return (uint32_t)clamp(base + d, 0, 127);
+        }
+    }
+    return KB_SILENT;
+}
 static const char *layer_sub_shown = "";                 /* the sub line last drawn (the host tests read it) */
-static void layer_screen_draw(void)
+/* One modulation cycle, sampled for display only; no audio history or new buffer. */
+static int32_t live_mod_plot_y(const live_mod_t *m, uint32_t phase, int trem)
+{
+    int32_t w = m->wave == 1 ? osc_tri(phase) : m->wave == 2 ? (int32_t)(phase >> 16) - 32768 :
+        m->wave == 3 ? (phase < 0x80000000u ? 32767 : -32767) : osc_sine(phase);
+    return trem ? 20 + ((w + 32768) / 2) * m->depth * 84 / (32768 * 127) :
+        62 - w * m->depth * 42 / (32768 * 127);
+}
+static void live_mod_draw(const track_t *t, uint32_t layer, uint16_t col)
+{
+    const live_mod_t *m = &live_mod[layer - LY_VIB];
+    int trem = layer == LY_TREM;
+    char text[24], name[4];
+    cv_begin(240, 124, C_BLACK);
+    if (is_drum(t)) {
+        te_text_c(120, 48, "synth tracks only", TE_G3);
+    } else {
+        cv_line(12, trem ? 20 : 62, 228, trem ? 20 : 62, TE_G2);
+        int32_t py = live_mod_plot_y(m, 0, trem);
+        for (uint32_t x = 1; x <= 216; x++) {
+            int32_t y = live_mod_plot_y(m, (x % 216u) * (UINT32_MAX / 216u), trem);
+            cv_line(11 + x, py, 12 + x, y, col);
+            py = y;
+        }
+        int32_t x = 12 + (m->phase >> 24) * 216 / 256;
+        cv_line(x, 18, x, 106, TE_G2);
+        cv_rect(x - 2, live_mod_plot_y(m, m->phase, trem) - 2, 5, 5, C_WHITE);
+        if (trem) {
+            fmt_int(text, live_tremolo(t) * 100 / 32767);
+            str_cpy(text + str_len(text), "% level", 12);
+        } else {
+            int32_t cents = m->on && m->part == (uint32_t)(t - trk) ?
+                m->value * m->depth * 50 / (32768 * 127) : 0;
+            fmt_int(text, cents);
+            str_cpy(text + str_len(text), " cents", 8);
+        }
+        te_text_c(120, 0, text, C_WHITE);
+    }
+    cv_blit(0, 40);
+    cv_begin(240, 20, C_BLACK);
+    uint32_t mask = scale_mask(t), n = 0;
+    /* Compact key guide, with no suggestion that it remaps physical keys. */
+    if (!is_drum(t)) for (uint32_t p = 0; p < 12; p++) if (mask & (1u << p)) {
+        scale_pitch_name(name, t, ((uint32_t)t->p[P_ROOT] + p) % 12u);
+        cv_text(4 + n++ * (232 / __builtin_popcount(mask)), 2, &FONT_S, name, TE_G3);
+    }
+    cv_blit(0, 164);
+}
+/* A separate cold draw boundary reduces measured target flash. */
+static void __attribute__((noinline)) layer_screen_draw(void)
 {
     static uint32_t head, tiles, foot;
     static tile_t tl[16];
@@ -684,13 +781,12 @@ static void layer_screen_draw(void)
     case LY_VIB:
     case LY_TREM: {
         live_mod_t *m = &live_mod[layer - LY_VIB];
-        str_cpy(sub, is_drum(t) ? "synth tracks only" : "selected track only", sizeof sub);
-        for (i = 0; i < 16; i++) {
-            uint32_t k = key_of_white(i), n = kb_map(t, k);
-            if (n != KB_SILENT) scale_note_name(tl[i].lab, t, n);
-            else str_cpy(tl[i].lab, "-", 8);
-            tl[i].bg = (fm1_in.notes & (1u << k)) ? C_WHITE : TE_G1;
-            tl[i].fg = tl[i].bg == C_WHITE ? C_BLACK : TE_G4;
+        str_cpy(sub, is_drum(t) ? "synth tracks only" : "track ", sizeof sub);
+        if (!is_drum(t)) {
+            sub[6] = (char)('1' + sel); sub[7] = ' ';
+            scale_pitch_name(sub + 8, t, (uint32_t)t->p[P_ROOT] % 12u);
+            str_cpy(sub + str_len(sub), " ", 2);
+            te_lower(sub + str_len(sub), N_SCALE[clamp(t->p[P_SCALE],0,NSCALES-1)], 8);
         }
         lab[0] = m->sync ? "free Hz" : "rate Hz"; lab[1] = "depth %"; lab[2] = "wave"; lab[3] = "sync";
         const char *unit;
@@ -750,12 +846,15 @@ static void layer_screen_draw(void)
                 if (n == KB_SILENT) {
                     str_cpy(tl[i].lab, "-", 8);
                 } else {
-                    scale_note_name(tl[i].lab, t, n);
+                    uint32_t guide = layer == LY_ERASE ? layer_guide_note(t, k) : n;
+                    if (guide != KB_SILENT) scale_note_name(tl[i].lab, t, guide);
+                    else str_cpy(tl[i].lab, "-", 8);
+                    if (layer == LY_ERASE) tl[i].hint = N_NOTE[(53u + k) % 12u];
                     for (j = 0; j < trk_len(t); j++)
                         if (t->step[j].time == ST_NOTE) {
                             uint32_t q;
                             for (q = 0; q < t->step[j].n; q++)
-                                present |= t->step[j].note[q] == n;
+                                present |= t->step[j].note[q] == guide;
                         }
                 }
             }
@@ -764,11 +863,14 @@ static void layer_screen_draw(void)
             tl[i].top = present && !down ? (layer == LY_ERASE ? TE_RED : col) : 0;
         }
         if (layer == LY_ERASE) {
-            lab[0] = "shift", lab[1] = "length", lab[2] = is_drum(t) ? "" : "transp";
-            str_cpy(v[0], "<  >", 8);
+            lab[0] = "shift", lab[1] = "length", lab[2] = is_drum(t) ? "" : "transp", lab[3] = is_drum(t) ? "" : "octave";
+            int active = undo.valid && !undo.undone && undo.sess == edit_delta.sess && edit_delta.track == sel;
+            fmt_int(v[0], active ? edit_delta.shift : 0);
             fmt_int(v[1], t->p[P_SLEN]);
-            str_cpy(v[2], is_drum(t) ? "" : "-  +", 8);
-            str_cpy(sub, undo.valid ? (undo.undone ? "oct+ redo" : "oct- undo") : sub, sizeof sub);
+            if (!is_drum(t)) { fmt_int(v[2], active ? edit_delta.transpose : 0); fmt_int(v[3], active ? edit_delta.octave : 0); }
+            if (undo.valid) str_cpy(sub, is_drum(t) ? (undo.undone ? "oct+ redo" : "oct- undo") :
+                (undo.undone ? "guide / oct+ redo" : "guide / oct- undo"), sizeof sub);
+            else if (!is_drum(t)) str_cpy(sub, "scale guide", sizeof sub);
             if (project_undo_available()) str_cpy(sub, "oct- undo load / oct+ redo", sizeof sub);
         } else {
             lab[0] = "rate";
@@ -1016,7 +1118,8 @@ static void layer_screen_draw(void)
     }
     layer_sub_shown = sub;
     layer_title(LAYER_NAME[layer % LY_COUNT], sub, col, &head);
-    tiles_draw(tl, &tiles);
+    if (layer == LY_VIB || layer == LY_TREM) live_mod_draw(t, layer, col);
+    else tiles_draw(tl, &tiles);
     {   /* (a message shows in the title: the dials stay) */
         uint8_t m = ui.msg_t;
         ui.msg_t = 0;

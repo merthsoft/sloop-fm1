@@ -17,6 +17,7 @@ existing upstream website artifact, not the current Merthsoft build.
 - [Punch FX](PUNCH-FX-DESIGN.md)
 - [USB playback](USB-PLAYBACK-IMPLEMENTATION.md)
 - [Lossless font packing](FONT-PACKING-DESIGN.md)
+- [Measured branch optimization](OPTIMIZATION.md)
 - [Visualizers and screenshot gallery](VISUALIZERS.md)
 
 Use the [player guide](../../GUIDE.md) for controls and the

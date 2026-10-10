@@ -1,5 +1,70 @@
 # Integrated Merthsoft.7 — October 9, 2026
 
+## Modulation displays and save-loss investigation — Merthsoft.18
+
+- `tests/edit_tools_test.c`: square-wave bounds, zero-depth baselines and drawing that leaves audio modulation state unchanged; fresh waveform/locked-panel captures.
+- `tests/project_test.c`: production project capture, NOR A/B replacement of slot B, loss of RAM, import/apply and exact instrument/voice/key/note restoration pass. This models serialization/storage, not hardware writes or the complete boot/UI save path.
+- Modulation behavior and broad UI regressions pass. Target image 578,912 bytes; static RAM 96,244 bytes; pool 333,948 bytes. No DSP changes or new display allocation.
+- Reported hardware save loss is unresolved; the firmware updater's app-write window excludes project storage. Device save acknowledgement and exact missing preferences are still needed.
+
+## Scale guides and whole-pattern EDIT octave — Merthsoft.17
+
+Held LFO/ENV and synth EDIT show key-signature guides with physical-key hints;
+keyboard/erase/MIDI mapping remains unchanged. Focused real-UI tests cover E-minor
+F#, C-minor Eb, physical F erasing F while preserving F#, EDIT knob 4 octaves,
+semitone/shift totals, undo/redo and undo-then-edit reset, chord intervals at MIDI
+bounds, ties/metadata, drum rejection and neighboring-track isolation.
+Modulation regressions and 20,000-frame broad UI fuzz pass.
+
+Target image 578,208 bytes; static RAM 96,244/98,304 (2,060 free); pool unchanged
+333,948/344,064. HAL and call-free 925-instruction RAM text pass. The 610,066-byte
+package is served on port 8803, SHA-256
+`2f8e1d51046a669618194feacf950f76b73f072cdc4a7fcf45d54ef6a0faaf66`.
+Physical hardware validation is not claimed.
+
+## Retained sequence-browser choices — Merthsoft.16
+
+Native sequence choices initialize once and remain shared across synth tracks.
+The real UI regression checks retained root/scale/octave/mode/VLEAD/rhythm choices,
+reopening, applying D-minor bass to a track configured for A major, unchanged track
+SEL parameters, and neighboring-track isolation. Starter UI and phone protocol
+regressions pass. Broad 20,000-frame UI fuzz passes.
+
+Target image 577,072 bytes; static RAM 96,212/98,304; pool 333,948/344,064.
+HAL and call-free 925-instruction RAM code checks pass. The installer at
+`http://127.0.0.1:8802/webapp/installer/` serves the hash-verified 610,066-byte package:
+`05d8075ed7dc8cecb0dcd1c9e75bcc69af570e5600f2c8b4711fbdffca61d658`.
+Physical validation is not claimed.
+
+## Branch optimization — October 10, 2026
+
+The optimized build is packaged as **2.5 Merthsoft.15**. It links at
+577,056 image bytes (816 fewer) and 96,212/98,304 static RAM bytes (1,536 fewer,
+2,092 free); pool remains 333,948/344,064. HAL and call-free 925-instruction RAM
+code checks pass. Rebuilt baseline `d45c21c` confirms the previous sizes, and every
+tracked DSP/ISR cost record is identical. See the [optimization record](../../docs/firmware/OPTIMIZATION.md).
+
+The local installer at `http://127.0.0.1:8801/webapp/installer/` serves the verified
+610,066-byte package, identity FM-1_900, SHA-256
+`17874cb08879526337158768707f8815a12a7cf5c750e9b4a3728069912a8f60`.
+
+Host coverage includes 20,000-frame UI fuzz, all fourteen byte-identical visualizer
+captures, shared-history transition/snapshot assertions, an independent all-scale
+pitch oracle, complete groove/sequence undo, audition ownership and phone protocol
+tests. Fresh divide-by-zero trap tests cover UI, sequencer, projects and one minute
+of live-use simulation. The packed-font stress reference decoder was corrected;
+its 153,600-pixel oracle and 40,000-frame stress rerun pass. The sanitizer runner
+now refuses to execute old binaries when compilation fails.
+An additional 40,000-frame undefined-behavior trap run passes, as does the Windows
+Node web protocol/sample/updater suite.
+
+The complete host run retains two baseline failures: LOFI/8BIT_ARP differs from the
+stored golden, and the ISR cost exceeds its historical budget. The same host
+compiler and untouched baseline reproduce both; all 182 audio render hashes match
+between trees, with no health/routing failures or crashes. No golden/budget update
+was made. ASan is unavailable in this compiler; trap instrumentation is explicitly
+reported instead. Physical device and deadline/stack validation are not claimed.
+
 ## Illustrated workflow documentation — October 10, 2026
 
 Fresh production-code host renders show STEP tie/rest painting, moving an onset

@@ -365,10 +365,15 @@ Keys pressed while FX is held never play or record notes.
 | **EDIT + KNOB 1** | **SHIFT**: every step one later (right) / earlier (left) — turns the groove around |
 | **EDIT + KNOB 2** | **LENGTH**: right ×2 (the pattern copied after itself, up to 64 steps), left ½ |
 | **EDIT + KNOB 3** | **TRANSPOSE**: every note a semitone up / down (synth tracks) |
+| **EDIT + KNOB 4** | **OCTAVE**: every note a whole octave up / down (synth tracks); stops at MIDI bounds without collapsing chord intervals |
 | **EDIT + OCT−** | **undo** |
 | **EDIT + OCT+** | **redo** |
 
 All the knob turns of one EDIT hold count as one change for undo.
+The dials show the last gesture's SHIFT in steps, total TRANSPOSE in semitones,
+and the octave-knob amount. Undo shows zero; redo restores the amounts. A new
+gesture starts fresh. Synth EDIT tiles show a scale guide with physical-key hints;
+they do not remap which notes the keys erase.
 
 ### ARP — roll (note repeat)
 
@@ -960,8 +965,9 @@ clear modulation. Other unmapped CCs, sustain and pitch bend are ignored by the 
 ### Scale-aware grids and incoming MIDI (Merthsoft.13)
 
 The 4×4 grids correspond to the FM1's sixteen physical white keys, in order.
-Held LFO/ENV displays what those keys play, including octave, transpose and scale
-mapping. Held SEL displays those pitches or their chords; each tile's small
+Synth EDIT shows a key-signature guide with physical-key hints:
+F# in E minor, Eb in C minor. The guide does not remap playing or erasing.
+Held SEL displays actual mapped pitches or their chords; each tile's small
 **root F**, **root G**, etc. hint shows the root selected by pressing that key while
 SEL stays held. Selecting a song root remains a literal physical-key action.
 
@@ -1019,6 +1025,10 @@ value. CC1 uses the saved track LFO rate/wave/fade and normal channel routing.
 STOP, track panic and CC120/121/123 reset modulation; menu entry cancels hardware
 holds. USB reset/detach clears USB-owned wheel values while retaining TRS values.
 Physical modulation is not sent as outgoing MIDI or recorded as sequencer notes.
+
+The held panels show a modulation waveform with a moving phase marker: pitch
+offset in cents for vibrato, volume percentage for tremolo. Track/key context and a
+compact scale-note guide stay visible. The display does not remap the keyboard.
 
 Android Perform's **Mod wheel** strip sends CC1: slide right to increase and release
 to send zero. Touch cancellation, track/tab change, stop and backgrounding also reset

@@ -20,6 +20,22 @@ static uint32_t trk_def_engine(uint32_t i)       /* ui.c TRK_DEF: ANALOG, DIGITA
 }
 #include "../firmware/src/project.c"
 
+/* Exercise project serialization against the real A/B storage implementation,
+ * with a NOR model that cannot program a zero bit back to one. */
+static uint8_t project_nor[0x100000];
+static int st_read(uint32_t off, void *dst, uint32_t n)
+{ memcpy(dst, project_nor + off, n); return 0; }
+static int st_erase(uint32_t off)
+{ memset(project_nor + off, 0xFF, 4096); return 0; }
+static int st_prog(uint32_t off, const void *src, uint32_t n)
+{
+    const uint8_t *p = src;
+    if ((off & 255u) + n > 256u) return -1;
+    for (uint32_t i = 0; i < n; i++) project_nor[off + i] &= p[i];
+    return 0;
+}
+#include "../firmware/src/storage.c"
+
 static int check(const char *what, int ok)
 {
     printf("%-66s %s\n", what, ok ? "ok" : "FAIL");
@@ -393,6 +409,34 @@ int main(void)
     undo_mark(&trk[1], UNDO_REC(&trk[1]));
     undo.valid = 0;
     bad += check("recording supersedes load history without changing UI session", !project_undo_available());
+
+    /* Replace B, lose every RAM slot as at cold boot, then restore from flash.
+     * Distinct sounds and voice/key settings must survive alongside the notes. */
+    memset(project_nor, 0xFF, sizeof project_nor);
+    host_tracks_init();
+    proj_capture(&q);
+    bad += check("save original slot B to NOR", st_save(OBJ_PROJECT0 + 1, &q, sizeof q) == 0);
+    host_preset(&trk[0], 1, 2);
+    host_preset(&trk[1], 0, 3);
+    trk[0].p[P_VOICE] = V_POLY;
+    trk[0].p[P_ROOT] = 4;
+    trk[0].p[P_SCALE] = 2;
+    trk[0].step[0].time = ST_NOTE;
+    trk[0].step[0].n = 2;
+    trk[0].step[0].note[0] = 64;
+    trk[0].step[0].note[1] = 67;
+    proj_capture(&q);
+    bad += check("overwrite slot B to NOR", st_save(OBJ_PROJECT0 + 1, &q, sizeof q) == 0);
+    memset(proj_slot, 0, sizeof proj_slot);
+    host_tracks_init();
+    int stored_n = st_load(OBJ_PROJECT0 + 1, &buf, sizeof buf);
+    int loaded_ok = proj_import(&proj_slot[1], &buf, stored_n);
+    bad += check("cold reload B selects replacement, not old copy", loaded_ok && !memcmp(&proj_slot[1], &q, sizeof q));
+    if (loaded_ok) {
+        proj_apply(&proj_slot[1], 1);
+        proj_capture(&q2);
+        bad += check("B reload restores instruments, voice/key settings and notes", !memcmp(&q2, &q, sizeof q));
+    }
 
     printf("%s\n", bad ? "PROJECT FORMAT TEST FAILED" : "project format test passed");
     return bad != 0;

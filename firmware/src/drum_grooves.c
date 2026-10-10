@@ -2,6 +2,7 @@
 /* ROM starters. Masks cover up to 64 steps, bit zero is step 1.
  * Canonical lanes: kick 0, snare 2, clap 3, closed hat 4, open hat 5.
  * No kit, mixer, song or synth state belongs to a starter. */
+#include "starter_pattern.h"
 typedef struct {
     const char *name;
     uint64_t kick, snare, clap, hat, open, accent, ghost;
@@ -120,11 +121,7 @@ static int drum_groove_apply_shaped(uint32_t g, const rhythm_shape_t *shape)
         TDRUM->dstep[i] = drum_groove_shaped_step(g, i, shape);
         TDRUM->micro[i] = i < p->len ? rhythm_shape_micro(shape, 0) : 0;
     }
-    memset(TDRUM->fill, 0, sizeof TDRUM->fill);
-    memset(TDRUM->lock, 0, sizeof TDRUM->lock);
-    for (i = 0; i < NLOCK; i++) TDRUM->lock[i].step = LOCK_FREE;
-    TDRUM->p[P_SLEN] = p->len; TDRUM->p[P_SDIV] = p->div; TDRUM->p[P_SSWING] = 0;
-    TDRUM->seq_active = 1;
+    starter_pattern_metadata(TDRUM, p->len, p->div);
     fm1_irq_on();
     ui.step_sess = 0; sync_reload = 1; ui.force = 1;
     return 1;

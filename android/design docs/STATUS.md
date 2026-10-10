@@ -5,6 +5,21 @@ future design contracts; dated release/handoff/test results remain historical ev
 
 ## Latest firmware
 
+**2.5 Merthsoft.18** replaces held LFO/ENV grids with waveform/cycle displays,
+live cents/level readouts and compact key guides. EDIT retains scale-guide labels,
+whole-pattern octave and gesture readouts. Installer: port 8804.
+
+Reported device save loss remains under investigation; host overwrite-B/cold-reload
+coverage passes and no saving fix is claimed.
+
+**2.5 Merthsoft.16** retains native sequence-browser key, scale, octave, starter,
+mode, voice-leading and rhythm choices across track changes until power-off.
+The local installer is `http://127.0.0.1:8802/webapp/installer/`.
+
+**2.5 Merthsoft.15** includes the [optimization pass](../../docs/firmware/OPTIMIZATION.md),
+retaining all features while saving 816 image bytes and 1,536 static RAM bytes.
+The local installer serves this build with its verified package hash.
+
 **2.5 Merthsoft.14** lets HOME lock the held-LFO vibrato or held-ENV tremolo
 panel and effect on its captured synth after release. Playing, knobs and scale
 lights remain active. HOME/function unlock, STOP/panic, menus and track changes

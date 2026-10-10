@@ -4,6 +4,14 @@ The FM-1 can generate an editable four-bar pattern on the selected synth track w
 
 ## Bank and rendering
 
+Browser choices are shared across synth tracks and retained until power-off: key,
+scale, octave, starter, mode, voice leading and rhythm shaping. The first native
+visit seeds key/scale and VLEAD from the selected track, and octave from the physical
+octave; later visits do not overwrite those choices. This lets chord, bass and arp
+parts use the same key without changing any track's own SEL parameters. Preview
+ownership still ends on exit or track changes; remembering settings does not keep
+old audition notes sounding.
+
 Twenty-four starters cover I–V–vi–IV, I–vi–IV–V, ii–V–I, a minor journey, soul sevenths, Dorian pocket, offbeat house, broken ii–V, funk side steps, a descending-fifths walk, a seventh-chord skip pattern, and floating Lydian movement. Merthsoft.6 adds GOSPEL TURN, MINOR DESCENT, SIX TWO FIVE, SOUL DETOUR, DEEP TWO CHORD, DISCO LIFT, GARAGE SKIPS, LATIN TURN, ODD POCKET, SUSPENSE, RISING STEPS and FALLING HOME. Names describe useful pairings; selecting a starter does not silently change scale. Dorian, minor and Lydian starters work particularly well with those scales.
 
 Knobs on the main browser page choose starter, root, scale, and rendering mode. Root and scale begin with the selected track's settings, except a CHR track starts the browser in Major. This does not change track parameters; CHR remains explicitly selectable. CHR uses the actual twelve-note scale, not an implicit minor fallback. Stacking every other chromatic degree yields whole-tone intervals, so CHR is useful for unusual material rather than ordinary default progressions. Chord tones stack every other scale degree, including on pentatonic and other scales.

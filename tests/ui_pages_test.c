@@ -1118,6 +1118,20 @@ int main(int argc, char **argv)
           memset(&vis_frame, 0xff, sizeof vis_frame);
           vis_style = 9; vis_update();
           check(vis_notes[0][0][0] == 0u, "visualiser: entering trails clears waveform history");
+          memset(&vis_frame, 0xff, sizeof vis_frame);
+          for (x = 0; x < SCOPE_N; x++) { scope_buf[x] = 1000; scope_bufr[x] = -1000; }
+          vis_style = 3; vis_update();
+          check(vis_re[0] == 1000 && vis_im[0] == -1000 &&
+                vis_re[VIS_FFT - 1u] == 1000 && vis_im[VIS_FFT - 1u] == -1000,
+                "visualiser: Lissajous snapshots survive writes to shared history");
+          check(vis_lj[(vs.lj_n + 1u) % 3u][0][0] == 0 &&
+                vis_lj[(vs.lj_n + 2u) % 3u][255][1] == 0,
+                "visualiser: entering Lissajous clears other styles' history");
+          vis_update();
+          check(vis_lj[(vs.lj_n + 2u) % 3u][255][1] != 0,
+                "visualiser: Lissajous retains its previous frame");
+          vis_style = 9; vis_update();
+          check(vis_notes[0][0][0] == 0u, "visualiser: trails clear Lissajous history");
           memset(scope_buf, 0, sizeof scope_buf); memset(scope_bufr, 0, sizeof scope_bufr);
           vis_style = 0; vis_update();
           check(vis_l[0] == 0 && vis_r[0] == 0, "visualiser: returning to scope refreshes shared storage");

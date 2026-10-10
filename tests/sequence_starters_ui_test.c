@@ -16,6 +16,18 @@ int main(int argc,char **argv)
     uint32_t i,g,scale,mode,j;
     panel=PANEL_DEFAULT;layers_init();host_tracks_init();palette_set(4);
     outdir=argc>1?argv[1]:"build/host";song.sel=1;
+    /* Musical oracle independent of the scale-degree mapper: enumerate pitches
+     * over several octaves, including saturation at the MIDI bounds. */
+    for (scale=0;scale<NSCALES;scale++) {
+        uint8_t tones[12]; uint32_t n=0, degree, root;
+        for (i=0;i<12;i++) if (SCALE_MASK[scale] & (1u<<i)) tones[n++]=(uint8_t)i;
+        for (root=0;root<12;root++) for (int32_t octave=-6;octave<=6;octave++)
+            for (degree=0;degree<32;degree++) {
+                int32_t expected=60+(int32_t)root+12*(octave+(int32_t)(degree/n))+tones[degree%n];
+                expected=expected<0?0:expected>127?127:expected;
+                assert(sequence_degree_note(degree,root,scale,octave)==(uint32_t)expected);
+            }
+    }
     for(g=0;g<NSEQUENCE_STARTERS;g++)for(scale=0;scale<NSCALES;scale++)
         for(mode=0;mode<3;mode++)for(i=0;i<NSTEP;i++) {
             step_t s=sequence_starter_voiced(g,i,11,scale,3,mode,0,1);
@@ -114,12 +126,34 @@ int main(int argc,char **argv)
     encs[panel.enc[EN_SELECT]]=1;frame();assert(sequence_browser&&sequence_page==1);
     encs[panel.enc[EN_SELECT]]=1;frame();assert(sequence_browser&&sequence_page==2);
     int8_t physical_octave=song.octave;
-    encs[panel.enc[EN_K1]]=1;frame();assert(sequence_octave==physical_octave+1);
+    int8_t browser_octave=sequence_octave;
+    encs[panel.enc[EN_K1]]=1;frame();assert(sequence_octave==browser_octave+1);
     assert(song.octave==physical_octave);
     sequence_screen_draw();ppm("live-sequence-pitch");
     encs[panel.enc[EN_SELECT]]=1;frame();assert(!sequence_browser&&cur_page()->scope==SC_SONG);
     ui.home=0;ui.page=(uint8_t)i;page_entered();
     sequence_screen_close();assert(!sequence_preview_end);
+    sequence_sel=0;sequence_root=2;sequence_scale=2;sequence_octave=1;
+    sequence_mode=STARTER_BASS;sequence_vlead=1;
+    sequence_shape=(rhythm_shape_t){3,-2,7,255,1};
+    other=trk[1];
+    song.sel=0;song.octave=-2;
+    trk[0].p[P_ROOT]=9;trk[0].p[P_SCALE]=1;trk[0].p[P_VLEAD]=0;
+    sequence_screen_open();
+    assert(sequence_root==2&&sequence_scale==2&&sequence_octave==1&&
+           sequence_mode==STARTER_BASS&&sequence_vlead==1&&sequence_sel==0);
+    assert(sequence_shape.rotate==3&&sequence_shape.offset==-2&&
+           sequence_shape.feel==7&&sequence_shape.part==255&&sequence_shape.sync==1);
+    sequence_screen_close();sequence_screen_open();
+    assert(sequence_root==2&&sequence_scale==2&&sequence_octave==1);
+    sequence_shape=(rhythm_shape_t){0,0,0,255,0};
+    assert(sequence_starter_apply());
+    assert(trk[0].step[0].n==1&&trk[0].step[0].note[0]==62&&
+           trk[0].step[16].note[0]==69); /* D minor bass, rather than track 0's A major */
+    assert(trk[0].p[P_ROOT]==9&&trk[0].p[P_SCALE]==1&&song.octave==-2);
+    assert(!memcmp(&other,&trk[1],sizeof other));
+    sequence_screen_close();
+    puts("sequence UI: cross-track key, scale, octave and browser preferences persist; apply uses retained key PASS");
     puts("sequence UI: native entry, 700ms hold, full undo/redo, track isolation, non-destructive preview, STOP/home ownership PASS");
     return 0;
 }

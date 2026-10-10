@@ -9,7 +9,7 @@ HOME, then release. Keyboard and knobs remain usable; HOME or a function button
 unlocks. STOP/panic, menus and track changes clear the lock. Runtime only, with no
 new static RAM or wire/project format. See the [illustrated firmware guide](../../docs/firmware/MERTHSOFT-FEATURES.md).
 
-Production firmware is **2.5 Merthsoft.14**, with INFO protocol **14**, three synth tracks and
+Production firmware is **2.5 Merthsoft.18**, with INFO protocol **14**, three synth tracks and
 one drum track. Protocol 9 FM6/native-pattern exchange, sample-slot backup/upload, USB audio
 playback and MIDI note performance are integrated. Protocol 10 command 43 reports the
 physical octave offset; Android follows it without firmware transposing ordinary external MIDI.

@@ -61,4 +61,17 @@ overdub, microtiming and arpeggiator regressions.
 
 ## Whole-octave pitch editing
 
+For the entire synth pattern, hold EDIT and turn knob 4: each increment shifts all
+stored notes one octave. Knob 3 still shifts semitones. The shift is uniform across
+all notes and stops at MIDI bounds, preserving chord intervals, ties and metadata.
+Drum tracks ignore these pitch controls.
+
+Held EDIT shows SHIFT in steps, total TRANSPOSE in semitones and the octave-knob
+amount for the current/last EDIT undo gesture. A new gesture starts fresh; undo
+shows zero and redo restores the values. Another edit superseding that undo clears
+the readout. The synth grid is a scale guide with physical-key hints, while actual
+erase mapping stays unchanged. `tests/edit_tools_test.c` covers E-minor F# and
+C-minor Eb labels, unchanged physical erase behavior, octave/step edits, gesture
+totals, undo/redo, pitch bounds, metadata and neighboring-track isolation.
+
 Hold either OCT button and turn knob 2 to shift the selected note/chord in whole octaves. A selected tie resolves to its preceding onset. All pitches move together; MIDI bounds clamp the number of octaves without collapsing intervals. Dynamics, ties, timing, conditions and locks remain intact. One hold shares one undo session with the other STEP gestures. Recording, armed entry, free takes and drums do not use this control; ordinary unmodified knob 2 still edits semitones. OCT taps keep their existing STEP behavior.

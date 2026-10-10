@@ -542,7 +542,8 @@ static void grid_key(uint32_t k)
     sync_reload = 1;
 }
 
-static void drum_screen_input(uint32_t pressed, uint32_t home)
+/* This browser/grid handler is smaller outside the main input handler. */
+static void __attribute__((noinline)) drum_screen_input(uint32_t pressed, uint32_t home)
 {
     uint32_t k, b;
     int32_t s;

@@ -1,15 +1,17 @@
 # Scale-aware grids and MIDI keyboard following — Merthsoft.13
 
 The 16 grid tiles represent physical white keys, not an independent MIDI pad bank.
-SEL, vibrato and tremolo labels now use mapped pitches from the common keyboard
-mapping function. SEL chord labels retain chord quality and scale-aware root spelling.
+SEL labels use mapped pitches from the common keyboard mapping function. SEL
+chord labels retain chord quality and scale-aware root spelling. Synth EDIT shows a scale guide independent of that mapping: F# in E minor,
+Eb in C minor, with physical-key hints underneath. These guides do not change what
+the keys play or erase. Missing letter degrees in non-diatonic scales show a dash.
 SEL still selects literal song roots while held, so a second-line root hint explicitly
-shows that action. LFO/ENV retain playable keys and unchanged keyboard LED behavior.
+shows that action. LFO/ENV use waveform/cycle displays with a compact scale-note guide; they retain playable keys and unchanged keyboard LED behavior.
 
 Seven-note scales spell pitches by diatonic letter degree; other scales and outside
 notes choose enharmonics using the key. C minor shows Eb, Ab, Bb. F# major shows
 E#. Octave spelling handles B#/Cb boundaries. With KEYS OFF, outside-scale notes
-still show their actual chromatic pitch. WHITE walks scale degrees; SNAP rounds down.
+still show their actual chromatic pitch on the SEL mapping display. WHITE walks scale degrees; SNAP rounds down.
 No mapping is enabled merely by changing display labels.
 
 HOME menu SYSTEM knob 2 exposes MIDI SCALE: OFF (default), KEYBOARD. Preference bit
@@ -40,7 +42,7 @@ measurement is claimed.
 ## Current firmware screens
 
 ![C-minor SEL grid](../../assets/screens/merthsoft/scale-grid-c-minor.png)
-![Vibrato grid and sync control](../../assets/screens/merthsoft/vibrato-scale-grid.png)
-![Tremolo grid and sync control](../../assets/screens/merthsoft/tremolo-scale-grid.png)
+![Vibrato waveform and sync control](../../assets/screens/merthsoft/vibrato-scale-grid.png)
+![Tremolo envelope and sync control](../../assets/screens/merthsoft/tremolo-scale-grid.png)
 
 Fresh production-code host framebuffer renders; not photographs of physical hardware.

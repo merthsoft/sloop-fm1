@@ -2,6 +2,7 @@
 /* ROM musical starters: four scale-degree bars, no patch or song state.
  * Included after drum_grooves.c in ui.c; shares its supplemental undo. */
 #include "harmony_voicing.h"
+#include "starter_pattern.h"
 typedef struct {
     const char *name;
     uint16_t hits;
@@ -50,7 +51,8 @@ static struct {
 static uint32_t sequence_degree_note(uint32_t degree, uint32_t root, uint32_t scale, int32_t octave)
 {
     uint32_t mask = SCALE_MASK[scale % NSCALES], count = 0, pc;
-    for (pc = 0; pc < 12; pc++) count += (mask >> pc) & 1u;
+    /* Count only present tones; pentatonic/diatonic scales need 5/7 iterations. */
+    for (pc = mask; pc; pc &= pc - 1u) count++;
     octave += (int32_t)(degree / count);
     degree %= count;
     for (pc = 0; pc < 12; pc++) if ((mask >> pc) & 1u) {
@@ -213,11 +215,7 @@ static int sequence_starter_apply(void)
                                          sequence_octave,sequence_mode,&sequence_shape,sequence_vlead);
         t->micro[i] = rhythm_shape_micro(&sequence_shape,0);
     }
-    memset(t->fill,0,sizeof t->fill);
-    memset(t->lock,0,sizeof t->lock);
-    for (i = 0; i < NLOCK; i++) t->lock[i].step = LOCK_FREE;
-    t->p[P_SLEN] = NSTEP; t->p[P_SDIV] = 2; t->p[P_SSWING] = 0;
-    t->seq_active = 1;
+    starter_pattern_metadata(t, NSTEP, 2);
     fm1_irq_on();
     ui.step_sess = 0; sync_reload = 1; ui.force = 1;
     return 1;
