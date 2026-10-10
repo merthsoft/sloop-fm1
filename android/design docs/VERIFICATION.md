@@ -1,5 +1,24 @@
 # Integrated Merthsoft.7 — October 9, 2026
 
+## Illustrated workflow documentation — October 10, 2026
+
+Fresh production-code host renders show STEP tie/rest painting, moving an onset
+inside its own tie chain, SEL latch controls, EDIT's load-undo affordance with real
+project-history availability, and SAVE NEW/confirmation. The host uses panel and
+storage ports; these captures illustrate controls rather than claiming a physical
+device test. All native workflow images were visually reviewed.
+Four fresh captures from the connected Pixel show musical/drum library entry
+points, the existing-note prompt dialog and its exact proposal review. The phone
+was connected to the PC, so library browsing correctly appears disabled without
+FM1; no connected hardware-library apply is claimed. The proposed C-to-C# edit
+was discarded, leaving the note unchanged. No old Android capture was reused for
+these additions, and no scale-light hardware photograph is included.
+The illustrated guide's 25 images and README images validate; local documentation
+targets resolve apart from existing GitHub-relative issues/releases links.
+README now describes current capabilities without feature release-version/date
+annotations; historical release and test evidence stays in the detailed records.
+Firmware and Android source are unchanged in this documentation checkpoint.
+
 ## Merthsoft.14 modulation locks — October 10, 2026
 
 Target image 577,872 bytes; static RAM 97,748/98,304 (556 bytes remaining);

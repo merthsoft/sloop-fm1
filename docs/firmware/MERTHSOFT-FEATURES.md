@@ -94,6 +94,20 @@ destinations are protected. Moves carry expression, timing, fill conditions and
 parameter locks; gestures support undo/redo. These are STEP-page controls,
 distinct from the held-SEQ layer. See [editing details](SEQUENCER-EDITING.md).
 
+| Start with a chord on step 1 | Sweep ties through step 8 | Paint rests on steps 5–7 |
+| --- | --- | --- |
+| <img src="../../assets/screens/merthsoft/guide/tie-before.png" width="240" alt="C major chord at step 1 with following rests"> | <img src="../../assets/screens/merthsoft/guide/tie-after.png" width="240" alt="Following seven steps tied by OCT+ and knob 1"> | <img src="../../assets/screens/merthsoft/guide/rest-after.png" width="240" alt="Steps 5 through 7 replaced with rests using OCT- and knob 1"> |
+
+The thin horizontal segments represent ties. For the rest example, select step 4,
+hold OCT− and advance knob 1 to step 7; step 4 stays intact.
+
+| Original onset at step 1 | Onset moved to step 3 inside its own ties |
+| --- | --- |
+| <img src="../../assets/screens/merthsoft/guide/move-before.png" width="240" alt="Chord attack followed by ties through step 8"> | <img src="../../assets/screens/merthsoft/guide/move-after.png" width="240" alt="Chord moved two steps later with its original end retained"> |
+
+Hold either OCT button and turn knob 3 two steps right. Steps 1–2 become rests;
+the chord begins at step 3 and still ends after step 8.
+
 ## Play chords and arpeggios
 
 Added chord shapes are **SUS2, ADD9, 6TH, SHELL, OCTAVE, MAJOR, MINOR, DOM7,
@@ -112,6 +126,13 @@ arpeggio notes. **SEL page 2, knob 4** also controls chord LATCH. In non-CHROM
 latched chord mode, black modifiers immediately reshape the sounding chord and
 toggle until pressed again. Their state survives choosing another root and clears
 when latch is disabled, CHROM is selected, STOP or panic is used.
+
+<img src="../../assets/screens/merthsoft/guide/chord-latch-controls.png" width="240" alt="SEL page 2 with knob 4 LATCH ON">
+
+With C major selected, latch the C chord, release its root, then tap **F#**:
+**C–E–G → C–E♭–G**. Releasing F# keeps the minor chord; tapping F# again returns
+to major. You do not need to reapply the root. The image shows the LATCH control;
+the modifier changes the sounding pitches, not the saved CHORD setting.
 
 Additional arp modes are **OUTIN, SHUF, ROOTALT, DNUP, UPDNREP, INOUT, WALK
 and PULSE**. NOTE/PLAY ordering controls sorted pitch versus playing order;
@@ -197,6 +218,14 @@ restore, stop playback and press **EDIT + OCT−** to restore the preceding proj
 OCT+ redoes it. The one-level RAM snapshot is superseded by subsequent edits or
 recording. The held SAVE menu also offers **NEW**, with stopped-only confirmation.
 
+| Undo a load | SAVE menu's NEW | Confirm NEW |
+| --- | --- | --- |
+| <img src="../../assets/screens/merthsoft/guide/undo-load-controls.png" width="240" alt="Held EDIT panel showing oct- undo load and oct+ redo"> | <img src="../../assets/screens/merthsoft/guide/save-new.png" width="240" alt="Held SAVE menu with NEW in the third row"> | <img src="../../assets/screens/merthsoft/guide/save-new-confirm.png" width="240" alt="NEW highlighted red with AGAIN NEW confirmation"> |
+
+For NEW, keep SAVE held and press the **ninth white key** twice within the
+confirmation window. Releasing SAVE cancels confirmation. Creating a new working
+project leaves saved flash slots intact.
+
 ## Visualizers, USB and the companion
 
 On TRACKS, tap HOME to open the visualizer and turn SELECT to choose among **14
@@ -215,12 +244,45 @@ upstream SYN-kit commands. Atomic live hardware scene switching remains future w
 Original Android code is Unlicensed with retained dependency obligations; firmware
 remains GPL. See [current delivery status](<../../android/design docs/STATUS.md>).
 
+### Find libraries and review prompt edits on the phone
+
+In Android **Sequence**, select a synth and expand **FM1 musical starter library**;
+select Drums to find **FM1 groove bank**. Connect the phone directly to the FM-1
+and stop playback before browsing/applying. The banks come from firmware rather
+than duplicated app presets. Native listen/apply and replacement undo remain
+available on the instrument.
+
+| Musical starter entry | Drum groove entry |
+| --- | --- |
+| <img src="../../assets/screens/merthsoft/guide/android-starter-entry.png" width="280" alt="Phone Sequence with FM1 musical starter library expanded"> | <img src="../../assets/screens/merthsoft/guide/android-groove-entry.png" width="280" alt="Phone Sequence with FM1 groove bank expanded"> |
+
+These fresh phone captures show the entry points with FM-1 browsing disabled:
+the phone was connected to the PC for capture. They do not show an active
+hardware connection or pretend to demonstrate a successful hardware apply.
+
+Tap **Describe a sequence · offline recipes** to edit existing notes with a
+supported command. Choose the channel scope and optional note locks, then press
+**Propose**. Review exact before/after changes before **Apply locally**, or
+**Discard** to leave the pattern untouched. The example transposes the existing
+channel-1 C note up one semitone; timing, length and velocity stay unchanged.
+
+| Enter a supported edit | Review before applying |
+| --- | --- |
+| <img src="../../assets/screens/merthsoft/guide/android-prompt-command.png" width="280" alt="Offline transpose prompt with scope and note-lock options"> | <img src="../../assets/screens/merthsoft/guide/android-prompt-review.png" width="280" alt="Review changes pitch 60 to 61 with Discard and Apply locally actions"> |
+
+Prompts use bounded offline edit rules. **Compose a new offline loop…** in the
+same dialog generates a separate editable draft. Neither workflow generates WAV
+audio; the connected instrument supplies sound. The pictured proposal was
+discarded after capture.
+
 Lossless one-bit font packing saves **16,128 bytes** of bitmap storage with the
 same pixels; the splash is retained. No extra full-pattern buffers were added for
 the ROM starter libraries or live modulation locks.
 
-All images in this guide are fresh **Merthsoft.14 production-code framebuffer
-renders**, visually reviewed October 10, 2026. They show the native firmware UI,
-not photographs or redesigned mockups. Build/host regressions are recorded in the
+Native images in this guide are fresh **Merthsoft.14 production-code framebuffer
+renders**; Android images are fresh captures from the connected Pixel. Both were
+visually reviewed October 10, 2026. The native renders use host panel/storage ports,
+not photographs or redesigned mockups. No hardware scale-light photo is included.
+Build/host regressions are recorded in the
 [verification log](<../../android/design docs/VERIFICATION.md>); they do not measure
 physical hardware audio deadlines or remaining stack margin.
