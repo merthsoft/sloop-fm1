@@ -1,5 +1,15 @@
 # Integrated Merthsoft.7 — October 9, 2026
 
+## Merthsoft.11 performance modulation — October 9, 2026
+
+Build passes: image 576,056 bytes; static RAM 97,508/98,304 (796 bytes remaining);
+pool 333,948/344,064; RAM text 925 instructions/no calls; HAL check clean.
+Package SHA-256: `74ca04df2d3fb52d827547f753b6ab794807eb474d3de18ccd79193193f97969`.
+Focused host tests cover selected-track vibrato/tremolo isolation, popup release,
+normal taps, four waveform bounds, saved patch preservation, note gates, MIDI
+source ownership and STOP/panic cleanup. Broad UI/audio suite and 20,000-frame fuzz pass. Android code is unchanged. Hardware
+validation and new ISR deadline measurements are not claimed.
+
 ## Merthsoft.10 modulation checkpoint — October 9, 2026
 
 Target build passes: image 575,360 bytes; static RAM 97,444/98,304 (860 bytes

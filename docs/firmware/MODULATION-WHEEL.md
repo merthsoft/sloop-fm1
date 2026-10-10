@@ -1,38 +1,43 @@
-# Live modulation wheel — Merthsoft.10
+# Live performance modulation — Merthsoft.11
 
-Physical LFO + knob 1 controls a runtime 0–127 modulation amount, four units per
-detent, while held. Its normal page RATE edit is consumed for that knob only.
-Releasing clears physical ownership; the latest incoming CC1 value becomes active
-again. Track changes, menu/confirmation/control layers, panic and STOP cancel the
-gesture. After STOP/panic, knob 1 is consumed until LFO is lifted so it cannot edit
-RATE accidentally. LFO taps and other page controls remain intact. No note retrigger occurs.
+Hold **LFO** for selected-synth vibrato; hold **ENV** for selected-synth tremolo.
+After 140 ms the temporary panel appears and its effect engages. Release dismisses
+it and restores the previous page and underlying sound. A quick tap still opens the
+normal LFO or ENV pages. The keyboard continues playing normally in either panel.
+These panels cannot be locked open with HOME.
 
-MIDI CC1 follows existing channel routing: 1–3 synths, drum channel ignored,
-other channels the selected track. IN CLOCK ignores it. Values are per synth,
-last writer wins across channels/ports targeting that synth. Physical ownership
-overrides incoming MIDI only for its captured track. CC120/121/123 reset modulation;
-this does not implement new sustain or all-notes-off ownership semantics.
+Both panels use knob 1 **rate**, knob 2 **depth**, knob 3 **waveform** (sine,
+triangle, saw, square), and knob 4 **fade-in**. Vibrato starts near 5 Hz with
+approximately +/-12.5 cents of pitch movement; tremolo starts near 4 Hz at 38% depth.
+Maximum vibrato is approximately +/-50 cents; maximum tremolo approaches silence
+at the low point. Parameters are independent of saved LFO/envelope values and
+remembered across holds until reboot, shared between tracks for each effect.
+The fade controls the onset on the next hold, not the release.
 
-The wheel adds `lfo * amount >> 11` to the existing 1/4096-semitone pitch signal:
-maximum approximately ±0.5 semitone. It uses the existing waveform/rate/fade and
-does not modify saved PIT depth or project/parameter formats. The additional term
-is calculated once per track block, then shared across its voices. Default zero
-leaves the existing pitch calculation unchanged. No generated MIDI pitch bend or
-automatic outgoing CC1 is added; notes/velocities/arp timing are unchanged.
+Each effect captures the selected synth at button-down. Other synths and drums are
+unaffected. Switching tracks cancels that hold rather than transferring its effect.
+STOP, track panic, reset and menus cancel it; an active effect does not reactivate
+until the button is released and held again. Holding both buttons allows both
+modulations; LFO has priority for the visible panel and knobs.
 
-STOP clears all wheels. Track panic clears that synth only; drum panic does not
-clear synth wheels. USB reset/detach clears values whose latest owner was USB,
-retaining TRS values. TRS unplug cannot be detected; send CC1 zero/reset or STOP.
-Runtime state is bounded, with no allocations or new DSP buffers.
+Independent oscillators tick once per selected track block, sharing their result
+across voices. Tremolo scales voice amplitude before its existing block ramp.
+No allocation, new DSP buffer, patch/project parameter or MIDI format is added.
+Held, latched and arpeggiated notes are not retriggered by the effect.
 
-Android uses a single-pointer `ModulationPlayer` to emit/deduplicate CC1 and restore
-zero on release/cancel. Perform's horizontal strip reuses the established touch
-surface and lifecycle cleanup, routed by synth or generic channel. Strip and XY
-macro acquisition are mutually exclusive. The strip is not persisted as a patch
-setting or recorded into note-only Perform capture. External-controller input through
-the phone does not forward CC1 yet; direct FM1 MIDI and app CC automation can send it.
+MIDI CC1 remains the Merthsoft.10 wheel: it follows normal synth-channel routing
+and the saved track LFO rate/wave/fade, with +/-50 cents at maximum. Held hardware
+vibrato overrides CC1 only on its captured synth; release restores the latest CC1.
+CC120/121/123 reset modulation. IN CLOCK and drums ignore CC1. STOP clears all
+wheels; panic resets only that track. USB reset/detach clears USB-owned values,
+retaining TRS-owned values. TRS unplug is not detected.
 
-Native production-control tests exercise priority/restoration, parameter preservation,
-bounds, held-note gates, real USB/TRS packets, reset ownership and STOP/panic cleanup.
-Domain tests exercise pointer ownership, deduplication, routing, zero reset, validation
-and send failures. Hardware audible/gesture validation remains user testing.
+Android Perform's momentary strip still sends/deduplicates CC1, resetting to zero
+on release/cancel and lifecycle cleanup. It remains mutually exclusive with the XY
+macro, and is not recorded in note-only Perform capture. External-controller input
+through the phone does not forward CC1; direct FM1 MIDI can send it. Hardware
+vibrato/tremolo do not transmit outgoing controllers.
+
+Host tests cover temporary panels, tap navigation, selected-track isolation,
+waveform bounds, saved parameter preservation, held-note gates, incoming USB/TRS
+ownership and STOP/panic cleanup. Physical gesture/audible testing remains user testing.

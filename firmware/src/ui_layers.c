@@ -20,8 +20,8 @@
  * The keys' part runs in the audio ISR (seq.c layer_now: no lag, no lost press); the SEQ, SEL and
  * GLO keys come to the UI through seq.c lk_q. HOLD: REC held clears the track, SAVE held saves the
  * project (a ring fills; let go before and nothing happens). */
-static const uint8_t LAYER_BTN[LY_COUNT] = {NB, B_FX, B_EDIT, B_ARP, B_SEQ, B_SCL, B_GLO, B_SAVE};
-static const char *const LAYER_NAME[LY_COUNT] = {"", "punch", "erase", "roll", "steps", "key", "mix", "song"};
+static const uint8_t LAYER_BTN[LY_COUNT] = {NB, B_FX, B_EDIT, B_ARP, B_SEQ, B_SCL, B_GLO, B_SAVE, B_LFO, B_ENV};
+static const char *const LAYER_NAME[LY_COUNT] = {"", "punch", "erase", "roll", "steps", "key", "mix", "song", "vibrato", "tremolo"};
 static void section_store(uint32_t s);                  /* project.c */
 static void section_load(uint32_t s);
 static uint8_t sec_armed;                               /* 1..4 store section, 5 NEW: key again within 3 s */
@@ -495,6 +495,13 @@ static void layer_knobs(uint32_t layer)
         ui.hot_col = (uint8_t)k;
         ui.hot_t = 40;
         switch (layer) {
+        case LY_VIB:
+        case LY_TREM: {
+            live_mod_t *m = &live_mod[layer - LY_VIB];
+            uint8_t *v = k == 0 ? &m->rate : k == 1 ? &m->depth : k == 2 ? &m->wave : &m->fade;
+            *v = (uint8_t)clamp(*v + s, 0, k == 2 ? 3 : 127);
+            break;
+        }
         case LY_FX:
             if (k == 0u)
                 song.g[G_FILT] = (int16_t)clamp(song.g[G_FILT] + accel(EN_K1, s, 127), -64, 63);
@@ -673,6 +680,28 @@ static void layer_screen_draw(void)
     sub[6] = (char)('1' + sel);
     sub[7] = 0;
     switch (layer) {
+    case LY_VIB:
+    case LY_TREM: {
+        live_mod_t *m = &live_mod[layer - LY_VIB];
+        str_cpy(sub, is_drum(t) ? "synth tracks only" : "selected track only", sizeof sub);
+        for (i = 0; i < 16; i++) {
+            uint32_t k = key_of_white(i), n = kb_map(t, k);
+            if (n != KB_SILENT) note_name(tl[i].lab, n);
+            tl[i].bg = (fm1_in.notes & (1u << k)) ? C_WHITE : TE_G1;
+            tl[i].fg = tl[i].bg == C_WHITE ? C_BLACK : TE_G4;
+        }
+        lab[0] = "rate Hz"; lab[1] = "depth %"; lab[2] = "wave"; lab[3] = "fade";
+        const char *unit;
+        param_format(&TP[P_LRATE], m->rate, v[0], &unit);
+        fmt_int(v[1], m->depth * 100 / 127);
+        static const char *const wave[] = {"sine", "tri", "saw", "square"};
+        val[2] = wave[m->wave & 3];
+        param_format(&TP[P_LFADE], m->fade, v[3], &unit);
+        lab[3] = unit[0] == 'm' ? "fade ms" : "fade s";
+        ratio[0] = m->rate * 1000 / 127; ratio[1] = m->depth * 1000 / 127;
+        ratio[2] = m->wave * 1000 / 3; ratio[3] = m->fade * 1000 / 127;
+        break;
+    }
     case LY_FX:                                         /* the 16 punch-in effects */
         col = TE_DRUM;
         str_cpy(sub, punch.latch ? "latched" : "black key mods", sizeof sub);

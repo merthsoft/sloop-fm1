@@ -953,23 +953,27 @@ The knobs of a MIDI controller set the sound (the standard CC map of Felucca 1.1
 Merthsoft.10 also accepts **CC1** for transient vibrato on synth tracks; CC120/121/123
 clear modulation. Other unmapped CCs, sustain and pitch bend are ignored by the firmware.
 
-### Live modulation wheel (Merthsoft.10)
+### Live vibrato, tremolo and modulation wheel (Merthsoft.11)
 
-Choose a synth track. Set **LFO RATE** around 5–6 Hz and **WAVE SIN** for conventional
-vibrato. While playing, hold **LFO** and turn **knob 1** clockwise to increase MOD
-(0–127, four units per detent); turn it back to reduce it. While held, knob 1 edits
-modulation rather than RATE. Release LFO to remove the physical modulation amount.
-Normal LFO taps and its other knobs keep their page behavior.
+Select a synth track, then hold **LFO** for gentle vibrato or **ENV** for tremolo.
+A temporary panel appears after 140 ms. **Knob 1** adjusts speed, **knob 2** depth,
+**knob 3** waveform (sine / triangle / saw / square), and **knob 4** fade-in.
+Release the button to remove the effect and return to the previous screen. Quick
+LFO/ENV taps still open their normal pages. Keep playing the keyboard while held.
 
-Full modulation adds about half a semitone of pitch motion using the track's existing
-LFO waveform and fade, on top of saved PIT depth. Held notes, latched chords and arps
-continue without retriggering. Physical modulation takes priority over incoming CC1
-while held; releasing restores the latest MIDI wheel value, which defaults to zero.
-CC1 follows normal MIDI channel routing; drums ignore it. IN CLOCK ignores CC1 too.
-STOP, track panic and CC120/121/123 clear modulation; a track/layer/menu change cancels
-the physical gesture. USB reset/detach clears USB-owned wheel values, retaining current
-TRS-owned values. These gestures are transient, not saved with patches or recorded as
-sequencer notes, and physical vibrato is not automatically sent as outgoing MIDI CC1.
+Only the synth selected when the hold starts is affected. Switching tracks cancels
+it. The settings are separate from the saved LFO and envelope, carry across holds,
+and reset at reboot. Both buttons can be held together; the LFO panel takes knob
+priority. Fade-in applies to the next hold. These panels do not lock with HOME.
+Vibrato defaults to about 5 Hz and +/-12.5 cents, reaching +/-50 cents at full depth;
+tremolo defaults to about 4 Hz at 38% depth. Drums are unaffected.
+
+Held notes, latched chords and arps continue without retriggering. Physical vibrato
+has priority over incoming CC1 for that synth; release restores the latest wheel
+value. CC1 uses the saved track LFO rate/wave/fade and normal channel routing.
+STOP, track panic and CC120/121/123 reset modulation; menu entry cancels hardware
+holds. USB reset/detach clears USB-owned wheel values while retaining TRS values.
+Physical modulation is not sent as outgoing MIDI or recorded as sequencer notes.
 
 Android Perform's **Mod wheel** strip sends CC1: slide right to increase and release
 to send zero. Touch cancellation, track/tab change, stop and backgrounding also reset

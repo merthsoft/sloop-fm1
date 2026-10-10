@@ -5,11 +5,11 @@ future design contracts; dated release/handoff/test results remain historical ev
 
 ## Latest firmware
 
-**2.5 Merthsoft.10** adds transient vibrato through held LFO + knob 1, MIDI CC1 and
-an Android Perform touch strip. Physical priority, release/STOP/panic/reset cleanup
-and USB/TRS source cleanup preserve saved patch values and held-note ownership.
-See [mod-wheel contract](../../docs/firmware/MODULATION-WHEEL.md).
-
+**2.5 Merthsoft.11** adds temporary held-LFO vibrato and held-ENV tremolo panels,
+affecting only the captured selected synth. Speed/depth/wave/fade are independent
+of saved patch parameters; release returns to the previous page. Merthsoft.10 MIDI
+CC1 and Android Perform's strip remain available.
+See [performance modulation](../../docs/firmware/MODULATION-WHEEL.md).
 
 **2.5 Merthsoft.9** aligns held SEL and scale LEDs with the selected synth’s SEL-page
 ROOT/SCALE and suppresses generic keyboard backlight while the guide is active.

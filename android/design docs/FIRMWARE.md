@@ -4,7 +4,7 @@ Current delivery: [STATUS.md](STATUS.md). Build and test evidence: [VERIFICATION
 
 ## Current firmware
 
-Production firmware is **2.5 Merthsoft.10**, with INFO protocol **14**, three synth tracks and
+Production firmware is **2.5 Merthsoft.11**, with INFO protocol **14**, three synth tracks and
 one drum track. Protocol 9 FM6/native-pattern exchange, sample-slot backup/upload, USB audio
 playback and MIDI note performance are integrated. Protocol 10 command 43 reports the
 physical octave offset; Android follows it without firmware transposing ordinary external MIDI.
@@ -29,9 +29,10 @@ while active. It dims scale keys
 behind bright pressed notes and excludes drum/grid and control layers. Settings bit 22
 defaults off for older settings and uses the existing deferred flash-save path.
 
-Merthsoft.10 adds runtime CC1/physical LFO-hold modulation, separate from saved PIT
-depth, with physical priority, STOP/panic/reset and USB-owned value cleanup. No wire
-parameter or project format changes. See [mod-wheel design](../../docs/firmware/MODULATION-WHEEL.md).
+Merthsoft.11 replaces the physical wheel gesture with temporary selected-synth
+LFO/vibrato and ENV/tremolo panels. Rate, depth, waveform and fade are runtime-only;
+release restores the prior page. MIDI/Android CC1 remains available. No wire or
+project format changes. See [performance modulation](../../docs/firmware/MODULATION-WHEEL.md).
 
 ## Atomic hardware scenes: remaining requirements
 

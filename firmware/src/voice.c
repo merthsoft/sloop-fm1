@@ -34,22 +34,52 @@ static int32_t lfo_wave(track_t *t, uint32_t ph)
     }
 }
 
-/* Runtime modulation wheel: no patch/project parameters or note retriggers. */
-static uint8_t mod_midi[NPART], mod_physical, mod_part, mod_amount;
-static uint8_t mod_source[NPART]; /* 1 USB, 2 TRS: only USB's current values clear on bus loss */
+/* Runtime performance modulation: independent of saved patch parameters. */
+static uint8_t mod_midi[NPART];
+static uint8_t mod_source[NPART]; /* 1 USB, 2 TRS */
+typedef struct {
+    uint32_t phase;
+    int32_t value, envelope;
+    uint8_t on, part, rate, depth, wave, fade;
+} live_mod_t;
+static live_mod_t live_mod[2] = {
+    {.rate = 87, .depth = 32}, /* vibrato: about 5 Hz, +/-12.5 cents */
+    {.rate = 83, .depth = 48}  /* tremolo: about 4 Hz, 38% depth */
+};
 static void mod_reset(uint32_t part)
 {
-    if (part == NTRK) { memset(mod_midi, 0, sizeof mod_midi); mod_physical = mod_amount = 0; return; }
-    if (part >= NPART) return;
-    mod_midi[part] = 0;
-    if (mod_physical && mod_part == part) mod_physical = mod_amount = 0;
+    if (part == NTRK) memset(mod_midi, 0, sizeof mod_midi);
+    else if (part < NPART) mod_midi[part] = 0;
+    for (uint32_t i = 0; i < 2; i++)
+        if (part == NTRK || live_mod[i].part == part) live_mod[i].on = 0;
+}
+static void live_mod_tick(const track_t *t)
+{
+    for (uint32_t i = 0; i < 2; i++) {
+        live_mod_t *m = &live_mod[i];
+        if (!m->on || m->part != (uint32_t)(t - trk)) continue;
+        m->phase += LFO_INC[m->rate];
+        int32_t w = m->wave == 1 ? osc_tri(m->phase) :
+            m->wave == 2 ? (int32_t)(m->phase >> 16) - 32768 :
+            m->wave == 3 ? (m->phase < 0x80000000u ? 32767 : -32767) : osc_sine(m->phase);
+        int32_t step = (int32_t)(ENV_LIN[m->fade] >> 9);
+        m->envelope = m->fade ? clamp(m->envelope + (step ? step : 1), 0, 32767) : 32767;
+        m->value = i ? mulq15((w + 32768) >> 1, m->envelope) : mulq15(w, m->envelope);
+    }
 }
 static int32_t mod_pitch(const track_t *t, int32_t lfo)
 {
     uint32_t part = (uint32_t)(t - trk);
     if (part >= NPART) return 0;
-    uint32_t amount = mod_physical && mod_part == part ? mod_amount : mod_midi[part];
-    return (lfo * (int32_t)amount) >> 11; /* max ~0.5 semitone, 1/4096 semitone units */
+    live_mod_t *m = &live_mod[0];
+    if (m->on && m->part == part) return (m->value * (int32_t)m->depth) >> 11;
+    return (lfo * (int32_t)mod_midi[part]) >> 11;
+}
+static int32_t live_tremolo(const track_t *t)
+{
+    live_mod_t *m = &live_mod[1];
+    return m->on && m->part == (uint32_t)(t - trk) ?
+        32767 - mulq15(m->value, m->depth * 258) : 32767;
 }
 
 static void track_lfo_tick(track_t *t)
@@ -648,7 +678,8 @@ static uint32_t track_render(track_t *t, int32_t *out, uint32_t n)
     const int16_t *p = t->p;
     uint32_t i;
     int32_t lfo = mulq15(t->lfo_val, t->lfo_fade);
-    int32_t wheel_pitch = mod_pitch(t, lfo);
+    live_mod_tick(t);
+    int32_t wheel_pitch = mod_pitch(t, lfo), tremolo = live_tremolo(t);
     /* TUNE in cents: whole 1/16 semitones in the pitch, the rest as a fine factor (no dead zone) */
     int32_t tune = song.g[G_TUNE] >= 0 ? song.g[G_TUNE] * 16 / 100 : -((-song.g[G_TUNE] * 16 + 99) / 100);
     int32_t tune_fine = (song.g[G_TUNE] * 16 - tune * 100) * 2367 / 16000;   /* rest, in 1/4096 (1 ct = 2.367) */
@@ -690,6 +721,7 @@ static uint32_t track_render(track_t *t, int32_t *out, uint32_t n)
                 env = e->amp(t, v, env);
             m.envq15 = e->ownenv ? 0 : env;
             m.amp1 = e->ownenv ? env : mulq15(env, v->vel * 258);
+            if (tremolo != 32767) m.amp1 = mulq15(m.amp1, tremolo);
             if (p[P_LD_AMP])
                 m.amp1 = mulq15(m.amp1, 32767 - mulq15((lfo + 32768) >> 1, p[P_LD_AMP] * 258));
             if (fade)                                   /* linear to 0 over the fade */

@@ -240,7 +240,8 @@ validation, destination ownership and failure cleanup.
 
 FM1 uses the existing track LFO to add approximately half a semitone at full wheel,
 without changing saved PIT depth or retriggering held/latched/arp notes. Physical
-LFO + knob 1 overrides MIDI while held. External-controller input through the phone
+LFO hold overrides MIDI while held; Merthsoft.11 gives it an independent temporary
+vibrato panel, and ENV hold adds selected-synth tremolo. External-controller input through the phone
 does not yet forward CC1; direct USB/TRS controllers can use it. Perform's note-only
 recording does not capture modulation gestures. See the [firmware contract](../../docs/firmware/MODULATION-WHEEL.md).
 

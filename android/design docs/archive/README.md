@@ -79,3 +79,5 @@ phone musical starters and arp expression are now integrated; follow the active
 - [Merthsoft.8](releases/RELEASE-2.5-Merthsoft.8.md): initial persistent scale-guide release before selected-track/background fixes.
 
 - [Merthsoft.9](releases/RELEASE-2.5-Merthsoft.9.md): selected-track scale alignment and generic-backlight suppression.
+
+- [Merthsoft.10 modulation wheel release](releases/RELEASE-2.5-Merthsoft.10.md)

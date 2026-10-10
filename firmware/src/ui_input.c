@@ -560,6 +560,12 @@ static uint32_t btn_hold(uint32_t *t0, uint32_t label, uint32_t now, int hold_ok
 static void layer_tap(uint32_t layer)
 {
     switch (layer) {
+    case LY_VIB:
+        open_family(FAM_LFO);
+        break;
+    case LY_TREM:
+        open_family(FAM_ENV);
+        break;
     case LY_FX:
         open_family(FAM_FX);
         break;
@@ -669,7 +675,19 @@ static int layers_input(uint32_t note_edges, uint32_t *pressed, uint32_t home)
             latch_part[l] = (uint8_t)((l == LY_ROLL || l == LY_SCALE) && !used[l] &&
                 !ui.menu && !ui.confirm && latch_notes_physically_held(song.sel) ? song.sel : NPART);
         }
-        if (d && note_edges)
+        if (l >= LY_VIB) {
+            live_mod_t *m = &live_mod[l - LY_VIB];
+            if (d && !down[l]) {
+                latch_part[l] = (uint8_t)song.sel;
+                m->part = (uint8_t)song.sel; m->phase = 0; m->envelope = m->value = 0;
+            }
+            if (d && latch_part[l] < NPART && now - t0[l] >= SHOW_MS) {
+                used[l] = 1; latch_part[l] = NPART;
+                m->on = (uint8_t)(m->part < NPART && song.sel == m->part && !ui.menu && !ui.confirm);
+            }
+            if (!d || song.sel != m->part) { m->on = 0; latch_part[l] = NPART; }
+        }
+        if (d && note_edges && l < LY_VIB)
             used[l] = 1;                                  /* a key while held: not a tap */
         if (l == LY_SCALE && d && (*pressed & (1u << panel.btn[B_OCTUP])) && !ui.confirm) {
             lights_scale ^= 1u;
@@ -679,7 +697,7 @@ static int layers_input(uint32_t note_edges, uint32_t *pressed, uint32_t home)
             *pressed &= ~(1u << panel.btn[B_OCTUP]);
             ui_message(lights_scale ? "SCALE LIGHTS ON" : "SCALE LIGHTS OFF");
         }
-        if (d && latch_part[l] < NPART) {
+        if (l < LY_VIB && d && latch_part[l] < NPART) {
             uint32_t part = latch_part[l];
             if (used[l] || song.sel != part || !latch_notes_physically_held(part) || ui.menu || ui.confirm ||
                 ly_lock != LY_PLAY || (layer_buttons() & ~ly_bit[l]) ||
@@ -704,7 +722,7 @@ static int layers_input(uint32_t note_edges, uint32_t *pressed, uint32_t home)
         if (d && held == LY_PLAY)
             held = l;
     }
-    if (held != LY_PLAY && home == BT_TAP && !home_eat) {  /* held + HOME: locked open */
+    if (held != LY_PLAY && held < LY_VIB && home == BT_TAP && !home_eat) {  /* held + HOME: locked open */
         ly_lock = (uint8_t)held;
         used[held] = 1;
         ui.layer = (uint8_t)held;
@@ -880,27 +898,9 @@ static void ui_input(void)
     int32_t s;
     int layered;
     enc_hold = 0;                                       /* (panel.c: every knob readable again this pass) */
-    {
-        static uint8_t down;
-        uint32_t held = (fm1_in.buttons & (1u << panel.btn[B_LFO])) != 0u;
-        uint32_t blocked = ui.menu || ui.confirm || ly_lock != LY_PLAY ||
-            (layer_buttons() & (ly_bit[LY_FX] | ly_bit[LY_ERASE] | ly_bit[LY_ROLL] |
-                ly_bit[LY_STEP] | ly_bit[LY_SCALE] | ly_bit[LY_MIX] | ly_bit[LY_SONG]));
-        if (held && !down && !ui.menu && !ui.confirm && song.sel < NPART) {
-            mod_part = song.sel; mod_amount = 0; mod_physical = 1;
-        }
-        if (!held || blocked || song.sel != mod_part)
-            mod_physical = mod_amount = 0;
-        if (held && !blocked && song.sel == mod_part && song.sel < NPART && (s = panel_enc(EN_K1)) != 0) {
-            if (mod_physical) {
-                char value[8];
-                mod_amount = (uint8_t)clamp(mod_amount + s * 4, 0, 127);
-                fmt_int(value, mod_amount); ui_say("MOD ", value);
-            }                                          /* STOP/panic: consume until lift, never edit RATE */
-            enc_hold |= 1u << EN_K1;
-        }
-        down = (uint8_t)held;
-    }
+    for (uint32_t i = 0; i < 2; i++)
+        if (ui.menu || ui.confirm || song.sel != live_mod[i].part ||
+            !(fm1_in.buttons & ly_bit[LY_VIB + i])) live_mod[i].on = 0;
     if (pressed || notes)
         ui_input_ms = fm1_ms;
     fm6_poll();                                         /* FM6: PTCH turned -> its patch */
@@ -943,7 +943,7 @@ static void ui_input(void)
         home_eat = 0;
     }
     pressed &= ~(ly_bit[LY_FX] | ly_bit[LY_ERASE] | ly_bit[LY_ROLL] | ly_bit[LY_STEP] | ly_bit[LY_SCALE] | ly_bit[LY_MIX] |
-                 ly_bit[LY_SONG]);
+                 ly_bit[LY_SONG] | ly_bit[LY_VIB] | ly_bit[LY_TREM]);
     holds_input(pressed, fm1_ms);
     pressed &= ~((on_song_page() ? 0u : 1u << panel.btn[B_REC]) | (1u << panel.btn[B_SAVE]));
     if (layered || ui.hold_kind) {                      /* a layer / a hold: the rest waits */

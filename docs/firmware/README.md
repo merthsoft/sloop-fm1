@@ -7,7 +7,7 @@ existing upstream website artifact, not the current Merthsoft build.
 - [Musical sequence starters](SEQUENCE-STARTERS-DESIGN.md)
 - [Phone musical starter protocol](MUSICAL-STARTER-PROTOCOL.md)
 - [Arpeggio expression](ARP-EXPRESSION.md)
-- [Live modulation wheel](MODULATION-WHEEL.md)
+- [Live vibrato, tremolo and MIDI modulation](MODULATION-WHEEL.md)
 - [Recording snap and STEP editing](SEQUENCER-EDITING.md)
 - [Persistent keyboard scale lights](KEYBOARD-SCALE-LIGHTS.md)
 - [Drum grooves](DRUM-GROOVES-DESIGN.md)
