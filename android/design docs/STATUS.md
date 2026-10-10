@@ -5,6 +5,10 @@ future design contracts; dated release/handoff/test results remain historical ev
 
 ## Latest firmware
 
+**2.5 Merthsoft.19** adds independent native starter rhythms on PRESET: ORIGINAL
+or 17 explicit choices, shared by Preview/Apply. Installer port 8805. Android
+rhythm choice remains future work; existing phone starter requests retain ORIGINAL.
+
 **2.5 Merthsoft.18** replaces held LFO/ENV grids with waveform/cycle displays,
 live cents/level readouts and compact key guides. EDIT retains scale-guide labels,
 whole-pattern octave and gesture readouts. Installer: port 8804.
@@ -162,7 +166,7 @@ Revisit hardware only for a new failure or a material feature change; do not rep
 - Twenty-four native musical sequence starters with root/scale, chord/bass/arp-note modes,
   non-destructive preview, complete replacement undo, native rhythm controls, separate
   generated octave and optional voice leading. Native recording snap and event moves are integrated.
-  Musical starters and rhythm controls are available on hardware and through phone command 76; command 74 continues to discover/apply canonical drum grooves.
+  Musical starters and rhythm shaping are available on hardware and through phone command 76. Independent RHY selection is currently hardware-only; command 74 continues to discover/apply canonical drum grooves.
 - Opt-in sequencer-fed arpeggios through ARP 2 ORD SNOTE/SPLAY, with independent
   sequence/live membership, NOTE/TIE/REST lifecycle and balanced generated output.
   General local/USB/TRS owner aggregation and semantic harmony/followers remain future work.

@@ -35,15 +35,27 @@ static const sequence_starter_t SEQUENCE_STARTERS[] = {
     {"FALLING HOME",  0x0909, {3,2,1,0}, 1}
 };
 #define NSEQUENCE_STARTERS NELEM(SEQUENCE_STARTERS)
+
+/* Independent one-bar attack masks, reused over the four harmony bars. */
+static const struct { const char *name; uint16_t hits; } SEQUENCE_RHYTHMS[] = {
+    {"ORIGINAL",0}, {"BAR",0x0001}, {"HALVES",0x0101},
+    {"QUARTERS",0x1111}, {"EIGHTHS",0x5555}, {"SIXTEENTHS",0xFFFF},
+    {"OFFBEATS",0x4444}, {"SOUL",0x0441}, {"DORIAN",0x1249},
+    {"BROKEN",0x0949}, {"FUNK",0x4925}, {"SKIPS",0x2249},
+    {"FLOAT",0x0401}, {"GARAGE",0x2449}, {"LATIN",0x0925},
+    {"PUSHES",0x2222}, {"FALLING",0x0909}, {"SOUL DETOUR",0x0449}
+};
+#define NSEQUENCE_RHYTHMS NELEM(SEQUENCE_RHYTHMS)
 enum { STARTER_CHORD, STARTER_BASS, STARTER_ARP };
 static rhythm_shape_t sequence_shape = {0,0,0,255,0};
 static uint8_t sequence_sel, sequence_root, sequence_scale = 1, sequence_mode;
 static int8_t sequence_octave;
 static uint8_t sequence_vlead;
+static uint8_t sequence_rhythm;
 static struct {
     uint32_t phase, gate_off;
     uint8_t active, first, step, track, notes[4], n;
-    uint8_t starter, root, scale, mode, hold, vlead;
+    uint8_t starter, root, scale, mode, hold, vlead, rhythm;
     int8_t octave;
     rhythm_shape_t shape;
 } sequence_preview;
@@ -62,14 +74,19 @@ static uint32_t sequence_degree_note(uint32_t degree, uint32_t root, uint32_t sc
     return (uint32_t)clamp(60 + (int32_t)root + 12 * octave + (int32_t)pc, 0, 127);
 }
 
-static step_t sequence_starter_step(uint32_t id, uint32_t i, uint32_t root,
+static uint32_t sequence_hits(uint32_t id, uint32_t mode, uint32_t rhythm)
+{
+    if (rhythm && rhythm < NSEQUENCE_RHYTHMS) return SEQUENCE_RHYTHMS[rhythm].hits;
+    return SEQUENCE_STARTERS[id % NSEQUENCE_STARTERS].hits | (mode == STARTER_ARP ? 0x5555u : 0u);
+}
+static step_t sequence_starter_step_rhythm(uint32_t id, uint32_t i, uint32_t root,
                                    uint32_t scale, int32_t octave, uint32_t mode,
-                                   const rhythm_shape_t *shape)
+                                   const rhythm_shape_t *shape, uint32_t rhythm)
 {
     const sequence_starter_t *p = &SEQUENCE_STARTERS[id % NSEQUENCE_STARTERS];
-    /* ARP adds an eighth-note pulse to the starter's syncopated attacks.
+    /* ORIGINAL ARP adds an eighth-note pulse to the starter's syncopated attacks.
      * Sparse chord rhythms must still walk the chord rather than repeat its root. */
-    uint32_t hits = p->hits | (mode == STARTER_ARP ? 0x5555u : 0u);
+    uint32_t hits = sequence_hits(id,mode,rhythm);
     uint64_t occupied = (uint64_t)hits | ((uint64_t)hits << 16) |
                         ((uint64_t)hits << 32) | ((uint64_t)hits << 48);
     uint32_t src, degree, j, count;
@@ -77,7 +94,7 @@ static step_t sequence_starter_step(uint32_t id, uint32_t i, uint32_t root,
     if (i >= NSTEP) return s;
     src = rhythm_shape_source(shape, NSTEP, i, 0, occupied, 4);
     if (!(occupied & ((uint64_t)1u << src))) {
-        if (mode == STARTER_CHORD && p->hits == 1u) s.time = ST_TIE;
+        if (mode == STARTER_CHORD && hits == 1u) s.time = ST_TIE;
         return s;
     }
     degree = p->degree[src / 16u];
@@ -98,16 +115,19 @@ static step_t sequence_starter_step(uint32_t id, uint32_t i, uint32_t root,
     }
     return s;
 }
+static step_t sequence_starter_step(uint32_t id,uint32_t i,uint32_t root,uint32_t scale,
+                                   int32_t octave,uint32_t mode,const rhythm_shape_t *shape)
+{ return sequence_starter_step_rhythm(id,i,root,scale,octave,mode,shape,0); }
 
 /* Anchor bar one at the requested octave and derive later inversions from it.
  * No live chord history is changed, and repeated preview loops cannot drift. */
-static step_t sequence_starter_voiced(uint32_t id, uint32_t i, uint32_t root,
+static step_t sequence_starter_voiced_rhythm(uint32_t id, uint32_t i, uint32_t root,
                                      uint32_t scale, int32_t octave, uint32_t mode,
-                                     const rhythm_shape_t *shape, uint32_t lead)
+                                     const rhythm_shape_t *shape, uint32_t lead, uint32_t rhythm)
 {
-    step_t s = sequence_starter_step(id,i,root,scale,octave,mode,shape);
+    step_t s = sequence_starter_step_rhythm(id,i,root,scale,octave,mode,shape,rhythm);
     const sequence_starter_t *p = &SEQUENCE_STARTERS[id % NSEQUENCE_STARTERS];
-    uint32_t hits = p->hits | (mode == STARTER_ARP ? 0x5555u : 0u);
+    uint32_t hits = sequence_hits(id,mode,rhythm);
     uint64_t occupied = (uint64_t)hits | ((uint64_t)hits << 16) |
                         ((uint64_t)hits << 32) | ((uint64_t)hits << 48);
     uint32_t src, bar, j, n = 0, pn = 0;
@@ -131,6 +151,9 @@ static step_t sequence_starter_voiced(uint32_t id, uint32_t i, uint32_t root,
     }
     return s;
 }
+static step_t sequence_starter_voiced(uint32_t id,uint32_t i,uint32_t root,uint32_t scale,
+                                     int32_t octave,uint32_t mode,const rhythm_shape_t *shape,uint32_t lead)
+{ return sequence_starter_voiced_rhythm(id,i,root,scale,octave,mode,shape,lead,0); }
 
 static void sequence_preview_stop(void)
 {
@@ -165,9 +188,9 @@ static void sequence_preview_block(uint32_t n)
     }
     if (fire) {
         sequence_preview.first = 0;
-        s = sequence_starter_voiced(sequence_preview.starter, sequence_preview.step,
+        s = sequence_starter_voiced_rhythm(sequence_preview.starter, sequence_preview.step,
             sequence_preview.root, sequence_preview.scale, sequence_preview.octave,
-            sequence_preview.mode, &sequence_preview.shape, sequence_preview.vlead);
+            sequence_preview.mode, &sequence_preview.shape, sequence_preview.vlead, sequence_preview.rhythm);
         if (s.time != ST_TIE) {
             for (j = 0; j < sequence_preview.n; j++)
                 trk_note_off(&trk[sequence_preview.track], sequence_preview.notes[j]);
@@ -177,9 +200,9 @@ static void sequence_preview_block(uint32_t n)
                 trk_note_on(&trk[sequence_preview.track], s.note[j], (s.flags & SF_ACCENT) ? 127u : s.vel);
             }
         }
-        s = sequence_starter_step(sequence_preview.starter,(sequence_preview.step+1u)%NSTEP,
+        s = sequence_starter_step_rhythm(sequence_preview.starter,(sequence_preview.step+1u)%NSTEP,
             sequence_preview.root,sequence_preview.scale,sequence_preview.octave,
-            sequence_preview.mode,&sequence_preview.shape);
+            sequence_preview.mode,&sequence_preview.shape,sequence_preview.rhythm);
         sequence_preview.hold = s.time == ST_TIE;
         sequence_preview.gate_off = interval * (uint32_t)trk[sequence_preview.track].p[P_SGATE] / 128u;
     }
@@ -211,8 +234,8 @@ static int sequence_starter_apply(void)
     undo_mark(t, (undo_sess += 4u) | 3u);
     starter_undo_capture(t);
     for (i = 0; i < NSTEP; i++) {
-        t->step[i] = sequence_starter_voiced(sequence_sel,i,sequence_root,sequence_scale,
-                                         sequence_octave,sequence_mode,&sequence_shape,sequence_vlead);
+        t->step[i] = sequence_starter_voiced_rhythm(sequence_sel,i,sequence_root,sequence_scale,
+                                         sequence_octave,sequence_mode,&sequence_shape,sequence_vlead,sequence_rhythm);
         t->micro[i] = rhythm_shape_micro(&sequence_shape,0);
     }
     starter_pattern_metadata(t, NSTEP, 2);

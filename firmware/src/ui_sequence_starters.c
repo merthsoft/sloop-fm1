@@ -39,7 +39,9 @@ static void __attribute__((noinline)) sequence_screen_draw(void)
     te_header(sequence_page == 2 ? "seq pitch" : sequence_page ? "seq rhythm" : "sequences",TE_COL[song.sel % NPART],&head);
     cv_begin(240,120,C_BLACK);
     cv_text(4,4,&FONT_S,p->name,C_WHITE);
-    cv_text(4,24,&FONT_S,"4 BARS / 64 STEPS",TE_G4);
+    cv_text(4,24,&FONT_S,"RHY",TE_G4);
+    cv_text(32,24,&FONT_S,SEQUENCE_RHYTHMS[sequence_rhythm].name,C_WHITE);
+    cv_text(164,24,&FONT_S,"PRESET",TE_G3);
     for (k=0;k<4;k++) {
         fmt_int(b,p->degree[k]+1);
         cv_text(20+56*(int32_t)k,48,&FONT_L,b,TE_COL[song.sel % NPART]);
@@ -94,10 +96,14 @@ static void __attribute__((noinline)) sequence_screen_input(uint32_t pressed,uin
         else sequence_shape.feel=(int8_t)clamp(sequence_shape.feel+s,MICRO_MIN,MICRO_MAX);
         changed=1;
     }
+    if ((s=panel_enc(EN_PRESET))) {
+        sequence_rhythm=(uint8_t)clamp((int32_t)sequence_rhythm+s,0,NSEQUENCE_RHYTHMS-1);
+        changed=1;
+    }
     if(changed) {
         sequence_preview_cancel(); sequence_confirm=0; sequence_hold_t0=0; ui.force=1;
     }
-    panel_enc(EN_ALGO); panel_enc(EN_PRESET);
+    panel_enc(EN_ALGO);
     if (pressed & (1u << panel.btn[B_OCTDN])) {
         if(sequence_preview.active) sequence_preview_cancel();
         else if(trk[song.sel].nheld || chord_latch_n[song.sel] || arp_chord_latch_n[song.sel])
@@ -110,6 +116,7 @@ static void __attribute__((noinline)) sequence_screen_input(uint32_t pressed,uin
             sequence_preview.root=sequence_root; sequence_preview.scale=sequence_scale;
             sequence_preview.mode=sequence_mode; sequence_preview.octave=sequence_octave;
             sequence_preview.vlead=sequence_vlead;
+            sequence_preview.rhythm=sequence_rhythm;
             sequence_preview.shape=sequence_shape; sequence_preview.step=0;
             sequence_preview.phase=0; sequence_preview.first=1; sequence_preview.active=1;
             fm1_irq_on();

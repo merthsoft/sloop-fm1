@@ -24,7 +24,8 @@ int main(void){
     a[0]=3;
     midi_sel_on[0][60]=1;command(a,15,2);midi_sel_on[0][60]=0;
     midi_sel_on[9][36]=4;command(a,15,2);midi_sel_on[9][36]=0;
-    command(a,15,0);ed_starter_tick(1);assert(sequence_preview.active&&ed_starter_token==513);
+    sequence_rhythm=5;sequence_preview.rhythm=5;
+    command(a,15,0);ed_starter_tick(1);assert(sequence_preview.active&&ed_starter_token==513&&sequence_preview.rhythm==0&&sequence_rhythm==5);
     assert(!memcmp(before.step,trk[1].step,sizeof before.step)&&!memcmp(before.micro,trk[1].micro,sizeof before.micro));command(lease,4,0);fm1_ms+=1499;ed_starter_service();assert(sequence_preview.active);
     fm1_ms++;ed_starter_service();assert(!sequence_preview.active&&!ed_starter_token);command(lease,4,4);
     command(a,15,0);usb.resets++;ed_starter_service();assert(!sequence_preview.active);
@@ -36,7 +37,7 @@ int main(void){
     command(a,15,0);song.sel=0;ed_starter_tick(1);assert(!sequence_preview.active);song.sel=1;
     midi_sel_on[0][60]=1;midi_sel_on[1][61]=2;panic_req=1;events_block(1);
     assert(!midi_sel_on[0][60]&&midi_sel_on[1][61]);midi_sel_on[1][61]=0;
-    a[0]=2;a[12]=1;command(a,13,0);assert(!memcmp(&other,&trk[0],sizeof other));
+    a[0]=2;a[12]=1;command(a,13,0);assert(!memcmp(&other,&trk[0],sizeof other)&&sequence_rhythm==5);
     for(i=0;i<NSTEP;i++){step_t s=sequence_starter_voiced(23,i,11,2,0,0,&sequence_shape,1);assert(!memcmp(&s,&trk[1].step[i],sizeof s));}
     assert(undo_swap(0));assert(!memcmp(before.step,trk[1].step,sizeof before.step)&&!memcmp(before.micro,trk[1].micro,sizeof before.micro));
     printf("editor musical starters: PASS\n");return 0;

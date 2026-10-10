@@ -9,7 +9,7 @@ HOME, then release. Keyboard and knobs remain usable; HOME or a function button
 unlocks. STOP/panic, menus and track changes clear the lock. Runtime only, with no
 new static RAM or wire/project format. See the [illustrated firmware guide](../../docs/firmware/MERTHSOFT-FEATURES.md).
 
-Production firmware is **2.5 Merthsoft.18**, with INFO protocol **14**, three synth tracks and
+Production firmware is **2.5 Merthsoft.19**, with INFO protocol **14**, three synth tracks and
 one drum track. Protocol 9 FM6/native-pattern exchange, sample-slot backup/upload, USB audio
 playback and MIDI note performance are integrated. Protocol 10 command 43 reports the
 physical octave offset; Android follows it without firmware transposing ordinary external MIDI.
@@ -167,7 +167,7 @@ operation, and app coexistence. Firmware installation remains a separate explici
 
 Command 73 uses bounded leases for remote fills/punch; physical punch controls take priority.
 Stop, panic and project adoption clear remote ownership. See [performance wire](../src/Sloop.Protocol/PERFORMANCE-WIRE.md).
-Command 74 discovers the same sixteen ROM groove starters used by the hardware GROOVE page
+Command 74 discovers the same twenty-four ROM groove starters used by the hardware GROOVE page
 and applies ordinary editable drum steps while stopped. Existing drum material requires confirmation;
 replacement shares hardware undo and does not change the kit or global tempo.
 See [drum groove design](../../docs/firmware/DRUM-GROOVES-DESIGN.md).
@@ -179,3 +179,9 @@ and STOP/panic/project adoption release generated output. This uses 18 bytes of 
 The general ownership table remains inactive; local/USB/TRS same-pitch ownership and
 source/generated MIDI collisions retain their existing limitations. See
 [harmony design](../../docs/firmware/CHORD-ARPEGGIO-DESIGN.md).
+
+## Independent native starter rhythms
+
+SEQUENCES now uses the physical PRESET encoder for ORIGINAL or 17 independent
+attack masks. Schema 1 of command 76 continues to use ORIGINAL; it does not inherit
+or overwrite the native rhythm preference. Android rhythm selection is future work.

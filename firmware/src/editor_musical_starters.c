@@ -63,6 +63,7 @@ static int ed_musical_starters_handle(uint32_t cmd,const uint8_t *a,uint32_t n)
             sequence_preview_stop();sequence_preview.track=a[1];sequence_preview.starter=a[2];
             sequence_preview.root=a[3];sequence_preview.scale=a[4];sequence_preview.octave=(int8_t)a[5]-3;
             sequence_preview.mode=a[6];sequence_preview.vlead=a[7];
+            sequence_preview.rhythm=0; /* Existing phone protocol requests original rhythm. */
             sequence_preview.shape=(rhythm_shape_t){(int8_t)a[8]-16,(int8_t)a[9]-8,(int8_t)a[11]-32,255,a[10]};
             sequence_preview.step=0;sequence_preview.phase=0;sequence_preview.first=1;sequence_preview.active=1;
             ed_starter_token=(uint16_t)token;ed_starter_resets=usb.resets;ed_starter_until=fm1_ms+ED_STARTER_LEASE;
@@ -70,12 +71,14 @@ static int ed_musical_starters_handle(uint32_t cmd,const uint8_t *a,uint32_t n)
         } else {
             /* Reuse native apply while preserving native browser preferences. */
             uint8_t id=sequence_sel,root=sequence_root,scale=sequence_scale,mode=sequence_mode,lead=sequence_vlead;
-            int8_t oct=sequence_octave;rhythm_shape_t shape=sequence_shape;
+            int8_t oct=sequence_octave;rhythm_shape_t shape=sequence_shape;uint8_t rhythm=sequence_rhythm;
             ed_starter_end();sequence_sel=a[2];sequence_root=a[3];sequence_scale=a[4];sequence_octave=(int8_t)a[5]-3;
             sequence_mode=a[6];sequence_vlead=a[7];sequence_shape=(rhythm_shape_t){(int8_t)a[8]-16,(int8_t)a[9]-8,(int8_t)a[11]-32,255,a[10]};
+            sequence_rhythm=0;
             if(!sequence_starter_apply())status=2;
             fm1_irq_off(); /* native apply re-enables IRQs; restore request lock before preferences */
             sequence_sel=id;sequence_root=root;sequence_scale=scale;sequence_octave=oct;sequence_mode=mode;sequence_vlead=lead;sequence_shape=shape;
+            sequence_rhythm=rhythm;
         }
     }
     fm1_icfg_set(irq);ed_b(op);ed_b(status);return 1;

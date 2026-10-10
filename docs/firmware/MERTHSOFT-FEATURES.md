@@ -61,9 +61,9 @@ The pitch page's **OCTAVE** is independent of OCT−/OCT+, which remain listen/a
 your chosen register. It applies to CHORD and ARP NOTES; BASS stays on lower roots.
 Preview loops do not drift in octave. Choose a polyphonic VOICE mode for full chords.
 
-**CHORD** writes triads/sevenths with the starter's rhythm; **BASS** writes lower
-roots. **ARP NOTES** writes editable eighth-note chord-tone pulses and retains
-syncopated attacks. It does not enable the live arpeggiator. A track set to CHR
+**CHORD** writes triads/sevenths with the selected rhythm; **BASS** writes lower
+roots. **ARP NOTES** writes editable chord-tone pulses. ORIGINAL adds eighth-note
+pulses and retains starter syncopations; an explicit RHY uses only its own attacks. It does not enable the live arpeggiator. A track set to CHR
 opens this browser in Major without changing the track's scale settings.
 Explicit CHR here means twelve chromatic degrees: stacked chord tones sound
 unusual. Use MAJ/MIN or another tonal scale for conventional progressions.
@@ -301,3 +301,12 @@ not photographs or redesigned mockups. No hardware scale-light photo is included
 Build/host regressions are recorded in the
 [verification log](<../../android/design docs/VERIFICATION.md>); they do not measure
 physical hardware audio deadlines or remaining stack margin.
+
+### Mix any starter progression with any rhythm
+
+Turn **PRESET** in the SEQUENCES browser to select RHY. ORIGINAL preserves the
+starter behavior; 17 explicit masks apply to any progression in chord, bass or
+arp-note mode. The rhythm choice persists across tracks, with shared Preview/Apply.
+FEEL is a uniform early/late nudge; it does not randomize or swing notes.
+
+![Independent rhythm selection](../../assets/screens/merthsoft/guide/feature-starter-rhythm-choice.png)

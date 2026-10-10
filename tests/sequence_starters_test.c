@@ -28,6 +28,27 @@ int main(void)
     uint32_t g,i,j,mode,scale; rhythm_shape_t shape={0,0,0,255,0};
     track_t untouched;
     assert(NSEQUENCE_STARTERS==24);
+    /* Named rhythm attacks are independent of progression and rendering mode.
+     * In particular explicit BAR must not silently acquire ARP's eighth pulse. */
+    for(uint32_t r=1;r<NSEQUENCE_RHYTHMS;r++)for(g=0;g<NSEQUENCE_STARTERS;g++)
+        for(mode=0;mode<3;mode++)for(i=0;i<NSTEP;i++) {
+            step_t s=sequence_starter_voiced_rhythm(g,i,0,1,0,mode,&shape,1,r);
+            int hit=(SEQUENCE_RHYTHMS[r].hits>>(i%16))&1;
+            assert((s.time==ST_NOTE)==hit);
+            assert(s.n==(hit?(mode==STARTER_CHORD?(SEQUENCE_STARTERS[g].seventh?4:3):1):0));
+            if(!hit) assert(s.time==(mode==STARTER_CHORD&&r==1?ST_TIE:ST_REST));
+        }
+    for(i=0;i<NSTEP;i++) {
+        step_t a=sequence_starter_step_rhythm(0,i,0,1,0,STARTER_ARP,&shape,0);
+        step_t b=sequence_starter_step(0,i,0,1,0,STARTER_ARP,&shape);
+        assert(!memcmp(&a,&b,sizeof a));
+    }
+    /* Existing syncopation/rotation transform the selected mask without lost attacks. */
+    for(uint32_t r=1;r<NSEQUENCE_RHYTHMS;r++) {
+        rhythm_shape_t moved={3,-2,7,255,2};uint32_t hits=0;
+        for(i=0;i<NSTEP;i++) hits+=sequence_starter_step_rhythm(0,i,0,1,0,STARTER_BASS,&moved,r).time==ST_NOTE;
+        assert(hits==4u*(uint32_t)__builtin_popcount(SEQUENCE_RHYTHMS[r].hits));
+    }
     /* Fixed musical oracle: POP FOUR keeps common tones in close voicings. */
     {
         static const uint8_t expected[4][3]={{60,64,67},{59,62,67},{60,64,69},{60,65,69}};

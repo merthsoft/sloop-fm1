@@ -154,6 +154,19 @@ int main(int argc,char **argv)
     assert(!memcmp(&other,&trk[1],sizeof other));
     sequence_screen_close();
     puts("sequence UI: cross-track key, scale, octave and browser preferences persist; apply uses retained key PASS");
+    sequence_screen_open();sequence_rhythm=0;sequence_shape=(rhythm_shape_t){0,0,0,255,0};
+    sequence_mode=STARTER_CHORD;
+    encs[panel.enc[EN_PRESET]]=3;sequence_screen_input(0,0);
+    assert(sequence_rhythm==3&&!sequence_preview.active);
+    ui.msg_t=0;sequence_screen_draw();ppm("live-sequence-rhythm-choice");
+    assert(sequence_starter_apply());
+    for(i=0;i<NSTEP;i++) assert((trk[0].step[i].time==ST_NOTE)==(i%4==0));
+    sequence_screen_input(1u<<panel.btn[B_OCTDN],0);
+    assert(sequence_preview.active&&sequence_preview.rhythm==3);
+    sequence_preview_cancel();sequence_screen_close();song.sel=1;sequence_screen_open();
+    assert(sequence_rhythm==3);
+    sequence_screen_close();sequence_rhythm=0;
+    puts("sequence UI: PRESET selects independent rhythm, preview/apply agree and choice persists across tracks PASS");
     puts("sequence UI: native entry, 700ms hold, full undo/redo, track isolation, non-destructive preview, STOP/home ownership PASS");
     return 0;
 }

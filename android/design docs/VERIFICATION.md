@@ -1,5 +1,15 @@
 # Integrated Merthsoft.7 — October 9, 2026
 
+## Independent starter rhythms — Merthsoft.19
+
+All 17 explicit masks × 24 progressions × three modes × 64 steps are checked against
+attack masks, including BAR chord ties and no implicit arp pulse. Rotation/offset/
+syncopation preserve hit counts. Native PRESET input, preview selection, Apply and
+cross-track retention pass. Phone preview resets to ORIGINAL and Apply preserves
+the native selection. Broad 20,000-frame UI regression passes. Target image 579,312
+bytes; RAM/pool unchanged from the previous build. User reports song survived the
+latest hardware flash; this does not establish the cause of the earlier loss.
+
 ## Modulation displays and save-loss investigation — Merthsoft.18
 
 - `tests/edit_tools_test.c`: square-wave bounds, zero-depth baselines and drawing that leaves audio modulation state unchanged; fresh waveform/locked-panel captures.

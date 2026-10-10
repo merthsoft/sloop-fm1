@@ -1302,7 +1302,10 @@ The SELECT knob reaches the same five pages in either direction; SONG is the arr
 screen. SEQUENCES offers 24 four-bar progressions, including classic turns,
 sevenths, gospel, disco, garage, Latin rhythms, house offbeats and funk. Knobs select
 starter, root, scale and CHORD/BASS/ARP NOTES output. A CHR track starts this browser
-in Major without changing its actual scale. Its rhythm page offers rotation, offset,
+in Major without changing its actual scale. On any starter page, turn **PRESET**
+to select **RHY** independently: ORIGINAL or 17 named attack rhythms. ORIGINAL
+retains each starter rhythm; explicit choices control attacks in all three modes.
+Its rhythm page offers rotation, offset,
 syncopation and Feel. The next SELECT knob position opens **seq pitch**: knob 1 **OCTAVE**,
 2 **ROOT**, 3 **SCALE**, 4 **VLEAD**. Octave controls the generated pattern independently
 of the physical playing octave. VLEAD chooses nearby chord inversions, also used by
@@ -1338,3 +1341,14 @@ so the deferred settings write can finish.
 On synth STEP, hold either OCT button and turn **knob 2** for whole-octave pitch changes, or **knob 3** to move an event left/right. Moving forward into its own tie run shifts the onset later while keeping its end; other moves shift the complete onset/tie chain. Hold OCT+ or OCT− with knob 1 to paint ties/rests. Movements require stopped transport; octave editing preserves intervals and metadata.
 
 Turn the **SELECT knob** within the musical browser to visit sequences, seq rhythm and seq pitch without interrupting audition. The physical SEL button opens chord/scale controls. The Android Sequence workspace can browse the firmware musical bank, audition through FM1, and confirm replacement with the same settings; firmware 2.5 Merthsoft.7 is required. Android Perform offers opt-in external MIDI device/port input for literal keys or bounded scale-root chords. Arpeggio output on FM1 carries live/sequenced attack velocity.
+
+### Independent starter rhythm
+
+In SEQUENCES, turn **PRESET** to select **RHY** independently of the progression.
+ORIGINAL retains the starter rhythm; 17 named choices include BAR, QUARTERS,
+EIGHTHS, OFFBEATS, FUNK, GARAGE and LATIN. Explicit rhythms also control ARP NOTES
+attack spacing. Preview and Apply use the same selection.
+
+**FEEL** shifts every event slightly earlier (negative) or later (positive), in
+1/64 of a step. It does not alternate note timing like swing. Rotate/offset move
+whole steps; syncopate moves eligible attacks onto the preceding offbeat.
