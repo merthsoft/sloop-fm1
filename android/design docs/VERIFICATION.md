@@ -1,5 +1,30 @@
 # Integrated Merthsoft.7 — October 9, 2026
 
+## Merthsoft.13 scale/MIDI grids and beat sync — October 9, 2026
+
+Target image 577,744 bytes; static RAM 97,748/98,304 (556 bytes remaining);
+pool 333,948/344,064; RAM text 925 instructions/no calls; HAL access check clean.
+Package SHA-256: `72425357615a5f8fb245716f37fe71db4d50a0f4b196f4c295fcfaf5dcbd2d19`.
+Focused scale/MIDI tests pass across all roots/scales/key modes and MIDI pitches,
+including accidental spelling, original-pitch note-offs across changes, SNAP
+collisions, independent USB/TRS owners, USB reset, selected-track routing, panic,
+capacity rejection and persisted preference. Modulation tests verify all nine sync
+divisions against transport phase, independence from free Hz, stopped BPM changes,
+and knob 1 returning to OFF. Scale-light and musical-starter integration pass.
+Broad UI/audio regression and 20,000-frame fuzz pass; SYSTEM K2 MIDI SCALE and K3
+ABOUT navigation are exercised. Fresh SEL/vibrato/tremolo framebuffer renders were
+visually reviewed. No physical testing or new ISR deadline/stack measurements are
+claimed. Android/wire/project formats remain unchanged.
+
+## Merthsoft.12 modulation-panel lights — October 9, 2026
+
+Focused scale-light regression passes: all roots/scales and background modes/levels
+in PLAY/VIB/TREM, plus real button holds/releases with scale guide enabled/disabled.
+Dim, bright, backlight and landmark masks retain their normal playing values.
+Target image 576,008 bytes; static RAM 97,508/98,304; pool 333,948/344,064;
+RAM text 925 instructions/no calls; HAL check clean. Package SHA-256: `45bc0f09c4cbd6fce96e1f32dfebf5e62c6a0c488277f662f17a86a816bb0dc5`.
+No physical LED measurements or new ISR deadline measurements are claimed.
+
 ## Merthsoft.11 performance modulation — October 9, 2026
 
 Build passes: image 576,056 bytes; static RAM 97,508/98,304 (796 bytes remaining);

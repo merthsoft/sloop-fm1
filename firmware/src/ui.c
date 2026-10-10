@@ -3,7 +3,7 @@
 /* Felucca user interface. Four columns map to KNOB 1..4. Rendering is lazy:
  * every element remembers what it last drew and is redrawn only on change. */
 #ifndef FELUCCA_VERSION
-#define FELUCCA_VERSION "2.5 Merthsoft.11"  /* the beat machine firmware for the FM-1 (based on Felucca) */
+#define FELUCCA_VERSION "2.5 Merthsoft.13"  /* the beat machine firmware for the FM-1 (based on Felucca) */
 #endif
 static void project_save(uint32_t slot);
 static void arrangement_save(void);
@@ -203,6 +203,40 @@ static void note_name(char *b, uint32_t n)
 {
     str_cpy(b, N_NOTE[n % 12u], 4);
     fmt_int(b + str_len(b), (int32_t)(n / 12u) - 1);
+}
+
+/* Spell seven-note scales by letter degree; other scales use the key's accidentals. */
+static void scale_pitch_name(char *b, const track_t *t, uint32_t n)
+{
+    static const char *const flat[] = {"C","Db","D","Eb","E","F","Gb","G","Ab","A","Bb","B"};
+    static const uint8_t relative[] = {0,0,3,10,5,0,3,3,8,7,1,3,3,0,0,0};
+    static const uint8_t sharp_letter[] = {0,0,1,1,2,3,3,4,4,5,5,6};
+    static const uint8_t flat_letter[] = {0,1,1,2,2,3,4,4,5,5,6,6};
+    static const uint8_t natural[] = {0,2,4,5,7,9,11};
+    uint32_t scale = (uint32_t)clamp(t->p[P_SCALE], 0, NSCALES - 1);
+    if (!scale && t->p[P_CHORD]) scale = 2;
+    uint32_t root = (uint32_t)t->p[P_ROOT] % 12u, pc = n % 12u;
+    uint32_t flats = (0x56au >> ((root + (scale < NELEM(relative) ? relative[scale] : 0u)) % 12u)) & 1u;
+    if (scale == 1 && root == 6) flats = 0; /* ROOT calls this key F#, not Gb. */
+    uint32_t mask = SCALE_MASK[scale], count = 0, degree = 0, offset = (pc + 12u - root) % 12u;
+    for (uint32_t i = 0; i < 12; i++) { count += (mask >> i) & 1u; if (i < offset) degree += (mask >> i) & 1u; }
+    if (count == 7 && ((mask >> offset) & 1u)) {
+        uint32_t letter = ((flats ? flat_letter[root] : sharp_letter[root]) + degree) % 7u;
+        uint32_t delta = (pc + 12u - natural[letter]) % 12u;
+        if (delta == 0 || delta == 1 || delta == 11) {
+            b[0] = "CDEFGAB"[letter]; b[1] = delta == 1 ? '#' : delta == 11 ? 'b' : 0; b[2] = 0;
+            return;
+        }
+    }
+    str_cpy(b, flats ? flat[pc] : N_NOTE[pc], 4);
+}
+static void scale_note_name(char *b, const track_t *t, uint32_t n)
+{
+    scale_pitch_name(b, t, n);
+    int32_t octave = (int32_t)(n / 12u) - 1;
+    if (b[0] == 'B' && b[1] == '#') octave--;
+    if (b[0] == 'C' && b[1] == 'b') octave++;
+    fmt_int(b + str_len(b), octave);
 }
 
 static void open_family(uint32_t fam)

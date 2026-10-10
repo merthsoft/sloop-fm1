@@ -81,3 +81,7 @@ phone musical starters and arp expression are now integrated; follow the active
 - [Merthsoft.9](releases/RELEASE-2.5-Merthsoft.9.md): selected-track scale alignment and generic-backlight suppression.
 
 - [Merthsoft.10 modulation wheel release](releases/RELEASE-2.5-Merthsoft.10.md)
+
+- [Merthsoft.11 performance modulation release](releases/RELEASE-2.5-Merthsoft.11.md)
+
+- [Merthsoft.12 keyboard illumination fix](releases/RELEASE-2.5-Merthsoft.12.md)

@@ -498,8 +498,9 @@ static void layer_knobs(uint32_t layer)
         case LY_VIB:
         case LY_TREM: {
             live_mod_t *m = &live_mod[layer - LY_VIB];
-            uint8_t *v = k == 0 ? &m->rate : k == 1 ? &m->depth : k == 2 ? &m->wave : &m->fade;
-            *v = (uint8_t)clamp(*v + s, 0, k == 2 ? 3 : 127);
+            uint8_t *v = k == 0 ? &m->rate : k == 1 ? &m->depth : k == 2 ? &m->wave : &m->sync;
+            *v = (uint8_t)clamp(*v + s, 0, k == 2 ? 3 : k == 3 ? NDIV_STEP : 127);
+            if (k == 0) m->sync = 0; /* turning Hz deliberately returns to free rate */
             break;
         }
         case LY_FX:
@@ -686,20 +687,20 @@ static void layer_screen_draw(void)
         str_cpy(sub, is_drum(t) ? "synth tracks only" : "selected track only", sizeof sub);
         for (i = 0; i < 16; i++) {
             uint32_t k = key_of_white(i), n = kb_map(t, k);
-            if (n != KB_SILENT) note_name(tl[i].lab, n);
+            if (n != KB_SILENT) scale_note_name(tl[i].lab, t, n);
+            else str_cpy(tl[i].lab, "-", 8);
             tl[i].bg = (fm1_in.notes & (1u << k)) ? C_WHITE : TE_G1;
             tl[i].fg = tl[i].bg == C_WHITE ? C_BLACK : TE_G4;
         }
-        lab[0] = "rate Hz"; lab[1] = "depth %"; lab[2] = "wave"; lab[3] = "fade";
+        lab[0] = m->sync ? "free Hz" : "rate Hz"; lab[1] = "depth %"; lab[2] = "wave"; lab[3] = "sync";
         const char *unit;
         param_format(&TP[P_LRATE], m->rate, v[0], &unit);
         fmt_int(v[1], m->depth * 100 / 127);
         static const char *const wave[] = {"sine", "tri", "saw", "square"};
         val[2] = wave[m->wave & 3];
-        param_format(&TP[P_LFADE], m->fade, v[3], &unit);
-        lab[3] = unit[0] == 'm' ? "fade ms" : "fade s";
+        val[3] = m->sync ? N_SDIV[(m->sync - 1u) % NDIV_STEP] : "off";
         ratio[0] = m->rate * 1000 / 127; ratio[1] = m->depth * 1000 / 127;
-        ratio[2] = m->wave * 1000 / 3; ratio[3] = m->fade * 1000 / 127;
+        ratio[2] = m->wave * 1000 / 3; ratio[3] = m->sync * 1000 / NDIV_STEP;
         break;
     }
     case LY_FX:                                         /* the 16 punch-in effects */
@@ -749,7 +750,7 @@ static void layer_screen_draw(void)
                 if (n == KB_SILENT) {
                     str_cpy(tl[i].lab, "-", 8);
                 } else {
-                    note_name(tl[i].lab, n);
+                    scale_note_name(tl[i].lab, t, n);
                     for (j = 0; j < trk_len(t); j++)
                         if (t->step[j].time == ST_NOTE) {
                             uint32_t q;
@@ -875,10 +876,13 @@ static void layer_screen_draw(void)
         uint32_t root = (uint32_t)key->p[P_ROOT] % 12u, mask = SCALE_MASK[clamp(key->p[P_SCALE], 0, NSCALES - 1)];
         col = TE_COL[1];
         str_cpy(sub, "key: ", sizeof sub);
-        str_cpy(sub + 5, N_NOTE[root], 4);
+        scale_pitch_name(sub + 5, key, root);
         str_cpy(sub + str_len(sub), " ", 2);
         te_lower(sub + str_len(sub), N_SCALE[clamp(key->p[P_SCALE], 0, NSCALES - 1)], 8);
+        static const char *const root_hint[16] = {"root F","root G","root A","root B","root C","root D","root E","root F",
+            "root G","root A","root B","root C","root D","root E","root F","root G"};
         for (i = 0; i < 16u; i++) {
+            tl[i].hint = root_hint[i]; /* SEL-held keys still select a literal song root. */
             uint32_t k = key_of_white(i), pc = (53u + k) % 12u, in = (mask >> ((pc + 12u - root) % 12u)) & 1u;
             if (!is_drum(t) && t->p[P_CHORD]) {       /* chord mode: the chord this key plays (the i chord lit) */
                 uint8_t c[4];
@@ -886,7 +890,7 @@ static void layer_screen_draw(void)
                 if (n != KB_SILENT && (m = chord_notes(t, n, c)) != 0u) {
                     uint32_t third = m > 1u ? (uint32_t)(c[1] - c[0]) : 4u;
                     uint32_t chord_type = (uint32_t)clamp(t->p[P_CHORD], 0, CH_COUNT - 1);
-                    str_cpy(tl[i].lab, N_NOTE[c[0] % 12u], 8);
+                    scale_pitch_name(tl[i].lab, t, c[0]);
                     if (chord_type == CH_POWER)
                         str_cpy(tl[i].lab + str_len(tl[i].lab), "5", 2);
                     else if (chord_type == CH_OCTAVE)
@@ -902,7 +906,13 @@ static void layer_screen_draw(void)
                     in = 1;
                 }
             } else {
-                str_cpy(tl[i].lab, N_NOTE[pc], 8);
+                uint32_t n = is_drum(t) ? 53u + k : kb_map(t, k);
+                if (n == KB_SILENT) { str_cpy(tl[i].lab, "-", 8); in = 0; }
+                else {
+                    pc = n % 12u;
+                    in = (mask >> ((pc + 12u - root) % 12u)) & 1u;
+                    scale_note_name(tl[i].lab, key, n);
+                }
             }
             tl[i].bg = pc == root ? col : TE_G1;
             tl[i].fg = pc == root ? C_BLACK : in ? C_WHITE : TE_G2;

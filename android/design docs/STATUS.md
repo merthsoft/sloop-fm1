@@ -5,6 +5,15 @@ future design contracts; dated release/handoff/test results remain historical ev
 
 ## Latest firmware
 
+**2.5 Merthsoft.13** adds consistent mapped grid labels and scale-appropriate
+accidentals, optional persisted MIDI SCALE/KEYBOARD mapping with held-pitch tracking,
+and knob 4 beat sync on vibrato/tremolo. Knob 1 returns to free Hz. MIDI SCALE defaults
+OFF so app-generated pitches remain literal. See [scale/MIDI grids](../../docs/firmware/SCALE-MIDI-GRIDS.md).
+
+**2.5 Merthsoft.12** preserves scale-guide and normal keyboard illumination in
+held LFO/ENV performance panels. Expanded scale-light tests cover all roots/scales
+and actual panel holds/releases, with the guide both enabled and disabled.
+
 **2.5 Merthsoft.11** adds temporary held-LFO vibrato and held-ENV tremolo panels,
 affecting only the captured selected synth. Speed/depth/wave/fade are independent
 of saved patch parameters; release returns to the previous page. Merthsoft.10 MIDI

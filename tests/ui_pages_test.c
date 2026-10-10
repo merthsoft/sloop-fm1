@@ -863,6 +863,10 @@ int main(int argc, char **argv)
         sec = mi_sec(ui.menu_sel);
         check(sec == MS_SYSTEM, "menu: SELECT stops at the last section, SYSTEM");
         encs[panel.enc[EN_K2]] = 1; frame();
+        check(ui.menu == 1 && ui.menu_sel == MI_MIDISCALE && midi_scale, "menu SYSTEM: K2 enables MIDI keyboard-scale following");
+        encs[panel.enc[EN_K2]] = -1; frame();
+        check(!midi_scale, "menu SYSTEM: K2 left restores literal MIDI pitches");
+        encs[panel.enc[EN_K3]] = 1; frame();
         check(ui.menu == 1 && ui.menu_sel == MI_ABOUT, "menu SYSTEM: a knob does not open ABOUT, it moves the cursor");
         tap(B_OCTUP);
         check(ui.menu == 2, "menu SYSTEM: OCT+ on ABOUT opens it");

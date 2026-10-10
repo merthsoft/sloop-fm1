@@ -39,8 +39,8 @@ static uint8_t mod_midi[NPART];
 static uint8_t mod_source[NPART]; /* 1 USB, 2 TRS */
 typedef struct {
     uint32_t phase;
-    int32_t value, envelope;
-    uint8_t on, part, rate, depth, wave, fade;
+    int32_t value;
+    uint8_t on, part, rate, depth, wave, sync;
 } live_mod_t;
 static live_mod_t live_mod[2] = {
     {.rate = 87, .depth = 32}, /* vibrato: about 5 Hz, +/-12.5 cents */
@@ -58,13 +58,32 @@ static void live_mod_tick(const track_t *t)
     for (uint32_t i = 0; i < 2; i++) {
         live_mod_t *m = &live_mod[i];
         if (!m->on || m->part != (uint32_t)(t - trk)) continue;
-        m->phase += LFO_INC[m->rate];
+        if (m->sync) {
+            uint32_t div = (m->sync - 1u) % NDIV_STEP;
+            if (song.playing) {
+                /* Compile-time reciprocals avoid 64-bit division in the audio ISR. */
+                static const uint32_t reciprocal[NDIV_STEP] = {
+                    (uint32_t)((1ull << 32) / (BEAT_U / 1u)),
+                    (uint32_t)((1ull << 32) / (BEAT_U / 2u)),
+                    (uint32_t)((1ull << 32) / (BEAT_U / 4u)),
+                    (uint32_t)((1ull << 32) / (BEAT_U / 8u)),
+                    (uint32_t)((1ull << 32) / (BEAT_U / 3u)),
+                    (uint32_t)((1ull << 32) / (BEAT_U / 6u)),
+                    (uint32_t)((1ull << 32) / (BEAT_U * 2u)),
+                    (uint32_t)((1ull << 32) / (BEAT_U * 4u)),
+                    (uint32_t)((1ull << 32) / (BEAT_U * 8u))
+                };
+                uint32_t position = clk_pos + (clk_beat % 8u) * BEAT_U;
+                m->phase = (position % div_units(div)) * reciprocal[div];
+            } else {
+                uint32_t inc = (uint32_t)(((1ull << 32) * CTL) / BEAT_U) * (uint32_t)song.g[G_BPM];
+                m->phase += div < NDIV_SHORT ? inc * DIV_DEN[div] : inc / DIV_BEATS[div - NDIV_SHORT];
+            }
+        } else m->phase += LFO_INC[m->rate];
         int32_t w = m->wave == 1 ? osc_tri(m->phase) :
             m->wave == 2 ? (int32_t)(m->phase >> 16) - 32768 :
             m->wave == 3 ? (m->phase < 0x80000000u ? 32767 : -32767) : osc_sine(m->phase);
-        int32_t step = (int32_t)(ENV_LIN[m->fade] >> 9);
-        m->envelope = m->fade ? clamp(m->envelope + (step ? step : 1), 0, 32767) : 32767;
-        m->value = i ? mulq15((w + 32768) >> 1, m->envelope) : mulq15(w, m->envelope);
+        m->value = i ? (w + 32768) >> 1 : w;
     }
 }
 static int32_t mod_pitch(const track_t *t, int32_t lfo)

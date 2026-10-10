@@ -167,12 +167,18 @@ static uint32_t keys_lit(void)
     return m;
 }
 
+/* These temporary modulation panels leave the keyboard in its playing role. */
+static int keys_playing_layer(void)
+{
+    return ui.layer == LY_PLAY || ui.layer == LY_VIB || ui.layer == LY_TREM;
+}
+
 /* menu NOTES, on the layers whose keys are tiles (FX effects, SEQ steps, GLO mute / solo): what
  * sounds glows dimly under the tiles, which keep their full light. SEL (the scale) and EDIT on the
  * drum track (the sounds of the pattern): those glow, and what sounds is lit (keys_lit) */
 static uint32_t keys_notes_dim(void)
 {
-    if (lights_scale && ui.layer == LY_PLAY && !is_drum(TSEL) && !kb_grid)
+    if (lights_scale && keys_playing_layer() && !is_drum(TSEL) && !kb_grid)
         return scale_keys(0);
     if (!lights_notes)
         return 0u;
@@ -194,7 +200,7 @@ static uint32_t keys_notes_dim(void)
  * 1, 5, 9, 13) while a layer is held, and on the drum track (its 16 sounds, 4 x 4 as on KIT) */
 static uint32_t keys_guide(void)
 {
-    if (ui.layer == LY_PLAY && !is_drum(TSEL))
+    if (keys_playing_layer() && !is_drum(TSEL))
         return 0u;
     return 1u << key_of_white(0) | 1u << key_of_white(4) | 1u << key_of_white(8) | 1u << key_of_white(12);
 }
@@ -203,7 +209,7 @@ static uint32_t keys_guide(void)
 static uint32_t lights_keys_mask(void)
 {
     uint32_t k, m = 0;
-    if (lights_scale && ui.layer == LY_PLAY && !is_drum(TSEL) && !kb_grid)
+    if (lights_scale && keys_playing_layer() && !is_drum(TSEL) && !kb_grid)
         return 0u;                                  /* scale guide replaces the generic keyboard backlight */
     if (!lights_lvl || !lights_keys)
         return 0u;
@@ -679,7 +685,7 @@ static int layers_input(uint32_t note_edges, uint32_t *pressed, uint32_t home)
             live_mod_t *m = &live_mod[l - LY_VIB];
             if (d && !down[l]) {
                 latch_part[l] = (uint8_t)song.sel;
-                m->part = (uint8_t)song.sel; m->phase = 0; m->envelope = m->value = 0;
+                m->part = (uint8_t)song.sel; m->phase = 0; m->value = 0;
             }
             if (d && latch_part[l] < NPART && now - t0[l] >= SHOW_MS) {
                 used[l] = 1; latch_part[l] = NPART;

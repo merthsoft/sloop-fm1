@@ -34,3 +34,7 @@ mode/level. The full UI
 regression and 20,000-frame fuzz also pass. Target image grows by 240 bytes;
 static RAM remains 97,412/98,304 bytes. Merthsoft.9 adds another 112 image bytes.
 Physical LED brightness awaits user testing.
+
+Merthsoft.12 preserves the normal keyboard lighting while LFO/vibrato or
+ENV/tremolo is held: selected-scale dim lights, bright played notes and generic
+backlight preferences retain their normal playing behavior, with no grid landmarks.

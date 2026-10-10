@@ -1,4 +1,4 @@
-# Live performance modulation — Merthsoft.11
+# Live performance modulation — Merthsoft.13
 
 Hold **LFO** for selected-synth vibrato; hold **ENV** for selected-synth tremolo.
 After 140 ms the temporary panel appears and its effect engages. Release dismisses
@@ -7,12 +7,16 @@ normal LFO or ENV pages. The keyboard continues playing normally in either panel
 These panels cannot be locked open with HOME.
 
 Both panels use knob 1 **rate**, knob 2 **depth**, knob 3 **waveform** (sine,
-triangle, saw, square), and knob 4 **fade-in**. Vibrato starts near 5 Hz with
+triangle, saw, square), and knob 4 **beat sync**. Vibrato starts near 5 Hz with
 approximately +/-12.5 cents of pitch movement; tremolo starts near 4 Hz at 38% depth.
 Maximum vibrato is approximately +/-50 cents; maximum tremolo approaches silence
 at the low point. Parameters are independent of saved LFO/envelope values and
 remembered across holds until reboot, shared between tracks for each effect.
-The fade controls the onset on the next hold, not the release.
+SYNC selects OFF or the existing nine step divisions: 1/4, 1/8, 1/16, 1/32, 8T,
+16T, 1/2, 1BAR, 2BAR. OFF uses free Hz; turning knob 1 returns SYNC to OFF.
+Playing cycles lock to the existing transport phase, including external MIDI clock.
+Stopped cycles run at current BPM. Compile-time phase reciprocals avoid new 64-bit
+division in the audio ISR. Saved patch LFO/fade parameters remain untouched.
 
 Each effect captures the selected synth at button-down. Other synths and drums are
 unaffected. Switching tracks cancels that hold rather than transferring its effect.
@@ -41,3 +45,9 @@ vibrato/tremolo do not transmit outgoing controllers.
 Host tests cover temporary panels, tap navigation, selected-track isolation,
 waveform bounds, saved parameter preservation, held-note gates, incoming USB/TRS
 ownership and STOP/panic cleanup. Physical gesture/audible testing remains user testing.
+
+Merthsoft.12 preserves the normal keyboard lighting while LFO/vibrato or
+ENV/tremolo is held: selected-scale dim lights, bright played notes and generic
+backlight preferences retain their normal playing behavior, with no grid landmarks.
+
+Merthsoft.13 grids use scale-aware pitch spelling; see [scale/MIDI grids](SCALE-MIDI-GRIDS.md).

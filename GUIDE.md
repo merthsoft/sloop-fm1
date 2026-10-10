@@ -953,18 +953,54 @@ The knobs of a MIDI controller set the sound (the standard CC map of Felucca 1.1
 Merthsoft.10 also accepts **CC1** for transient vibrato on synth tracks; CC120/121/123
 clear modulation. Other unmapped CCs, sustain and pitch bend are ignored by the firmware.
 
-### Live vibrato, tremolo and modulation wheel (Merthsoft.11)
+### Scale-aware grids and incoming MIDI (Merthsoft.13)
+
+The 4×4 grids correspond to the FM1's sixteen physical white keys, in order.
+Held LFO/ENV displays what those keys play, including octave, transpose and scale
+mapping. Held SEL displays those pitches or their chords; each tile's small
+**root F**, **root G**, etc. hint shows the root selected by pressing that key while
+SEL stays held. Selecting a song root remains a literal physical-key action.
+
+Set **KEYS = WHITE** for successive scale degrees (C4 is the selected root): in
+C minor, the physical E key plays E♭ and its tile reads **Eb4**. SNAP rounds down
+to the scale; OFF keeps chromatic playing; SEL marks outside-scale notes dimly.
+The display uses flats/sharps appropriate to the selected key, rather than always
+using sharps. This does not automatically enable scale mapping or change the LED
+scale guide's physical pitch classes.
+
+Hold **HOME**, turn **SELECT** to **SYSTEM**, then turn **knob 2** right to set
+**MIDI SCALE = KEYBOARD**; left restores **OFF**. It is a persisted device setting,
+off by default. KEYBOARD applies the receiving synth's keyboard pitch mapping,
+including KEYS mode, root, scale, octave and transpose, to incoming USB and TRS
+notes across the MIDI range. In WHITE mode black input keys are silent; CHROM
+keeps literal roots. It does not generate chord voicings or treat MIDI black keys
+as chord modifiers. Drums and sampler GM kits remain literal.
+
+Use OFF when a sequencer or the phone already sends the intended pitches. Every
+incoming note remembers its sounded pitch and destination until release, so changing
+settings while holding it cannot strand a note. Many-to-one mappings release only
+when their last MIDI owner releases. USB reset releases USB-owned notes and retains
+TRS owners. Up to 64 incoming synth key owners are tracked; excess note-ons are
+ignored until a slot is free. Keyboard and sequencer ownership retain their existing
+rules. See [implementation details](docs/firmware/SCALE-MIDI-GRIDS.md).
+
+### Live vibrato, tremolo and modulation wheel (Merthsoft.13)
 
 Select a synth track, then hold **LFO** for gentle vibrato or **ENV** for tremolo.
 A temporary panel appears after 140 ms. **Knob 1** adjusts speed, **knob 2** depth,
-**knob 3** waveform (sine / triangle / saw / square), and **knob 4** fade-in.
+**knob 3** waveform (sine / triangle / saw / square), and **knob 4** beat sync.
+SYNC offers OFF, 1/4, 1/8, 1/16, 1/32, 8T, 16T, 1/2, 1BAR and 2BAR.
+OFF uses knob 1 Hz; turning knob 1 also returns to OFF. Synced cycles follow the
+transport phase while playing, including external clock; while stopped they run at
+the current BPM. The saved patch LFO remains separate.
+Keyboard scale lights and backlight preferences remain unchanged while held.
 Release the button to remove the effect and return to the previous screen. Quick
 LFO/ENV taps still open their normal pages. Keep playing the keyboard while held.
 
 Only the synth selected when the hold starts is affected. Switching tracks cancels
 it. The settings are separate from the saved LFO and envelope, carry across holds,
 and reset at reboot. Both buttons can be held together; the LFO panel takes knob
-priority. Fade-in applies to the next hold. These panels do not lock with HOME.
+priority. These panels do not lock with HOME.
 Vibrato defaults to about 5 Hz and +/-12.5 cents, reaching +/-50 cents at full depth;
 tremolo defaults to about 4 Hz at 38% depth. Drums are unaffected.
 

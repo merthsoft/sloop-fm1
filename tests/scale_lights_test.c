@@ -19,6 +19,9 @@ int main(void)
         uint32_t expected=0;
         for (int k=0;k<27;k++)
             if ((SCALE_MASK[scale] >> ((53+k-root+120)%12)) & 1u) expected |= 1u<<k;
+        for(int layer=0;layer<3;layer++) {
+        ui.layer=layer==0 ? LY_PLAY : layer==1 ? LY_VIB : LY_TREM;
+        assert(keys_guide()==0);
         assert(keys_notes_dim()==expected);
         for (int mode=0;mode<KEYS_N;mode++) for (int level=0;level<LIGHTS_N;level++) {
             lights_keys=mode;lights_lvl=level;
@@ -26,6 +29,24 @@ int main(void)
             assert((keys_notes_dim() | lights_keys_mask())==expected);
         }
     }
+        }
+    ui.layer=LY_PLAY;
+    /* Real button holds must preserve every keyboard LED role, including release. */
+    trk[1].p[P_SCALE]=1;trk[1].p[P_ROOT]=2;
+    for(int enabled=0;enabled<2;enabled++) {
+        lights_scale=enabled;lights_keys=KEYS_ALL;lights_lvl=LIGHTS_HIGH;
+        fm1_in.notes=1u<<5;frame();
+        uint32_t dim=keys_notes_dim(),back=lights_keys_mask(),bright=keys_lit(),guide=keys_guide();
+        for(int button=0;button<2;button++) {
+            press(button ? B_ENV : B_LFO);frames(12);
+            assert(ui.layer==(button ? LY_TREM : LY_VIB));
+            assert(keys_notes_dim()==dim && lights_keys_mask()==back && keys_lit()==bright && keys_guide()==guide);
+            release(button ? B_ENV : B_LFO);
+            assert(ui.layer==LY_PLAY && keys_notes_dim()==dim && lights_keys_mask()==back && keys_lit()==bright && keys_guide()==guide);
+        }
+        fm1_in.notes=0;frame();
+    }
+    lights_scale=1;
     trk[0].p[P_SCALE]=0;trk[1].p[P_SCALE]=1;trk[1].p[P_ROOT]=2;
     press(B_SCL);frames(20);assert(strstr(sub_line(),"D maj"));
     encs[panel.enc[EN_K2]]=1;frame();

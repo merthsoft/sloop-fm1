@@ -47,7 +47,7 @@ int main(void)
     assert(!live_mod[0].on && trk[1].p[P_LRATE]==rate);release(B_LFO);
     for(int wave=0;wave<4;wave++) {
         live_mod[0].on=1;live_mod[0].part=1;live_mod[0].wave=wave;
-        live_mod[0].phase=0;live_mod[0].envelope=0;
+        live_mod[0].phase=0;live_mod[0].sync=0;
         int lo=9999,hi=-9999;
         for(int i=0;i<1200;i++) {
             live_mod_tick(&trk[1]);int pitch=mod_pitch(&trk[1],0);
@@ -56,6 +56,24 @@ int main(void)
         }
         assert(lo<0 && hi>0);
     }
+    /* SYNC follows transport phase, independent of free Hz and tempo changes. */
+    live_mod[0].on=1;live_mod[0].part=1;song.playing=1;
+    for(int div=0;div<NDIV_STEP;div++) {
+        live_mod[0].sync=div+1;
+        for(int quarter=0;quarter<4;quarter++) {
+            uint32_t pos=div_units(div)*quarter/4;
+            clk_beat=pos/BEAT_U;clk_pos=pos%BEAT_U;live_mod_tick(&trk[1]);
+            uint32_t expected=(uint32_t)(((uint64_t)pos<<32)/div_units(div));
+            assert(expected-live_mod[0].phase<30000000u);
+            uint32_t phase=live_mod[0].phase;live_mod[0].rate=17;song.g[G_BPM]=210;live_mod_tick(&trk[1]);
+            assert(live_mod[0].phase==phase);
+        }
+    }
+    song.playing=0;live_mod[0].sync=1;live_mod[0].phase=0;
+    song.g[G_BPM]=60;live_mod_tick(&trk[1]);uint32_t slow=live_mod[0].phase;
+    live_mod[0].phase=0;song.g[G_BPM]=120;live_mod_tick(&trk[1]);assert(live_mod[0].phase==2*slow);
+    live_mod[0].on=0;press(B_LFO);frames(12);encs[panel.enc[EN_K4]]=3;frame();assert(live_mod[0].sync);
+    encs[panel.enc[EN_K1]]=1;frame();assert(!live_mod[0].sync);release(B_LFO);
     mod_reset(NTRK);
     press(B_LFO);release(B_LFO);assert(cur_page()->fam==FAM_LFO);
     press(B_ENV);release(B_ENV);assert(cur_page()->fam==FAM_ENV);

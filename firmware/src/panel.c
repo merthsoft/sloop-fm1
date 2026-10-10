@@ -96,7 +96,7 @@ static uint32_t lights_word(void)
            (uint32_t)(rec_tempo != 0u) << 9 | (uint32_t)(rec_count != 0u) << 10 | (uint32_t)(usb_full != 0u) << 11 |
            (uint32_t)(lights_sync % 3u) << 12 | (uint32_t)(lights_mout != 0u) << 14 | (uint32_t)(lights_min != 0u) << 15 |
             (uint32_t)(usb_serial != 0u) << 16 | (uint32_t)VIS_STYLE_IDS[vis_style % VIS_STYLE_COUNT] << 17 |
-            (uint32_t)(lights_scale != 0u) << 22;
+            (uint32_t)(lights_scale != 0u) << 22 | (uint32_t)(midi_scale != 0u) << 23;
 }
 static void lights_from_word(uint32_t w)
 {
@@ -104,6 +104,7 @@ static void lights_from_word(uint32_t w)
     lights_keys = (uint8_t)(((w >> 4) & 15u) < KEYS_N ? ((w >> 4) & 15u) : KEYS_OFF);
     lights_notes = (uint8_t)((w >> 8) & 1u);
     lights_scale = (uint8_t)((w >> 22) & 1u);
+    midi_scale = (uint8_t)((w >> 23) & 1u);
     rec_tempo = (uint8_t)((w >> 9) & 1u);       /* the REC screen: MODE, START (seq.c) */
     rec_count = (uint8_t)((w >> 10) & 1u);
     usb_full = (uint8_t)((w >> 11) & 1u);       /* menu USB AUDIO (fx.c) */

@@ -169,19 +169,10 @@ static void lk_push(uint32_t layer, uint32_t k, uint32_t down)
 /* ------------------------------------------------------------- keys --- */
 /* key k -> note on a synth part (KB_SILENT: none). WHITE (and chord mode): the white keys walk the
  * scale from C4 = the root, the black keys are silent; SNAP: every key, rounded down into the scale */
-static uint32_t kb_map(const track_t *t, uint32_t k)
+/* Shared physical/MIDI scale mapping: C4 is degree one in WHITE mode. */
+static uint32_t kb_scale_map(const track_t *t, int32_t n)
 {
     static const int8_t DEGREE[12] = {0, -1, 1, -1, 2, 3, -1, 4, -1, 5, -1, 6};
-    int32_t n = 53 + (int32_t)k;
-    if (is_drum(t))
-        return LANE_NOTE[lane_of_key(k)];
-    if (ENGINES[t->eng_req % NENGINES] == &ENG_SAMPLE && drum_set() >= 0 &&   /* (the engine it switches to) */
-        (uint32_t)t->p[P_E0] % SMP_NSETS == (uint32_t)drum_set())   /* GM KIT: lowest key = kick (C2), no scale */
-        return (uint32_t)clamp(36 + 12 * song.octave + (int32_t)k, 0, 127);
-#if FELUCCA_SLICE
-    if (ENGINES[t->eng_req % NENGINES] == &ENG_SLICE)   /* SLICE: lowest key = slice 0 (C4 + ROOT), no scale */
-        return (uint32_t)clamp(SLC_BASE + t->p[P_ROOT] + 12 * song.octave + (int32_t)k, 0, 127);
-#endif
     if (t->p[P_QUANT] == 1 && !t->p[P_CHORD]) {  /* SNAP: every key, rounded down to the scale (the old ON) */
         uint32_t mask = scale_mask(t), guard = 12;
         n += 12 * song.octave + t->p[P_TRANS];
@@ -215,6 +206,20 @@ static uint32_t kb_map(const track_t *t, uint32_t k)
     }
     return (uint32_t)clamp(n + 12 * song.octave + t->p[P_TRANS], 0, 127);
 }
+static uint32_t kb_map(const track_t *t, uint32_t k)
+{
+    if (is_drum(t))
+        return LANE_NOTE[lane_of_key(k)];
+    if (ENGINES[t->eng_req % NENGINES] == &ENG_SAMPLE && drum_set() >= 0 &&   /* (the engine it switches to) */
+        (uint32_t)t->p[P_E0] % SMP_NSETS == (uint32_t)drum_set())   /* GM KIT: lowest key = kick (C2), no scale */
+        return (uint32_t)clamp(36 + 12 * song.octave + (int32_t)k, 0, 127);
+#if FELUCCA_SLICE
+    if (ENGINES[t->eng_req % NENGINES] == &ENG_SLICE)   /* SLICE: lowest key = slice 0 (C4 + ROOT), no scale */
+        return (uint32_t)clamp(SLC_BASE + t->p[P_ROOT] + 12 * song.octave + (int32_t)k, 0, 127);
+#endif
+    return kb_scale_map(t, 53 + (int32_t)k);
+}
+
 
 /* chord mode (P_CHORD): scale degrees (CHR: minor) or fixed semitone quality built on note n, into c[];
  * the notes it holds (<= 4, the most a step keeps) */
@@ -2381,6 +2386,9 @@ static track_t *midi_track(uint32_t ch)
 
 /* a channel that plays the selected track: its note-off goes to the track its note-on went to,
  * even when another track was selected in between (else that note would hang) */
+static uint8_t midi_scale;                         /* persisted device preference, default literal MIDI */
+#define MIDI_SCALE_HELD 64u
+static struct { uint16_t key; uint8_t note, part; } midi_scale_held[MIDI_SCALE_HELD];
 static uint8_t midi_sel_on[16][128];                  /* per channel and note: track + 1, 0 = none */
 static track_t *midi_route(uint32_t ch, uint32_t note, int on)
 {
@@ -2397,6 +2405,71 @@ static track_t *midi_route(uint32_t ch, uint32_t note, int on)
         midi_sel_on[ch & 15u][note & 127u] = 0;
     }
     return t;
+}
+
+/* Store the sounded pitch, not a recipe: root/scale/octave edits cannot strand notes.
+ * USB and TRS are separate owners. Colliding SNAP/clamped pitches release on the
+ * last owner only. Bounded storage rejects overflow without stealing a held note. */
+static int midi_scale_owner(uint32_t part, uint32_t note)
+{
+    for (uint32_t i = 0; i < MIDI_SCALE_HELD; i++)
+        if (midi_scale_held[i].part == part + 1u && midi_scale_held[i].note == note) return 1;
+    return 0;
+}
+static void midi_scale_restore_route(uint32_t key)
+{
+    uint32_t ch = (key >> 7) & 15u, note = key & 127u;
+    midi_sel_on[ch][note] = 0;
+    for (uint32_t i = 0; i < MIDI_SCALE_HELD; i++)
+        if (midi_scale_held[i].part && (midi_scale_held[i].key & 2047u) == (key & 2047u)) {
+            midi_sel_on[ch][note] = midi_scale_held[i].part;
+            break;
+        }
+}
+static void midi_scale_input(track_t *t, uint32_t key, uint32_t note, uint32_t vel, int on)
+{
+    uint32_t i, free = MIDI_SCALE_HELD, part = trk_index(t);
+    for (i = 0; i < MIDI_SCALE_HELD; i++) {
+        if (!midi_scale_held[i].part) { if (free == MIDI_SCALE_HELD) free = i; continue; }
+        if (midi_scale_held[i].key == key) {
+            part = midi_scale_held[i].part - 1u;
+            uint32_t old = midi_scale_held[i].note;
+            midi_scale_held[i].part = 0;
+            midi_scale_restore_route(key);
+            if (old != KB_SILENT && !midi_scale_owner(part, old)) input_off(&trk[part], old);
+            if (!on) return;
+            free = i;
+            part = trk_index(t);
+            break;
+        }
+    }
+    if (!on) return; /* unmatched/overflow note-offs cannot release another owner */
+    if (free == MIDI_SCALE_HELD) { midi_scale_restore_route(key); return; }
+    if (midi_scale && !(ENGINES[t->eng_req % NENGINES] == &ENG_SAMPLE && drum_set() >= 0 &&
+        (uint32_t)t->p[P_E0] % SMP_NSETS == (uint32_t)drum_set())) note = kb_scale_map(t, (int32_t)note);
+    int owned = midi_scale_owner(part, note);
+    midi_scale_held[free].key = (uint16_t)key;
+    midi_scale_held[free].note = (uint8_t)note;
+    midi_scale_held[free].part = (uint8_t)(part + 1u);
+    midi_scale_restore_route(key);
+    if (note != KB_SILENT && !owned) input_on(t, note, vel);
+}
+
+static int midi_scale_has_key(uint32_t key)
+{
+    for (uint32_t i = 0; i < MIDI_SCALE_HELD; i++)
+        if (midi_scale_held[i].part && midi_scale_held[i].key == key) return 1;
+    return 0;
+}
+static void midi_scale_usb_reset(void)
+{
+    for (uint32_t i = 0; i < MIDI_SCALE_HELD; i++) {
+        if (!midi_scale_held[i].part || (midi_scale_held[i].key & 2048u)) continue;
+        uint32_t part = midi_scale_held[i].part - 1u, note = midi_scale_held[i].note, key = midi_scale_held[i].key;
+        midi_scale_held[i].part = 0;
+        if (note != KB_SILENT && !midi_scale_owner(part, note)) input_off(&trk[part], note);
+        midi_scale_restore_route(key);
+    }
 }
 
 /* SLOOP 2.5: MIDI CCs set track parameters, after Felucca 1.1.5's standard CC map (#103, Leo Kuroshita).
@@ -2542,6 +2615,7 @@ static void events_block(uint32_t n)
 {
     static uint32_t mod_usb_resets;
     if (usb.detached || mod_usb_resets != usb.resets) {
+        midi_scale_usb_reset();
         for (uint32_t part = 0; part < NPART; part++)
             if (mod_source[part] == 1u) mod_midi[part] = mod_source[part] = 0;
         mod_usb_resets = usb.resets;
@@ -2634,6 +2708,11 @@ static void events_block(uint32_t n)
         track_t *t = &trk[i];
         if ((pr >> i) & 1u) {
             mod_reset(i);
+            for (uint32_t owner = 0; owner < MIDI_SCALE_HELD; owner++)
+                if (midi_scale_held[owner].part == i + 1u) {
+                    uint32_t key = midi_scale_held[owner].key;
+                    midi_scale_held[owner].part = 0; midi_scale_restore_route(key);
+                }
             seq_harmony_clear(t);
             chord_latch_release(i);
             if (i < NPART) { chord_latch_mods[i] = 0; arp_chord_latch_n[i] = 0; }
@@ -2719,15 +2798,15 @@ static void events_block(uint32_t n)
             continue;                                 /* GLO > SYSTEM > IN = CLOCK: no notes (the note-offs still
                                                        * end what was held when it was set) */
         t = midi_route(ch, d1, st == 0x90u && d2);
+        uint32_t source_key = (((pkt >> 4) & 15u) ? 2048u : 0u) | (ch << 7) | d1;
         if (is_drum(t)) {
+            if (midi_scale_has_key(source_key)) midi_scale_input(t, source_key, d1, 0, 0);
             if (st == 0x90u && d2) {
                 if (sequence_preview_end) sequence_preview_end();
                 drum_input(lane_of_note(d1), vel_lvl(d2), 0, 1);
             }
-        } else if (st == 0x90u && d2) {
-            input_on(t, d1, d2);
         } else {
-            input_off(t, d1);
+            midi_scale_input(t, source_key, d1, d2, st == 0x90u && d2);
         }
     }
     for (i = 0; i < NTRK; i++)

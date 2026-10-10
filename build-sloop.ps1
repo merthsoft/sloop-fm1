@@ -1,17 +1,17 @@
-# SLOOP 2.5 Merthsoft.11: build the firmware, then open the browser installer.
+# SLOOP 2.5 Merthsoft.13: build the firmware, then open the browser installer.
 # Uses the dependencies already prepared (WSL Ubuntu, JieLi toolchain, SDK files in build/deps/ac79).
 # SLICE stays out (FELUCCA_SLICE=0): with its built-in BREAK the image does not fit the app slot.
 $ErrorActionPreference = 'Stop'
 Set-Location $PSScriptRoot
 Write-Host ""
-Write-Host "  S L O O P   2.5 Merthsoft.11" -ForegroundColor White
+Write-Host "  S L O O P   2.5 Merthsoft.13" -ForegroundColor White
 Write-Host "  ---- ---- ---- ----" -ForegroundColor DarkGray
 Write-Host "== Building the firmware (WSL Ubuntu)" -ForegroundColor Cyan
 Remove-Item Env:FELUCCA_SLICE -ErrorAction SilentlyContinue
 python tools/build_windows.py --distro Ubuntu --toolchain /home/shaun/.cache/sloop-host-tools/jieli-linux-toolchains-20250324.1 --sdk build/deps/ac79 --slice 0
 if ($LASTEXITCODE -ne 0) { throw "The build failed" }
 Write-Host "== Making the installer site" -ForegroundColor Cyan
-python web/make_site.py build/felucca.fwsc "2.5 Merthsoft.11" build/sloop-site
+python web/make_site.py build/felucca.fwsc "2.5 Merthsoft.13" build/sloop-site
 if ($LASTEXITCODE -ne 0) { throw "make_site failed" }
 Write-Host ""
 Write-Host "Installer: http://localhost:8766/webapp/installer/  (Chrome or Edge, FM-1 on USB)" -ForegroundColor Green
