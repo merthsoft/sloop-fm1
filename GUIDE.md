@@ -175,6 +175,8 @@ The layers are **FX** (punch-in effects), **EDIT** (erase), **ARP** (note repeat
 
 ---
 
+For the additions specific to this branch, see the [illustrated Merthsoft firmware guide](docs/firmware/MERTHSOFT-FEATURES.md).
+
 ## 6. Playing the keys
 
 ### Synth tracks (1–3)
@@ -243,7 +245,7 @@ Every kit is level-matched. The kit is saved with projects and song sections. Ch
 
 ### The DRUMS screen
 
-Open it with **EDIT** or **SEQ** tapped on the TRACKS screen while the drum track is selected. It has three pages: **GRID**, **KIT**, **GROOVE**. **EDIT / SEQ tapped** cycles them; **SELECT** moves between them.
+Open it with **EDIT** or **SEQ** tapped on the TRACKS screen while the drum track is selected. It has four pages: **GRID**, **KIT**, **GROOVE**, **SHAPE**. **EDIT / SEQ tapped** cycles them; **SELECT** moves between them.
 
 **Grid page** — the 16 sounds × 16 steps, levels as shades, ratchets as notches.
 
@@ -267,13 +269,13 @@ Open it with **EDIT** or **SEQ** tapped on the TRACKS screen while the drum trac
 
 While the song plays in song mode, the grid's hit and level knobs wait (*STOP THE SONG FIRST*).
 
-**Groove page** — build a beat directly on the FM-1. Choose from 16 starters, including house, techno, disco, hip-hop, drum-and-bass, garage, reggaeton, bossa and AMEN BREAK / AMEN HALF. The screen previews kick, snare, clap and hats.
+**Groove page** — build a beat directly on the FM-1. Choose from 24 starters, including house, techno, disco, hip-hop, drum-and-bass, garage, reggaeton, bossa and AMEN BREAK / AMEN HALF. The screen previews kick, snare, clap and hats.
 
 | KNOB 1 | KNOB 2 | KNOB 3 | KNOB 4 |
 | --- | --- | --- | --- |
 | **groove** starter | preview **step** | preview **sound** | **audition** that hit using the selected kit |
 
-Press **OCT+** to **apply**; if the drum pattern contains anything, press **OCT+ again** to confirm replacement. **OCT− toggles a looping preview** through the current kit, without replacing your beat. During replacement confirmation, OCT− cancels and returns to GRID. Browsing leaves your pattern intact. Stop playback and recording first; an armed recording also blocks apply (*STOP FIRST*).
+Press **OCT+** to **apply**; if the drum pattern contains anything, press **OCT+ again** or hold it continuously for 700 ms to confirm replacement. **OCT− toggles a looping preview** through the current kit, without replacing your beat. During replacement confirmation, OCT− cancels and returns to GRID. Browsing leaves your pattern intact. Stop playback and recording first; an armed recording also blocks apply (*STOP FIRST*).
 
 Apply replaces the drum steps, clears their ratchets, nudges, locks and fill conditions, and sets the starter's length and division. Most straight starters are 16 sixteenth-note steps; AMEN BREAK is 64 steps (four bars) and AMEN HALF is 32 steps (two bars). The preview grid follows the selected step in 16-step windows; SHUFFLE is 12 eighth-note triplet steps. Local drum swing becomes zero; global swing remains selected. The kit, mixer, tempo, song key and synth tracks stay selected. SMALL FILL repeats as an ordinary pattern. Edit any starter with GRID, SEQ or live recording, and save it as usual. **EDIT held + OCT− / OCT+** undoes/redoes replacement, including the overwritten timing and locks, while stopped.
 
@@ -327,10 +329,12 @@ LENGTH and START apply when you record at a tempo (MODE *tempo*, or a project th
 
 ## 9. The layers, one by one
 
-All seven layers at a glance:
+All nine layers at a glance:
 
 | Hold | Name | White keys | KNOB 1 | KNOB 2 | KNOB 3 | KNOB 4 | Tap |
 | --- | --- | --- | --- | --- | --- | --- | --- |
+| **LFO** | vibrato | playable keyboard | Hz | depth | wave | beat sync | normal LFO pages |
+| **ENV** | tremolo | playable keyboard | Hz | depth | wave | beat sync | normal ENV pages |
 | **FX** | punch | a punch-in effect while the key is held | FILTER (master) | DUST | DUCK | TRK FILT (selected track) | FX pages |
 | **EDIT** | erase | erase that sound / note from the pattern | SHIFT | LENGTH ×2 / ½ | TRANSPOSE | — | EDIT pages |
 | **ARP** | roll | note repeat on the grid | RATE | — | — | — | ARP pages |
@@ -984,7 +988,7 @@ TRS owners. Up to 64 incoming synth key owners are tracked; excess note-ons are
 ignored until a slot is free. Keyboard and sequencer ownership retain their existing
 rules. See [implementation details](docs/firmware/SCALE-MIDI-GRIDS.md).
 
-### Live vibrato, tremolo and modulation wheel (Merthsoft.13)
+### Live vibrato, tremolo and modulation wheel (Merthsoft.14)
 
 Select a synth track, then hold **LFO** for gentle vibrato or **ENV** for tremolo.
 A temporary panel appears after 140 ms. **Knob 1** adjusts speed, **knob 2** depth,
@@ -1000,7 +1004,12 @@ LFO/ENV taps still open their normal pages. Keep playing the keyboard while held
 Only the synth selected when the hold starts is affected. Switching tracks cancels
 it. The settings are separate from the saved LFO and envelope, carry across holds,
 and reset at reboot. Both buttons can be held together; the LFO panel takes knob
-priority. These panels do not lock with HOME.
+priority. **Hold LFO/ENV + tap HOME**, then release the button, to lock its panel
+and effect. LOCK appears; notes and knobs remain playable. HOME unlocks. Another
+function button unlocks on the first press; press again to open its normal page.
+STOP, track panic, menu entry or a selected-track change clears the locked effect.
+Unlock before selecting another track with the normal buttons. One panel can lock
+at a time, and locks are not saved in projects or across reboot.
 Vibrato defaults to about 5 Hz and +/-12.5 cents, reaching +/-50 cents at full depth;
 tremolo defaults to about 4 Hz at 38% depth. Drums are unaffected.
 
@@ -1200,6 +1209,8 @@ On the installer page, open **Return to the official firmware (V15)**: save a ba
 
 | Hold + | Keys | KNOB 1 | KNOB 2 | KNOB 3 | KNOB 4 | Other |
 | --- | --- | --- | --- | --- | --- | --- |
+| **LFO** | playable keyboard | vibrato Hz | depth | waveform | beat sync | + HOME: lock |
+| **ENV** | playable keyboard | tremolo Hz | depth | waveform | beat sync | + HOME: lock |
 | **FX** | punch-in effects 1–16 | master FILTER | DUST | DUCK | track FILTER | + HOME: lock |
 | **EDIT** | erase sound / note | SHIFT | LENGTH ×2 / ½ | TRANSPOSE | — | OCT− undo · OCT+ redo |
 | **ARP** | note repeat | RATE | — | — | — | OCT− / OCT+: ghost / hard (drums) |

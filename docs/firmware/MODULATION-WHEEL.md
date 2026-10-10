@@ -1,10 +1,16 @@
-# Live performance modulation — Merthsoft.13
+# Live performance modulation — Merthsoft.14
 
 Hold **LFO** for selected-synth vibrato; hold **ENV** for selected-synth tremolo.
 After 140 ms the temporary panel appears and its effect engages. Release dismisses
 it and restores the previous page and underlying sound. A quick tap still opens the
 normal LFO or ENV pages. The keyboard continues playing normally in either panel.
-These panels cannot be locked open with HOME.
+Hold LFO/ENV and tap HOME to lock the panel and effect, then release the button.
+The LOCK indicator appears; keyboard playing and knob edits continue. HOME unlocks
+and clears the effect. Another function button unlocks on its first press and
+opens its normal page on the next press. One panel locks at a time, for synths
+only. Unlock before using the normal panel track-selection controls. The lock is
+runtime-only and is not saved in a patch, project or settings. STOP, track panic,
+menu entry and selected-track changes also dismiss a locked panel.
 
 Both panels use knob 1 **rate**, knob 2 **depth**, knob 3 **waveform** (sine,
 triangle, saw, square), and knob 4 **beat sync**. Vibrato starts near 5 Hz with
@@ -41,6 +47,10 @@ on release/cancel and lifecycle cleanup. It remains mutually exclusive with the 
 macro, and is not recorded in note-only Perform capture. External-controller input
 through the phone does not forward CC1; direct FM1 MIDI can send it. Hardware
 vibrato/tremolo do not transmit outgoing controllers.
+
+Host tests also cover HOME lock/release for both effects, playable locked keys,
+knob edits, preserved scale lights, function-button unlock consumption, drum
+rejection, and dismissal on STOP/panic/track change. Locks add no static RAM.
 
 Host tests cover temporary panels, tap navigation, selected-track isolation,
 waveform bounds, saved parameter preservation, held-note gates, incoming USB/TRS

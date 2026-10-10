@@ -1,4 +1,4 @@
-> Merthsoft fork release: **2.5 Merthsoft.13**. `2.5` identifies the upstream SLOOP base; only `Merthsoft.N` increments for our releases until we adopt a newer upstream base. Our Android and firmware integration lives on the `android` branch. Original Android work uses the Unlicense, with retained third-party obligations described in [Android licensing](android/LICENSING.md).
+> Merthsoft fork release: **2.5 Merthsoft.14**. `2.5` identifies the upstream SLOOP base; only `Merthsoft.N` increments for our releases until we adopt a newer upstream base. Our Android and firmware integration lives on the `android` branch. Original Android work uses the Unlicense, with retained third-party obligations described in [Android licensing](android/LICENSING.md).
 
 <p align="center"><img src="assets/logo/sloop-logo.png" alt="SLOOP" width="420"></p>
 
@@ -49,7 +49,9 @@ SLOOP turns the FM-1 into a four-track groovebox you play live: **three synths a
 
 ## Merthsoft firmware
 
-This fork keeps SLOOP's synth engines and adds ways to build and perform a complete loop quickly on the FM-1. **No phone is required for these firmware features.** The current release is **2.5 Merthsoft.13**: `2.5` is the upstream base, and `Merthsoft.N` identifies our additions.
+This fork keeps SLOOP's synth engines and adds ways to build and perform a complete loop quickly on the FM-1. **No phone is required for these firmware features.** The current release is **2.5 Merthsoft.14**: `2.5` is the upstream base, and `Merthsoft.N` identifies our additions.
+
+Read the [illustrated Merthsoft feature guide](docs/firmware/MERTHSOFT-FEATURES.md) for the full branch additions, physical controls and fresh firmware screenshots.
 
 ### The one-minute workflow
 
@@ -81,7 +83,7 @@ These are the implemented Merthsoft additions; the upstream engine, preset and b
 - **Recording and timing correction:** RECORD-page **SNAP** records to eighths or quarters while keeping the playback DIV intact. On STEP, hold either OCT button: **knob 2** shifts whole octaves and **knob 3** moves a note/chord by whole steps with its timing, conditions and locks. Moving into its own ties keeps the original end; other moves shift the complete tie chain. Occupied destinations are protected and gestures support undo/redo.
 - **Playable latch:** hold **ARP** or physical **SEL** (labelled SCL in SLOOP) for 700 ms while holding notes to toggle latch without stopping your playing. It works with chord mode and manually played arpeggios. Non-CHROM chord modifiers toggle on latched chords; CHROM allows literal black-key roots.
 - **Scale-aware keyboard grids and MIDI:** held SEL/LFO/ENV grids show mapped pitches with key-appropriate accidentals (C minor: **E♭, A♭, B♭**). Set **KEYS = WHITE** to play successive scale degrees. Optional **HOME menu → SYSTEM → MIDI SCALE → KEYBOARD** applies the same pitch mapping to incoming USB/TRS MIDI; default OFF keeps literal pitches. Held notes retain their original note-off mapping when settings change. See [scale/MIDI grid guide](docs/firmware/SCALE-MIDI-GRIDS.md).
-- **Live vibrato and tremolo:** hold **LFO** for vibrato or **ENV** for tremolo on the selected synth only. Temporary panels offer **free Hz / depth / waveform / beat sync** on knobs 1–4; release restores the previous screen and sound. Knob 4 selects OFF or a division through triplets and two bars; turning knob 1 returns to free Hz. Quick taps open the normal pages, and saved patch settings stay intact. **MIDI CC1** and Android Perform's momentary strip also provide vibrato; STOP/panic clears modulation.
+- **Live vibrato and tremolo:** hold **LFO** for vibrato or **ENV** for tremolo on the selected synth only. Temporary panels offer **free Hz / depth / waveform / beat sync** on knobs 1–4; release restores the previous screen and sound. **Hold LFO/ENV + tap HOME** to lock the panel and effect after release; HOME unlocks, and STOP/panic or track changes clear it. Knob 4 selects OFF or a division through triplets and two bars; turning knob 1 returns to free Hz. Quick taps open the normal pages, and saved patch settings stay intact. **MIDI CC1** and Android Perform's momentary strip also provide vibrato; STOP/panic clears modulation.
 
 | Scale-aware SEL grid | Vibrato with beat sync | Tremolo with beat sync |
 | --- | --- | --- |
@@ -89,6 +91,7 @@ These are the implemented Merthsoft additions; the upstream engine, preset and b
 
 *Fresh renders from production firmware code in the host UI/audio harness, Merthsoft.13.*
 
+- **More chord and arp choices:** SUS2, ADD9, 6TH, SHELL, OCTAVE and explicit major/minor/seventh/diminished/augmented qualities; OUTIN, SHUF, ROOTALT, DNUP, UPDNREP, INOUT, WALK and PULSE arpeggios. See the [playing guide](docs/firmware/MERTHSOFT-FEATURES.md#play-chords-and-arpeggios) for ordering, latch and sequencer input.
 - **Chord latch and literal roots:** SCL page 2 knob 4 exposes LATCH. In non-CHROM chord mode, modifier presses update the sounding latched chord immediately and remain toggled until pressed again. **KEYS/QNT CHROM** allows every piano key, including black keys, to be a literal chord root; the other keyboard modes keep their modifier controls.
 - **Sequencer-fed arpeggios:** ARP 2 **ORD SNOTE/SPLAY** lets sequenced chords feed the arpeggiator, including sustained tie chains. Live and sequence input remain independent.
 - **Expressive arpeggios:** incoming and sequenced velocity/accent survives arp modes, octave expansion, ties and latch across audio, MIDI output and recording. Overlapping live/sequence pitches use the stronger current velocity; PULSE merges octave collisions rather than doubling attacks. Physical keyboard attacks retain their fixed velocity.
@@ -100,7 +103,13 @@ These are the implemented Merthsoft additions; the upstream engine, preset and b
 - **Remote performance controls:** the phone can trigger held/next-bar fills and the sixteen punch effects. Leases, panel priority, STOP and disconnect cleanup prevent abandoned remote controls from sticking.
 - **Companion protocol and safe exchange:** hardware octave reporting, FM6/native-pattern editing, sample backup/upload/readback, persistent FM6 base-voice bank saving, and canonical drum/musical library discovery support the Android workstation below. Protocol 14 retains companion command IDs and relocates upstream SYN kit commands to 80–84; the web editor negotiates the mapping. Atomic live hardware scene switching remains future work.
 - **More ROM headroom:** lossless one-bit font packing removes **16,128 bytes** of bitmap data while preserving the original pixels. The splash screen is retained.
-- **Six additional visualizers:** Polyrhythm, Note Trails, Groove, Stereo Field, Song Journey and Beat Terrain make track timing, pitches, stereo and arrangement visible. Fourteen styles remain in total; Dungeon, Tape, LCD, Bounce, Sloop and Constellation views and landscape locking are removed. Saved IDs for removed styles fall back to Scope without renumbering retained styles.
+- **Six additional visualizers:** Polyrhythm, Note Trails, Groove, Stereo Field, Song Journey and Beat Terrain make track timing, pitches, stereo and arrangement visible. Fourteen styles are available; see the [complete gallery](docs/firmware/VISUALIZERS.md) for screenshots and controls.
+
+| Locked vibrato | Locked tremolo |
+| --- | --- |
+| <img src="assets/screens/merthsoft/guide/vibrato-locked.png" width="240" alt="Selected-track vibrato panel with LOCK indicator"> | <img src="assets/screens/merthsoft/guide/tremolo-locked.png" width="240" alt="Selected-track tremolo panel with LOCK indicator"> |
+
+*Fresh Merthsoft.14 production-code framebuffer renders. Hold LFO/ENV, tap HOME, then release; HOME unlocks.*
 
 ### Visualizers added in this fork
 

@@ -38,6 +38,8 @@ Use [current status](../STATUS.md), [component index](../README.md) and [verific
 
 ## Earlier firmware releases
 
+- [Firmware 2.5 Merthsoft.13](releases/RELEASE-2.5-Merthsoft.13.md): scale/MIDI grids and beat sync.
+
 - [RELEASE-2.4.2](releases/RELEASE-2.4.2.md)
 - [RELEASE-2.4.3](releases/RELEASE-2.4.3.md)
 - [RELEASE-2.4.4](releases/RELEASE-2.4.4.md)

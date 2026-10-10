@@ -1,5 +1,20 @@
 # Integrated Merthsoft.7 — October 9, 2026
 
+## Merthsoft.14 modulation locks — October 10, 2026
+
+Target image 577,872 bytes; static RAM 97,748/98,304 (556 bytes remaining);
+pool 333,948/344,064; RAM text 925 instructions/no calls; HAL access check clean.
+Package 610,066 bytes, FM-1_900; SHA-256
+`486fcb221954e7f990837883eea8804d9664aa2a41fb177715235e3c1b5b21f0`.
+Focused modulation regression passes for both effects: HOME lock survives release,
+keyboard gates and knobs remain functional, original page and scale LEDs are
+preserved, HOME/function unlock and STOP/panic/track change cleanup work, and drums
+cannot lock. Broad real UI/audio suite and 20,000-frame fuzz pass. Fresh native
+library, recording, arp, scale/MIDI and LOCK framebuffer captures were visually
+reviewed. Documentation links and image assets checked. Android code is unchanged;
+no physical or new target ISR/stack measurements are claimed. Existing ISR
+cost-budget limitations remain recorded below.
+
 ## Merthsoft.13 scale/MIDI grids and beat sync — October 9, 2026
 
 Target image 577,744 bytes; static RAM 97,748/98,304 (556 bytes remaining);

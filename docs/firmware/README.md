@@ -4,6 +4,7 @@ Current native firmware features and their implementation contracts live here;
 `firmware/` holds source. The public firmware package in this directory is an
 existing upstream website artifact, not the current Merthsoft build.
 
+- [Illustrated guide to all Merthsoft firmware additions](MERTHSOFT-FEATURES.md)
 - [Musical sequence starters](SEQUENCE-STARTERS-DESIGN.md)
 - [Phone musical starter protocol](MUSICAL-STARTER-PROTOCOL.md)
 - [Arpeggio expression](ARP-EXPRESSION.md)

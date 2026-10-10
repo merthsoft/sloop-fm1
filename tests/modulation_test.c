@@ -77,6 +77,36 @@ int main(void)
     mod_reset(NTRK);
     press(B_LFO);release(B_LFO);assert(cur_page()->fam==FAM_LFO);
     press(B_ENV);release(B_ENV);assert(cur_page()->fam==FAM_ENV);
+    /* HOME locks the panel/effect on the captured track; notes remain playable. */
+    outdir="build/host";song.sel=1;go_home();frame();lights_scale=1;
+    trk[1].p[P_ROOT]=0;trk[1].p[P_SCALE]=2;trk[1].p[P_QUANT]=2;
+    for(int effect=0;effect<2;effect++) {
+        uint32_t button=effect ? B_ENV : B_LFO, layer=effect ? LY_TREM : LY_VIB;
+        uint32_t old_page=ui.page, old_home=ui.home;
+        press(button);frames(12);tap(B_HOME);release(button);frames(12);
+        assert(ly_lock==layer && ui.layer==layer && live_mod[effect].on && live_mod[effect].part==1);
+        assert(layer_now()==LY_PLAY && keys_notes_dim()==scale_keys(0) && !keys_guide());
+        assert(ui.page==old_page && ui.home==old_home);
+        int depth=live_mod[effect].depth;
+        encs[panel.enc[EN_K2]]=-1;frame();assert(live_mod[effect].depth==depth-1 && live_mod[effect].on);
+        fm1_in.notes=1u<<key_of_white(4);frame();
+        uint32_t held=0;for(int voice=0;voice<NVOICE;voice++)held+=trk[1].v[voice].gate;
+        assert(held);fm1_in.notes=0;frame();
+        ui.force=1;frame();ppm(effect ? "tremolo-locked" : "vibrato-locked");
+        tap(B_HOME);assert(ly_lock==LY_PLAY && !live_mod[effect].on && ui.layer==LY_PLAY);
+        assert(ui.page==old_page && ui.home==old_home);
+        press(button);frames(12);tap(B_HOME);release(button);seq_stop();frame();
+        assert(!live_mod[effect].on && ly_lock==LY_PLAY && ui.layer==LY_PLAY);
+        press(button);frames(12);tap(B_HOME);release(button);panic_req=2;frame();
+        assert(!live_mod[effect].on && ly_lock==LY_PLAY);
+        press(button);frames(12);tap(B_HOME);release(button);song.sel=2;frame();
+        assert(!live_mod[effect].on && ly_lock==LY_PLAY);song.sel=1;frame();
+        press(button);frames(12);tap(B_HOME);release(button);
+        tap(B_SEQ);assert(!live_mod[effect].on && ly_lock==LY_PLAY && ui.page==old_page);
+        tap(B_SEQ);assert(cur_page()->fam==FAM_SEQ);go_home();frame();
+    }
+    song.sel=TRK_DRUM;frame();press(B_ENV);frames(12);tap(B_HOME);release(B_ENV);
+    assert(ly_lock==LY_PLAY && !live_mod[1].on);song.sel=1;go_home();frame();
     puts("modulation: CC1, temporary vibrato/tremolo isolation and release, saved depth/rate, bounds and cleanup PASS");
     return 0;
 }

@@ -9,9 +9,8 @@ PLAY and REC still work; holding a control layer temporarily shows its controls
 and returns to the visualizer when released. Knobs 1–4 do not edit the hidden
 TRACKS page; hold GLO and turn SELECT for tempo.
 
-The selected style persists with device settings, deferred until stopped. Removed
-Dungeon, Tape, LCD, Bounce, Sloop and Constellation styles are absent; their stored
-IDs fall back to Oscilloscope. Retained IDs stay stable. Landscape locking is removed.
+The selected style persists with device settings, deferred until stopped. Legacy
+unavailable style IDs fall back to Oscilloscope; current style IDs remain stable.
 
 ## Added styles
 

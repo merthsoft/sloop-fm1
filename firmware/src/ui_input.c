@@ -629,6 +629,7 @@ static uint8_t home_eat;                                  /* HOME pressed to unl
 static void layer_unlock(void)
 {
     if (ly_lock != LY_PLAY) {
+        if (ly_lock >= LY_VIB && ly_lock < LY_COUNT) live_mod[ly_lock - LY_VIB].on = 0;
         ly_lock = LY_PLAY;
         ui.force = 1;
     }
@@ -691,7 +692,7 @@ static int layers_input(uint32_t note_edges, uint32_t *pressed, uint32_t home)
                 used[l] = 1; latch_part[l] = NPART;
                 m->on = (uint8_t)(m->part < NPART && song.sel == m->part && !ui.menu && !ui.confirm);
             }
-            if (!d || song.sel != m->part) { m->on = 0; latch_part[l] = NPART; }
+            if ((!d && ly_lock != l) || song.sel != m->part) { m->on = 0; latch_part[l] = NPART; }
         }
         if (d && note_edges && l < LY_VIB)
             used[l] = 1;                                  /* a key while held: not a tap */
@@ -728,7 +729,12 @@ static int layers_input(uint32_t note_edges, uint32_t *pressed, uint32_t home)
         if (d && held == LY_PLAY)
             held = l;
     }
-    if (held != LY_PLAY && held < LY_VIB && home == BT_TAP && !home_eat) {  /* held + HOME: locked open */
+    if (held != LY_PLAY && home == BT_TAP && !home_eat &&
+        (held < LY_VIB || live_mod[held - LY_VIB].part < NPART)) {  /* held + HOME: locked open */
+        if (held >= LY_VIB) {
+            live_mod[held - LY_VIB].on = 1;
+            latch_part[held] = NPART;
+        }
         ly_lock = (uint8_t)held;
         used[held] = 1;
         ui.layer = (uint8_t)held;
@@ -904,9 +910,12 @@ static void ui_input(void)
     int32_t s;
     int layered;
     enc_hold = 0;                                       /* (panel.c: every knob readable again this pass) */
+    if (ly_lock >= LY_VIB && ly_lock < LY_COUNT &&
+        (!live_mod[ly_lock - LY_VIB].on || song.sel != live_mod[ly_lock - LY_VIB].part || ui.menu || ui.confirm))
+        layer_unlock();                               /* STOP/panic/track changes also dismiss the locked panel */
     for (uint32_t i = 0; i < 2; i++)
         if (ui.menu || ui.confirm || song.sel != live_mod[i].part ||
-            !(fm1_in.buttons & ly_bit[LY_VIB + i])) live_mod[i].on = 0;
+            (!(fm1_in.buttons & ly_bit[LY_VIB + i]) && ly_lock != LY_VIB + i)) live_mod[i].on = 0;
     if (pressed || notes)
         ui_input_ms = fm1_ms;
     fm6_poll();                                         /* FM6: PTCH turned -> its patch */

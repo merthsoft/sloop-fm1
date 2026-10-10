@@ -1,9 +1,16 @@
-# Current implementation status — October 9, 2026
+# Current implementation status — October 10, 2026
 
 This is the current status index. Component docs contain both implemented checkpoints and
 future design contracts; dated release/handoff/test results remain historical evidence.
 
 ## Latest firmware
+
+**2.5 Merthsoft.14** lets HOME lock the held-LFO vibrato or held-ENV tremolo
+panel and effect on its captured synth after release. Playing, knobs and scale
+lights remain active. HOME/function unlock, STOP/panic, menus and track changes
+clear the lock. No new static RAM, protocol or project format. The
+[illustrated branch feature guide](../../docs/firmware/MERTHSOFT-FEATURES.md) covers
+all delivered native additions with fresh framebuffer captures.
 
 **2.5 Merthsoft.13** adds consistent mapped grid labels and scale-appropriate
 accidentals, optional persisted MIDI SCALE/KEYBOARD mapping with held-pitch tracking,
