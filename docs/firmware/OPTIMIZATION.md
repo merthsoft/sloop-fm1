@@ -2,8 +2,8 @@
 
 ## Upstream integration
 
-The combined feature set fits the existing application slot: image 581,552 bytes
-(12 free), ordinary static RAM 94,500/98,304, pool 333,900/344,064.
+The combined feature set fits the existing application slot: image 581,476 bytes
+(88 free), ordinary static RAM 94,500/98,304, pool 333,900/344,064.
 Fully overwritten scratch uses 8,800 bytes beside the flash driver, leaving
 12,820 bytes there with an enforced 8 KiB reserve. Stack guards are unchanged.
 The earlier measurements below describe a completed prior pass, not current margins.

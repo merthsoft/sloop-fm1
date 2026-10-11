@@ -2,10 +2,10 @@
 
 Upstream main: `4365a1d0075b9194de1c44826325abbd39751bc1`, following the 2.6
 implementation commit `d30d655`. Local main and origin/main were fast-forwarded to
-this revision. The `android` working tree now contains the integration as **2.6 Merthsoft.5**.
+this revision. The `android` working tree now contains the integration as **2.6 Merthsoft.6**.
 Source and protocol conflicts are resolved. The combined package builds with guarded
 hot DSP inlining, passes audio/functional checks and is served at
-http://127.0.0.1:8810/webapp/installer/. Hardware flashing/timing was not tested in
+http://127.0.0.1:8811/webapp/installer/. Hardware flashing/timing was not tested in
 this integration session. See the current release notes for package identity/hash.
 
 
@@ -124,7 +124,7 @@ payloads retain their existing expanded representation. The full audio render sw
 matches all 182 reviewed fixtures. The single LOFI fixture update retains source velocity; forcing only velocity 100 reproduces the upstream hash.
 
 Default boot draws the firmware title instead of the bitmap splash. The combined
-image is 581,552 bytes (12 free); static RAM 94,500/98,304; pool
+image is 581,476 bytes (88 free); static RAM 94,500/98,304; pool
 333,900/344,064. Fully overwritten scratch uses 8,800 bytes in spare driver RAM,
 leaving 12,820 bytes; linker and build checks enforce an 8 KiB reserve.
 

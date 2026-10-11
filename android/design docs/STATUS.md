@@ -5,15 +5,15 @@ future design contracts; dated release/handoff/test results remain historical ev
 
 ## Latest firmware
 
-**2.6 Merthsoft.5 is integrated and built.** Native ADD/REPLACE, transient-safe
+**2.6 Merthsoft.6 is integrated and built.** Native ADD/REPLACE, transient-safe
 Note Trails with high-contrast drums, and preserved track effects with both-OCT
 reset on normal FX pages are implemented. Upstream audio, inserts, sync,
 MIDI, texture, drum mutes and note-length features coexist with the fork libraries,
 rhythms, editing, scale lights and performance modulation. Upstream's 27 physical
 punch effects replace the previous black-key FX modifiers. The installer is
-`http://127.0.0.1:8810/webapp/installer/`.
+`http://127.0.0.1:8811/webapp/installer/`.
 
-Image 581,552 bytes; static RAM 94,500 bytes; pool 333,900 bytes. Lossless factory
+Image 581,476 bytes; static RAM 94,500 bytes; pool 333,900 bytes. Lossless factory
 sound sharing, text startup, spare driver-RAM scratch and guarded hot-helper
 inlining make the combined build fit. Functional/audio/companion checks pass;
 hardware installation/playback remains user testing. See

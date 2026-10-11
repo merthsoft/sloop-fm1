@@ -1,5 +1,7 @@
-# Latest firmware — 2.6 Merthsoft.5
+# Latest firmware — 2.6 Merthsoft.6
 
+- GLO SYSTEM always shows CPU percentage, including standalone use without USB.
+  The header still indicates a configured USB connection.
 - Note Trails sustained notes now draw continuously across time columns; overlap
   color stripes remain visible. The earlier narrow strokes caused artificial gaps.
 - ADD de-duplicates existing pitches as well as incoming pitches and preserves
@@ -33,15 +35,15 @@ match upstream revision 4365a1d; fork functionality remains on android.
   Startup uses a text title instead of the bitmap logo. Size compilation preserves
   hot DSP inlining, guarded against newly outlined per-sample helper calls.
 
-Target image **581,552 bytes** (12 free); static RAM **94,500/98,304**
+Target image **581,476 bytes** (88 free); static RAM **94,500/98,304**
 (3,804 free); pool **333,900/344,064** (10,164 free). Fully overwritten
 scratch uses 8,800 bytes beside the flash driver, leaving 12,820 bytes there;
 linker/build checks preserve an 8 KiB driver reserve. Stack guards are unchanged.
 HAL and call-free RAM driver checks pass.
 
 Package **609,941 bytes**, identity **FM-1_900**. SHA-256:
-`ad2277b3e423c004b8599876d65350d558d3d837a717a07fc4bf6be4e75d7aee`.
-Installer: http://127.0.0.1:8810/webapp/installer/
+`be7049498dd49c38a294741e98274f8e8a8fd8d1ac1c8c33208a11a489bc358d`.
+Installer: http://127.0.0.1:8811/webapp/installer/
 
 Host functional, serialization, UI, DSP and divide-by-zero checks pass. All 182
 reviewed audio renders match, with zero health, voice/routing or crash failures.

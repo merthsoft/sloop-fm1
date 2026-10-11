@@ -945,13 +945,6 @@ static void draw_columns(void)
             draw_column(c, "", "", "", C_HI, -1, ICON_AUTO);
             continue;
         }
-        if (cur_page()->id[c] == G_INFO && cur_page()->scope == SC_GLOBAL && !usb.config) {   /* not connected: the
-                                                       * USB status instead of the CPU (2.4: MIDI is MIDI OUT, ROUT is IN) */
-            str_cpy(val, !usb.up ? "OFF" : usb.config ? "MIDI" : usb.setups ? "ENUM" : usb.sof_seen ? "BUS" : "WAIT", 12);
-            unit = "USB";
-            draw_column(c, "USB", val, unit, C_HI, -1, ICON_AUTO);
-            continue;
-        }
         if (cur_page()->id[c] == G_INFO && cur_page()->scope == SC_GLOBAL) {
             fmt_int(val, (int32_t)(song.cpu_q8 * 100u / 256u));
             unit = "%";
