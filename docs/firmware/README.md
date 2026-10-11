@@ -24,3 +24,5 @@ Use the [player guide](../../GUIDE.md) for controls and the
 [current status](<../../android/design docs/STATUS.md>) for the integrated feature list.
 
 - [Scale-aware grids and MIDI keyboard following](SCALE-MIDI-GRIDS.md)
+
+- [Upstream 2.6 integration assessment](UPSTREAM-2.6-INTEGRATION.md)
