@@ -4,21 +4,37 @@
 # SLOOP 2.0 (reviewed): analog +9 % (drive crossfade, phase reset), lofi +4 % (input clamp), slicer on
 # the sample-accurate clock (its divides are per step / per block, not per sample: the per-sample
 # loop has none), the mix out of the ISR into its own function (fm1_alnk0_irq calls it).
-# SLOOP 2.4: FM6 (fm6_op_run, fm6_op_fb: the per-sample operator loops; fm6_render: the voice's output loop)
-# are in FUNCS without a budget yet: the engine was ported on a host without the pi32v2 toolchain; the
-# next ./build.sh + BUDGET_UPDATE=1 adds their lines (until then they print "no budget", not a failure).
+# Reviewed 2.6 integration: -Oz with explicit hot-helper inlining. Four entries below
+# reflect changed branch-span nesting/layout and upstream ISR work, not newly outlined
+# per-sample helpers. Compared with merged -Os: formant loop instructions 298 -> 306,
+# slicer 266 -> 256, drums 950 -> 944, ISR 104 -> 104; loop call counts unchanged.
+# tests/target_inlining_test.py separately guards all 25 functions' hot call-site caps.
+# These are static instruction heuristics, not hardware cycle measurements.
 analog_render 638
 digital_render 333
 phase_render 79
 lofi_render 128
 sample_render 126
-formant_render 314
+formant_render 889
 trio_render 341
 trio_pass 175
 drawbar_render 267
 drawbar_block 102
 grain_render 1734
 grain_block 138
-slicer_track 825
-drums_mix 6153
-fm1_alnk0_irq 174
+slicer_track 1019
+drums_mix 8408
+fm1_alnk0_irq 281
+fm6_op_run 72
+fm6_op_fb 26
+fm6_render 357
+uac_play_mix 4091
+
+# PHYS/NOISE: audited against -Os; zero per-sample helper calls in both builds.
+# Modal weighting differs with branch layout; 198 instructions versus 209 under -Os.
+phys_render 61
+noise_render 242
+px_modal_run 1937
+px_string_run 260
+px_string_excite 165
+px_symp_run 255

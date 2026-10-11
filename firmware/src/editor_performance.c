@@ -19,13 +19,13 @@ static void ed_performance(const uint8_t *a, uint32_t n)
     ed_performance_service();
     if (op == 0u && n == 1u) {
         ed_begin(73); ed_b(0); ed_b(0); ed_b(1); ed_b(7); ed_b(PERF_OWNERS);
-        ed_b(PERF_LEASE_MS & 127u); ed_b(PERF_LEASE_MS >> 7); ed_b(16); ed_send(); return;
+        ed_b(PERF_LEASE_MS & 127u); ed_b(PERF_LEASE_MS >> 7); ed_b(PERF_PUNCH_COUNT); ed_send(); return;
     }
     if (op > 4u || op == 0u || n != (op == 1u ? 7u : op == 4u ? 1u : 5u)) status = 1;
     for (i = 0; i < n; i++) if (a[i] > 127u) status = 1;
     if (!status && op != 4u) {
         token = a[1] | (uint32_t)a[2] << 7 | (uint32_t)a[3] << 14 | (uint32_t)a[4] << 21;
-        if (!token || (op == 1u && (a[5] > 2u || (a[5] == 1u ? a[6] >= 16u : a[6] != 0u)))) status = 1;
+        if (!token || (op == 1u && (a[5] > 2u || (a[5] == 1u ? a[6] >= PERF_PUNCH_COUNT : a[6] != 0u)))) status = 1;
     }
     irq = fm1_icfg(); fm1_irq_off();
     if (!status) {

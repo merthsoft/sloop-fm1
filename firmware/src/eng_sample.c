@@ -104,14 +104,14 @@ static void smp_user_scan(uint32_t k)
 }
 
 /* zone index in a voice: < 0x8000 built-in, else 0x8000 | slot << 5 | zone */
-static inline const smp_zone_t *smp_zone(uint32_t zi)
+DSP_INLINE const smp_zone_t *smp_zone(uint32_t zi)
 {
     return zi < 0x8000u ? &SMP_ZONES[zi] : &usr_zone[(zi >> 5) & 3u][zi & 31u];
 }
 
 /* voice: ph[0] position (samples), ph[1] fraction Q16, s[0] predictor, s[1] step
  * index, s[2] previous sample, s[3] current sample, s[4] zone, s[5] step Q16 */
-static inline int32_t sample_next(const smp_zone_t *z, voice_t *v, int loop)
+DSP_INLINE int32_t sample_next_inline(const smp_zone_t *z, voice_t *v, int loop)
 {
     uint32_t pos = v->ph[0], b = SMP_DATA[z->off + (pos >> 1)];
     uint32_t code = (pos & 1u) ? (b >> 4) : (b & 15u);
@@ -133,6 +133,10 @@ static inline int32_t sample_next(const smp_zone_t *z, voice_t *v, int loop)
     v->ph[0] = pos;
     return v->s[0];
 }
+
+/* The melodic sample renderer shares one decoder; drum loops inline it as before -Oz. */
+static __attribute__((noinline)) int32_t sample_next(const smp_zone_t *z, voice_t *v, int loop)
+{ return sample_next_inline(z, v, loop); }
 
 static void sample_note_on(track_t *t, voice_t *v)
 {

@@ -4,6 +4,9 @@ public sealed record DeviceInfo(string Firmware, int EngineCount, int ParameterC
     int GlobalCount, int StepCount, int EngineParameterStart, IReadOnlyList<string> Engines,
     int TrackCount, int ProtocolVersion)
 {
+    public bool HasSupportedTrackLayout => ProtocolVersion >= 9 &&
+        (ParameterCount == 61 && EngineParameterStart == 53 || ParameterCount == 71 && EngineParameterStart == 63);
+
     public static DeviceInfo Parse(EditorFrame frame)
     {
         if (frame.Command != 1) throw new FormatException("Expected INFO reply.");

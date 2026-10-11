@@ -23,7 +23,7 @@ public sealed partial class MainActivity
     TextView? performanceRegister;
     PerformanceSurfaceView? playingSurface;
     string performanceCheck="Use plain-note settings on FM1; Check destination detects extra hardware transforms.";
-    int PerformChannel=>connection.Snapshot.IsGenericMidi&&performOptions.ChannelOverride>=0?performOptions.ChannelOverride:state.SelectedTrack==3?9:state.SelectedTrack;
+    int PerformChannel=>connection.Snapshot.IsGenericMidi?(performOptions.ChannelOverride>=0?performOptions.ChannelOverride:state.SelectedTrack==3?9:state.SelectedTrack):connection.PerformanceChannels[state.SelectedTrack];
     int PerformOctave=>PerformanceHarmony.EffectiveOctave(performOptions.Octave,connection.HardwareOctave,performOptions.FollowHardwareOctave);
     string RegisterDescription=> $"{PerformanceHarmony.Names[performOptions.Key]} {performOptions.Scale} · oct {PerformOctave}\nBase {performOptions.Octave} · "+
         (connection.Snapshot.IsGenericMidi?"generic MIDI":performOptions.FollowHardwareOctave ? connection.HardwareOctave is {} offset ? $"FM1 {offset:+0;-0;0}" : "FM1 unavailable" : "app only");
@@ -86,7 +86,7 @@ public sealed partial class MainActivity
         connection.Performer.Failed+=OnPerformanceFailure;
         AddMidiInputControl();
         var o=performOptions;
-        performReadout=Label(connection.CanPerform?$"{(connection.Snapshot.IsGenericMidi?"Generic MIDI":"FM1 MIDI")} · channel {PerformChannel+1}":"Offline touch preview · connect MIDI for sound",12);performReadout.SetLines(2);content.AddView(performReadout);
+        performReadout=Label(connection.CanPerform?$"{(connection.Snapshot.IsGenericMidi?"Generic MIDI":"FM1 MIDI")} · channel {(PerformChannel<0?"OFF":(PerformChannel+1).ToString())}":"Offline touch preview · connect MIDI for sound",12);performReadout.SetLines(2);content.AddView(performReadout);
         var controls=new LinearLayout(this){Orientation=Orientation.Horizontal};
         void Control(string text,Action action){var b=new Button(this){Text=text,TextSize=12};b.Click+=(_,_)=>action();controls.AddView(b,new LinearLayout.LayoutParams(0,ViewGroup.LayoutParams.WrapContent,1));}
         Control(o.Surface.ToString(),()=>ChoosePerformance("Playing surface",Enum.GetNames<PerformSurface>(),(int)performOptions.Surface,i=>performOptions=performOptions with{Surface=(PerformSurface)i}));
@@ -115,7 +115,7 @@ public sealed partial class MainActivity
         var release=new Button(this){Text="Release / stop",TextSize=12};release.Click+=(_,_)=>StopPerformance();content.AddView(release);
         content.AddView(Label("Mod wheel · slide right for vibrato; release to reset",12));
         var modStrip=new PerformanceXyView(this,"MOD → · release resets");modulationSurface=modStrip;
-        modStrip.MoveMacro+=(pointer,x,y)=>PerformSafely(()=>{if(connection.CanPerform&&!connection.Macros.Active)connection.Modulation.Move(pointer,PerformChannel,(int)Math.Round(x*127));});
+        modStrip.MoveMacro+=(pointer,x,y)=>PerformSafely(()=>{if(connection.CanPerform&&PerformChannel>=0&&!connection.Macros.Active)connection.Modulation.Move(pointer,PerformChannel,(int)Math.Round(x*127));});
         modStrip.ReleaseMacro+=pointer=>PerformSafely(()=>connection.Modulation.Release(pointer));
         AddPerformanceGestureView(modStrip,64);
         string[] labels=PerformanceLabels();
@@ -196,11 +196,12 @@ public sealed partial class MainActivity
     {
         var o=performOptions;string owner=$"perform:{pointer}";
         if(!held){performFingers.Remove(pointer);if(!(o.Latch&&o.Surface==PerformSurface.Chords)){connection.Performer.Release(owner);if(performFingers.Count==0&&performReadout is not null)performReadout.Text="Released · last voicing available in touch preview.";}return;}
+        if(PerformChannel<0){if(performReadout is not null)performReadout.Text="FM1 track MIDI channel is OFF · enable it in GLO > MIDI.";return;}
         if(pointer>=0)performFingers[pointer]=(cell,touchVelocity);
         int velocity=Math.Clamp(o.Velocity*touchVelocity/100,1,127);LiveNote[] notes;LiveNote? bass=null;string name;
         if(o.Surface==PerformSurface.Chords){if(o.Latch&&pointer>=0&&freshChord)latchedOctave=PerformOctave;var chord=PerformanceHarmony.Chord(o.Key,o.Scale,o.Latch?latchedOctave??PerformOctave:PerformOctave,Mapping.Degree(cell),performShape,o.Inversion,o.VoiceLead,previousVoicing);previousVoicing=chord.Notes;
             notes=chord.Notes.Select(n=>new LiveNote(PerformChannel,n)).ToArray();name=chord.Name;
-            if(o.BassTrack>=0&&o.BassTrack!=state.SelectedTrack)bass=new(o.BassTrack,chord.Bass);
+            if(o.BassTrack>=0&&o.BassTrack!=state.SelectedTrack){int channel=connection.Snapshot.IsGenericMidi?o.BassTrack:connection.PerformanceChannels[o.BassTrack];if(channel>=0)bass=new(channel,chord.Bass);}
             if(o.Latch){owner="perform:latch";latchedDegree=cell;}
         } else {int pitch=o.Surface==PerformSurface.DrumPads?SlotBuilder.DrumLaneNote(cell):o.Surface==PerformSurface.Keyboard?Math.Clamp(12*(PerformOctave+1)+o.Key+cell,0,127):PerformanceHarmony.ScaleNote(o.Key,o.Scale,PerformOctave,cell);
             notes=[new(PerformChannel,pitch)];name=o.Surface==PerformSurface.DrumPads?$"Drum {cell+1}":PerformanceHarmony.Names[pitch%12];}

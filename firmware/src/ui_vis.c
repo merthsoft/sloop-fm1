@@ -16,13 +16,16 @@ static const char *const VIS_NAME[VIS_N] = {"OSCILLOSCOPE", "SPECTRUM", "SPECTRO
 #define VIS_FFT 512u
 #define VIS_SG_W 48u                                /* spectrogram: 48 columns of 5 px, 72 rows of 3 px */
 #define VIS_SG_H 72u
-static int16_t vis_re[VIS_FFT] __attribute__((section(".pool"))), vis_im[VIS_FFT] __attribute__((section(".pool")));
-/* These histories belong to mutually exclusive styles; clear on style changes. */
+_Static_assert(SCOPE_N == VIS_FFT, "shared scope/FFT snapshot size");
+#define vis_re ui_scope_snap
+static int16_t vis_im[VIS_FFT] __attribute__((section(".pool")));
+/* Histories share spare flash-driver RAM. Scope fills every sample; trail and
+ * Lissajous histories clear on entry before reading, so no boot zeroing needed. */
 static union {
     struct { int16_t l[VIS_FFT], r[VIS_FFT]; } scope;
     struct { uint32_t notes[48][3][4]; uint16_t drums[48]; } trails;
     uint8_t lj[3][256][2];                         /* three Lissajous frames */
-} vis_frame;
+} vis_frame __attribute__((section(".scratch")));
 #define vis_l vis_frame.scope.l
 #define vis_r vis_frame.scope.r
 #define vis_notes vis_frame.trails.notes

@@ -4,7 +4,7 @@ public enum HardwareGestureKind : byte { Fill, Punch, NextBarFill }
 public enum PerformanceStatus : byte { Ok, Malformed, Full, Missing }
 public sealed record PerformanceCapabilities(byte Schema, byte Flags, byte Owners, int LeaseMilliseconds, byte Effects)
 {
-    public bool Supported => Schema == 1 && Flags == 7 && Owners is > 0 and <= 8 && LeaseMilliseconds is >= 250 and <= 2000 && Effects == 16;
+    public bool Supported => Schema == 1 && Flags == 7 && Owners is > 0 and <= 8 && LeaseMilliseconds is >= 250 and <= 2000 && Effects is 16 or 27;
 }
 public static class PerformanceWire
 {
@@ -16,7 +16,7 @@ public static class PerformanceWire
     }
     public static byte[] Press(uint token, HardwareGestureKind kind, byte value = 0)
     {
-        if (kind > HardwareGestureKind.NextBarFill || (kind == HardwareGestureKind.Punch ? value >= 16 : value != 0)) throw new ArgumentOutOfRangeException(nameof(value));
+        if (kind > HardwareGestureKind.NextBarFill || (kind == HardwareGestureKind.Punch ? value >= 27 : value != 0)) throw new ArgumentOutOfRangeException(nameof(value));
         return [1, .. Token(token), (byte)kind, value];
     }
     public static PerformanceCapabilities ParseCapabilities(EditorFrame frame)

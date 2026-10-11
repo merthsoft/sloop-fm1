@@ -26,8 +26,8 @@ public sealed partial class MainActivity
         }
         Add("Hold fill", HardwareGestureKind.Fill, 0, 1000);
         Add("Next bar fill · keep held", HardwareGestureKind.NextBarFill, 0, 1001);
-        string[] effects = ["Loop 4", "Loop 8", "Loop 16", "Loop 32", "Stutter", "Reverse", "Tape stop", "Half speed", "Low pass", "High pass", "Phone", "Crush", "Alias", "Gate", "Echo", "Wobble"];
-        for (byte i = 0; i < effects.Length; i++) Add(effects[i], HardwareGestureKind.Punch, i, 1010 + i);
+        string[] effects = ["Loop 4", "Loop 8", "Loop 16", "Loop 32", "Stutter", "Reverse", "Tape stop", "Half speed", "Low pass", "High pass", "Phone", "Crush", "Alias", "Gate", "Echo", "Wobble", "Kill low", "Kill mid", "Kill high", "Rewind", "Octave up", "Flanger", "Auto-pan", "Freeze", "Loop 8T", "Mono", "Fade out"];
+        for (byte i = 0; i < Math.Min(effects.Length,connection.HardwareEffectCount); i++) Add(effects[i], HardwareGestureKind.Punch, i, 1010 + i);
     }
     async void HardwareAction(Func<Task> action)
     {

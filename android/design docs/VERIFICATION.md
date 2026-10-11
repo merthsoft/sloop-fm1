@@ -1,8 +1,31 @@
-# Integrated Merthsoft.7 — October 9, 2026
+# Integrated Merthsoft.7 â€” October 9, 2026
 
-## Independent starter rhythms — Merthsoft.19
+## Upstream integration — 2.6 Merthsoft.3
 
-All 17 explicit masks × 24 progressions × three modes × 64 steps are checked against
+Target build, HAL checks, RAM-driver call checks and 25-function hot-DSP inlining
+checks pass. Four weighted budgets were reviewed/refreshed for compiler branch
+layout and upstream ISR work, with unchanged hot call counts. Capacity and package hash are in RELEASE-NOTES.md. All 182 reviewed
+audio snapshots match; zero health, voice/routing or crash failures. Source-expression
+arp velocity explains the single reviewed upstream fixture difference; velocity 100
+counterfactual restores upstream's exact hash.
+
+FUN1–FUN6 conversion, shifted locks, instrument preferences, NOR replacement/cold
+reload, load undo/redo and non-zero-initialized scratch tests pass. Exact factory
+sound reconstruction covers all 512 records; concurrent voice ownership, factory
+wire downloads and 2,000 random editable kits pass. Upstream 27 FX, extended MIDI,
+UI fuzz, native libraries/rhythms, modulation, sequenced arp, scale mapping and editing
+regressions pass. Divide-by-zero sanitizer covers UI fuzz, sequencer, projects and
+live-use soak. Web backups/MIDI object 10 and all targeted companion domains pass;
+Android APK builds without warnings/errors. ASan was unavailable in this host setup.
+
+No phone or FM1 was flashed during this session. Timing from a host or static
+instruction/call counts cannot establish worst-case hardware audio timing.
+Older entries below are historical evidence, including retired FX modifier tests.
+
+
+## Independent starter rhythms â€” Merthsoft.19
+
+All 17 explicit masks Ã— 24 progressions Ã— three modes Ã— 64 steps are checked against
 attack masks, including BAR chord ties and no implicit arp pulse. Rotation/offset/
 syncopation preserve hit counts. Native PRESET input, preview selection, Apply and
 cross-track retention pass. Phone preview resets to ORIGINAL and Apply preserves
@@ -10,14 +33,14 @@ the native selection. Broad 20,000-frame UI regression passes. Target image 579,
 bytes; RAM/pool unchanged from the previous build. User reports song survived the
 latest hardware flash; this does not establish the cause of the earlier loss.
 
-## Modulation displays and save-loss investigation — Merthsoft.18
+## Modulation displays and save-loss investigation â€” Merthsoft.18
 
 - `tests/edit_tools_test.c`: square-wave bounds, zero-depth baselines and drawing that leaves audio modulation state unchanged; fresh waveform/locked-panel captures.
 - `tests/project_test.c`: production project capture, NOR A/B replacement of slot B, loss of RAM, import/apply and exact instrument/voice/key/note restoration pass. This models serialization/storage, not hardware writes or the complete boot/UI save path.
 - Modulation behavior and broad UI regressions pass. Target image 578,912 bytes; static RAM 96,244 bytes; pool 333,948 bytes. No DSP changes or new display allocation.
 - Reported hardware save loss is unresolved; the firmware updater's app-write window excludes project storage. Device save acknowledgement and exact missing preferences are still needed.
 
-## Scale guides and whole-pattern EDIT octave — Merthsoft.17
+## Scale guides and whole-pattern EDIT octave â€” Merthsoft.17
 
 Held LFO/ENV and synth EDIT show key-signature guides with physical-key hints;
 keyboard/erase/MIDI mapping remains unchanged. Focused real-UI tests cover E-minor
@@ -32,7 +55,7 @@ package is served on port 8803, SHA-256
 `2f8e1d51046a669618194feacf950f76b73f072cdc4a7fcf45d54ef6a0faaf66`.
 Physical hardware validation is not claimed.
 
-## Retained sequence-browser choices — Merthsoft.16
+## Retained sequence-browser choices â€” Merthsoft.16
 
 Native sequence choices initialize once and remain shared across synth tracks.
 The real UI regression checks retained root/scale/octave/mode/VLEAD/rhythm choices,
@@ -46,7 +69,7 @@ HAL and call-free 925-instruction RAM code checks pass. The installer at
 `05d8075ed7dc8cecb0dcd1c9e75bcc69af570e5600f2c8b4711fbdffca61d658`.
 Physical validation is not claimed.
 
-## Branch optimization — October 10, 2026
+## Branch optimization â€” October 10, 2026
 
 The optimized build is packaged as **2.5 Merthsoft.15**. It links at
 577,056 image bytes (816 fewer) and 96,212/98,304 static RAM bytes (1,536 fewer,
@@ -75,7 +98,7 @@ between trees, with no health/routing failures or crashes. No golden/budget upda
 was made. ASan is unavailable in this compiler; trap instrumentation is explicitly
 reported instead. Physical device and deadline/stack validation are not claimed.
 
-## Illustrated workflow documentation — October 10, 2026
+## Illustrated workflow documentation â€” October 10, 2026
 
 Fresh production-code host renders show STEP tie/rest painting, moving an onset
 inside its own tie chain, SEL latch controls, EDIT's load-undo affordance with real
@@ -94,7 +117,7 @@ README now describes current capabilities without feature release-version/date
 annotations; historical release and test evidence stays in the detailed records.
 Firmware and Android source are unchanged in this documentation checkpoint.
 
-## Merthsoft.14 modulation locks — October 10, 2026
+## Merthsoft.14 modulation locks â€” October 10, 2026
 
 Target image 577,872 bytes; static RAM 97,748/98,304 (556 bytes remaining);
 pool 333,948/344,064; RAM text 925 instructions/no calls; HAL access check clean.
@@ -109,7 +132,7 @@ reviewed. Documentation links and image assets checked. Android code is unchange
 no physical or new target ISR/stack measurements are claimed. Existing ISR
 cost-budget limitations remain recorded below.
 
-## Merthsoft.13 scale/MIDI grids and beat sync — October 9, 2026
+## Merthsoft.13 scale/MIDI grids and beat sync â€” October 9, 2026
 
 Target image 577,744 bytes; static RAM 97,748/98,304 (556 bytes remaining);
 pool 333,948/344,064; RAM text 925 instructions/no calls; HAL access check clean.
@@ -125,7 +148,7 @@ ABOUT navigation are exercised. Fresh SEL/vibrato/tremolo framebuffer renders we
 visually reviewed. No physical testing or new ISR deadline/stack measurements are
 claimed. Android/wire/project formats remain unchanged.
 
-## Merthsoft.12 modulation-panel lights — October 9, 2026
+## Merthsoft.12 modulation-panel lights â€” October 9, 2026
 
 Focused scale-light regression passes: all roots/scales and background modes/levels
 in PLAY/VIB/TREM, plus real button holds/releases with scale guide enabled/disabled.
@@ -134,7 +157,7 @@ Target image 576,008 bytes; static RAM 97,508/98,304; pool 333,948/344,064;
 RAM text 925 instructions/no calls; HAL check clean. Package SHA-256: `45bc0f09c4cbd6fce96e1f32dfebf5e62c6a0c488277f662f17a86a816bb0dc5`.
 No physical LED measurements or new ISR deadline measurements are claimed.
 
-## Merthsoft.11 performance modulation — October 9, 2026
+## Merthsoft.11 performance modulation â€” October 9, 2026
 
 Build passes: image 576,056 bytes; static RAM 97,508/98,304 (796 bytes remaining);
 pool 333,948/344,064; RAM text 925 instructions/no calls; HAL check clean.
@@ -144,7 +167,7 @@ normal taps, four waveform bounds, saved patch preservation, note gates, MIDI
 source ownership and STOP/panic cleanup. Broad UI/audio suite and 20,000-frame fuzz pass. Android code is unchanged. Hardware
 validation and new ISR deadline measurements are not claimed.
 
-## Merthsoft.10 modulation checkpoint — October 9, 2026
+## Merthsoft.10 modulation checkpoint â€” October 9, 2026
 
 Target build passes: image 575,360 bytes; static RAM 97,444/98,304 (860 bytes
 remaining); pool 333,948/344,064; RAM text 925 instructions/no calls; HAL check clean.
@@ -158,7 +181,7 @@ values/destinations and send-failure cleanup. Android APK build passes with zero
 warnings/errors. No firmware flash, phone installation or live gesture validation
 is claimed. Existing target ISR cost-budget failures remain unresolved.
 
-## Merthsoft.9 scale-guide corrections — October 9, 2026
+## Merthsoft.9 scale-guide corrections â€” October 9, 2026
 
 Target image 574,832 bytes; static RAM 97,412/98,304; pool 333,948/344,064;
 RAM text 925 instructions/no calls; HAL check passes. Package SHA-256: `3abc96bbf9ed7ba523b9b373a5de5a2ba8a0fc9302c0d6615b1fbaeda3bb7206`.
@@ -167,7 +190,7 @@ held display and knob alignment, and every background mode/level against all roo
 masks. Broad UI/audio suite and 20,000-frame fuzz pass. No physical flash/LED measurement
 is claimed; existing ISR budget limitations remain. Android/wire protocol are unchanged.
 
-## Merthsoft.8 scale-light checkpoint — October 9, 2026
+## Merthsoft.8 scale-light checkpoint â€” October 9, 2026
 
 Target build passes: image 574,720 bytes; static RAM 97,412/98,304; pool
 333,948/344,064; RAM text 925 instructions/no calls; HAL access check clean.
@@ -188,7 +211,7 @@ and documents the idle Song Journey capture accurately.
 - `build/host/seq_arp_expression-integration7.log` and `seq2-integration7.log`: live/sequence velocity, selectors, PULSE collisions, release/route/tie/recording lifecycles and retained sequencer behavior.
 - `build/host/sequence_starters_ui-integration7.log`: preview state is byte-identical across internal SELECT-knob page navigation; musical changes still release audition. Entry, hold, replacement, metadata undo and transport/physical takeover checks retained.
 - `build/host/editor_musical_starters-integration7.log`: real production generator, request validation, leased audition, disconnect/reset/expiry, MIDI and physical takeover, held-input refusal, per-track panic bookkeeping, stale selection and hardware undo. Command 74 is independently retained in the chat's focused check.
-- `build/host/ui_pages-integration7.log`: broad UI/audio regression and 20,000-frame fuzz pass. `build/merthsoft7-web.log`: browser protocol/updater tests pass; both protocol 13 and 14 relocate SYN commands to 80–84.
+- `build/host/ui_pages-integration7.log`: broad UI/audio regression and 20,000-frame fuzz pass. `build/merthsoft7-web.log`: browser protocol/updater tests pass; both protocol 13 and 14 relocate SYN commands to 80â€“84.
 - `build/merthsoft7-budget.log`: inherited target ISR static budget still fails (34,943 versus 174); previous Merthsoft.6 baseline was 34,612. No budget thresholds were changed. These static counts are not measured real-time deadline evidence. New expression storage is bounded; memory/pool checks are not a complete stack/high-water measurement.
 - Signed APK installed on Pixel serial 36121JEHN07361. Cold launch returns PID 11731; no fatal crash in filtered AndroidRuntime/DOTNET/monodroid log. System UI hierarchy confirms the phone is locked, so new screen interaction, controller hardware input and phone/FM1 round-trip audition are not claimed. Existing hardware acceptance remains accepted for earlier behavior.
 - Native README frames regenerated from the current host UI. Existing October 9 fresh Pixel screenshots remain the earlier README capture checkpoint. Local documentation links/images checked; only existing GitHub-relative issues/releases links are outside the filesystem.
@@ -196,7 +219,7 @@ and documents the idle Song Journey capture accurately.
 
 ## Merthsoft.6 checkpoint
 
-# Tie/rest painting and native starters — October 9, 2026
+# Tie/rest painting and native starters â€” October 9, 2026
 
 **2.5 Merthsoft.6** target build passes: image 571,472 bytes, RAM 97,348/98,304,
 pool 333,948/344,064, RAM text 925 instructions/no calls and HAL access checks clean.
@@ -256,7 +279,7 @@ were not removed or relaxed.
 
 ---
 
-# Black-key punch FX verification — October 9, 2026
+# Black-key punch FX verification â€” October 9, 2026
 
 **2.5 Merthsoft.3** uses the existing ring/DSP with no extra sample buffers.
 - `build/punch-mods-final.log`: all 16 effects x 10 modifier combinations, audible changes,
@@ -277,7 +300,7 @@ remain unresolved; host CPU checks do not establish target audio deadline margin
 
 ---
 
-# Manual ARP latch verification — October 9, 2026
+# Manual ARP latch verification â€” October 9, 2026
 
 **2.5 Merthsoft.2**: `build/arp-latch-before.log` reproduces failure to capture three piano
 notes with CHORD OFF/ARP ON. `build/arp-latch-after.log` passes capture, one toggle per hold,
@@ -290,7 +313,7 @@ Earlier broader merge checks and their limitations follow.
 
 ---
 
-# Upstream 2.5 merge verification — October 8, 2026
+# Upstream 2.5 merge verification â€” October 8, 2026
 
 Release **2.5 Merthsoft.1** builds successfully: image 578,152 bytes, RAM 97,108/98,304,
 pool 333,948/344,064; RAM-text and HAL checks pass. The leading version identifies upstream;
@@ -308,7 +331,7 @@ pool 333,948/344,064; RAM-text and HAL checks pass. The leading version identifi
   new assertions verify 48 kHz capture negotiation cannot reset/change 44.1 kHz playback.
 - `build/merge-main-ui-final.log`: final UI input/render/fuzz and persisted visualizer IDs.
 - `build/merge-main-web-tests.log`: full editor/sample/package/updater simulations pass;
-  protocol 13 routes SYN commands 80–84 without consuming companion IDs 72–75.
+  protocol 13 routes SYN commands 80â€“84 without consuming companion IDs 72â€“75.
 
 The historical target ISR static estimate is compiler/inlining-sensitive and remains above
 its old budget. It has not been reset to conceal the failure; actual target timing needs
@@ -317,7 +340,7 @@ was performed for this merge. Earlier device observations below are historical e
 
 ---
 
-# Current verification — October 8, 2026
+# Current verification â€” October 8, 2026
 
 Firmware 2.4.16 adds whole-project load undo/redo. Assertion-enabled, undefined-behavior
 checked project tests exercise full capture/exchange/apply, repeated direction rejection,

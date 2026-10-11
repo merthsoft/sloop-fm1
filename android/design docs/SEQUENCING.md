@@ -65,11 +65,11 @@ operations in the table are not yet all exposed as Android controls.
 
 Supply per-track capability identity, lockable IDs and engine-specific ranges. Unknown lock
 ranges and invalid values reject rather than clamp. This firmware checkout uses TFLT=50,
-STRUM=51, VLEAD=52 and engine IDs 53..60, newer than the protocol prose's older 50..57 range.
+STRUM=51, VLEAD=52 and engine IDs 53..60 (legacy) or 63..70 (upstream 2.6), newer than the protocol prose's older 50..57 range.
 Stable IDs are app-owned; readback reconciles them by physical slot/lane and lock key.
 Native wire adapters preserve inactive slots/lanes and supported lock data. Export of a
 complete firmware project, including unused lock padding, remains separate work. The
-current native adapter requires protocol 9, 61 parameters and engine start 53; old layouts reject.
+current native adapter requires protocol 9 or later and an exact supported layout: 61 parameters/engine start 53 or 71 parameters/engine start 63. Mixed and older layouts reject before writes. Lockable IDs follow the negotiated engine start; 2.6 insert values 54–57 can be locked. Native workspace snapshots retain all 71 parameters.
 
 The package-free [test project](../src/Sloop.Sequencing.Tests/README.md) passes 20 scenarios
 covering preservation, identities, ranges, capacities, locks, stale proposals, compound

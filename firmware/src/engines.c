@@ -6,8 +6,8 @@
  * engine at a time: on a switch the old engine fades out, its voices end, then the new one starts, voice.c
  * engine_block). The first engine to ask for it after another one gets it cleared, as at power-on. */
 static void *eng_arena_of(const track_t *t, uint32_t eng);
-static inline int32_t voice_amp(int32_t s, const vmod_t *m, uint32_t i) { return mulq15(mulq15(s, amp_at(m, i)), VOICE_FS); }
-static inline int32_t soft_knee(int32_t y, int32_t k)   /* linear up to k, then only the peaks saturate */
+DSP_INLINE int32_t voice_amp(int32_t s, const vmod_t *m, uint32_t i) { return mulq15(mulq15(s, amp_at(m, i)), VOICE_FS); }
+DSP_INLINE int32_t soft_knee(int32_t y, int32_t k)   /* linear up to k, then only the peaks saturate */
 {
     int32_t a = y < 0 ? -y : y;
     if (a <= k)

@@ -69,7 +69,7 @@ static const uint32_t DRW_FOLD_LIM[DRW_NP] = {
     DRW_FOLD * 2u, DRW_FOLD / 3u * 2u, DRW_FOLD, DRW_FOLD / 2u, DRW_FOLD / 3u, DRW_FOLD / 4u, DRW_FOLD / 5u,
     DRW_FOLD / 6u, DRW_FOLD / 8u,
 };
-static inline uint32_t drw_ratio(uint32_t k, uint32_t x)
+DSP_INLINE uint32_t drw_ratio(uint32_t k, uint32_t x)
 {
     switch (k) {
     case 0: return x >> 1;

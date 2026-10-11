@@ -10,7 +10,7 @@ static const char *const N_PD_WAVE[] = {"SAW", "SQR", "PLS", "DSIN", "SPLS", "RS
 static const char *const N_PD_WAVE2[] = {"-", "SAW", "SQR", "PLS", "DSIN", "SPLS", "RSAW", "RTRI", "RTRP"};
 static const char *const N_PD_LINE[] = {"MIX", "RING"};
 
-static inline int32_t pd_cos(uint32_t ph16)             /* -cos, Q15, from the 16-bit PD phase */
+DSP_INLINE int32_t pd_cos(uint32_t ph16)             /* -cos, Q15, from the 16-bit PD phase */
 {
     return -sine_i(((ph16 & 0xFFFFu) << 16) + 0x40000000u);
 }
@@ -23,7 +23,7 @@ typedef struct {
     uint32_t k0, k1;
 } pd_t;
 
-static inline uint32_t pd_slope(uint32_t span, uint32_t len) { return (span << 16) / (len ? len : 1u); }
+DSP_INLINE uint32_t pd_slope(uint32_t span, uint32_t len) { return (span << 16) / (len ? len : 1u); }
 
 static void pd_setup(pd_t *b, uint32_t w, uint32_t dcw)
 {

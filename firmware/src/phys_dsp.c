@@ -68,10 +68,10 @@
 #define PX_ONE (1 << 20)         /* signal 1.0 */
 
 /* ---------------------------------------------------------------- math --- */
-static inline int32_t px_m(int32_t a, int32_t b, int sh) { return (int32_t)(((int64_t)a * b) >> sh); }
-static inline int32_t px_clamp(int32_t v, int32_t lo, int32_t hi) { return v < lo ? lo : v > hi ? hi : v; }
+DSP_INLINE int32_t px_m(int32_t a, int32_t b, int sh) { return (int32_t)(((int64_t)a * b) >> sh); }
+DSP_INLINE int32_t px_clamp(int32_t v, int32_t lo, int32_t hi) { return v < lo ? lo : v > hi ? hi : v; }
 
-static inline uint32_t px_rand(uint32_t *s)              /* xorshift32 */
+DSP_INLINE uint32_t px_rand(uint32_t *s)              /* xorshift32 */
 {
     uint32_t x = *s;
     x ^= x << 13;
@@ -201,7 +201,7 @@ static void px_csvf_coef(px_csvf_t *c, uint32_t f, int32_t res, int32_t pre_driv
 }
 
 /* one pass of the double-sampled SVF; returns band */
-static inline void px_csvf_pass(const px_csvf_t *c, px_csvf_st_t *s, int32_t in)
+DSP_INLINE void px_csvf_pass(const px_csvf_t *c, px_csvf_st_t *s, int32_t in)
 {
     int32_t b = s->band, notch = in - px_m(c->damp, b, 28), high, b3;
     s->low += px_m(c->freq, b, 30);
@@ -584,7 +584,7 @@ static __attribute__((noinline)) void px_string_block(px_string_blk_t *B, px_str
     }
 }
 
-static inline int32_t px_hermite(const int32_t *l, uint32_t wp, uint32_t delay)   /* DelayLine::ReadHermite */
+DSP_INLINE int32_t px_hermite(const int32_t *l, uint32_t wp, uint32_t delay)   /* DelayLine::ReadHermite */
 {
     uint32_t t = wp + (delay >> 16);
     int32_t xm1 = l[(t - 1u) & PX_LMASK], x0 = l[t & PX_LMASK], x1 = l[(t + 1u) & PX_LMASK], x2 = l[(t + 2u) & PX_LMASK];

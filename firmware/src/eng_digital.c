@@ -19,13 +19,13 @@ static void digital_note_on(track_t *t, voice_t *v)
 }
 
 /* operator increment = carrier * ratio (Q8) without 32-bit overflow; kept below Nyquist */
-static inline uint32_t fm_ratio_inc(uint32_t inc, uint32_t r)
+DSP_INLINE uint32_t fm_ratio_inc(uint32_t inc, uint32_t r)
 {
     uint32_t lim = 0x73000000u / r;                      /* (inc >> 8) * r must stay < 0x73000000 */
     return (inc >> 8) > lim ? 0x73000000u : (inc >> 8) * r;
 }
 
-static inline uint32_t digital_mod(int32_t x, int32_t idx) { return (uint32_t)(x * idx) * 2065u; }
+DSP_INLINE uint32_t digital_mod(int32_t x, int32_t idx) { return (uint32_t)(x * idx) * 2065u; }
 
 static void digital_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const vmod_t *m)
 {

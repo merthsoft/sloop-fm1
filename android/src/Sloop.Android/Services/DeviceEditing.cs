@@ -9,7 +9,7 @@ public sealed partial class Fm1Connection
     void ValidateSceneTracks(IEnumerable<int> tracks)
     {
         var info=Snapshot.Device??throw new IOException("Connect a physical FM1 first.");
-        if(info.ProtocolVersion<9||info.EngineParameterStart!=53||info.ParameterCount!=61||!info.Engines.Contains("FM6"))
+        if(!info.HasSupportedTrackLayout||!info.Engines.Contains("FM6"))
             throw new IOException("Unsupported FM6 scene capabilities or parameter layout.");
         var values=tracks.ToArray();
         if(values.Length==0||values.Distinct().Count()!=values.Length||values.Any(t=>t<0||t>2||t>=info.TrackCount))

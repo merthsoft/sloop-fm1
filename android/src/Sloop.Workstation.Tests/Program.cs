@@ -69,6 +69,16 @@ try {
     var moved=await HardwarePatterns.Apply(client,info,move,CancellationToken.None);
     Check(moved.Tracks[0].Locks.Single().Step.Value==4&&moved.Tracks[0].Locks.Single().Value==70,"native move transfers lock delete/set and verifies value");
     Check(((SynthStep)moved.Tracks[0].Steps[4]).Slots[3].Pitch==99&&((SynthStep)moved.Tracks[0].Steps[0]).Count==0,"native complete move retains dormant slot content");
+    transport.ParameterCount=71;
+    var info26=info with { Firmware="SLOOP 2.6 Merthsoft", ParameterCount=71, EngineParameterStart=63, GlobalCount=45, ProtocolVersion=14 };
+    var native26=await HardwarePatterns.Read(client,info26,null,CancellationToken.None);
+    Check(native26.Tracks[0].Parameters.Count==71 && native26.Tracks[0].Parameters[70]==123,"2.6 native read retains all 71 parameters including shifted engine tail");
+    Check(native26.Tracks[0].Capabilities.LockableParameters.Contains(63) && native26.Tracks[0].Capabilities.LockableParameters.Contains(57) && !native26.Tracks[0].Capabilities.LockableParameters.Contains(53) && !native26.Tracks[0].Capabilities.LockableParameters.Contains(59),"2.6 locks use shifted engines and insert values, excluding insert type and sync");
+    WorkspaceFiles.SaveHardware(nativePath,native26);var restored26=WorkspaceFiles.LoadHardware(nativePath);
+    Check(restored26.Tracks[0].Parameters[70]==123 && restored26.Tracks[0].Capabilities.LockableParameters.SetEquals(native26.Tracks[0].Capabilities.LockableParameters),"2.6 native snapshot round trip preserves new parameters and lock IDs");
+    int writes26=transport.NativeWrites;
+    try {await HardwarePatterns.Read(client,info26 with { EngineParameterStart=53 },null,CancellationToken.None);throw new Exception("mixed layout accepted");}catch(IOException){checks++;}
+    Check(writes26==transport.NativeWrites,"unsupported mixed parameter layout fails before writes");
     Check(SlotImages.Read(transport.Slot).Data.SequenceEqual(kit.Artifact.Data),"restore reader validates and retains ADPCM");
     var cMajor=PerformanceHarmony.Chord(0,PerformanceScale.Major,3,0,ChordShape.Diatonic,0,false);
     Check(cMajor.Name=="C"&&cMajor.Notes.SequenceEqual(new[]{48,52,55})&&cMajor.Bass==36,"diatonic root voicing and bass");
@@ -149,6 +159,7 @@ sealed class FirmwareTransport:IMidiTransport,IDisposable
     public int NativeWrites;
     readonly HardwareStep[][] native=Enumerable.Range(0,4).Select(t=>Enumerable.Range(0,64).Select(_=>HardwareEditor.Blank(t==3)).ToArray()).ToArray();
     readonly Dictionary<(int Track,int Step,int Parameter),int> locks=new(){[(0,0,0)]=70};
+    public int ParameterCount {get;set;}=61;
     public FirmwareTransport()
     {
         var s=(SynthStep)native[0][0];native[0][0]=s with{Count=1,Time=StepTime.Note,Slots=s.Slots.SetItem(0,s.Slots[0] with{Pitch=60}).SetItem(3,s.Slots[3] with{Pitch=99,Level=HitLevel.Hard,Ratchet=4})};
@@ -161,7 +172,7 @@ sealed class FirmwareTransport:IMidiTransport,IDisposable
         switch(command) {
             case 5:r=[a[0],a[1],0,..EditorCodec.EncodeValue(-8192),..EditorCodec.EncodeValue(8191),..EditorCodec.EncodeValue(0),(byte)'P',0,0];break;
             case 27:if(a.Length>0)Selected=a[0];r=[Selected,4];break;
-            case 29:r=[a[0],(byte)(a[0]==3?0:9),0,..Enumerable.Range(0,61).SelectMany(i=>EditorCodec.EncodeValue(i==29?16:0))];break;
+            case 29:r=[a[0],(byte)(a[0]==3?0:9),0,..Enumerable.Range(0,ParameterCount).SelectMany(i=>EditorCodec.EncodeValue(i==29?16:i==70?123:0))];break;
             case 30:if(a.Length>2){native[a[0]][a[1]]=HardwareSteps.DecodeSynth(a.AsSpan(2),(SynthStep)native[a[0]][a[1]],native[a[0]][a[1]].Micro,native[a[0]][a[1]].Fill);NativeWrites++;}r=[a[0],a[1],..HardwareSteps.Encode(native[a[0]][a[1]])];break;
             case 33:if(a.Length>1){native[3][a[0]]=HardwareSteps.DecodeDrum(a.AsSpan(1),(DrumStep)native[3][a[0]],native[3][a[0]].Micro,native[3][a[0]].Fill);NativeWrites++;}r=[a[0],..HardwareSteps.Encode(native[3][a[0]])];break;
             case 39:r=[a[0],..native[a[0]].Select(s=>(byte)(s.Micro.Value+64))];break;

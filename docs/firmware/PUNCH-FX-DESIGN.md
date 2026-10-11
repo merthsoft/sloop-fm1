@@ -1,8 +1,25 @@
-# Punch-in FX black-key controls
+# Punch-in effects and historical black-key controls
+
+## Current merged behavior
+
+Upstream’s 27 punch effects replace the fork’s black-key modifiers by user choice.
+The sixteen white-key IDs retain their original mapping; eleven black keys select
+KILL LOW/MID/HIGH, REWIND, OCT UP, FLANGER, AUTO-PAN, FREEZE, LOOP 8T, MONO and
+FADE OUT. FX + OCT− / OCT+ are momentary reverb / echo throws. HOME locks the FX
+panel open, not a selected effect: effect keys remain momentary. There is no local
+black-key modifier latch, rate multiplier, intensity toggle or retrigger control.
+
+Remote performance retains its established sixteen-effect contract and leases;
+physical effects have priority, and STOP/disconnect/expiry clean up remote ownership.
+Merged UI tests cover white and black effect selection, key LEDs, panel lock,
+release and 20,000-frame fuzzing. Target memory fitting and release validation remain
+pending; the historical verification below describes the previous implementation.
+
+## Superseded modifier design (historical)
 
 Implemented in **2.5 Merthsoft.3**, October 9, 2026. The 16 white-key effect IDs and
-remote performance protocol remain unchanged. See [the playing guide](../../GUIDE.md#black-key-punch-modifiers-25-merthsoft3)
-for the physical mapping; octave numbers use the FM1 labels.
+remote performance protocol remain unchanged. This section records the former implementation; its modifier mapping is no longer
+active. Current controls are in [the playing guide](../../GUIDE.md#punch-in-effects).
 
 ## Interaction and ownership
 

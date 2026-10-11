@@ -65,7 +65,7 @@ static const int16_t TRIO_MIX[4][3] = {{0, 0, 1024}, {0, 1400, 0}, {1024, 0, -10
  * fraction x (Q15) of a sample before sample i: half the step is spread over the sample before
  * it (cr[0]) and sample i (cr[1]), with the usual quadratic residual; cr = the block's
  * corrections + i */
-static inline void trio_blep(int32_t j, int32_t x, int32_t g, int32_t *cr)
+DSP_INLINE void trio_blep(int32_t j, int32_t x, int32_t g, int32_t *cr)
 {
     int32_t h = ((j >> 1) * g) >> 15, y = 32767 - x;
     cr[0] += (h * ((x * x) >> 15)) >> 15;
@@ -73,7 +73,7 @@ static inline void trio_blep(int32_t j, int32_t x, int32_t g, int32_t *cr)
 }
 
 /* how far (Q15 of one sample) a phase is past a step it crossed: past / inc */
-static inline int32_t trio_frac(uint32_t past, uint32_t inc)
+DSP_INLINE int32_t trio_frac(uint32_t past, uint32_t inc)
 {
     uint32_t d = inc >> 15, x;
     if (!d)
@@ -87,12 +87,12 @@ typedef struct {
     int32_t pdc, psm;            /* means of the naive pulse and of pulse AND saw (taken off) */
 } trio_pw_t;
 
-static inline int32_t trio_tri16(uint32_t ph)          /* the 16-bit triangle of a combined wave */
+DSP_INLINE int32_t trio_tri16(uint32_t ph)          /* the 16-bit triangle of a combined wave */
 {
     return (int32_t)(((ph & 0x80000000u) ? ~ph : ph) >> 15) & 0xFFFF;
 }
-static inline int32_t trio_st(uint32_t ph) { return ((int32_t)(ph >> 16) & trio_tri16(ph)) - 16384; }
-static inline int32_t trio_ps(uint32_t ph, const trio_pw_t *q)
+DSP_INLINE int32_t trio_st(uint32_t ph) { return ((int32_t)(ph >> 16) & trio_tri16(ph)) - 16384; }
+DSP_INLINE int32_t trio_ps(uint32_t ph, const trio_pw_t *q)
 {
     return (ph >= q->pw ? (int32_t)(ph >> 16) : 0) - q->psm;
 }

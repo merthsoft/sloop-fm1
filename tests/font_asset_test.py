@@ -30,7 +30,7 @@ else:
 
 # Independent BDF oracle. Check the font geometry explicitly instead of sharing
 # the generator's rendering/packing implementation with its regression test.
-bdf = (ROOT / "assets/fonts/ter-u16n.bdf").read_text().splitlines()
+bdf = (ROOT / "assets/fonts/ter-u16b.bdf").read_text().splitlines()
 assert "FONTBOUNDINGBOX 8 16 0 -4" in bdf
 height = 16
 by_code = {}
@@ -50,7 +50,7 @@ for record in "\n".join(bdf).split("STARTCHAR ")[1:]:
     by_code[code] = (advance, 12, pixels)
 glyphs = [by_code.get(code, by_code[63]) for code in range(32, 256)]
 header = (out / "felucca_font.h").read_text()
-assert "#define FONT_DATA_BITS 1" in header, "regenerate firmware font assets before testing"
+assert re.search(r"FONT_S = .*?, 1 \};", header), "regenerate packed firmware font assets before testing"
 data = bytes(int(v, 16) for v in re.findall(r"0x([0-9a-f]{2})", re.search(
     r"FONT_S_DATA\[.*?\] = \{(.*?)\};", header, re.S).group(1)))
 offsets = list(map(int, re.search(r"FONT_S_OFF\[.*?\] = \{(.*?)\};", header, re.S).group(1).split(",")))
@@ -66,13 +66,13 @@ ref += ["};"]
 (out / "font_reference.h").write_text("\n".join(ref))
 
 # Exercise old-header compatibility in the same C renderer test: reconstruct
-# the previous four-bit rows directly from the original BDF, without a marker.
+# the previous four-bit rows directly from the original BDF, with a four-bit per-font marker.
 legacy = bytearray()
 for _, width, pixels in glyphs:
     for row in range(height):
         for col in range(0, width, 2):
             legacy.append((pixels[row * width + col] << 4) | pixels[row * width + col + 1])
-legacy_header = re.sub(r"#define FONT_DATA_BITS 1\n", "", header)
+legacy_header = header.replace(", 1 };", ", 0 };")
 legacy_header = re.sub(r"FONT_S_DATA\[.*?\] = \{.*?\};", "FONT_S_DATA[21504] = {" +
                        ",".join(str(v) for v in legacy) + "};", legacy_header, flags=re.S)
 legacy_header = re.sub(r"FONT_S_OFF\[.*?\] = \{.*?\};", "FONT_S_OFF[224] = {" +

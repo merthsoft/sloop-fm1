@@ -168,13 +168,10 @@ the selected synth's SEL-page ROOT/SCALE, with dim scale notes and bright played
 notes. Off-scale keys stay dark until played. CHR lights all twelve pitch classes.
 The guide is visual: it does not itself quantize or transpose your playing.
 
-| Scale-aware SEL grid | Optional incoming MIDI mapping |
-| --- | --- |
-| <img src="../../assets/screens/merthsoft/guide/feature-scale-grid.png" width="240" alt="C minor grid with Eb Ab Bb labels"> | <img src="../../assets/screens/merthsoft/guide/feature-midi-scale.png" width="240" alt="SYSTEM MIDI SCALE set to KEYBOARD"> |
+<img src="../../assets/screens/merthsoft/guide/feature-scale-grid.png" width="240" alt="C minor grid with Eb Ab Bb labels">
 
 Held SEL shows mapped pitches and appropriate accidentals; LFO/ENV show modulation waveforms with a compact key guide.
-**KEYS = WHITE** walks scale degrees. Optional **HOME menu → SYSTEM → MIDI
-SCALE → KEYBOARD** maps incoming USB/TRS synth pitches by that receiving track's
+**KEYS = WHITE** walks scale degrees. Optional **HOME menu → MIDI SCALE → KEYBOARD** (knob 1) maps incoming USB/TRS synth pitches by that receiving track's
 keyboard settings. It defaults OFF, useful for phones/DAWs already sending the
 desired pitches. Note-offs retain their original mapping across setting changes.
 This option maps individual pitches; it does not generate chord voicings or turn
@@ -215,13 +212,19 @@ on ordinary release. Details: [performance modulation](MODULATION-WHEEL.md).
 
 ## Punch effects, fills and project safety
 
-<img src="../../assets/screens/merthsoft/guide/punch-modifiers.png" width="240" alt="Punch panel showing black-key rate strength blend latch and retrigger controls">
+Hold **FX** and a keyboard key for one of **27 mix-wide punch effects**. The
+sixteen white keys retain their loops, stutter, reverse, tape stop, half speed,
+filters, phone, crush, alias, gate, echo and wobble. Eleven black keys add
+**KILL LOW/MID/HIGH, REWIND, OCT UP, FLANGER, AUTO-PAN, FREEZE, LOOP 8T, MONO
+and FADE OUT**. FX + held **OCT− / OCT+** adds reverb / echo throws. Release returns
+the normal mix; HOME can lock the FX control panel open, freeing the FX-button hand.
+These act on the mix, whereas LFO/ENV modulation acts on one synth.
+See the [physical effect mapping](../../GUIDE.md#punch-in-effects).
 
-The 16 white-key punch effects gain black-key controls for **slow/fast rate,
-triplets, gentle/extreme strength, blend, latch and retrigger**. Hold FX and choose
-an effect, then use its black controls; the panel shows their labels. G#4 toggles
-effect latch. These effects act on the mix, whereas LFO/ENV modulation acts on one
-synth. STOP/panic clears punch latch. See [physical mapping](../../GUIDE.md#black-key-punch-modifiers-25-merthsoft3).
+The old black-key modifier controls and their screenshot are historical. Current
+black keys select effects directly, as in upstream; they do not toggle effect latch.
+The phone's established performance protocol continues to address the sixteen
+original effects. See [punch design and historical context](PUNCH-FX-DESIGN.md).
 
 Held GLO's **FILL** key enables existing fill-conditioned steps; **FILL BAR** queues
 the next bar. They do not invent a new drum beat. The phone can control these and
@@ -290,9 +293,14 @@ same dialog generates a separate editable draft. Neither workflow generates WAV
 audio; the connected instrument supplies sound. The pictured proposal was
 discarded after capture.
 
-Lossless one-bit font packing saves **16,128 bytes** of bitmap storage with the
-same pixels; the splash is retained. No extra full-pattern buffers were added for
-the ROM starter libraries or live modulation locks.
+Packed one-bit fonts keep the refreshed bold lettering compact. Factory drum
+sounds share losslessly identical parameter bases, with each sound’s exact level
+retained separately. Only note-on expands a factory record; audio rendering reads
+a stable record belonging to that voice. Six 22-byte records add 132 bytes of RAM,
+while the bank representation saves 5,158 bytes before decoder code. Editable SYN
+kits, downloaded sounds and saved projects retain their existing expanded formats.
+Startup uses a firmware-title screen instead of the bitmap splash. No additional
+full-pattern buffer is needed for ROM starter libraries or modulation locks.
 
 Native images in this guide are fresh **production-code framebuffer
 renders**; Android images are fresh captures from the connected Pixel. Both were

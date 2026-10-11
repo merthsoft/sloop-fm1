@@ -14,7 +14,7 @@ existing upstream website artifact, not the current Merthsoft build.
 - [Drum grooves](DRUM-GROOVES-DESIGN.md)
 - [Rhythm shaping](RHYTHM-SHAPING-DESIGN.md)
 - [Chord and arpeggio architecture](CHORD-ARPEGGIO-DESIGN.md) — includes future work
-- [Punch FX](PUNCH-FX-DESIGN.md)
+- [Punch FX and superseded modifier design](PUNCH-FX-DESIGN.md)
 - [USB playback](USB-PLAYBACK-IMPLEMENTATION.md)
 - [Lossless font packing](FONT-PACKING-DESIGN.md)
 - [Measured branch optimization](OPTIMIZATION.md)

@@ -37,12 +37,12 @@ mkdir -p build/gen
 [ build/gen/felucca_fm6.h -nt tools/gen_fm6_patches.py ] || python3 tools/gen_fm6_patches.py build/gen/felucca_fm6.h
 
 # Font packing uses the original BDF pixels as its oracle, then exercises the
-# actual C renderer with both packed assets and the legacy unmarked format.
+# actual C renderer with both packed assets and the four-bit per-font format.
 python3 tests/font_asset_test.py
 $CC -Ibuild/host/font-assets -Ifirmware/src -o "$OUT/font_render_test" tests/font_render_test.c
 run "packed font: identical pixels, metrics, scaling and clipping" "$OUT/font_render_test"
 $CC -Ibuild/host/font-assets/legacy -Ibuild/host/font-assets -Ifirmware/src -o "$OUT/font_render_legacy_test" tests/font_render_test.c
-run "legacy font header compatibility" "$OUT/font_render_legacy_test"
+run "four-bit font renderer compatibility" "$OUT/font_render_legacy_test"
 $CC -o "$OUT/rhythm_shapes_test" tests/rhythm_shapes_test.c
 run "rhythm shapes preserve hits, wrap rotation, syncopate and offset safely" "$OUT/rhythm_shapes_test"
 
@@ -84,8 +84,12 @@ $CC -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/userkit_test" test
 run "user drum kits (KIT USR1..USR3): a user slot's sounds on the drum lanes" "$OUT/userkit_test"
 $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/dsyn_test" tests/dsyn_test.c -lm
 run "SYN1..SYN4 drum kits and the editor's DRUM SYNTH commands (v10)" "$OUT/dsyn_test"
+$CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/font_test" tests/font_test.c
+run "the screen font at 1 bit a pixel: every glyph, the same pixels as 2.5" "$OUT/font_test"
 $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/punch_test" tests/punch_test.c -lm
-run "punch-in FX: 16 effects, bounded, dry after release, FX-held keys" "$OUT/punch_test" "$OUT/punch-fx.wav"
+run "punch-in FX: 27 effects (11 on the black keys), bounded, dry after release, FX-held keys" "$OUT/punch_test" "$OUT/punch-fx.wav"
+$CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/fx251_test" tests/fx251_test.c -lm
+run "after Felucca 1.4 / 1.5: INSERT, filter TYPE, ENV SYNC, LFO 2, drum mutes, MIDI LEARN" "$OUT/fx251_test"
 
 $CC -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/performance_remote_test" tests/performance_remote_test.c
 run "remote performance: wire validation, leases and owner cleanup" "$OUT/performance_remote_test"
@@ -185,7 +189,10 @@ run "regression: golden renders, health, voices, CPU budget" "$OUT/regress" test
 run "regression: target cost of the render loops" python3 tests/target_budget.py \
     build/felucca.dis tests/target_budget.txt
 
+run "target DSP: preserve per-sample helper inlining" python3 tests/target_inlining_test.py build/felucca.dis
+
 run "installer CLI (fm1_install.py) against a simulated FM-1" python3 tests/install_test.py
+run "the offline editor (one file, nothing next to it)" python3 tests/site_test.py
 
 if command -v node >/dev/null 2>&1; then
     run "web pages: editor protocol, samples, packages, update protocol" node web/test_web.mjs

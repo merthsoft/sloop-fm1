@@ -5,6 +5,7 @@ public sealed partial class Fm1Connection
 {
     HardwarePerformanceSession? hardwarePerformance;
     CancellationTokenSource? hardwareRenewal;
+    public byte HardwareEffectCount => hardwarePerformance?.EffectCount ?? 0;
     public bool CanPerformHardware => !Snapshot.Busy && !Snapshot.IsSimulated && !Snapshot.IsGenericMidi && hardwarePerformance?.Available == true;
     public async Task InitializeHardwarePerformanceAsync(EditorClient editor, CancellationToken token)
     {

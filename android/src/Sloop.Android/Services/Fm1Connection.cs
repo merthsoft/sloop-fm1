@@ -24,6 +24,7 @@ public sealed partial class Fm1Connection
     private int? deviceId;
     public ConnectionSnapshot Snapshot { get; private set; } = new("Offline · FM1 not connected", false, null, null, []);
     public event Action? Changed;
+    public IReadOnlyList<int> PerformanceChannels { get; private set; } = new[] {0,1,2,9};
 
     private Fm1Connection(Context context)
     {
@@ -116,6 +117,8 @@ public sealed partial class Fm1Connection
             }
         }
         if (epoch == current && !simulated)
+            await RefreshPerformanceChannelsAsync(editor,info,current.Token);
+        if (epoch == current && !simulated)
             await NegotiateUsbPlaybackAsync(editor, info, current);
         if (epoch == current)
             Publish(new($"{(simulated ? "SIMULATED FM1" : "MIDI connected")} · {info.Firmware} · audio not configured",
@@ -163,6 +166,7 @@ public sealed partial class Fm1Connection
         StopPlaying();
         soundFingerprints.Clear();
         HardwareOctave = null;
+        PerformanceChannels = new[] {0,1,2,9};
         epoch?.Cancel(); epoch?.Dispose(); epoch = null;
         deviceId = null;
         client?.Dispose(); client = null;

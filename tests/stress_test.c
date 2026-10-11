@@ -27,40 +27,36 @@ static void scheck(int ok, const char *what) { if (!ok) { printf("FAIL %s\n", wh
 static double st_ns(void) { struct timespec t; clock_gettime(CLOCK_MONOTONIC, &t); return t.tv_sec * 1e9 + t.tv_nsec; }
 
 /* ---- font ---- */
-static uint8_t big_data[64 * 24 * 32 / 2 + 64];   /* S enlarged and stored, in the header's bitmap format */
+static uint8_t big_data[64 * 24 * 32 / 2 + 64];   /* the old FONT_L: S enlarged and stored (reference only) */
 static uint16_t big_off[64];
 static felucca_font_t FONT_L2X;
 
 static void font_ref_build(void)
 {
     uint32_t gi, o = 0;
-    memset(big_data, 0, sizeof big_data);
     for (gi = 0; gi < 64u; gi++) {
         uint32_t ws = FONT_S.bw[gi], wb = FONT_L.bw[gi], bs = (ws + 1u) / 2u, bb = (wb + 1u) / 2u, x, y;
         const uint8_t *s = FONT_S.data + FONT_S.off[gi];
         big_off[gi] = (uint16_t)o;
         for (y = 0; y < 32u; y++)
             for (x = 0; x < wb; x++) {
-#if FONT_DATA_BITS == 1
-                uint32_t source = (y / 2u) * ws + x / 2u, dest = y * wb + x;
-                if (s[source / 8u] & (1u << (7u - source % 8u)))
-                    big_data[o + dest / 8u] |= (uint8_t)(1u << (7u - dest % 8u));
-#else
-                uint32_t sx = x / 2u, v = s[(y / 2u) * bs + sx / 2u];
-                v = (sx & 1u) ? (v & 15u) : (v >> 4);
+                uint32_t sx = x / 2u, v;
+                if (FONT_S.bits == 1u) {                  /* (2.6: S at 1 bit a pixel) */
+                    uint32_t i = (y / 2u) * ws + sx;
+                    v = (s[i >> 3] >> (7u - (i & 7u))) & 1u ? 15u : 0u;
+                } else {
+                    v = s[(y / 2u) * bs + sx / 2u];
+                    v = (sx & 1u) ? (v & 15u) : (v >> 4);
+                }
                 if (x & 1u) big_data[o + y * bb + x / 2u] |= (uint8_t)v;
                 else big_data[o + y * bb + x / 2u] = (uint8_t)(v << 4);
-#endif
             }
-#if FONT_DATA_BITS == 1
-        o += (32u * wb + 7u) / 8u;
-#else
         o += 32u * bb;
-#endif
         assert(o <= sizeof big_data);
     }
     FONT_L2X = FONT_L;
     FONT_L2X.sh = 0;
+    FONT_L2X.bits = 0;                                /* (the reference: 4-bit, stored at 2x) */
     FONT_L2X.off = big_off;
     FONT_L2X.data = big_data;
 }
@@ -201,7 +197,7 @@ static void t_fuzz(uint32_t nframes)
         } else if (r < 53) {
             trk[rn(NTRK)].p[P_TFLT] = (int16_t)((int)rn(128) - 64);
         } else if (r < 54) {
-            trk[rn(NPART)].p[P_CHORD] = (int16_t)rn(CH_COUNT);
+            trk[rn(NPART)].p[P_CHORD] = (int16_t)rn(6);
         } else if (r < 55) {
             uint32_t t = rn(NPART), e = rn(3) ? ENGI_FM6 : rn(NENGINES);
             host_preset_req(&trk[t], e, rn(ENGINES[e]->npresets));
@@ -279,8 +275,8 @@ static void t_fuzz(uint32_t nframes)
             mix_block(o, CTL);
             for (i = 0; i < CTL * 2u; i++) if ((o[i] < 0 ? -o[i] : o[i]) > q) q = o[i] < 0 ? -o[i] : o[i];
         }
-        printf("fuzz: %u frames (%.1f min), peak %d, tail %d, visualiser styles seen %u/%u, chords %u, strum changes %u\n",
-               nf, nf * 16.0 / 60000.0, peak, q, (unsigned)__builtin_popcount(vis_seen), VIS_N, mods, strums);
+        printf("fuzz: %u frames (%.1f min), peak %d, tail %d, visualiser styles seen %u/12, chords %u, strum changes %u\n",
+               nf, nf * 16.0 / 60000.0, peak, q, (unsigned)__builtin_popcount(vis_seen), mods, strums);
         scheck(q < 64, "end: silence after stop");
     }
     scheck(peak < (1 << 24), "fuzz: output bounded");

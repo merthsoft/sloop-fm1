@@ -46,8 +46,12 @@ public sealed record HardwareCapabilities(string Identity, ImmutableHashSet<int>
     ImmutableDictionary<int, ParameterRange> ParameterRanges)
 {
     public static ImmutableHashSet<int> CurrentFirmwareLockable { get; } =
+        LockableForEngineStart(53);
+
+    public static ImmutableHashSet<int> LockableForEngineStart(int engineStart) =>
         Enumerable.Range(0,17).Concat(new[] {32,33,34,35,36,38,39,44,45,46,47,48,50})
-        .Concat(Enumerable.Range(53,8)).ToImmutableHashSet();
+        .Concat(engineStart == 63 ? Enumerable.Range(54,4) : [])
+        .Concat(Enumerable.Range(engineStart,8)).ToImmutableHashSet();
 }
 public sealed record HardwareTrack(Guid Id, bool IsDrum, int Length, ImmutableArray<HardwareStep> Steps,
     ImmutableArray<ParameterLock> Locks, ImmutableDictionary<int,int> Parameters, HardwareCapabilities Capabilities);

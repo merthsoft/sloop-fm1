@@ -37,6 +37,7 @@ static struct {
     int32_t filter[NDRUM], env[NDRUM];
     uint8_t synth[NDRUM];        /* the voice plays a synthesised kit (ds[]) */
     dsv_t ds[NDRUM];
+    dsnd_t factory_sound[NDRUM]; /* stable factory record for each sounding voice */
     volatile uint16_t hits;      /* bit per lane hit since the UI last looked (pads, key LEDs) */
     volatile uint8_t hit_vel[DRUM_LANES]; /* latest velocity for the constellation */
     volatile uint8_t kick;       /* a kick was hit (fx.c DUCK) */
@@ -118,7 +119,7 @@ static void dstep_clr(dstep_t *s, uint32_t l)                                /* 
 
 /* the zone a sampled drum voice plays (drum_on: v->s[4]): SMP_ZONES[i], or a user kit's, DZ_USR + slot * 16 + zone */
 #define DZ_USR (1 << 16)                 /* (above every SMP_ZONES index) */
-static const smp_zone_t *drum_zone_of(const voice_t *v)
+DSP_INLINE const smp_zone_t *drum_zone_of(const voice_t *v)
 {
     int32_t z = v->s[4];
     return z >= DZ_USR ? &usr_zone[((uint32_t)(z - DZ_USR) >> 4) % SMP_USER_SLOTS][(uint32_t)z & 15u] : &SMP_ZONES[(uint32_t)z];
@@ -209,7 +210,12 @@ static void __attribute__((noinline)) drum_synth_on(uint32_t note, uint32_t vel,
     v->age = ++drums.age;
     drums.synth[i] = 1;
     drums.kit[i] = (uint8_t)kit;
-    ds_on(&drums.ds[i], snd, crush, note, vel);
+    if (snd) ds_on(&drums.ds[i], snd, crush, note, vel);
+    else {
+        int32_t semi;
+        ds_factory_sound(kit - DRUM_SAMPLED, ds_lane(note, &semi), &drums.factory_sound[i]);
+        ds_on_sound(&drums.ds[i], &drums.factory_sound[i], crush, note, vel);
+    }
 }
 /* the editor's audition (editor_dsyn.c DSYN_PLAY): queued, played by the audio ISR (drum_audition_poll) */
 static volatile uint8_t dsu_aud_k, dsu_aud_lane, dsu_aud_vel;
@@ -257,7 +263,7 @@ static void drum_on(uint32_t note, uint32_t vel)
         if (zid < 0)
             return;                                 /* (an empty slot, or no sound on this lane) */
     } else if (kit >= DRUM_SAMPLED) {               /* synthesised kit */
-        drum_synth_on(note, vel, kit, DS_KITS[kit - DRUM_SAMPLED].s, DS_KITS[kit - DRUM_SAMPLED].crush);
+        drum_synth_on(note, vel, kit, 0, DS_KITS[kit - DRUM_SAMPLED].crush);
         return;
     }
     if (zid < 0) {                                  /* the GM sample kit */
@@ -297,7 +303,7 @@ static void drum_on(uint32_t note, uint32_t vel)
     v->s[0] = v->s[1] = v->s[2] = 0;
     {
         const smp_zone_t *z = drum_zone_of(v);
-        v->s[3] = sample_next(z, v, 0);
+        v->s[3] = sample_next_inline(z, v, 0);
         v->s[5] = (int32_t)((pow2_q16((int32_t)note * 16 - z->root16) >> 8) * (z->rate >> 8));
     }
     {
@@ -316,7 +322,8 @@ static void drum_on(uint32_t note, uint32_t vel)
 static inline void drums_mix(int32_t *ml, int32_t *mr, int32_t *rev, int32_t *dly, int32_t *mono, uint32_t n)
 {
     uint32_t k, i;
-    int32_t lvl = song.g[G_DRLVL] * 200, send = song.g[G_DRREV] * 258, dsend = song.g[G_DRDLY] * 258, pk = drums.peak;
+    int32_t lvl = song.g[G_DRLVL] * 200, send = send_thr(song.g[G_DRREV] * 258, thr_rev),
+            dsend = send_thr(song.g[G_DRDLY] * 258, thr_dly), pk = drums.peak;   /* (2.6: the THROWs) */
     int32_t pan = trk[TRK_DRUM].p[P_PAN], gl = 4096 - (pan > 0 ? pan * 64 : 0), gr = 4096 + (pan < 0 ? pan * 64 : 0);
     for (i = 0; i < n && drums.tail; i++) {         /* declick tail, ~0.4 ms */
         if (mono) {
@@ -377,7 +384,7 @@ static inline void drums_mix(int32_t *ml, int32_t *mr, int32_t *rev, int32_t *dl
                     v->active = 0;
                     break;
                 }
-                v->s[3] = sample_next(z, v, 0);
+                v->s[3] = sample_next_inline(z, v, 0);
             }
             if (!v->active)
                 break;

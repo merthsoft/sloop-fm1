@@ -14,7 +14,7 @@ E#. Octave spelling handles B#/Cb boundaries. With KEYS OFF, outside-scale notes
 still show their actual chromatic pitch on the SEL mapping display. WHITE walks scale degrees; SNAP rounds down.
 No mapping is enabled merely by changing display labels.
 
-HOME menu SYSTEM knob 2 exposes MIDI SCALE: OFF (default), KEYBOARD. Preference bit
+HOME menu MIDI SCALE section knob 1 exposes MIDI SCALE: OFF (default), KEYBOARD. Preference bit
 23 in the existing persisted settings word defaults off for older settings. No project,
 parameter, protocol or settings structure changes are required. KEYBOARD shares the
 physical keyboard's scale pitch mapping over MIDI notes 0–127, with receiving track

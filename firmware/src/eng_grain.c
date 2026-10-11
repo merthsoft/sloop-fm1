@@ -99,8 +99,8 @@ typedef struct {
 } gr_part_t;
 /* (its state: the part's engine arena, engines.c eng_arena_of) */
 
-static uint32_t gr_nz(uint32_t src) { return src < SMP_NSETS ? SMP_SETS[src].nz : usr_nz[(src - SMP_NSETS) % SMP_USER_SLOTS]; }
-static const smp_zone_t *gr_zone(uint32_t src, uint32_t zl)
+DSP_INLINE uint32_t gr_nz(uint32_t src) { return src < SMP_NSETS ? SMP_SETS[src].nz : usr_nz[(src - SMP_NSETS) % SMP_USER_SLOTS]; }
+DSP_INLINE const smp_zone_t *gr_zone(uint32_t src, uint32_t zl)
 {
     return src < SMP_NSETS ? &SMP_ZONES[SMP_SETS[src].z0 + zl] : &usr_zone[(src - SMP_NSETS) % SMP_USER_SLOTS][zl & 15u];
 }
@@ -108,11 +108,11 @@ static uint32_t gr_stamp(uint32_t src)
 {
     return src < SMP_NSETS ? 0u : usr_nz[(src - SMP_NSETS) % SMP_USER_SLOTS] ? smp_user_gen : 0xFFFFFFFFu;
 }
-static inline uint32_t gr_rnd(gr_part_t *P) { return noise32(&P->rng); }
-static inline uint32_t gr_scale(uint32_t n, uint32_t f16) { return (n >> 16) * f16 + (((n & 0xFFFFu) * f16) >> 16); }
+DSP_INLINE uint32_t gr_rnd(gr_part_t *P) { return noise32(&P->rng); }
+DSP_INLINE uint32_t gr_scale(uint32_t n, uint32_t f16) { return (n >> 16) * f16 + (((n & 0xFFFFu) * f16) >> 16); }
 
 /* one IMA ADPCM sample of zone z at index pos */
-static inline int32_t gr_dec(const smp_zone_t *z, uint32_t pos, int32_t *pred, int32_t *idx)
+DSP_INLINE int32_t gr_dec(const smp_zone_t *z, uint32_t pos, int32_t *pred, int32_t *idx)
 {
     uint32_t b = SMP_DATA[z->off + (pos >> 1)], code = (pos & 1u) ? (b >> 4) : (b & 15u);
     int32_t step = IMA_STEP[*idx], vd = step >> 3;
@@ -283,7 +283,7 @@ static void gr_spawn(gr_part_t *P, const track_t *t, uint32_t vi, uint32_t zl, u
     }
 }
 
-static inline int32_t gr_win(uint32_t wph)         /* the Hann window, Q15 */
+DSP_INLINE int32_t gr_win(uint32_t wph)         /* the Hann window, Q15 */
 {
     uint32_t wi = wph >> 24;
     return GR_HANN[wi] + (((GR_HANN[wi + 1u] - GR_HANN[wi]) * (int32_t)((wph >> 9) & 0x7FFFu)) >> 15);

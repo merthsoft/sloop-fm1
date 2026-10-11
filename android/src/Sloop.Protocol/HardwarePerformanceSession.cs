@@ -7,9 +7,11 @@ public sealed class HardwarePerformanceSession(EditorClient client, PerformanceC
     readonly Dictionary<int, uint> owners = [];
     uint next;
     bool failed;
+    public byte EffectCount => capabilities.Effects;
     public bool Available => capabilities.Supported && !failed;
     public async Task PressAsync(int pointer, HardwareGestureKind kind, byte value = 0, CancellationToken cancellation = default)
     {
+        if (kind == HardwareGestureKind.Punch && value >= capabilities.Effects) throw new ArgumentOutOfRangeException(nameof(value));
         await gate.WaitAsync(cancellation).ConfigureAwait(false);
         try
         {

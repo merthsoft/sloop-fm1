@@ -7,18 +7,19 @@ public static class HardwarePatterns
 {
     public static async Task<HardwarePattern> Read(EditorClient client,DeviceInfo info,HardwarePattern? identities,CancellationToken token)
     {
-        if(info.ProtocolVersion<9||info.TrackCount!=4||info.StepCount!=64||info.EngineParameterStart!=53||info.ParameterCount!=61)
+        if(!info.HasSupportedTrackLayout||info.TrackCount!=4||info.StepCount!=64)
             throw new IOException("Native editing requires the current four-track SLOOP parameter layout.");
+        var lockable=HardwareCapabilities.LockableForEngineStart(info.EngineParameterStart);
         var selected=await client.RequestAsync(27,[],cancellationToken:token);
         if(selected.Arguments.Length<2||selected.Arguments[0]>3||selected.Arguments[1]!=4)throw new IOException("Invalid track selection reply.");
         byte original=selected.Arguments[0];var tracks=ImmutableArray.CreateBuilder<HardwareTrack>(4);
         try {
             for(byte track=0;track<4;track++) {
                 await client.RequestAsync(27,[track],f=>f.Arguments.Length>=2&&f.Arguments[0]==track,cancellationToken:token);
-                var dump=await client.RequestAsync(29,[track],f=>f.Arguments.Length==125&&f.Arguments[0]==track,cancellationToken:token);
-                var parameters=Enumerable.Range(0,61).ToImmutableDictionary(i=>i,i=>EditorCodec.DecodeValue(dump.Arguments.AsSpan(3+i*2,2)));
+                var dump=await client.RequestAsync(29,[track],f=>f.Arguments.Length==3+info.ParameterCount*2&&f.Arguments[0]==track,cancellationToken:token);
+                var parameters=Enumerable.Range(0,info.ParameterCount).ToImmutableDictionary(i=>i,i=>EditorCodec.DecodeValue(dump.Arguments.AsSpan(3+i*2,2)));
                 var ranges=ImmutableDictionary.CreateBuilder<int,ParameterRange>();
-                foreach(int id in HardwareCapabilities.CurrentFirmwareLockable) {var d=await client.GetDescriptorAsync(0,(byte)id,token);ranges[id]=new(d.Minimum,d.Maximum);}
+                foreach(int id in lockable) {var d=await client.GetDescriptorAsync(0,(byte)id,token);ranges[id]=new(d.Minimum,d.Maximum);}
                 var old=identities?.Tracks[track];
                 var micro=await client.RequestAsync(39,[track],f=>f.Arguments.Length==65&&f.Arguments[0]==track,cancellationToken:token);
                 var fill=await client.RequestAsync(41,[track],f=>f.Arguments.Length==20&&f.Arguments[0]==track,cancellationToken:token);
@@ -42,7 +43,7 @@ public static class HardwarePatterns
                 var events=ImmutableArray.CreateBuilder<ParameterLock>();
                 for(int i=2;i<a.Length;i+=4)events.Add(new(old?.Locks.FirstOrDefault(l=>l.Step.Value==a[i]&&l.Parameter==a[i+1])?.Id??Guid.NewGuid(),new(a[i]),a[i+1],EditorCodec.DecodeValue(a.AsSpan(i+2,2))));
                 tracks.Add(new(old?.Id??Guid.NewGuid(),track==3,parameters[29],steps.ToImmutable(),events.ToImmutable(),parameters,
-                    new($"{info.Firmware}/engine:{dump.Arguments[1]}/preset:{dump.Arguments[2]}",HardwareCapabilities.CurrentFirmwareLockable,ranges.ToImmutable())));
+                    new($"{info.Firmware}/engine:{dump.Arguments[1]}/preset:{dump.Arguments[2]}",lockable,ranges.ToImmutable())));
             }
         }finally {try{await client.RequestAsync(27,[original],f=>f.Arguments.Length>=2&&f.Arguments[0]==original,cancellationToken:token);}catch(Exception){} }
         var result=new HardwarePattern(identities?.Id??Guid.NewGuid(),Guid.NewGuid(),tracks.ToImmutable());PatternValidation.Validate(result);return result;

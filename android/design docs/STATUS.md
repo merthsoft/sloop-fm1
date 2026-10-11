@@ -1,9 +1,22 @@
-# Current implementation status — October 10, 2026
+# Current implementation status — October 11, 2026
 
 This is the current status index. Component docs contain both implemented checkpoints and
 future design contracts; dated release/handoff/test results remain historical evidence.
 
 ## Latest firmware
+
+**2.6 Merthsoft.3 is integrated and built.** Upstream audio, inserts, sync,
+MIDI, texture, drum mutes and note-length features coexist with the fork libraries,
+rhythms, editing, scale lights and performance modulation. Upstream's 27 physical
+punch effects replace the previous black-key FX modifiers. The installer is
+`http://127.0.0.1:8808/webapp/installer/`.
+
+Image 581,096 bytes; static RAM 94,452 bytes; pool 333,900 bytes. Lossless factory
+sound sharing, text startup, spare driver-RAM scratch and guarded hot-helper
+inlining make the combined build fit. Functional/audio/companion checks pass;
+hardware installation/playback remains user testing. See
+[release notes](RELEASE-NOTES.md) and the
+[integration assessment](../../docs/firmware/UPSTREAM-2.6-INTEGRATION.md).
 
 **2.5 Merthsoft.19** adds independent native starter rhythms on PRESET: ORIGINAL
 or 17 explicit choices, shared by Preview/Apply. Installer port 8805. Android
@@ -89,7 +102,7 @@ See [sequence starters](../../docs/firmware/SEQUENCE-STARTERS-DESIGN.md),
 [drum grooves](../../docs/firmware/DRUM-GROOVES-DESIGN.md) and
 [rhythm shaping](../../docs/firmware/RHYTHM-SHAPING-DESIGN.md).
 
-**2.5 Merthsoft.3** adds black-key punch controls: Slower/Faster, Triplet, Gentle/Extreme,
+**Historical, superseded by the upstream merge:** 2.5 Merthsoft.3 added black-key punch controls: Slower/Faster, Triplet, Gentle/Extreme,
 Blend, Latch and Retrigger. Momentary controls clear on FX exit; latch survives key/layer
 release and clears on toggle or STOP. Controls retain physical/remote FX priority and do
 not emit or record synth notes. FX tiles show mappings. See [component design](../../docs/firmware/PUNCH-FX-DESIGN.md).
@@ -156,7 +169,7 @@ Revisit hardware only for a new failure or a material feature change; do not rep
   modifiers toggle on latched chords until pressed again. CHROM gives literal black-key roots. Firmware package and local
   installer are built. This chat has not flashed it.
 
-- Physical FM1 remote held/next-bar fills and sixteen punch effects, with leased ownership,
+- Physical FM1 remote held/next-bar fills and negotiated sixteen/twenty-seven punch effects, with leased ownership,
   panel priority and stop/disconnect cleanup.
 - Persistent FM6 base-voice bank saving with destination review, overwrite confirmation
   and verified readback. Track macros remain separate.
@@ -187,7 +200,7 @@ Revisit hardware only for a new failure or a material feature change; do not rep
 - Hardware scenes: atomic boundary application of hardware sound/pattern/tempo; current
   stopped-only sound transfer does not provide that operation or upload scene samples.
   The protocol/staging scaffold is tested but disabled in production until complete engine hooks exist.
-- Firmware resources: audit unused/duplicated runtime buffers and safe mutual-exclusion storage sharing before further sizable additions; current static headroom is 892 bytes. Keep changes scoped for upstream merges.
+- Firmware resources: audit unused/duplicated runtime buffers and safe mutual-exclusion storage sharing before further sizable additions; the combined capacity audit passes, with only 468 flash bytes free. Lossless factory drum sharing and the text startup screen are now integrated; retain bounded ownership and upstream mergeability.
 - Platform/storage: optional local model runtime, Windows/iOS, background services, migrations,
   indexing/collection and durable undo. These are later work, not current launch blockers.
 

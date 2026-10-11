@@ -9,6 +9,18 @@
 #define main hostsim_main
 #include "hostsim.c"
 #undef main
+/* Expand ROM factories only in the host fixture; firmware decodes one record per hit. */
+static dkit_t TEST_FACTORY_KITS[DS_NKITS];
+static void factory_fixture(void)
+{
+    for (uint32_t k = 0; k < DS_NKITS; k++) {
+        TEST_FACTORY_KITS[k].name = DS_KITS[k].name;
+        TEST_FACTORY_KITS[k].style = DS_KITS[k].style;
+        TEST_FACTORY_KITS[k].crush = DS_KITS[k].crush;
+        ds_factory_sounds(k, TEST_FACTORY_KITS[k].s);
+    }
+}
+
 static struct { uint8_t force; } ui;
 /* the editor's reply helpers (editor.c), on a buffer */
 static uint8_t ed_out[600];
@@ -99,6 +111,17 @@ static uint32_t put(uint32_t k, uint32_t part, const uint8_t *d, uint32_t nd)
 
 int main(void)
 {
+    factory_fixture();
+    { /* Independent frozen record oracle from the pre-dictionary factory bank. */
+        uint64_t hash = UINT64_C(14695981039346656037);
+        for (uint32_t k = 0; k < DS_NKITS; k++)
+            for (uint32_t lane = 0; lane < DS_LANES; lane++) {
+                const uint8_t *b = (const uint8_t *)&TEST_FACTORY_KITS[k].s[lane];
+                for (uint32_t i = 0; i < sizeof(dsnd_t); i++) hash = (hash ^ b[i]) * UINT64_C(1099511628211);
+            }
+        check(hash == UINT64_C(0x24c1c4eb6838e), "all 512 decoded factory records match the pre-dictionary bank byte for byte");
+    }
+
     uint32_t i, k, ok;
     uint64_t rng_s = 12345;
     host_tracks_init();
@@ -110,19 +133,19 @@ int main(void)
     (void)dsu_kit(0);
     ok = 1;
     for (k = 0; k < DSU_N; k++)
-        ok &= !memcmp(dsu.k[k].s, DS_KITS[DSU_DEF[k]].s, sizeof dsu.k[k].s) && dsu.k[k].crush == DS_KITS[DSU_DEF[k]].crush &&
-              !strncmp(dsu.k[k].name, DS_KITS[DSU_DEF[k]].name, 8) && dsu.k[k].src == DSU_DEF[k];
-    check(ok && !strcmp(DS_KITS[DSU_DEF[0]].name, "808") && !strcmp(DS_KITS[DSU_DEF[3]].name, "TECHNO"),
+        ok &= !memcmp(dsu.k[k].s, TEST_FACTORY_KITS[DSU_DEF[k]].s, sizeof dsu.k[k].s) && dsu.k[k].crush == TEST_FACTORY_KITS[DSU_DEF[k]].crush &&
+              !strncmp(dsu.k[k].name, TEST_FACTORY_KITS[DSU_DEF[k]].name, 8) && dsu.k[k].src == DSU_DEF[k];
+    check(ok && !strcmp(TEST_FACTORY_KITS[DSU_DEF[0]].name, "808") && !strcmp(TEST_FACTORY_KITS[DSU_DEF[3]].name, "TECHNO"),
           "never stored: SYN1..4 = 808, 909, TRAP, TECHNO");
     {
         uint32_t d[DS_LANES], act = 0;
-        check(lanes_same(DS_KITS[0].s, DS_KITS[0].crush, dsu.k[0].s, dsu.k[0].crush, 0),
+        check(lanes_same(TEST_FACTORY_KITS[0].s, TEST_FACTORY_KITS[0].crush, dsu.k[0].s, dsu.k[0].crush, 0),
               "SYN1 (808) plays the 16 sounds bit for bit as the 808 kit");
         dsu.k[0].s[0].decay = (uint8_t)(dsu.k[0].s[0].decay - 30u);
-        lanes_same(DS_KITS[0].s, DS_KITS[0].crush, dsu.k[0].s, dsu.k[0].crush, d);
+        lanes_same(TEST_FACTORY_KITS[0].s, TEST_FACTORY_KITS[0].crush, dsu.k[0].s, dsu.k[0].crush, d);
         check(d[0] > 1000u && d[DS_LANES - 1u] == d[0], "an edit (the kick's decay) is heard on that sound only");
         dsu.k[0].s[0].decay = (uint8_t)(dsu.k[0].s[0].decay + 30u);
-        check(lanes_same(DS_KITS[0].s, DS_KITS[0].crush, dsu.k[0].s, dsu.k[0].crush, 0), "... undone: bit for bit again");
+        check(lanes_same(TEST_FACTORY_KITS[0].s, TEST_FACTORY_KITS[0].crush, dsu.k[0].s, dsu.k[0].crush, 0), "... undone: bit for bit again");
         for (i = 0; i < NDRUM; i++)
             drums.v[i].active = 0;
         TDRUM->p[P_E0] = (int16_t)(DRUM_SYN + 2u);
@@ -132,8 +155,21 @@ int main(void)
         TDRUM->p[P_E0] = (int16_t)(DRUM_SAMPLED + 5u);
         drum_on(38, 100);
         for (i = 0; i < NDRUM; i++)
-            act += drums.v[i].active && drums.synth[i] && drums.ds[i].d == &DS_KITS[5].s[1];
+            act += drums.v[i].active && drums.synth[i] && drums.ds[i].d == &drums.factory_sound[i] && !memcmp(drums.ds[i].d, &TEST_FACTORY_KITS[5].s[1], sizeof(dsnd_t));
         check(act == 2u, "KIT = SYN3 plays its own sounds (RAM); the factory kits theirs");
+    }
+    { /* Factory records must remain private to a voice, not a shared decode temporary. */
+        for (uint32_t v = 0; v < NDRUM; v++) drums.v[v].active = 0;
+        for (uint32_t v = 0; v < NDRUM; v++) {
+            TDRUM->p[P_E0] = (int16_t)(DRUM_SAMPLED + v);
+            drum_on(DS_LANE_NOTE[v], 100);
+        }
+        dsnd_t scratch;
+        ds_factory_sound(DS_NKITS - 1, DS_LANES - 1, &scratch);
+        int stable = 1;
+        for (uint32_t v = 0; v < NDRUM; v++) stable &= drums.ds[v].d == &drums.factory_sound[v] &&
+            !memcmp(drums.ds[v].d, &TEST_FACTORY_KITS[v].s[v], sizeof(dsnd_t));
+        check(stable, "simultaneous factory voices retain independent stable sound records across later decoding");
     }
     /* the editor's commands */
     ed_n = 0;
@@ -148,12 +184,24 @@ int main(void)
         p = 2u + (uint32_t)strlen((char *)ed_out + 2) + 1u;
         k = ed_unpack7(ed_out + p, ed_n - p, got, sizeof got);
         check(ed_out[0] == a && ed_out[1] == 0 && !strcmp((char *)ed_out + 2, "909") && k == sizeof got - 0u &&
-              got[0] == DS_KITS[1].crush && got[1] == 1 && !memcmp(got + 2, DS_KITS[1].s, sizeof DS_KITS[1].s),
+              got[0] == TEST_FACTORY_KITS[1].crush && got[1] == 1 && !memcmp(got + 2, TEST_FACTORY_KITS[1].s, sizeof TEST_FACTORY_KITS[1].s),
               "DSYN_GET SYN2: name, crush, the kit it came from, its 16 sounds");
         a = 99;
         ed_n = 0;
         ed_dsyn_handle(ED_DSYN_GET, &a, 1);
         check(ed_n == 2u && ed_out[1] == 1, "DSYN_GET of no kit: rc 1");
+    }
+    { /* Factory download still exposes the original expanded wire representation. */
+        int exact = 1;
+        for (uint32_t f = 0; f < DS_NKITS; f++) {
+            uint8_t arg = (uint8_t)f, got[DS_LANES * sizeof(dsnd_t) + 2u];
+            ed_n = 0; ed_dsyn_handle(ED_DSYN_GET, &arg, 1);
+            uint32_t p = 2u + (uint32_t)strlen((char *)ed_out + 2) + 1u;
+            uint32_t n = ed_unpack7(ed_out + p, ed_n - p, got, sizeof got);
+            exact &= ed_out[1] == 0 && n == sizeof got && got[0] == TEST_FACTORY_KITS[f].crush && got[1] == f &&
+                !memcmp(got + 2, TEST_FACTORY_KITS[f].s, sizeof TEST_FACTORY_KITS[f].s);
+        }
+        check(exact, "DSYN_GET all 32 factory kits keeps expanded sound bytes and metadata unchanged");
     }
     {
         uint8_t ff[22], hdr[10] = {'M', 'Y', ' ', 'K', 'I', 'T', 0, 0, 0x21, 3}, src = 5;
@@ -165,7 +213,7 @@ int main(void)
               "DSYN_PUT a sound of 0xFF bytes: written, every value in range, not stored");
         check(put(2, 16, hdr, 10) == 0 && !memcmp(dsu.k[2].name, "MY KIT\0\0", 8) && dsu.k[2].crush == 0x21 && dsu.k[2].src == 3,
               "DSYN_PUT the name, the crush, its source");
-        check(put(3, 17, &src, 1) == 0 && !memcmp(dsu.k[3].s, DS_KITS[5].s, sizeof dsu.k[3].s) && !strcmp(dsu.k[3].name, "TRAP"),
+        check(put(3, 17, &src, 1) == 0 && !memcmp(dsu.k[3].s, TEST_FACTORY_KITS[5].s, sizeof dsu.k[3].s) && !strcmp(dsu.k[3].name, "TRAP"),
               "DSYN_PUT 17: SYN4 = a copy of a factory kit");
         check(put(4, 0, ff, 22) == 1 && put(0, 0, ff, 21) == 1 && put(0, 18, ff, 1) == 1, "DSYN_PUT: no such kit / part, a short sound: rc 1");
         ed_n = 0;
@@ -213,6 +261,28 @@ int main(void)
             }
         }
         check(pk > 0 && pk < (1 << 24), "2000 random kits (any byte the editor could send): bounded, finite");
+    }
+    {   /* 2.6 (a whistle on the kicks): the levels glide into the next block without a step. The kick of every
+         * factory kit (not the square-wave ones), alone: its curvature (third difference) across the block edges no bigger than inside the
+         * blocks (a step of up to 31 at every edge, before: 2 to 5 times) */
+        uint32_t kk, worst_k = 0;
+        double worst = 0;
+        for (kk = 0; kk < DS_NKITS; kk++) {
+            double edge = 0, in = 0;
+            uint32_t ne = 0, ni = 0, j;
+            if (TEST_FACTORY_KITS[kk].s[0].wave == DW_SQUARE || TEST_FACTORY_KITS[kk].s[0].wave == DW_BELL)
+                continue;                                   /* (square waves: their own edges everywhere) */
+            voice_render(outbuf[0], TEST_FACTORY_KITS[kk].s, 0, 0);   /* (no crush: its hold is a step of its own) */
+            for (j = 10u * CTL; j < 110u * CTL; j++) {
+                double d3 = fabs((double)outbuf[0][j] - 3.0 * outbuf[0][j - 1] + 3.0 * outbuf[0][j - 2] - outbuf[0][j - 3]);
+                if (j % CTL < 3u) edge += d3, ne++;
+                else in += d3, ni++;
+            }
+            if (in > 0 && edge / ne / (in / ni) > worst)
+                worst = edge / ne / (in / ni), worst_k = kk;
+        }
+        printf("  kick, curvature at the block edges / inside: at most %.2f (%s)\n", worst, TEST_FACTORY_KITS[worst_k].name);
+        check(worst < 1.6, "the kicks of the synthesised kits: no step at the block edges (no whistle at 1.4 / 2.8 kHz)");
     }
     printf(fails ? "dsyn: FAILED\n" : "dsyn: all checks ok\n");
     return fails;

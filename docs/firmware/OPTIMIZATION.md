@@ -1,4 +1,40 @@
-# Branch firmware optimization
+# Firmware optimization
+
+## Upstream integration
+
+The combined feature set fits the existing application slot: image 581,096 bytes
+(468 free), ordinary static RAM 94,452/98,304, pool 333,900/344,064.
+Fully overwritten scratch uses 8,800 bytes beside the flash driver, leaving
+12,820 bytes there with an enforced 8 KiB reserve. Stack guards are unchanged.
+The earlier measurements below describe a completed prior pass, not current margins.
+
+- Factory drums use a lossless dictionary: 512 sounds share 242 identical 21-byte
+  parameter bases, with each sound’s final level byte stored separately. Raw factory
+  bank storage drops by 5,158 bytes before decoder code. User-kit `dsnd_t`/`dkit_t`,
+  SYN bank serialization and factory downloads remain expanded and unchanged.
+- A factory hit decodes only the selected sound into its voice’s stable 22-byte
+  record. Six drum voices cost 132 bytes; control and sample rendering consume the
+  ordinary record, without dictionary lookups on every sample. Editable SYN voices
+  continue to reference their ordinary user-kit records.
+- All 512 reconstructed records match a frozen pre-change byte hash. Host tests
+  also exercise simultaneous factory voices, all 32 factory downloads, user kit
+  round trips and 2,000 randomized user kits. All 182 reviewed renders match, with no health/routing/crash failures. The LOFI
+  arp fixture update preserves input velocity; a fixed-100-velocity counterfactual
+  reproduces upstream exactly.
+- The default startup shows the firmware title instead of the bitmap splash,
+  avoiding its 4,635-byte RLE data plus drawing code. The bitmap remains available
+  as a build option when capacity permits; no instrument or sound bank is removed.
+- Size-oriented compilation is paired with explicit hot-helper
+  inlining. All 25 target loop-call caps and reviewed static budgets pass, and all
+  182 audio fixtures match. Four layout-dependent budgets were refreshed after
+  comparing raw loop instructions and call counts with -Os, without added hot
+  calls. Physical-model primitives are also explicitly inlined: six additional
+  PHYS/NOISE functions are guarded, with no per-sample helper calls. Modal
+  branch weighting was reviewed against its smaller raw instruction count.
+  Host timings/static checks do not prove the hardware audio deadline.
+
+## Earlier completed branch pass
+
 
 This pass preserves the branch's instruments, sample bank, starter libraries,
 performance controls, project compatibility and splash screen. It concentrates on
@@ -65,7 +101,7 @@ An additional 40,000-frame run with undefined-behavior traps (excluding the DSP'
 intentional signed-wrap/shift idioms) also passes. AddressSanitizer is unavailable
 in this compiler. The Windows Node web protocol/sample/updater suite passes.
 
-The full suite is **not globally green**: its existing LOFI/8BIT_ARP golden mismatch
+At this earlier checkpoint the full suite was **not globally green**: its LOFI/8BIT_ARP golden mismatch
 and historical ISR budget failure reproduce on the untouched baseline. Both trees
 produce the same 182 audio render hashes (including that LOFI mismatch), with zero
 health, routing or crash failures. Goldens and budgets were not relaxed. Host

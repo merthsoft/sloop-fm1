@@ -19,14 +19,14 @@ static void release(uint8_t id)
 int main(void)
 {
     uint8_t query[] = {0}; ed_performance(query,1);
-    assert(length == 8 && reply[2] == 1 && reply[3] == 7 && reply[4] == 8);
+    assert(length == 8 && reply[2] == 1 && reply[3] == 7 && reply[4] == 8 && reply[7] == PERF_PUNCH_COUNT);
     for (uint32_t n = 0; n < 12; n++) {
         uint8_t a[12] = {1,1,0,0,0,0,0};
         ed_performance(a,n); assert(reply[1] == (n == 7 ? 0 : 1)); perf_reset();
     }
     for (uint32_t kind = 0; kind < 128; kind++) for (uint32_t value = 0; value < 128; value++) {
         uint8_t a[] = {1,1,0,0,0,kind,value}; ed_performance(a,7);
-        assert(reply[1] == ((kind == 1 ? value < 16 : kind < 3 && value == 0) ? 0 : 1)); perf_reset();
+        assert(reply[1] == ((kind == 1 ? value < PERF_PUNCH_COUNT : kind < 3 && value == 0) ? 0 : 1)); perf_reset();
     }
     press(1,0,0); press(2,0,0); release(1); assert(perf_fill(fm1_ms)); release(2); assert(!perf_fill(fm1_ms));
     press(1,1,3); press(2,1,7); assert(perf_punch(fm1_ms) == 7); release(2); assert(perf_punch(fm1_ms) == 3);

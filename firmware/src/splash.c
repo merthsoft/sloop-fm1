@@ -1,6 +1,10 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
 /* SLOOP boot splash: the logo (tools/gen_logo.py -> sloop_logo.h: 16 colours, RLE runs of
  * (run - 1) << 4 | colour), drawn into the canvas in bands of at most 120 rows. */
+#ifndef FELUCCA_SPLASH
+#define FELUCCA_SPLASH 0 /* Keep flash for instrument features; opt in to the bitmap wordmark. */
+#endif
+#if FELUCCA_SPLASH
 #include "sloop_logo.h"
 static void sloop_logo_draw(uint32_t y0)
 {
@@ -20,11 +24,19 @@ static void sloop_logo_draw(uint32_t y0)
     }
 }
 
-/* the boot screen: the logo, the version, where it comes from */
+#endif
+
+/* the boot screen: title, version and attribution */
 static void sloop_splash(void)
 {
     lcd_fill(0, 0, 240, 240, C_BLACK);
+#if FELUCCA_SPLASH
     sloop_logo_draw(10);
+#else
+    cv_begin(240, 64, C_BLACK);
+    cv_text(120 - text_w(&FONT_L, "SLOOP") / 2, 16, &FONT_L, "SLOOP", C_WHITE);
+    cv_blit(0, 72);
+#endif
     const char *v = FELUCCA_VERSION;
     if (v[0] == 'S' && v[1] == 'L' && v[5] == ' ')
         v += 6;                                         /* "SLOOP 1.0" -> "1.0" under the wordmark */

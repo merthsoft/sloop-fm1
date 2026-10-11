@@ -31,6 +31,7 @@ typedef struct {
     uint8_t chip;                /* CHIP noise: clock note */
     uint8_t drive, level;        /* drive 0..127; level: 128 + 4 x dB (-32 .. +31.75 dB) */
 } dsnd_t;
+_Static_assert(sizeof(dsnd_t) == 22u && __builtin_offsetof(dsnd_t, level) == 21u, "factory dictionary layout");
 #define DS_LANES 16              /* kick snare clap hat open-hat tom-lo tom-hi crash ride shaker conga
                                   * rim cowbell clave kick-2 snare-2 */
 typedef struct {
@@ -38,7 +39,23 @@ typedef struct {
     uint8_t crush;               /* low nibble: bits dropped, high nibble: sample-and-hold - 1 */
     dsnd_t s[DS_LANES];
 } dkit_t;
-#include "felucca_drumkits.h"    /* DS_KITS[], DS_NKITS (tools/gen_drumkits.py) */
+/* ROM-only representation; editable kits and their wire/flash layout remain dkit_t. */
+typedef struct {
+    const char *name, *style;
+    uint8_t crush, base[DS_LANES], level[DS_LANES];
+} ds_factory_kit_t;
+#include "felucca_drumkits.h"
+static void ds_factory_sound(uint32_t kit, uint32_t lane, dsnd_t *dst)
+{
+    const ds_factory_kit_t *f = &DS_KITS[kit % DS_NKITS];
+    lane %= DS_LANES;
+    memcpy(dst, DS_BASE[f->base[lane]], 21u);
+    dst->level = f->level[lane];
+}
+static void ds_factory_sounds(uint32_t kit, dsnd_t *dst)
+{
+    for (uint32_t lane = 0; lane < DS_LANES; lane++) ds_factory_sound(kit, lane, &dst[lane]);
+}
 
 /* GM note -> synth lane and a pitch offset in semitones */
 static const struct { uint8_t lane; int8_t semi; } DS_MAP[128 - 35] = {
@@ -85,7 +102,7 @@ typedef struct {
 } dsv_t;
 
 /* per-sample DECAY_K (Q16) -> per-block (CTL = 32 samples) by squaring five times */
-static uint32_t ds_k32(uint32_t idx)
+DSP_INLINE uint32_t ds_k32(uint32_t idx)
 {
     uint32_t k = DECAY_K[idx & 127u], i;
     for (i = 0; i < 5u; i++)
@@ -97,8 +114,8 @@ static int32_t ds_onepole(uint32_t cut)                 /* CUTOFF_HZ index -> a 
     uint32_t g = SVF_G[cut & 127u];
     return (int32_t)((g << 15) / (4096u + g));
 }
-static uint32_t ds_inc(int32_t p16) { return pitch_inc(clamp(p16, 0, 127 * 16 + 15)); }
-static uint16_t ds_blocks(uint32_t units2ms) { return (uint16_t)(units2ms * 2u * FS / 1000u / CTL); }
+DSP_INLINE uint32_t ds_inc(int32_t p16) { return pitch_inc(clamp(p16, 0, 127 * 16 + 15)); }
+DSP_INLINE uint16_t ds_blocks(uint32_t units2ms) { return (uint16_t)(units2ms * 2u * FS / 1000u / CTL); }
 
 /* the filter's coefficients for this block: the cutoff plus the envelope's share */
 static void ds_filter(dsv_t *s)
@@ -119,11 +136,12 @@ static void ds_filter(dsv_t *s)
 /* the 808 cymbal oscillators (205.3 304.4 369.6 522.7 540 800 Hz) as 1/16 semitones above the first */
 static const int16_t DS_METAL[6] = {0, 109, 163, 259, 268, 377};
 
-static void ds_on(dsv_t *s, const dsnd_t *snd, uint32_t crush, uint32_t note, uint32_t vel)
+static void ds_on_sound(dsv_t *s, const dsnd_t *snd, uint32_t crush, uint32_t note, uint32_t vel)
 {
     int32_t semi;
-    uint32_t lane = ds_lane(note, &semi), i;
-    const dsnd_t *d = &snd[lane];
+    uint32_t i;
+    (void)ds_lane(note, &semi);
+    const dsnd_t *d = snd;
     memset(s, 0, sizeof *s);
     s->d = d;
     s->crush = (uint8_t)crush;
@@ -162,6 +180,13 @@ static void ds_on(dsv_t *s, const dsnd_t *snd, uint32_t crush, uint32_t note, ui
     }
     for (i = 0; i < 6u; i++)
         s->minc[i] = ds_inc(s->base16 + DS_METAL[i]);
+}
+
+/* User kits are already expanded; factory hits decode just their selected sound. */
+static void ds_on(dsv_t *s, const dsnd_t *snd, uint32_t crush, uint32_t note, uint32_t vel)
+{
+    int32_t semi;
+    ds_on_sound(s, &snd[ds_lane(note, &semi)], crush, note, vel);
 }
 
 /* one CTL block of control: the envelopes' targets at its end */
@@ -206,8 +231,10 @@ static int ds_render(dsv_t *s, int32_t *out, uint32_t n)
 {
     const dsnd_t *d = s->d;
     uint32_t i, src = d->src & 15u, wave = d->wave, fmode = s->fmode & 3u, fall = s->fmode & DF_ALL;
-    int32_t da = (s->amp_to - s->amp) >> CTL_LOG2, dn = (s->nz_to - s->nz) >> CTL_LOG2;   /* (no divide) */
-    int32_t dc = (s->ck_to - s->ck) >> CTL_LOG2;
+    /* (2.6, a whistle on the kicks) the levels glide to their targets exactly: a0 + r (i + 1) / CTL. A step of
+     * r >> CTL_LOG2 a sample fell up to CTL - 1 short and jumped the rest at every block: a click 1378 times a
+     * second under the kick's long sine (tones at 1.4 / 2.8 kHz). The pitch keeps its step (a frequency, no jump) */
+    int32_t a0 = s->amp, ra = s->amp_to - s->amp, z0 = s->nz, rn = s->nz_to - s->nz, c0 = s->ck, rc = s->ck_to - s->ck;
     int32_t di = (int32_t)(s->inc_to - s->inc) >> CTL_LOG2;
     int32_t a = s->amp, z = s->nz, c = s->ck, inc = (int32_t)s->inc;
     int32_t drive = 16 + d->drive, bits = s->crush & 15, hold = (s->crush >> 4) + 1;
@@ -294,9 +321,9 @@ static int ds_render(dsv_t *s, int32_t *out, uint32_t n)
             x = s->held;
         }
         out[i] = ((mulq15(x, s->gain) >> 2) * s->lg) >> 8;
-        a += da;
-        z += dn;
-        c += dc;
+        a = a0 + ((ra * (int32_t)(i + 1u)) >> CTL_LOG2);   /* (|r| < 2^17: no overflow) */
+        z = z0 + ((rn * (int32_t)(i + 1u)) >> CTL_LOG2);
+        c = c0 + ((rc * (int32_t)(i + 1u)) >> CTL_LOG2);
         inc += di;
     }
     s->t += n;
@@ -330,14 +357,14 @@ static const uint8_t DSU_DEF[DSU_N] = {0, 1, 5, 12};   /* 808, 909, TRAP, TECHNO
 static void dsu_from_factory(uint32_t k, uint32_t src)
 {
     dsu_kit_t *u = &dsu.k[k % DSU_N];
-    const dkit_t *f = &DS_KITS[src % DS_NKITS];
+    const ds_factory_kit_t *f = &DS_KITS[src % DS_NKITS];
     uint32_t i;
     memset(u, 0, sizeof *u);
     for (i = 0; i < 8u && f->name[i]; i++)
         u->name[i] = f->name[i];
     u->crush = f->crush;
     u->src = (uint8_t)(src % DS_NKITS);
-    memcpy(u->s, f->s, sizeof u->s);
+    ds_factory_sounds(src, u->s);
 }
 static void dsu_defaults(void)
 {

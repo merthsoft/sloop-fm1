@@ -2,10 +2,14 @@
 
 Upstream main: `4365a1d0075b9194de1c44826325abbd39751bc1`, following the 2.6
 implementation commit `d30d655`. Local main and origin/main were fast-forwarded to
-this revision. Android remains at `5b80ebf`; this assessment does not merge 2.6
-into the custom firmware or replace the running installer.
+this revision. The `android` working tree now contains the integration as **2.6 Merthsoft.3**.
+Source and protocol conflicts are resolved. The combined package builds with guarded
+hot DSP inlining, passes audio/functional checks and is served at
+http://127.0.0.1:8808/webapp/installer/. Hardware flashing/timing was not tested in
+this integration session. See the current release notes for package identity/hash.
 
-## Recommended integration order
+
+## Integration checkpoints
 
 1. Project format, parameter metadata and backup compatibility together. Upstream
    FUN6 packs ten new parameters into bytes and combines nudge/fill fields; it reads
@@ -33,9 +37,9 @@ into the custom firmware or replace the running installer.
 
 ## Control decisions and semantic overlaps
 
-- Upstream assigns eleven black FX keys to new effects. Our black FX keys modify
-  the sixteen effects (rate, triplets, intensity, mix, latch/reset). A combined UI
-  needs an explicit bank/modifier gesture, rather than silently losing either.
+- Adopted upstream’s eleven black-key effects, for 27 physical punch effects.
+  The fork’s former rate/triplet/intensity/blend/latch/retrigger modifiers are removed
+  by user choice. Remote controls negotiate sixteen or twenty-seven effects, preserving old-device compatibility.
 - Upstream latched arp remaps held keys as root/scale/transpose changes (#191).
   Preserve our chord modifier toggles, live latch gestures, sequenced SNOTE/SPLAY
   ownership, expression and octave semantics; these need behavioral tests even
@@ -56,12 +60,14 @@ Same installed Jieli toolchain, AC79 SDK and slice=0, upstream generated assets:
 | Current Merthsoft.19 | 579,312 | 96,244 | 333,948 |
 
 Upstream target build passes HAL/register-access and call-free 925-instruction RAM
-checks. This is a build comparison, not an upstream full-test-suite result. Combined
-capacity is unmeasured: feature/state sizes are not additive because both branches
+checks. This is a build comparison, not an upstream full-test-suite result. The first combined target link exceeded XIP capacity by 22,804 bytes and static
+RAM by 5,844 bytes. Memory fitting is active; these figures describe the initial
+link, not a releasable build. Feature/state sizes are not additive because branches
 share code and buffers. Retain our visualizer union optimization and removed styles;
 check linker limits after each integrated group. No combined package is released.
 
-Read-only three-way comparison found text conflict markers in these 21 files.
+The initial three-way comparison found conflicts in these 21 files; those
+conflicts have now been resolved.
 Cleanly merged files can still have semantic incompatibilities (notably project,
 editor and core metadata), so this is not a complete risk list:
 
@@ -89,3 +95,42 @@ editor and core metadata), so this is not a complete risk list:
 
 Build evidence is local/ignored: `build/upstream26-build.log`; isolated upstream
 source/build under `build/upstream-2.6`. No installation was performed.
+
+## Integration regression results
+
+The merged host UI harness passes new upstream MIDI/learn/filter/insert/texture/27-effect
+checks and 20,000-frame fuzzing. Targeted EDIT tests pass guide-versus-keyboard mapping,
+whole-pattern pitch, readout sessions, undo/redo, pitch bounds, ties and track isolation.
+Native starter UI tests pass retained cross-track preferences, independent rhythm
+selection, matching preview/apply, non-destructive preview and physical apply holds.
+These results do not certify hardware timing; linker/build capacity checks pass independently.
+
+Persisted visualizer IDs (five bits at 17–21) and scale/MIDI mapping flags (22–23)
+remain intact. New channel filters occupy 26–30 and marker bit 31 identifies the
+fork’s new settings layout. Unmarked words keep old fork semantics; upstream’s
+unmarked channel bits at 21–25 cannot be unambiguously distinguished from old fork
+flags. Re-select channel routing after importing upstream settings if necessary.
+
+HOME menu has a separate MIDI SCALE section (knob 1); SYSTEM retains calibration,
+MIDI LEARN CLEAR and ABOUT. Normal LFO/ENV page navigation remains available through
+taps, alongside held/locked performance modulation.
+
+## Completed capacity fitting
+
+Factory drum parameters now use a lossless dictionary, saving 5,158 raw ROM bytes
+before decoder code; six stable per-voice records cost 132 RAM bytes. All 512 sound
+records reconstruct exactly; editable SYN storage and all 32 factory download wire
+payloads retain their existing expanded representation. The full audio render sweep
+matches all 182 reviewed fixtures. The single LOFI fixture update retains source velocity; forcing only velocity 100 reproduces the upstream hash.
+
+Default boot draws the firmware title instead of the bitmap splash. The combined
+image is 581,096 bytes (468 free); static RAM 94,452/98,304; pool
+333,900/344,064. Fully overwritten scratch uses 8,800 bytes in spare driver RAM,
+leaving 12,820 bytes; linker and build checks enforce an 8 KiB reserve.
+
+-Oz saves cold code while DSP_INLINE preserves hot helpers. All 25 monitored
+functions retain their -Os loop call-site counts. A new target test guards this.
+Four historical weighted instruction baselines were reviewed against -Os and
+refreshed for branch layout/upstream ISR changes; raw loop instruction counts and
+call counts remain comparable. These static heuristics are not cycle measurements.
+See [optimization notes](OPTIMIZATION.md).

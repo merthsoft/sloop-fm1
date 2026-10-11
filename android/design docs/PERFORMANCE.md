@@ -260,7 +260,7 @@ do not add a new hardware acceptance gate.
 ## FM1 fills and punch controls — 2026-10-08
 
 Isolated command73/schema1 firmware and typed client modules now implement held fill,
-next-bar fill and all sixteen existing punch DSP effects. Discovery requires INFO protocol12;
+next-bar fill and the negotiated punch DSP bank: sixteen legacy effects or twenty-seven effects including upstream black-key effects. No fork black-key modifier behavior is retained. Discovery requires INFO protocol12;
 older FM1, simulator and generic MIDI connections expose no hardware controls. Remote owners
 have 750 ms leases renewed every 200 ms, with at most eight simultaneous gestures. Host fill
 aggregates with physical fill; physical punch takes priority over the latest host punch.
@@ -330,3 +330,7 @@ Hardware-free checks: Sloop.ExternalMidiInput.Tests covers decoder fragmentation
 running status, realtime/SysEx/system common, velocity-zero release, sustain/reset,
 repeated/shared touch notes, per-source channel cancellation, velocity preservation,
 root-register/key/chord quality and timed strum cancellation with balanced note-offs.
+
+### Upstream MIDI routing integration
+
+Physical FM1 connections read their configured MIDI track channels during handshake; Perform uses these destinations instead of assuming channels 1/2/3/10. Check FM1 destination transforms refreshes these settings after a device-side change. Tracks set to OFF remain connected and suppress notes (including an optional disabled bass destination). Optional bass follows its configured track channel. Generic MIDI channel override remains independent. Remote punch buttons are bounded by the advertised effect count; older devices expose only their original sixteen.

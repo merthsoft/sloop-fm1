@@ -39,8 +39,8 @@ public static class WorkspaceFiles
         int Count(int maximum){int n=r.ReadInt32();if(n<0||n>maximum)throw new FormatException("Invalid native collection size.");return n;}
         for(int track=0;track<4;track++) {
             var tid=new Guid(r.ReadBytes(16));bool drum=r.ReadBoolean();int length=r.ReadInt32();string identity=r.ReadString();
-            var parameters=ImmutableDictionary.CreateBuilder<int,int>();int count=Count(61);for(int i=0;i<count;i++)parameters.Add(r.ReadInt32(),r.ReadInt32());
-            var ranges=ImmutableDictionary.CreateBuilder<int,ParameterRange>();var lockable=ImmutableHashSet.CreateBuilder<int>();count=Count(61);
+            var parameters=ImmutableDictionary.CreateBuilder<int,int>();int count=Count(71);for(int i=0;i<count;i++)parameters.Add(r.ReadInt32(),r.ReadInt32());
+            var ranges=ImmutableDictionary.CreateBuilder<int,ParameterRange>();var lockable=ImmutableHashSet.CreateBuilder<int>();count=Count(71);
             for(int i=0;i<count;i++){int key=r.ReadInt32();ranges.Add(key,new(r.ReadInt32(),r.ReadInt32()));if(r.ReadBoolean())lockable.Add(key);}
             var steps=ImmutableArray.CreateBuilder<HardwareStep>(64);
             for(int step=0;step<64;step++) {

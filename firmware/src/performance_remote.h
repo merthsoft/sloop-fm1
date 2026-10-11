@@ -3,6 +3,7 @@
 #define PERFORMANCE_REMOTE_H
 /* Main-loop writes with interrupts excluded; audio reads bounded aggregates.
  * Panel state is never written here. Tokens are unique per connection gesture. */
+#define PERF_PUNCH_COUNT 27u
 #define PERF_OWNERS 8u
 #define PERF_LEASE_MS 750u
 static volatile struct { uint32_t token, until; uint8_t kind, value; } perf_owner[PERF_OWNERS];

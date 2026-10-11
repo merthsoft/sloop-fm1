@@ -3,14 +3,14 @@ int checks = 0;
 void Check(bool value) { checks++; if (!value) throw new Exception($"Check {checks}"); }
 void Bad(Action action) { try { action(); throw new Exception("Accepted malformed data"); } catch (ArgumentException) { checks++; } catch (FormatException) { checks++; } }
 var caps = new PerformanceCapabilities(1, 7, 8, 750, 16);
-Check(caps.Supported);
+Check(caps.Supported); Check((caps with { Effects=27 }).Supported); Check(!(caps with { Effects=28 }).Supported);
 foreach (uint owner in new uint[] { 1, 127, 128, 16384, 0xfffffff }) {
     var bytes = PerformanceWire.Token(owner); Check(bytes.All(b => b <= 127));
     Check(PerformanceWire.ParseReply(new(73, [2, 0, .. bytes]), 2, owner) == PerformanceStatus.Ok);
 }
 Bad(() => PerformanceWire.Token(0)); Bad(() => PerformanceWire.Token(0x10000000));
-for (int i = 0; i < 16; i++) Check(PerformanceWire.Press(1, HardwareGestureKind.Punch, (byte)i)[6] == i);
-Bad(() => PerformanceWire.Press(1, HardwareGestureKind.Punch, 16));
+for (int i = 0; i < 27; i++) Check(PerformanceWire.Press(1, HardwareGestureKind.Punch, (byte)i)[6] == i);
+Bad(() => PerformanceWire.Press(1, HardwareGestureKind.Punch, 27));
 Bad(() => PerformanceWire.Press(1, HardwareGestureKind.Fill, 1));
 Bad(() => PerformanceWire.ParseReply(new(73, [2,0,1,0,0]), 2, 1));
 Bad(() => PerformanceWire.ParseReply(new(73, [2,0,2,0,0,0]), 2, 1));
@@ -19,6 +19,11 @@ var midi = new FakeTransport(); using var client = new EditorClient(midi);
 Check(await client.DiscoverPerformanceAsync(10) is null); Check(midi.Operations.Count == 0);
 Check((await client.DiscoverPerformanceAsync(12))!.Supported);
 var session = new HardwarePerformanceSession(client, caps);
+int beforeInvalid=midi.Operations.Count;
+try { await session.PressAsync(999,HardwareGestureKind.Punch,16);throw new Exception("old firmware count ignored"); }catch(ArgumentOutOfRangeException){checks++;}
+Check(midi.Operations.Count==beforeInvalid && session.Available);
+var session26=new HardwarePerformanceSession(client,caps with { Effects=27 });
+await session26.PressAsync(998,HardwareGestureKind.Punch,26);Check(midi.Operations.Last()[6]==26);await session26.ReleaseAsync(998);
 midi.HoldPress = new(TaskCreationOptions.RunContinuationsAsynchronously);
 var pressing = session.PressAsync(99, HardwareGestureKind.Fill);
 var releasing = session.ReleaseAsync(99);

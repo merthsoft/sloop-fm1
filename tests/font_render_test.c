@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
 /* Test the actual renderer against original BDF pixels, including clipping,
  * palette colours, Latin-1, '?' fallback, and scaled large-font metrics.
- * Run once with packed assets and once with an old unmarked four-bit header. */
+ * Run once with packed assets and once with an four-bit per-font header. */
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
@@ -17,7 +17,7 @@ static void check(const felucca_font_t *font, unsigned ch, int scale, int x, int
 {
     char text[] = {(char)ch, 0};
     unsigned code = ch, gx, gy;
-    if (scale == 2 && code >= 'a' && code <= 'z') code -= 32;
+    if ((code >= 'a' && code <= 'z') || (code >= 0xe0 && code <= 0xfe && code != 0xf7)) code -= 32;
     if (code < 32 || code > (scale == 2 ? 95 : 255) || (code >= 127 && code < 160)) code = '?';
     unsigned gi = code - 32;
     memset(expected, 0, sizeof expected);
@@ -50,6 +50,6 @@ int main(void)
                 check(&FONT_S, ch, 1, pos[p][0], pos[p][1], colours[c]);
                 check(&FONT_L, ch, 2, pos[p][0], pos[p][1], colours[c]);
             }
-    printf("font renderer: 6,120 pixel/metric comparisons PASS (format %d)\n", FONT_DATA_BITS);
+    printf("font renderer: 6,120 pixel/metric comparisons PASS (format %d)\n", FONT_S.bits ? 1 : 4);
     return 0;
 }

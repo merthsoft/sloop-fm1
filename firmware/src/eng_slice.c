@@ -77,19 +77,19 @@ typedef struct {
     int32_t pred, idx;
     uint32_t pos, seg;
 } slc_dec_t;
-static inline void slc_dec_at(slc_dec_t *d, uint32_t pos, uint32_t st)
+DSP_INLINE void slc_dec_at(slc_dec_t *d, uint32_t pos, uint32_t st)
 {
     d->pos = pos;
     d->pred = (int16_t)(st & 0xFFFFu);
     d->idx = (int32_t)((st >> 16) & 127u);
     d->seg = st >> 24;
 }
-static inline uint32_t slc_dec_st(const slc_dec_t *d)
+DSP_INLINE uint32_t slc_dec_st(const slc_dec_t *d)
 {
     return (uint32_t)(uint16_t)d->pred | (uint32_t)d->idx << 16 | d->seg << 24;
 }
 /* the sample at d->pos (< len), then the next position */
-static inline int32_t slc_dec_next(const slc_src_t *s, slc_dec_t *d)
+DSP_INLINE int32_t slc_dec_next(const slc_src_t *s, slc_dec_t *d)
 {
     const slc_seg_t *g = &s->seg[d->seg];
     uint32_t rel = d->pos - g->at, b, code;
@@ -117,7 +117,7 @@ static inline int32_t slc_dec_next(const slc_src_t *s, slc_dec_t *d)
     return d->pred;
 }
 
-static inline uint32_t slc_gpos(const slc_src_t *s, uint32_t k) { return (k * s->len) >> SLC_GRID_LOG2; }
+DSP_INLINE uint32_t slc_gpos(const slc_src_t *s, uint32_t k) { return (k * s->len) >> SLC_GRID_LOG2; }
 static uint32_t slc_count(const slc_src_t *s, uint32_t div) { return div < SLC_DIV_AUTO ? 4u << div : s->nauto; }
 
 /* slice j of DIV div: [*a, *b), *st the state at *a */
@@ -288,7 +288,7 @@ static void slc_fill(const slc_src_t *s, int16_t *rb, uint32_t ws, uint32_t n, u
 }
 
 /* the next source sample into *x; 0 = the slice ended */
-static inline int slc_fwd(const slc_src_t *s, voice_t *v, slc_dec_t *d, int loop, int32_t *x)
+DSP_INLINE int slc_fwd(const slc_src_t *s, voice_t *v, slc_dec_t *d, int loop, int32_t *x)
 {
     if (d->pos >= v->ph[2]) {
         uint32_t a, b, st;
@@ -300,7 +300,7 @@ static inline int slc_fwd(const slc_src_t *s, voice_t *v, slc_dec_t *d, int loop
     *x = slc_dec_next(s, d);
     return 1;
 }
-static inline int slc_rev(const slc_src_t *s, voice_t *v, int16_t *rb, int loop, int32_t *x)
+DSP_INLINE int slc_rev(const slc_src_t *s, voice_t *v, int16_t *rb, int loop, int32_t *x)
 {
     uint32_t q = v->ph[0], ws = (uint32_t)v->s[0], a, b, st;
     if (q <= v->ph[2]) {

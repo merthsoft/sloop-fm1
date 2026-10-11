@@ -46,19 +46,19 @@ enum {
 
 /* ---------------------------------------------------------------- math --- */
 /* 2^(x / 2^24), Q24 (msfa Exp2::lookup): the Q30 mantissa from FM6_EXP2, shifted by the integer part */
-static inline uint32_t fm6_mant(int32_t x)
+DSP_INLINE uint32_t fm6_mant(int32_t x)
 {
     uint32_t f = (uint32_t)x & 0xFFFFFFu, k = f >> 14, a = FM6_EXP2[k];
     return (1u << 30) + a + (uint32_t)(((uint64_t)(FM6_EXP2[k + 1u] - a) * (f & 0x3FFFu)) >> 14);
 }
-static inline int32_t fm6_exp2(int32_t x)
+DSP_INLINE int32_t fm6_exp2(int32_t x)
 {
     int32_t i = x >> 24;
     uint32_t m = fm6_mant(x);
     return i < -24 ? 0 : (int32_t)(m >> (i > 5 ? 1 : 6 - i));      /* (msfa: up to 2^6; here 2^5 at most) */
 }
 /* phase increment (Q24 cycles per sample) of log2 frequency x (Q24) (msfa Freqlut::lookup) */
-static inline int32_t fm6_freq(int32_t x)
+DSP_INLINE int32_t fm6_freq(int32_t x)
 {
     int32_t i = x >> 24;
     uint32_t q = (uint32_t)(((uint64_t)fm6_mant(x) * FM6_FREQ_R) >> 25);    /* 2^(i + 21) Hz units */
@@ -67,7 +67,7 @@ static inline int32_t fm6_freq(int32_t x)
     return (int32_t)(q >> (21 - (i > 21 ? 21 : i)));
 }
 /* sine of a Q24 phase (one cycle = 2^24), Q15, linear between SINE's 1024 points (its 1025th = the 1st) */
-static inline int32_t fm6_sin(int32_t ph)
+DSP_INLINE int32_t fm6_sin(int32_t ph)
 {
     const int16_t *s = &SINE[((uint32_t)ph >> 14) & 1023u];
     return s[0] + (((s[1] - s[0]) * (int32_t)(ph & 0x3FFF)) >> 14);
