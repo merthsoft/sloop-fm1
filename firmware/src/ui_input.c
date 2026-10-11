@@ -515,7 +515,7 @@ static void edit_param(uint32_t slot, int32_t steps)
         break;
     case G_INITSND:
         *vp = 0;
-        set_engine(TSEL->eng_req);                              /* engine defaults + its first preset */
+        set_engine_of(TSEL,TSEL->eng_req);                       /* explicit INIT: reset the whole sound */
         ui_message("SOUND INIT");
         ui.force = 1;
         break;
@@ -1166,6 +1166,10 @@ static void ui_input(void)
         case B_OCTDN:
         case B_OCTUP: {
             uint32_t both = (1u << panel.btn[B_OCTDN]) | (1u << panel.btn[B_OCTUP]);
+            if (!ui.home && cur_fam()==FAM_FX && !is_drum(TSEL)) {
+                if ((fm1_in.buttons & both)==both) track_fx_reset();
+                break;
+            }
             if (is_drum(TSEL))
                 break;                                  /* the drum track: ghost / hard while held (seq.c) */
             if (!ui.home && cur_page()->scope == SC_STEP &&

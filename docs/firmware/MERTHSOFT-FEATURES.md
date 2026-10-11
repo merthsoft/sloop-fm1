@@ -318,3 +318,17 @@ arp-note mode. The rhythm choice persists across tracks, with shared Preview/App
 FEEL is a uniform early/late nudge; it does not randomize or swing notes.
 
 ![Independent rhythm selection](../../assets/screens/merthsoft/guide/feature-starter-rhythm-choice.png)
+
+## Layer sequences and retain the effects you set
+
+In SEQUENCES, turn ALGORITHM to ADD instead of REPLACE before applying. ADD keeps
+track timing, locks/fill and existing dynamics; it skips duplicate pitches and
+rejects overlaps over four distinct notes without changing the track. Ties from
+both layers are resolved, with shared whole-chord attacks when either changes.
+Preview plays the starter alone; EDIT undo/redo restores the complete change.
+The phone's existing Apply remains a replacement.
+
+Changing a track's instrument preserves its drive, chorus, delay/reverb sends,
+insert, slicer and filter. On a normal FX-family page, press OCT− and OCT+ together
+to reset only these parameters on the selected track. Song loading still recalls
+the saved effects; INIT SOUND remains an explicit complete sound reset.

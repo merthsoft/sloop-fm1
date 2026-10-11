@@ -101,6 +101,10 @@ $CC -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/sequence_starters_
 run "24 musical starters: voice leading, roots, scales, rhythm transforms and preview" "$OUT/sequence_starters_test"
 $CC -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/sequence_starters_ui_test" tests/sequence_starters_ui_test.c -lm
 run "musical browser: all scales, pitch controls, audition, hold apply and complete undo" "$OUT/sequence_starters_ui_test" "$OUT"
+$CC -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/note_trails_test" tests/note_trails_test.c -lm
+run "note trails: transient capture, full pitch range, overlap colors and mute" "$OUT/note_trails_test" "$OUT"
+$CC -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/track_fx_ui_test" tests/track_fx_ui_test.c -lm
+run "track FX: preserve across instruments, explicit reset and track isolation" "$OUT/track_fx_ui_test"
 $CC -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/editor_drum_grooves_test" tests/editor_drum_grooves_test.c -lm
 run "phone drum grooves: capabilities, malformed requests, confirmation and undo" "$OUT/editor_drum_grooves_test"
 $CC -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/editor_musical_starters_test" tests/editor_musical_starters_test.c -lm

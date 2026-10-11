@@ -2,8 +2,8 @@
 
 ## Upstream integration
 
-The combined feature set fits the existing application slot: image 581,096 bytes
-(468 free), ordinary static RAM 94,452/98,304, pool 333,900/344,064.
+The combined feature set fits the existing application slot: image 581,552 bytes
+(12 free), ordinary static RAM 94,500/98,304, pool 333,900/344,064.
 Fully overwritten scratch uses 8,800 bytes beside the flash driver, leaving
 12,820 bytes there with an enforced 8 KiB reserve. Stack guards are unchanged.
 The earlier measurements below describe a completed prior pass, not current margins.
@@ -12,6 +12,12 @@ The earlier measurements below describe a completed prior pass, not current marg
   parameter bases, with each sound’s final level byte stored separately. Raw factory
   bank storage drops by 5,158 bytes before decoder code. User-kit `dsnd_t`/`dkit_t`,
   SYN bank serialization and factory downloads remain expanded and unchanged.
+- The dictionary bases use generated per-field bit widths: 132 bits stored in
+  17 bytes per base, rather than 21 bytes. This saves 968 data bytes. The target
+  decoder is 122 bytes versus the old 58-byte copy routine (+64), with a 21-byte
+  width table. An otherwise identical target comparison saves 880 bytes after
+  all code/table/alignment costs. It adds a bounded 21-field unpack on factory
+  synth-drum hits; actual hardware timing has not been measured.
 - A factory hit decodes only the selected sound into its voice’s stable 22-byte
   record. Six drum voices cost 132 bytes; control and sample rendering consume the
   ordinary record, without dictionary lookups on every sample. Editable SYN voices

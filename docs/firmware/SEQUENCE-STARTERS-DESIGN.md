@@ -71,3 +71,22 @@ not. The choice persists across track/browser changes until reboot.
 The existing phone starter protocol continues to request ORIGINAL. A phone request
 neither inherits nor overwrites the native RHY preference; exposing the rhythm bank
 in Android is future work.
+
+## Add a starter to an existing track
+
+The native browser's ALGORITHM knob selects REPLACE or ADD; the selected mode
+appears beside RHY on every browser page. OCT+ confirmation/hold applies that mode.
+REPLACE keeps its existing full-pattern replacement behavior. ADD combines the
+starter with the selected track over its current length, retaining DIV, swing,
+locks, fill conditions and existing occupied-step microtiming. Shorter patterns
+use the corresponding beginning of the starter; steps beyond the length stay intact.
+The choice persists across browser/track changes until reboot.
+
+Duplicate pitches are kept once; existing pitches and dynamics take priority.
+A fifth distinct pitch at any step rejects the entire operation with 4 NOTE LIMIT,
+without changing the pattern or undo. Whole-pattern undo/redo covers a successful ADD.
+Tied notes from either layer are resolved before combining. FM1 has one attack/gate
+and base velocity per step, so a change in either layer re-triggers their combined
+chord; independent legato and velocities cannot be represented on one track.
+Preview auditions the starter alone. The existing phone protocol still replaces;
+ADD is a native control and does not silently change protocol behavior.

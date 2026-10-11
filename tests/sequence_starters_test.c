@@ -14,6 +14,7 @@ static uint32_t undo_sess,marks,captures,note_ons,note_offs;
 static track_t *marked;
 static void undo_mark(track_t *t,uint32_t s) { marked=t;undo.sess=s;marks++; }
 static void starter_undo_capture(track_t *t) { assert(t==marked);captures++; }
+static uint32_t trk_len(const track_t *t) { return t->p[P_SLEN]>0 ? (uint32_t)t->p[P_SLEN] : 1u; }
 static void fm1_irq_off(void) {}
 static void fm1_irq_on(void) {}
 static uint32_t step_fill(const track_t *t,uint32_t i) { return(t->fill[i/4]>>((i%4)*2))&3; }

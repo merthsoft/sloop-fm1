@@ -223,23 +223,64 @@ static int sequence_starter_has_content(const track_t *t)
     return 0;
 }
 
-static int sequence_starter_apply(void)
+/* Ties hold a whole step, so independent layers share attacks and dynamics. */
+static int sequence_starter_add(track_t *t, step_t *out)
+{
+    const step_t empty = {{0}}, *old = &empty, *prev = &empty;
+    step_t add = {{0}};
+    uint32_t len = trk_len(t), i, j, k;
+    for (i = len; i-- > 0;) if (t->step[i].time != ST_TIE) { old = &t->step[i]; break; }
+    for (i = len; i-- > 0;) if (out[i].time != ST_TIE) { add = out[i]; break; }
+    for (i = 0; i < len; i++) {
+        uint32_t attack = t->step[i].time == ST_NOTE && t->step[i].n;
+        attack |= out[i].time == ST_NOTE && out[i].n;
+        if (t->step[i].time != ST_TIE) old = &t->step[i];
+        if (out[i].time != ST_TIE) add = out[i];
+        step_t s = old->time == ST_NOTE && old->n ? *old : add;
+        s.n = 0;
+        for (uint32_t part = 0; part < 2u; part++) {
+            const step_t *src = part ? &add : old;
+            if (src->time != ST_NOTE) continue;
+            for (j = 0; j < src->n; j++) {
+                for (k = 0; k < s.n && s.note[k] != src->note[j]; k++) ;
+                if (k < s.n) continue;
+                if (s.n == 4) return -1;
+                s.note[s.n++] = src->note[j];
+                s.lvl = (s.lvl & ~(3u << (k*2))) | (((src->lvl >> (j*2)) & 3u) << (k*2));
+                s.rat = (s.rat & ~(3u << (k*2))) | (((src->rat >> (j*2)) & 3u) << (k*2));
+            }
+        }
+        s.time = !s.n ? ST_REST : !attack && s.n == prev->n &&
+            !memcmp(s.note, prev->note, s.n) ? ST_TIE : ST_NOTE;
+        if (s.time == ST_TIE) s.flags = t->step[i].flags | out[i].flags;
+        out[i] = s; prev = &out[i];
+    }
+    return 1;
+}
+static int sequence_starter_apply_mode(uint32_t additive)
 {
     uint32_t i;
     track_t *t;
+    step_t steps[NSTEP];
     if (song.sel >= NPART || song.playing || transport_req || song.rec || rec_wait || ft_on) return 0;
     t = &trk[song.sel];
+    for (i = 0; i < NSTEP; i++)
+        steps[i] = sequence_starter_voiced_rhythm(sequence_sel,i,sequence_root,sequence_scale,
+                        sequence_octave,sequence_mode,&sequence_shape,sequence_vlead,sequence_rhythm);
+    if (additive && sequence_starter_add(t, steps) < 0) return -1;
     fm1_irq_off();
     sequence_preview_stop();
     undo_mark(t, (undo_sess += 4u) | 3u);
     starter_undo_capture(t);
-    for (i = 0; i < NSTEP; i++) {
-        t->step[i] = sequence_starter_voiced_rhythm(sequence_sel,i,sequence_root,sequence_scale,
-                                         sequence_octave,sequence_mode,&sequence_shape,sequence_vlead,sequence_rhythm);
-        t->micro[i] = rhythm_shape_micro(&sequence_shape,0);
+    for (i = 0; i < (additive ? trk_len(t) : NSTEP); i++) {
+        if (!additive || (t->step[i].time != ST_TIE && !t->step[i].n))
+            t->micro[i] = rhythm_shape_micro(&sequence_shape,0);
+        t->step[i] = steps[i];
     }
-    starter_pattern_metadata(t, NSTEP, 2);
+    if (!additive) starter_pattern_metadata(t, NSTEP, 2);
+    else t->seq_active = 1;
     fm1_irq_on();
     ui.step_sess = 0; sync_reload = 1; ui.force = 1;
     return 1;
 }
+static int sequence_starter_apply(void) { return sequence_starter_apply_mode(0); }

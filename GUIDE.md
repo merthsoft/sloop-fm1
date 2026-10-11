@@ -1423,3 +1423,18 @@ attack spacing. Preview and Apply use the same selection.
 **FEEL** shifts every event slightly earlier (negative) or later (positive), in
 1/64 of a step. It does not alternate note timing like swing. Rotate/offset move
 whole steps; syncopate moves eligible attacks onto the preceding offbeat.
+
+### Layer a starter; preserve track effects
+
+In SEQUENCES, ALGORITHM selects REPLACE or ADD (shown beside RHY). ADD preserves
+the current pattern length, division, swing, locks and fill; duplicate pitches count
+once. More than four different pitches at any step shows 4 NOTE LIMIT and changes
+nothing. EDIT + OCT− / OCT+ undoes/redoes a successful apply. Ties are combined;
+when either layer changes, the combined chord attacks again. Listen previews only
+the starter. Android's existing musical-starter Apply remains a replacement.
+
+Instrument browsing preserves the selected track's drive, chorus, delay and reverb
+sends, insert, slicer and filter. On a normal FX-family page, press both octave
+buttons together to reset those effects to their parameter defaults; individual
+OCT buttons on these pages do not transpose. This reset does not change the sound
+engine, sequence, key, or global effects. INIT SOUND resets the whole sound.

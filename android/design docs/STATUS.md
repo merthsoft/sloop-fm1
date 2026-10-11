@@ -5,13 +5,15 @@ future design contracts; dated release/handoff/test results remain historical ev
 
 ## Latest firmware
 
-**2.6 Merthsoft.3 is integrated and built.** Upstream audio, inserts, sync,
+**2.6 Merthsoft.5 is integrated and built.** Native ADD/REPLACE, transient-safe
+Note Trails with high-contrast drums, and preserved track effects with both-OCT
+reset on normal FX pages are implemented. Upstream audio, inserts, sync,
 MIDI, texture, drum mutes and note-length features coexist with the fork libraries,
 rhythms, editing, scale lights and performance modulation. Upstream's 27 physical
 punch effects replace the previous black-key FX modifiers. The installer is
-`http://127.0.0.1:8808/webapp/installer/`.
+`http://127.0.0.1:8810/webapp/installer/`.
 
-Image 581,096 bytes; static RAM 94,452 bytes; pool 333,900 bytes. Lossless factory
+Image 581,552 bytes; static RAM 94,500 bytes; pool 333,900 bytes. Lossless factory
 sound sharing, text startup, spare driver-RAM scratch and guarded hot-helper
 inlining make the combined build fit. Functional/audio/companion checks pass;
 hardware installation/playback remains user testing. See
@@ -200,7 +202,7 @@ Revisit hardware only for a new failure or a material feature change; do not rep
 - Hardware scenes: atomic boundary application of hardware sound/pattern/tempo; current
   stopped-only sound transfer does not provide that operation or upload scene samples.
   The protocol/staging scaffold is tested but disabled in production until complete engine hooks exist.
-- Firmware resources: audit unused/duplicated runtime buffers and safe mutual-exclusion storage sharing before further sizable additions; the combined capacity audit passes, with only 468 flash bytes free. Lossless factory drum sharing and the text startup screen are now integrated; retain bounded ownership and upstream mergeability.
+- Firmware resources: audit unused/duplicated runtime buffers and safe mutual-exclusion storage sharing before further sizable additions; the combined capacity audit passes, with only 12 flash bytes free. Lossless factory drum sharing and the text startup screen are now integrated; retain bounded ownership and upstream mergeability.
 - Platform/storage: optional local model runtime, Windows/iOS, background services, migrations,
   indexing/collection and durable undo. These are later work, not current launch blockers.
 

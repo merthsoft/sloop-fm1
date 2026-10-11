@@ -283,14 +283,17 @@ static void __attribute__((noinline)) vis_update(void)
     if (vis_style == 9u) {
         uint32_t t, v;
         vis_notes_head = (uint8_t)((vis_notes_head + 1u) % 48u);
-        memset(vis_notes[vis_notes_head], 0, sizeof vis_notes[0]);
+        memcpy(vis_notes[vis_notes_head], vis_note_hits, sizeof vis_notes[0]);
+        memset(vis_note_hits, 0, sizeof vis_note_hits);
         fm1_irq_off();
-        for (t = 0; t < NPART; t++)
+        for (t = 0; t < NPART; t++) {
+            if (trk_silent(&trk[t])) { memset(vis_notes[vis_notes_head][t], 0, sizeof vis_notes[0][0]); continue; }
             for (v = 0; v < NVOICE; v++) {
                 const voice_t *n = &trk[t].v[v];
                 if (n->active && n->note < 128u && !trk_silent(&trk[t]))
                     vis_notes[vis_notes_head][t][n->note >> 5] |= 1u << (n->note & 31u);
             }
+        }
         fm1_irq_on();
         vis_drum_notes[vis_notes_head] = 0;
         for (t = 0; t < 16u; t++) if (pad_lit[t]) vis_drum_notes[vis_notes_head] |= (uint16_t)(1u << t);
@@ -553,13 +556,13 @@ static void vis_trails(void)
         for (t = 0; t < 3u; t++)
             for (n = 0; n < 128u; n++)
                 if ((vis_notes[(vis_notes_head + 1u + i) % 48u][t][n >> 5] >> (n & 31u)) & 1u)
-                    cv_rect((int32_t)i * 5, 216 - (int32_t)n * 3 / 2, 5, 2, TE_COL[t]);
-    cv_rect(235, 24, 1, 194, C_WHITE);
-    cv_rect(0, 223, 240, 16, TE_DIM[3]);
+                    cv_rect((int32_t)i * 5 + (int32_t)t, 216 - (int32_t)n * 3 / 2, 5, 2, TE_COL[t]);
+    cv_rect(239, 24, 1, 194, C_WHITE);
+    cv_rect(0, 223, 240, 16, C_BLACK);
     for (i = 0; i < 48u; i++)
         for (n = 0; n < 16u; n++)
             if ((vis_drum_notes[(vis_notes_head + 1u + i) % 48u] >> n) & 1u)
-                cv_rect((int32_t)i * 5, 223 + (int32_t)n, 5, 1, TE_COL[3]);
+                cv_rect((int32_t)i * 5, 223 + (int32_t)n, 5, 1, C_WHITE);
 }
 static void vis_groove(void)
 {

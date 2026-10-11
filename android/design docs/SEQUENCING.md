@@ -299,3 +299,6 @@ Listen auditions on the selected FM1 track's current sound and tempo. Stop befor
 Apply asks confirmation for replacing the selected FM1 synth track's 64 steps, timing, fill and locks. Stop transport and release keys first. The app freezes the confirmed options and checks connection identity and selected app track; firmware independently checks actual hardware track. Sound and global tempo stay selected. Hardware EDIT + OCT− undoes the full pattern replacement; Android's existing app pattern undo is separate. A successful apply invalidates the native write baseline: read native hardware patterns before inspecting or editing the new material. An uncertain request outcome requires a hardware read before retrying.
 
 Older devices show an update message and receive no unknown command; simulator/generic MIDI connections cannot advertise this real bank. See [protocol contract](../../docs/firmware/MUSICAL-STARTER-PROTOCOL.md). Native browser page changes use the SELECT encoder, preserve audition across main/rhythm/pitch, and differ from the physical SEL button.
+
+Native SEQUENCES additionally offers ADD/REPLACE on ALGORITHM. This is a firmware
+control; the existing phone Apply contract continues to replace the pattern.

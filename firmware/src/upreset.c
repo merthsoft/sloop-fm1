@@ -264,7 +264,11 @@ static int up_load_to(track_t *t, uint32_t k)       /* user preset k into track 
     ui.force = 1;
     return 0;
 }
-static int up_load(uint32_t k) { return up_load_to(TSEL, k); }   /* into the selected track */
+static int up_load(uint32_t k)
+{
+    int16_t fx[NELEM(TRACK_FX)];track_fx_values(TSEL,fx,0);
+    int result=up_load_to(TSEL,k);track_fx_values(TSEL,fx,1);return result;
+}
 
 static uint32_t up_count(void)                 /* used slots */
 {

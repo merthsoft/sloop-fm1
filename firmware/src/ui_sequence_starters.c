@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
 /* A small native browser; caller owns the entry gesture. */
 static uint8_t sequence_browser, sequence_page, sequence_confirm, sequence_initialized;
+static uint8_t sequence_add;
 static uint32_t sequence_hold_t0;
 static const char *const STARTER_MODE_NAMES[] = {"CHORD", "BASS", "ARP NOTES"};
 static void sequence_preview_cancel(void)
@@ -41,7 +42,7 @@ static void __attribute__((noinline)) sequence_screen_draw(void)
     cv_text(4,4,&FONT_S,p->name,C_WHITE);
     cv_text(4,24,&FONT_S,"RHY",TE_G4);
     cv_text(32,24,&FONT_S,SEQUENCE_RHYTHMS[sequence_rhythm].name,C_WHITE);
-    cv_text(164,24,&FONT_S,"PRESET",TE_G3);
+    cv_text(164,24,&FONT_S,sequence_add ? "ADD" : "REPLACE",TE_G3);
     for (k=0;k<4;k++) {
         fmt_int(b,p->degree[k]+1);
         cv_text(20+56*(int32_t)k,48,&FONT_L,b,TE_COL[song.sel % NPART]);
@@ -71,7 +72,7 @@ static void __attribute__((noinline)) sequence_screen_draw(void)
 }
 static void __attribute__((noinline)) sequence_screen_input(uint32_t pressed,uint32_t home)
 {
-    uint32_t k; int32_t s; int changed=0;
+    uint32_t k; int32_t s; int changed=0, apply=0;
     if (song.sel >= NPART || home == 1u) { sequence_screen_close(); return; }
     if ((s=panel_enc(EN_SELECT))) {
         int32_t next=(int32_t)sequence_page+s;
@@ -103,7 +104,10 @@ static void __attribute__((noinline)) sequence_screen_input(uint32_t pressed,uin
     if(changed) {
         sequence_preview_cancel(); sequence_confirm=0; sequence_hold_t0=0; ui.force=1;
     }
-    panel_enc(EN_ALGO);
+    if ((s=panel_enc(EN_ALGO))) {
+        sequence_add=(uint8_t)clamp(sequence_add+s,0,1);
+        sequence_confirm=0; sequence_hold_t0=0; ui.force=1;
+    }
     if (pressed & (1u << panel.btn[B_OCTDN])) {
         if(sequence_preview.active) sequence_preview_cancel();
         else if(trk[song.sel].nheld || chord_latch_n[song.sel] || arp_chord_latch_n[song.sel])
@@ -128,15 +132,16 @@ static void __attribute__((noinline)) sequence_screen_input(uint32_t pressed,uin
         if(song.playing || transport_req || song.rec || rec_wait || ft_on) ui_message("STOP FIRST");
         else if(!sequence_confirm && sequence_starter_has_content(&trk[song.sel])) {
             sequence_confirm=1; sequence_hold_t0=fm1_ms|1u; ui.force=1;
-        } else if(sequence_starter_apply()) {
-            sequence_confirm=0; sequence_hold_t0=0; ui_message("SEQUENCE APPLIED");
-        }
+        } else apply=1;
     }
     if (!(fm1_in.buttons & (1u << panel.btn[B_OCTUP]))) sequence_hold_t0=0;
     if(sequence_hold_t0 && fm1_ms-(sequence_hold_t0&~1u)>=700u) {
-        sequence_hold_t0=0;
-        if(sequence_starter_apply()) { sequence_confirm=0; ui_message("SEQUENCE APPLIED"); }
-        else ui_message("STOP FIRST");
+        apply=1;
+    }
+    if (apply) {
+        int result=sequence_starter_apply_mode(sequence_add);
+        sequence_confirm=0;sequence_hold_t0=0;
+        ui_message(result<0 ? "4 NOTE LIMIT" : result ? "SEQUENCE APPLIED" : "STOP FIRST");
     }
     if(pressed & (1u << panel.btn[B_PLAY])) sequence_screen_close();
 }

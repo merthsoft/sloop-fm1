@@ -1,3 +1,43 @@
+## Sequence merge audit and continuous Note Trails
+
+2.6 Merthsoft.5 retains the prior capacity totals. ADD is checked against an
+independent pitch-set oracle over 1,000 generated patterns, including circular
+initial ties, duplicate pitches within either layer, rests and overflow. The audit
+found and corrected duplicate pitches in the existing step counting twice toward
+the four-note limit. Tie slide flags survive. Double-OCT+ and 700 ms held-OCT+
+Apply both use ADD; rejection retains the old pattern/undo and successful Apply
+undoes/redoes fully. See build/sequence-add-audit-final.log.
+
+Note Trails continuity checks every pixel of held three-note chords on all three
+synth tracks across both framebuffer bands. Full time-column strokes eliminate
+artificial dashes while retaining offset overlap colors. Full-range transient,
+muting, skipped-frame, cursor and drum-contrast checks still pass. The gallery
+image is freshly rendered from production drawing code. See
+build/sequence-add-continuity-review.log. All 25 target audio guards pass; the prior
+full suite remains the baseline, with these affected paths rerun after the fixes.
+
+## Native sequence overlay, Note Trails and preserved track FX
+
+Target build is 2.6 Merthsoft.4: image 581,552 bytes (12 free), ordinary RAM
+94,500/98,304; pool and scratch unchanged. HAL/RAM-driver checks and all 25 hot-DSP
+inlining/cost guards pass. A separate wide-bank build exceeds the slot by 868 bytes:
+field packing saves 880 net target bytes (968 record bytes, +64 decoder bytes,
+21-byte width table and layout costs). The 512-record frozen oracle, concurrent
+factory voices, wire downloads and randomized editable kits pass. Decoder timing
+on physical hardware remains unmeasured; its bounded loop runs on factory hits,
+not audio samples.
+
+Focused UI tests cover ADD tied layers, duplicate pitches, per-note dynamics,
+atomic first/late overflow, metadata retention, other-track isolation, and undo/redo.
+Note Trails tests exercise all 128 pitches on all synth tracks with no surviving
+voices, attack accumulation across skipped display frames, one-shot consumption,
+sustain, mute, same-pitch color pixels, cursor placement and drum contrast.
+Preset, engine and per-track MIDI program browsing retain all fourteen FX controls;
+real button-edge tests verify both-OCT reset changes only the selected track's FX.
+The full clean regression run passes (ALL HOST TESTS PASSED) in
+build/sequence-add-suite-clean.log, including all 182 audio fixtures, UI fuzz,
+divide-by-zero checks and the extended target guards.
+
 # Integrated Merthsoft.7 â€” October 9, 2026
 
 ## Upstream integration — 2.6 Merthsoft.3

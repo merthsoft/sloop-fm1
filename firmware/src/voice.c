@@ -457,6 +457,7 @@ static void mono_remove(track_t *t, uint32_t note)
  * for a few frames, as a drum hit does; ui_studio.c pads_tick). Set here (mostly the audio ISR), taken
  * by the UI with the IRQ off */
 static volatile uint32_t note_hits[NPART][4];
+static uint32_t vis_note_hits[NPART][4]; /* UI-owned attacks, including notes ending between frames. */
 /* the visualiser (ui_vis.c): the tracks a note started on (bit per track), each one's last note, a kick */
 static volatile uint8_t vis_hit, vis_kick_hit, vis_note[NTRK];
 

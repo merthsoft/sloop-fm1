@@ -49,7 +49,15 @@ static void ds_factory_sound(uint32_t kit, uint32_t lane, dsnd_t *dst)
 {
     const ds_factory_kit_t *f = &DS_KITS[kit % DS_NKITS];
     lane %= DS_LANES;
-    memcpy(dst, DS_BASE[f->base[lane]], 21u);
+    const uint8_t *base = DS_BASE[f->base[lane]];
+    uint32_t bits = 0;
+    for (uint32_t i = 0; i < 21u; i++) {
+        uint32_t width = DS_BASE_BITS[i], at = bits >> 3;
+        uint32_t value = base[at];
+        if ((bits & 7u) + width > 8u) value |= (uint32_t)base[at+1u] << 8;
+        ((uint8_t *)dst)[i] = (uint8_t)((value >> (bits & 7u)) & ((1u << width)-1u));
+        bits += width;
+    }
     dst->level = f->level[lane];
 }
 static void ds_factory_sounds(uint32_t kit, dsnd_t *dst)

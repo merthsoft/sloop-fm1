@@ -56,3 +56,15 @@ Lissajous history now shares the waveform/trail union, with its stereo snapshot 
 the otherwise idle FFT scratch arrays. Mode entry clears shared history; subsequent
 frames retain it. This saves 1,536 static RAM bytes with no pool growth. All fourteen
 reference captures remain byte-identical; see [optimization evidence](OPTIMIZATION.md).
+
+## Note Trails capture and contrast
+
+Trails capture all synth note attacks between display updates, as well as active
+voices. Attack bits accumulate across the skipped UI frame and are consumed once,
+so short notes and voice stealing do not erase a hit before it appears. All MIDI
+pitches 0–127 are included; muted/solo-excluded parts are suppressed. The three
+synth colors occupy offset stripes so coincident pitches remain visible. Each
+stroke spans a full time column, so held chords form continuous lines without
+artificial gaps; this is checked pixel by pixel for all three synth tracks. The live
+cursor sits outside those stripes. Drum hits use white on black for high contrast.
+Histories still clear when entering the style and share bounded scratch storage.

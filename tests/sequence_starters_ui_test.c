@@ -167,6 +167,108 @@ int main(int argc,char **argv)
     assert(sequence_rhythm==3);
     sequence_screen_close();sequence_rhythm=0;
     puts("sequence UI: PRESET selects independent rhythm, preview/apply agree and choice persists across tracks PASS");
+    /* Overlay tied layers: existing C holds under a new E attack, then releases
+     * independently. No stale per-note dynamics leak into appended slots. */
+    {
+        step_t overlay[NSTEP] = {0};
+        track_t *t=&trk[1];
+        t->p[P_SLEN]=4;
+        for(i=0;i<NSTEP;i++) { t->step[i]=(step_t){.time=ST_REST}; overlay[i].time=ST_REST; }
+        t->step[0]=(step_t){.n=1,.note={60},.vel=80,.lvl=0xFC,.rat=0xFC};
+        t->step[1].time=ST_TIE; t->step[2].time=ST_TIE;t->step[2].flags=SF_SLIDE;
+        overlay[1]=(step_t){.n=1,.note={64},.vel=100,.lvl=LV_SOFT};
+        overlay[2].time=ST_TIE; overlay[3].time=ST_TIE;
+        assert(sequence_starter_add(t,overlay)==1);
+        assert(overlay[0].n==1&&overlay[0].note[0]==60);
+        assert(overlay[1].n==2&&overlay[1].note[0]==60&&overlay[1].note[1]==64);
+        assert(overlay[1].vel==80&&((overlay[1].lvl>>2)&3)==LV_SOFT&&((overlay[1].rat>>2)&3)==0);
+        assert(overlay[2].time==ST_TIE&&(overlay[2].flags&SF_SLIDE));
+        assert(overlay[3].time==ST_NOTE&&overlay[3].n==1&&overlay[3].note[0]==64);
+        /* Full chord plus duplicate is accepted; a fifth distinct pitch fails. */
+        t->step[0]=(step_t){.n=4,.note={60,64,67,71}};
+        overlay[0]=(step_t){.n=1,.note={64}};
+        assert(sequence_starter_add(t,overlay)==1&&overlay[0].n==4);
+        overlay[0]=(step_t){.n=1,.note={65}};
+        assert(sequence_starter_add(t,overlay)==-1);
+        song.sel=1; song.playing=song.rec=rec_wait=ft_on=transport_req=0;
+        sequence_sel=0;sequence_mode=STARTER_CHORD;sequence_root=0;
+        sequence_scale=1;sequence_octave=0;sequence_rhythm=0;sequence_vlead=0;
+        t->step[0]=(step_t){.n=4,.note={48,52,55,59}};before=*t;
+        assert(sequence_starter_apply_mode(1)==-1&&same_pattern(&before,t));
+        t->step[0]=(step_t){.n=1,.note={48}};
+        t->step[1]=(step_t){.time=ST_REST};
+        t->step[2]=(step_t){.n=4,.note={49,52,55,59}};
+        before=*t;
+        uint32_t undo_before=undo.sess;
+        assert(sequence_starter_apply_mode(1)==-1&&same_pattern(&before,t)&&undo.sess==undo_before);
+        for(i=0;i<NSTEP;i++) t->step[i]=(step_t){.time=ST_REST};
+        t->step[0]=(step_t){.n=1,.note={48},.vel=77};
+        t->p[P_SDIV]=3;t->p[P_SSWING]=19;t->micro[0]=7;
+        t->lock[0]=(plock_t){.step=0,.param=P_LEVEL,.val=60};
+        t->fill[0]=1;before=*t;other=trk[0];
+        assert(sequence_starter_apply_mode(1)==1);
+        assert(t->step[0].n==4&&t->step[0].note[0]==48&&t->step[0].vel==77);
+        assert(t->p[P_SLEN]==4&&t->p[P_SDIV]==3&&t->p[P_SSWING]==19&&t->micro[0]==7);
+        assert(!memcmp(t->lock,before.lock,sizeof t->lock)&&!memcmp(t->fill,before.fill,sizeof t->fill));
+        assert(!memcmp(&trk[0],&other,sizeof other));
+        after=*t;assert(undo_swap(0));assert(same_pattern(t,&before));
+        assert(undo_swap(1));assert(same_pattern(t,&after));
+        sequence_screen_open();encs[panel.enc[EN_ALGO]]=1;sequence_screen_input(0,0);
+        assert(sequence_add==1);encs[panel.enc[EN_ALGO]]=-1;sequence_screen_input(0,0);
+        assert(sequence_add==0);sequence_screen_close();
+        /* Both native Apply gestures must use ADD, rather than the replace wrapper. */
+        assert(undo_swap(0));before=*t;sequence_screen_open();sequence_add=1;
+        sequence_screen_input(BT(B_OCTUP),0);assert(sequence_confirm&&same_pattern(&before,t));
+        sequence_screen_input(BT(B_OCTUP),0);assert(t->step[0].n==4&&t->step[0].note[0]==48);
+        assert(t->p[P_SLEN]==4&&t->p[P_SDIV]==3&&t->micro[0]==7);
+        assert(undo_swap(0)&&same_pattern(&before,t));
+        fm1_ms=100;fm1_in.buttons=BT(B_OCTUP);sequence_screen_input(BT(B_OCTUP),0);
+        fm1_ms=802;sequence_screen_input(0,0);
+        assert(!sequence_confirm&&t->step[0].n==4&&t->step[0].note[0]==48);
+        assert(undo_swap(0)&&same_pattern(&before,t));fm1_in.buttons=0;sequence_screen_close();sequence_add=0;
+        /* Independent set oracle: randomized attacks/rests/ties, circular starts,
+         * duplicate pitches and overflow over the entire pattern. */
+        for(uint32_t run=0;run<1000;run++) {
+            uint8_t expected[16][128]={{0}},old_notes[128]={0},new_notes[128]={0};
+            uint32_t seed=run+1,len=1+run%16,overflow=0;
+            t->p[P_SLEN]=(int16_t)len;
+            for(i=0;i<len;i++) {
+                step_t *parts[]={&t->step[i],&overlay[i]};
+                for(uint32_t p=0;p<2;p++) {
+                    seed=seed*1664525u+1013904223u;
+                    *parts[p]=(step_t){.time=(uint8_t)(seed%3)};
+                    if(parts[p]->time==ST_NOTE) {
+                        parts[p]->n=1+(uint8_t)((seed>>8)%4);
+                        for(j=0;j<parts[p]->n;j++) parts[p]->note[j]=(uint8_t)(48+((seed>>(j*3))%12));
+                    }
+                }
+            }
+            /* Scan two cycles: seed tie chains at step zero from the preceding loop. */
+            for(i=0;i<len*2;i++) {
+                uint32_t at=i%len,count=0;const step_t *parts[]={&t->step[at],&overlay[at]};
+                uint8_t *sets[]={old_notes,new_notes};
+                for(uint32_t p=0;p<2;p++) if(parts[p]->time!=ST_TIE) {
+                    memset(sets[p],0,128);
+                    if(parts[p]->time==ST_NOTE) for(j=0;j<parts[p]->n;j++) sets[p][parts[p]->note[j]]=1;
+                }
+                if(i>=len) for(j=0;j<128;j++) {expected[at][j]=old_notes[j]|new_notes[j];count+=expected[at][j];}
+                if(count>4) overflow=1;
+            }
+            before=*t;int result=sequence_starter_add(t,overlay);
+            assert((result<0)==overflow&&same_pattern(&before,t));
+            if(result>0) {
+                memset(new_notes,0,128);
+                for(i=0;i<len;i++) {
+                    if(overlay[i].time!=ST_TIE) {
+                        memset(new_notes,0,128);
+                        if(overlay[i].time==ST_NOTE) for(j=0;j<overlay[i].n;j++) new_notes[overlay[i].note[j]]=1;
+                    }
+                    assert(!memcmp(new_notes,expected[i],128));
+                }
+            }
+        }
+    }
+    puts("sequence UI: additive ties/slide flags, duplicates, atomic overflow, metadata, undo/redo, both Apply gestures and 1000 independent union cases PASS");
     puts("sequence UI: native entry, 700ms hold, full undo/redo, track isolation, non-destructive preview, STOP/home ownership PASS");
     return 0;
 }

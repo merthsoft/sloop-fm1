@@ -992,6 +992,7 @@ static void ui_draw(void)
     if (groove_preview.active && (!on_drum_page() || drum_page < 2 || song.sel != TRK_DRUM || ui.menu))
         groove_preview.active = 0;
     pads_tick();
+    if (!vis_shown()) memset(vis_note_hits, 0, sizeof vis_note_hits);
     if (rec_go) {                                       /* the take started: say so */
         rec_go = 0;
         ui_message("RECORDING");

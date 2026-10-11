@@ -3,7 +3,7 @@
 /* Felucca user interface. Four columns map to KNOB 1..4. Rendering is lazy:
  * every element remembers what it last drew and is redrawn only on change. */
 #ifndef FELUCCA_VERSION
-#define FELUCCA_VERSION "2.6 Merthsoft.3"  /* the beat machine firmware for the FM-1 (based on Felucca) */
+#define FELUCCA_VERSION "2.6 Merthsoft.5"  /* the beat machine firmware for the FM-1 (based on Felucca) */
 #endif
 static void project_save(uint32_t slot);
 static void arrangement_save(void);
@@ -490,8 +490,29 @@ static void set_engine_of(track_t *t, uint32_t ei)
     fm1_irq_on();
 }
 
-static void apply_preset(uint32_t pi) { apply_preset_to(TSEL, pi); }
-static void set_engine(uint32_t ei) { set_engine_of(TSEL, ei); }
+static const uint8_t TRACK_FX[] = {P_DIST,P_CHOR,P_DLY,P_REV,P_ITYPE,P_IA,P_IB,P_IC,P_IMIX,
+                                 P_SLCR,P_SLPAT,P_SLRATE,P_SLDEPTH,P_TFLT};
+static void track_fx_values(track_t *t, int16_t *v, uint32_t restore)
+{
+    if (!restore) locks_restore(t);
+    for (uint32_t i=0;i<NELEM(TRACK_FX);i++)
+        if (restore) t->p[TRACK_FX[i]]=v[i]; else v[i]=t->p[TRACK_FX[i]];
+}
+static void apply_preset(uint32_t pi)
+{
+    int16_t fx[NELEM(TRACK_FX)];track_fx_values(TSEL,fx,0);
+    apply_preset_to(TSEL,pi);track_fx_values(TSEL,fx,1);
+}
+static void set_engine(uint32_t ei)
+{
+    int16_t fx[NELEM(TRACK_FX)];track_fx_values(TSEL,fx,0);
+    set_engine_of(TSEL,ei);track_fx_values(TSEL,fx,1);
+}
+static void track_fx_reset(void)
+{
+    for(uint32_t i=0;i<NELEM(TRACK_FX);i++) TSEL->p[TRACK_FX[i]]=TP[TRACK_FX[i]].def;
+    sync_reload=1;ui_message("TRACK FX RESET");ui.force=1;
+}
 
 static void track_defaults(track_t *t)
 {
@@ -614,6 +635,7 @@ static const char *preset_kind(uint32_t n) { return n < NBANK ? BANK_KIND[BANK[n
 static int preset_go_to(track_t *t, uint32_t n)
 {
     uint32_t k, total, e;
+    int16_t fx[NELEM(TRACK_FX)];int result=0;
     if (is_drum(t))
         return 1;
     if (!bank_ready)
@@ -622,13 +644,15 @@ static int preset_go_to(track_t *t, uint32_t n)
     if (n >= total)
         return 1;
     e = preset_at(n, &k);
-    if (e == NENGINES)
-        return up_load_to(t, k);
-    if (e != t->eng_req)
-        set_engine_of(t, e);
-    apply_preset_to(t, k);
+    track_fx_values(t,fx,0);
+    if (e == NENGINES) result=up_load_to(t,k);
+    else {
+        if (e != t->eng_req) set_engine_of(t,e);
+        apply_preset_to(t,k);
+    }
+    track_fx_values(t,fx,1);
     ui.force = 1;
-    return 0;
+    return result;
 }
 /* MIDI Program Change (2.6, after Felucca 1.5.1, PR #179 by @renebohne): seq.c queues it per track (the track its
  * channel plays, GLO > MIDI); here, in the main loop (a flash read, a sound loaded): a synth track takes the n-th sound
@@ -662,17 +686,7 @@ static void pc_poll(void)
 }
 static void preset_go(uint32_t n)                    /* load list index n into the selected track */
 {
-    uint32_t k, e = preset_at(n, &k);
-    if (is_drum(TSEL))
-        return;                                      /* one GM kit: nothing to browse */
-    if (e == NENGINES) {
-        up_load(k);
-        return;
-    }
-    if (e != TSEL->eng_req)
-        select_engine(e);
-    apply_preset(k);
-    ui.force = 1;
+    preset_go_to(TSEL,n);
 }
 
 /* HOME: what KNOB k edits: the engine's four main parameters; on the drum track

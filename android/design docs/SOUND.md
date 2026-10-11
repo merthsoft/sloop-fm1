@@ -26,8 +26,10 @@ clamping. Numeric entry respects units; enum pickers show names. Double-tap rese
 and undoable. Hardware edits update controls without fighting an active gesture: record the
 incoming revision, show a conflict indicator, and reconcile on release instead of oscillating.
 
-Preset load updates sound and applicable sends/arp while preserving whichever mix/pattern/key
-fields the firmware guarantees. Re-read rather than assuming a preset overwrote every field.
+Instrument browsing updates the patch/arp while preserving track FX (drive, chorus,
+delay/reverb sends, insert, slicer and filter), mix, pattern and key fields. Explicit
+INIT SOUND resets the whole patch; both OCT buttons on a normal FX page reset only
+the selected track effects. Re-read rather than assuming a preset overwrote every field.
 User preset save/erase writes flash and follows stopped-state restrictions. App presets store
 portable metadata plus firmware identity; incompatibility is reported rather than silently
 mapping numeric IDs onto a different engine.

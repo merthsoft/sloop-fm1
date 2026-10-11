@@ -307,6 +307,7 @@ static void pads_tick(void)                             /* once a frame: the hit
     for (i = 0; i < NPART; i++)
         for (w = 0; w < 4u; w++) {
             n[i][w] = note_hits[i][w];
+            vis_note_hits[i][w] |= n[i][w];
             note_hits[i][w] = 0;
         }
     fm1_irq_on();
