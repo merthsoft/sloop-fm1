@@ -1,4 +1,15 @@
-# Latest firmware — MerthSloop 2.6.0.12
+# Latest firmware — MerthSloop 2.6.0.13
+
+- Auto-pan uses LFO+FX; ENV+FX remains auto-wah.
+- Ordinary keyboard notes support overlap handoff after an octave switch without
+  a new attack. The note ends only after its last physical key releases.
+- Held pitches fully light their mapped key in the current octave even when NOTES
+  display is disabled. Other tracks and generated chord/arp behavior remain independent.
+- Tests cover both octave directions, both release orders, balanced MIDI output,
+  unchanged voice age, final release and a deliberate fresh attack.
+- Target image 581,548 bytes; static RAM and pool unchanged.
+
+## Previous integrated checkpoint — MerthSloop 2.6.0.12
 
 - Envelope wah responds to typical synth levels: sensitivity gain is corrected and
   defaults favor a pronounced attack/release sweep.

@@ -581,3 +581,16 @@ energy more than threefold versus the normal filter setting. Bounded output chec
 `build/merthsloop12-audio-tests.log`: all 182 golden renders unchanged, zero health,
 routing or crash failures. Target hot-DSP budgets pass. Image 581,276 bytes,
 static RAM 82,100 bytes, pool 332,876 bytes. Physical wah feel remains user audition.
+
+## MerthSloop 2.6.0.13: physical octave handoff
+
+`build/merthsloop13-keyboard-tests.log` passes both octave directions/release orders,
+no reattack (unchanged voice age), held gates through overlap, exactly one MIDI
+note-on/off pair, deliberate fresh attacks, track isolation, sequencer/sustain and
+scale/MIDI ownership regressions. `build/merthsloop13-ui-tests.log` passes all page/
+layer checks and 20,000-frame fuzz. No additional runtime memory is allocated.
+Target image 581,548 bytes (16 free); static RAM 82,100, pool 332,876; hot DSP,
+HAL and RAM-text checks pass. Hardware handoff validation remains user testing.
+
+Auto-pan is now LFO+FX. Real-panel regression covers both press/release orders,
+consumed component taps and no simultaneous vibrato/tremolo activation.

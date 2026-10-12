@@ -38,3 +38,21 @@ Physical LED brightness awaits user testing.
 Merthsoft.12 preserves the normal keyboard lighting while LFO/vibrato or
 ENV/tremolo is held: selected-scale dim lights, bright played notes and generic
 backlight preferences retain their normal playing behavior, with no grid landmarks.
+
+## Octave handoff for ordinary keyboard notes
+
+A physically held plain note lights the key that maps to its captured pitch in the
+current octave, even with NOTES display disabled. Hold the original key, change
+octave, then press the newly lit key before releasing the original. The overlapping
+keys share one held note: no envelope retrigger, no extra MIDI note-on, and no
+note-off until the final holder releases. This works in both octave directions;
+you can also release the new key first. Releasing everything and pressing again
+remains a normal new attack. Other synth tracks have independent ownership.
+
+This handoff applies to ordinary keyboard playing (including manually held chords),
+with generated CHORD and ARP modes off. Their root/chord/latch behavior is unchanged.
+The scale guide remains dim; held/mapped note keys are fully lit.
+
+`tests/keyboard_handoff_test.c` drives real panel/audio frames and checks both
+release orders, octave directions, voice age/gates, balanced MIDI output,
+reattacks and track isolation. Sequencer, scale/MIDI and broad UI regressions pass.

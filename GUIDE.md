@@ -1448,7 +1448,7 @@ engine, sequence, key, or global effects. INIT SOUND resets the whole sound.
 
 ### MerthSloop track auto-wah and auto-pan
 
-Hold ENV+FX for wah, SEL+FX for pan. Keys remain playable with scale lights intact.
+Hold ENV+FX for wah, LFO+FX for pan. Keys remain playable with scale lights intact.
 Wah knobs are rate/sensitivity, depth, low-pass base cutoff and source (free LFO,
 beat division or ENVELOPE). Pan knobs are rate, depth, waveform and beat sync.
 Hold the combination and tap HOME to lock it; HOME, STOP/panic or track changes

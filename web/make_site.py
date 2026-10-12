@@ -138,7 +138,7 @@ def main(pkg, version, out):
         notes = HERE / "beta_banner.html"
         banner = notes.read_text(encoding="utf-8") if notes.exists() else "<p><b>BETA</b></p>"
     html = html.replace("<!--BANNER-->", banner)
-    for old in list(fw.glob("felucca-*.fwsc")) + list(fw.glob("sloop-*.fwsc")):   # one package: the current one
+    for old in list(fw.glob("felucca-*.fwsc")) + list(fw.glob("sloop-*.fwsc")) + list(fw.glob("merthsloop-*.fwsc")):   # one package: the current one
         old.unlink()
     shutil.copy(pkg, fw / name)
     ed_html = (HERE / "editor.html").read_text(encoding="utf-8")

@@ -1727,6 +1727,15 @@ static void chord_revoice(uint32_t sel)
     }
 }
 
+/* Plain physical keys sharing a pitch transfer the hold, not the attack. */
+static int key_note_owner(uint32_t part, uint32_t note, uint32_t except)
+{
+    for (uint32_t k=0;k<27u;k++)
+        if (k!=except && kb_kind[k]==KS_NOTE && kb_trk[k]==part &&
+            kb_n[k]==1 && kb_nt[k][0]==note) return 1;
+    return 0;
+}
+
 static void key_down(uint32_t k)
 {
     uint32_t layer = layer_now(), sel = song.sel % NTRK, i, mc;
@@ -1847,6 +1856,7 @@ static void key_down(uint32_t k)
             in_chord = kb_n[k] > 1u ? kb_nt[k] : 0;
             in_chord_n = kb_n[k];
             in_chord_i = i;
+            if (!t->p[P_CHORD] && !t->p[P_AMODE] && key_note_owner(sel, kb_nt[k][i], k)) continue;
             input_on(t, kb_nt[k][i], 100);
             in_chord = 0;
             midi_out_note(mc, (uint32_t)kb_nt[k][i], 100u);
@@ -1907,6 +1917,7 @@ static void key_up(uint32_t k)
         }
         mc = trk_midi_ch(kb_trk[k] % NTRK);
         for (i = 0; i < kb_n[k]; i++) {
+            if (!t->p[P_CHORD] && !t->p[P_AMODE] && key_note_owner(kb_trk[k], kb_nt[k][i], k)) continue;
             input_off(t, kb_nt[k][i]);
             midi_out_note(mc, (uint32_t)kb_nt[k][i], 0);
         }

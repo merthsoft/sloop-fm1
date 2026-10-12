@@ -3,5 +3,5 @@
 #define MERTHSLOOP_NAME "MERTHSLOOP"
 /* Upstream major.minor.revision + independent, monotonically increasing fork build. */
 #ifndef FELUCCA_VERSION
-#define FELUCCA_VERSION "2.6.0.12"
+#define FELUCCA_VERSION "2.6.0.13"
 #endif

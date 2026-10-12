@@ -138,11 +138,11 @@ int main(void)
     assert(ly_lock==LY_PLAY && !live_mod[1].on);song.sel=1;go_home();frame();
     /* Two-button panels own the gesture in either order, with no FX/SEL/ENV taps on release. */
     for(int effect=2;effect<4;effect++) for(int order=0;order<2;order++) {
-        uint32_t partner=effect==2?B_ENV:B_SCL, first=order?B_FX:partner,second=order?partner:B_FX;
+        uint32_t partner=effect==2?B_ENV:B_LFO, first=order?B_FX:partner,second=order?partner:B_FX;
         song.sel=1;mod_reset(NTRK);go_home();frame();uint32_t page=ui.page,home=ui.home;
         press(first);press(second);frames(12);
         assert(ui.layer==LY_VIB+effect&&live_mod[effect].on&&live_mod[effect].part==1);
-        assert(!live_mod[1].on&&!punch.hold&&layer_now()==LY_PLAY);
+        assert(!live_mod[0].on&&!live_mod[1].on&&!punch.hold&&layer_now()==LY_PLAY);
         assert(keys_notes_dim()==scale_keys(0));
         fm1_in.notes=1u<<key_of_white(4);frame();uint32_t gates=0;
         for(int v=0;v<NVOICE;v++)gates+=trk[1].v[v].gate;assert(gates);
@@ -191,7 +191,7 @@ int main(void)
     fm1_in.notes=1u<<key_of_white(4);frames(12);ui.force=1;frame();ppm("auto-wah-envelope");fm1_in.notes=0;frame();tap(B_HOME);release(B_ENV);release(B_FX);
     panic_req=2;frame();assert(!wah->on&&ly_lock==LY_PLAY);
     trk[1].p[P_PAN]=0;pan->depth=96;pan->rate=48;
-    press(B_SCL);press(B_FX);frames(12);ui.force=1;frame();ppm("auto-pan");release(B_SCL);release(B_FX);
+    press(B_LFO);press(B_FX);frames(12);ui.force=1;frame();ppm("auto-pan");release(B_LFO);release(B_FX);
     song.sel=TRK_DRUM;frame();press(B_ENV);press(B_FX);frames(12);assert(!wah->on);release(B_ENV);release(B_FX);
     puts("wah/pan: press order, playing keys/scale lights, release/lock, track isolation, follower decay, sync, bounds and cleanup PASS");
     puts("modulation: CC1, temporary vibrato/tremolo isolation and release, saved depth/rate, bounds and cleanup PASS");

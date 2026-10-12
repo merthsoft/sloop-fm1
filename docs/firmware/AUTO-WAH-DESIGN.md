@@ -1,6 +1,6 @@
 # Track auto-wah and auto-pan — implemented
 
-Hold **ENV + FX** for auto-wah, or **SEL + FX** for auto-pan. Both gestures work
+Hold **ENV + FX** for auto-wah, or **LFO + FX** for auto-pan. Both gestures work
 in either press order. They affect only the captured, selected synth track; drums
 are excluded. Physical keys continue playing normally and scale lights remain.
 Releasing either button stops an unlocked effect and restores the preceding page.

@@ -161,6 +161,8 @@ static uint32_t keys_lit(void)
         return m | fm1_in.notes;
     }
     m = fm1_in.notes;
+    if (!is_drum(t) && !lights_notes)
+        for (i=0;i<27u;i++) if (key_note_owner(trk_index(t), kb_map(t,i), 27u)) m |= 1u << i;
     if (is_drum(t) || lights_notes)                /* the drum track: each hit lights its key; NOTES: the synths too */
         m |= keys_sounding(t);
     return m;

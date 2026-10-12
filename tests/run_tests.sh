@@ -76,6 +76,9 @@ $CC -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/modulation_test" t
 run "live modulation wheel: priority, restoration, bounds and cleanup" "$OUT/modulation_test"
 $CC -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/lofi_chord_arp_test" tests/lofi_chord_arp_test.c -lm
 run "LOFI chip arp: legacy and complete SEL chord shapes" "$OUT/lofi_chord_arp_test"
+$CC -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/keyboard_handoff_test" tests/keyboard_handoff_test.c -lm
+run "keyboard octave handoff: shared hold without reattack" "$OUT/keyboard_handoff_test"
+
 $CC -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/step_move_merge_test" tests/step_move_merge_test.c -lm
 run "STEP move brush: merge a mistimed note into a chord" "$OUT/step_move_merge_test"
 run "native step painting/moves, record snap controls, SEQ navigation and SNOTE arp modes" "$OUT/seq_navigation_test"

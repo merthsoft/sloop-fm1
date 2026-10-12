@@ -38,7 +38,7 @@ static void layers_init(void)
     for (l = LY_FX; l < LY_WAH; l++)
         ly_bit[l] = 1u << panel.btn[LAYER_BTN[l]];
     ly_bit[LY_WAH] = ly_bit[LY_TREM] | ly_bit[LY_FX];
-    ly_bit[LY_PAN] = ly_bit[LY_SCALE] | ly_bit[LY_FX];
+    ly_bit[LY_PAN] = ly_bit[LY_VIB] | ly_bit[LY_FX];
     dyn_bit[0] = 1u << panel.btn[B_OCTDN];
     dyn_bit[1] = 1u << panel.btn[B_OCTUP];
     ft_btn_mask = 1u << panel.btn[B_REC];

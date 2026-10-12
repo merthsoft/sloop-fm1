@@ -43,15 +43,19 @@ and additional chord qualities remain proposals, not implemented features.
 
 ## Latest firmware
 
-**MerthSloop 2.6.0.12 is integrated and built.** Native ADD/REPLACE, transient-safe
+Ordinary keyboard notes support octave handoff: overlap the newly lit key before
+releasing the original to sustain without reattack. Held pitches remain fully lit
+in their current-octave positions independently of NOTES display.
+
+**MerthSloop 2.6.0.13 is integrated and built.** Native ADD/REPLACE, transient-safe
 Note Trails with high-contrast drums and gate-aware held-note strokes, and preserved track effects with both-OCT
 reset on normal FX pages are implemented. Upstream audio, inserts, sync,
 MIDI, texture, drum mutes and note-length features coexist with the fork libraries,
 rhythms, editing, scale lights and performance modulation. Upstream's 27 physical
 punch effects replace the previous black-key FX modifiers. The installer is
-`http://127.0.0.1:8817/webapp/installer/`.
+`http://127.0.0.1:8818/webapp/installer/`.
 
-Image 581,276 bytes (288 free); static RAM 82,100/98,304 (16,204 free);
+Image 581,548 bytes (16 free); static RAM 82,100/98,304 (16,204 free);
 pool 332,876/344,064 (11,188 free). Lossless factory
 sound sharing, text startup, spare driver-RAM scratch and guarded hot-helper
 inlining make the combined build fit. Functional/audio/companion checks pass;
