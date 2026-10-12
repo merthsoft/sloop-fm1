@@ -15,7 +15,7 @@ static int ed_starter_busy(void)
 static int ed_starter_midi_held(void)
 {
     uint32_t ch,note;
-    for(ch=0;ch<16;ch++)for(note=0;note<128;note++)if(midi_sel_on[ch][note])return 1;
+    for(ch=0;ch<16;ch++)for(note=0;note<128;note++)if(midi_sel_get(ch,note))return 1;
     return 0;
 }
 static void ed_starter_end(void)

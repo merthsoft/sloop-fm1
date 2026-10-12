@@ -2524,23 +2524,34 @@ static track_t *midi_track(uint32_t ch)
 static uint8_t midi_scale;                         /* persisted device preference, default literal MIDI */
 #define MIDI_SCALE_HELD 64u
 static struct { uint16_t key; uint8_t note, part; } midi_scale_held[MIDI_SCALE_HELD];
-static uint8_t midi_sel_on[16][128];                  /* per channel and note: track + 1, 0 = none */
+static uint8_t midi_sel_on[16][64];                   /* per channel and note, a nibble: track + 1, 0 = none (sloop-lab:
+                                                       * 1 KB, not 2: the value is 0..NTRK) */
+static inline uint32_t midi_sel_get(uint32_t ch, uint32_t note)
+{
+    return (midi_sel_on[ch & 15u][(note & 127u) >> 1] >> (4u * (note & 1u))) & 15u;
+}
+static inline void midi_sel_set(uint32_t ch, uint32_t note, uint32_t v)
+{
+    uint8_t *b = &midi_sel_on[ch & 15u][(note & 127u) >> 1];
+    uint32_t sh = 4u * (note & 1u);
+    *b = (uint8_t)((*b & ~(15u << sh)) | ((v & 15u) << sh));
+}
 static track_t *midi_route(uint32_t ch, uint32_t note, int on)
 {
     track_t *t = midi_own(ch);
     if (t) {
-        midi_sel_on[ch & 15u][note & 127u] = on ? (uint8_t)(trk_index(t) + 1u) : 0;
+        midi_sel_set(ch, note, on ? trk_index(t) + 1u : 0);
         return t;
     }                                     /* a track's own channel (GLO > MIDI, GLO > DRUMS > CH) */
-    if (song.g[G_CHOTH] && (on || !midi_sel_on[ch & 15u][note & 127u]))
+    if (song.g[G_CHOTH] && (on || !midi_sel_get(ch, note)))
         return 0;                                     /* OTHER = OFF: nothing (a note-off only ends what a note-on of
                                                        * that channel started on the selected track, before) */
     t = TSEL;
     if (on)
-        midi_sel_on[ch & 15u][note & 127u] = (uint8_t)(song.sel + 1u);
-    else if (midi_sel_on[ch & 15u][note & 127u]) {
-        t = &trk[(midi_sel_on[ch & 15u][note & 127u] - 1u) % NTRK];
-        midi_sel_on[ch & 15u][note & 127u] = 0;
+        midi_sel_set(ch, note, song.sel + 1u);
+    else if (midi_sel_get(ch, note)) {
+        t = &trk[(midi_sel_get(ch, note) - 1u) % NTRK];
+        midi_sel_set(ch, note, 0);
     }
     return t;
 }
@@ -2557,10 +2568,10 @@ static int midi_scale_owner(uint32_t part, uint32_t note)
 static void midi_scale_restore_route(uint32_t key)
 {
     uint32_t ch = (key >> 7) & 15u, note = key & 127u;
-    midi_sel_on[ch][note] = 0;
+    midi_sel_set(ch, note, 0);
     for (uint32_t i = 0; i < MIDI_SCALE_HELD; i++)
         if (midi_scale_held[i].part && (midi_scale_held[i].key & 2047u) == (key & 2047u)) {
-            midi_sel_on[ch][note] = midi_scale_held[i].part;
+            midi_sel_set(ch, note, midi_scale_held[i].part);
             break;
         }
 }
@@ -2997,8 +3008,8 @@ static void events_block(uint32_t n)
             if (i < NPART) { chord_latch_mods[i] = 0; arp_chord_latch_n[i] = 0; }
             for (uint32_t channel = 0; channel < 16; channel++)
                 for (uint32_t pitch = 0; pitch < 128; pitch++)
-                    if (midi_sel_on[channel][pitch] == i + 1u)
-                        midi_sel_on[channel][pitch] = 0;
+                    if (midi_sel_get(channel, pitch) == i + 1u)
+                        midi_sel_set(channel, pitch, 0);
 
             if (fading_preset) {                      /* (2.6) a preset loaded: the notes keep sounding as they are
                                                        * and fade out with the old sound (voice.c sound_change):
@@ -3093,11 +3104,11 @@ static void events_block(uint32_t n)
             if (st != 0x90u && st != 0x80u)
                 continue;
             if (st == 0x90u && d2) {
-                midi_sel_on[ch][d1] = (uint8_t)(song.sel + 1u);
+                midi_sel_set(ch, d1, song.sel + 1u);
                 t = TSEL;
             } else {                                  /* the note-off: the track its note-on went to */
-                t = midi_sel_on[ch][d1] ? &trk[(midi_sel_on[ch][d1] - 1u) % NTRK] : TSEL;
-                midi_sel_on[ch][d1] = 0;
+                t = midi_sel_get(ch, d1) ? &trk[(midi_sel_get(ch, d1) - 1u) % NTRK] : TSEL;
+                midi_sel_set(ch, d1, 0);
             }
         } else {
             if (st == 0xB0u) {                            /* a CC (IN = CLOCK: none) */

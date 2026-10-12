@@ -982,6 +982,16 @@ static uint8_t vis_on, vis_shown_last, vis_name_t;   /* the visualiser (ui_vis.c
 static void ui_draw(void)
 {
     ui.frame++;
+    /* STEP modifier help follows the physical hold; warnings retain their normal timeout. */
+    int step_help = !memcmp(ui.msg, "HOLD 1 ", 7);
+    uint32_t oct = fm1_in.buttons & ((1u << panel.btn[B_OCTUP]) | (1u << panel.btn[B_OCTDN]));
+    if (oct && !ui.home && !ui.menu && ui.layer == LY_PLAY && !ui.hold_kind &&
+        cur_page()->scope == SC_STEP && !is_drum(TSEL) && !song.rec && !rec_wait && !ft_on) {
+        if (!ui.msg_t || step_help) {
+            ui_message(oct & (1u << panel.btn[B_OCTUP]) ? "HOLD 1 TIE 2 OCT 3 MOVE" : "HOLD 1 REST 2 OCT 3 MOVE");
+            ui.msg_t = 2;
+        }
+    } else if (step_help) ui.msg_t = 0;
     if (groove_preview.active && (!on_drum_page() || drum_page < 2 || song.sel != TRK_DRUM || ui.menu))
         groove_preview.active = 0;
     pads_tick();

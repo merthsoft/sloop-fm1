@@ -9,6 +9,15 @@ static void fresh(void)
 int main(void)
 {
     panel=PANEL_DEFAULT;layers_init();palette_set(4);outdir="build/host";
+    fresh();open_family(FAM_SEQ);assert(cur_page()->scope==SC_STEP);
+    for(uint32_t b=B_OCTDN;b<=B_OCTUP;b++) {
+        press(b);frames(180);assert(ui.msg_t&&!memcmp(ui.msg,"HOLD 1 ",7));
+        ui_message("CHORD FULL");frames(10);assert(ui.msg_t&&!strcmp(ui.msg,"CHORD FULL"));
+        frames(60);assert(ui.msg_t&&!memcmp(ui.msg,"HOLD 1 ",7));
+        release(b);assert(!ui.msg_t);
+    }
+    press(B_OCTUP);go_home();frame();assert(!ui.msg_t);release(B_OCTUP);
+    ui_message("ORDINARY MESSAGE");frames(60);assert(!ui.msg_t);
     fresh();track_t *t=TSEL;
     t->step[3]=(step_t){.time=ST_NOTE,.n=2,.note={60,64},.vel=91,.rat=2};
     t->step[4]=(step_t){.time=ST_NOTE,.n=1,.note={67},.vel=50};t->micro[4]=-7;
@@ -30,5 +39,5 @@ int main(void)
     step_move(-1);assert(!memcmp(before,t->step,sizeof before)&&ui.cursor==4);
     fresh();t=TSEL;t->step[3]=(step_t){.time=ST_NOTE,.n=1,.note={60}};t->step[4]=(step_t){.time=ST_NOTE,.n=1,.note={67}};lock_set(t,4,P_DIST,20);
     memcpy(before,t->step,sizeof before);step_move(-1);assert(!memcmp(before,t->step,sizeof before)&&lock_find(t,4,P_DIST,0)>=0);
-    puts("move merge: chord union, duplicate/full rejection, destination metadata, complete undo/redo, ties and lock guards PASS");return 0;
+    puts("STEP help: held lifetime, warning priority and release/navigation clearing PASS\nmove merge: chord union, duplicate/full rejection, destination metadata, complete undo/redo, ties and lock guards PASS");return 0;
 }

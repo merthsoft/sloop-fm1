@@ -1,13 +1,29 @@
 # PR 111 assessment
 
 Reviewed [the proposed dual-core/RAM series](https://github.com/isod89/sloop-fm1/pull/111)
-against the current android branch. No commits from it are integrated by this assessment.
+against the current `merthsloop` branch. The MIDI routing-table reduction is now
+integrated; the remaining series is pending.
 
 The proposal is useful, but should be adapted in stages. Its author reports unchanged
 golden audio renders and about 38 KB less ordinary static RAM on its own upstream base.
 Those are upstream-series measurements, not savings measured on our fork.
 
-## Suggested order
+## Integrated first stage
+
+Adapted `fbafa34` from the PR: routing owners use packed nibbles, saving **1,024
+bytes of static RAM** without reducing held-note capacity. Our scale-aware MIDI
+ownership, USB/TRS separation and selected-track release routing are retained.
+All routing-table callers and test fixtures use the packed accessors.
+
+The native scale/MIDI ownership and musical-starter regressions pass. With the
+STEP held-help fix included, the target build reports 93,476 bytes of static RAM
+(previously 94,500), unchanged pool usage of 333,900 bytes, and an application
+image of 581,356 bytes. These are measured fork results, not the PR's total savings.
+
+DRAWBAR arena storage, XIP banks, shared scratch, memory placement and dual-core
+rendering have **not** been integrated yet.
+
+## Remaining order
 
 1. Pack `midi_sel_on` into nibbles. Values are 0–4; this reduces the routing table
    by 1,024 bytes. Our held-note/latch logic also reads the table, so adapt every access

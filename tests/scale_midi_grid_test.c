@@ -36,14 +36,14 @@ int main(void) {
     midi(0,1,64,100);midi(0,1,63,100);assert(gated(1,63));
     midi(0,1,64,0);assert(gated(1,63));midi(0,1,63,0);assert(!gated(1,63)); /* SNAP collision */
     midi(0,1,64,100);midi(1,1,64,100);assert(owners()==2);
-    midi(0,1,64,0);assert(gated(1,63)&&owners()==1&&midi_sel_on[1][64]);
+    midi(0,1,64,0);assert(gated(1,63)&&owners()==1&&midi_sel_get(1,64));
     midi(0,1,64,100);assert(owners()==2);
     usb.resets++;frame();assert(gated(1,63)&&owners()==1);midi(1,1,64,0);assert(!gated(1,63)&&!owners());
     t->p[P_QUANT]=2;song.sel=1;midi(0,4,64,100);song.sel=2;midi(0,4,64,0);assert(!gated(1,63)&&!owners());
     midi(0,1,64,100);panic_req=2;frame();assert(!owners()&&!gated(1,63));midi(0,1,64,0);assert(!owners());
     /* Capacity rejection must not evict a held owner or release an unrelated pitch. */
     t->p[P_QUANT]=0;for(int n=0;n<MIDI_SCALE_HELD;n++)midi(0,1,n,100);assert(owners()==MIDI_SCALE_HELD);
-    midi(0,1,100,100);assert(owners()==MIDI_SCALE_HELD&&!midi_sel_on[1][100]);
+    midi(0,1,100,100);assert(owners()==MIDI_SCALE_HELD&&!midi_sel_get(1,100));
     midi_scale=0;midi(0,1,100,0);assert(owners()==MIDI_SCALE_HELD);
     for(int n=0;n<MIDI_SCALE_HELD;n++)midi(0,1,n,0);assert(!owners());
     ui.menu=1;ui.menu_sel=MI_MIDISCALE;mi_set(MI_MIDISCALE,1);assert(midi_scale);

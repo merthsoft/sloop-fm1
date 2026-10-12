@@ -8,6 +8,7 @@ forward moves into an event's own ties. No wire parameter IDs or project formats
 
 Select a synth step on STEP. Holding OCT+ and turning knob 1 clockwise writes
 ties into every step crossed after the selected step. OCT− writes rests instead.
+The knob help stays visible for the entire OCT hold and clears on release or leaving STEP. Temporary warnings take priority, then the help returns if OCT is still held.
 The starting step stays intact; movement stops at the pattern's end and backward
 movement does not erase. Each hold starts an undo session. EDIT + OCT−/OCT+ restores
 or reapplies its steps. Playing octave does not change while these modifiers are
