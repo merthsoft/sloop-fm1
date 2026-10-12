@@ -28,7 +28,7 @@ OUT=build/host
 mkdir -p "$OUT"
 CC="${CC:-cc} -UNDEBUG -O1 -Wall -Wno-unused-function"
 fail=0
-run() { echo "== $1"; shift; "$@" || fail=1; }
+run() { label="$1"; echo "== $label"; shift; "$@" || { status=$?; echo "FAILED ($status): $label"; fail=1; }; }
 
 [ -f build/felucca.fwsc ] || { echo "run ./build.sh first"; exit 1; }
 # the generated headers the FM6 engine needs (tools/build.py generate() makes them too; no Pillow needed)
@@ -74,6 +74,10 @@ $CC -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/scale_lights_test"
 run "persistent scale lights: physical gesture, pitch classes and settings" "$OUT/scale_lights_test"
 $CC -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/modulation_test" tests/modulation_test.c -lm
 run "live modulation wheel: priority, restoration, bounds and cleanup" "$OUT/modulation_test"
+$CC -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/lofi_chord_arp_test" tests/lofi_chord_arp_test.c -lm
+run "LOFI chip arp: legacy and complete SEL chord shapes" "$OUT/lofi_chord_arp_test"
+$CC -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/step_move_merge_test" tests/step_move_merge_test.c -lm
+run "STEP move brush: merge a mistimed note into a chord" "$OUT/step_move_merge_test"
 run "native step painting/moves, record snap controls, SEQ navigation and SNOTE arp modes" "$OUT/seq_navigation_test"
 $CC -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/edit_tools_test" tests/edit_tools_test.c -lm
 run "EDIT tools: scale guides, whole-pattern octaves, gesture readouts and undo" "$OUT/edit_tools_test"

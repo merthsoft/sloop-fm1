@@ -4,6 +4,72 @@ Current delivery: [STATUS.md](STATUS.md). Build and test evidence: [VERIFICATION
 
 UI refinement checkpoint (2026-10-07): The shared frame now uses a compact connection menu and selected track/workspace highlights. Playing tips and destination checks are expandable, keeping the chord surface and joystick central.
 
+Chord pad Roman numerals follow the selected scale’s diatonic triad quality: uppercase
+for major, lowercase for minor, ° for diminished and + for augmented. The upper
+tonic retains that quality with an ↑ marker. Pentatonic chord pads use their parent
+major/minor harmony, matching playback; the melody grid remains pentatonic.
+
+## Chord range and thickness
+
+Perform exposes Thickness (Normal, +1 octave, +2 octaves) and Pad range (1–3
+octaves, giving 8/15/22 pads including the final upper tonic). Larger layouts keep
+80 dp per row and use the existing scroll rail. The first seven pads retain custom
+mapping; higher pads follow canonical degrees and show ↑, ↑2 or ↑3.
+
+Both voicing modes choose the base voicing before thickness adds exact upper-octave
+copies. It does not feed the layered chord back into voicing history. Duplicate
+pitches are removed and copies beyond MIDI 127 are omitted. The optional bass is
+unchanged; block, strum and arp styles receive the expanded notes. Controller chord
+input also uses thickness. Presets retain both controls; older presets default to
+Normal and eight pads. These controls do not raise FM1 engine/shared polyphony
+limits; dense chords can steal voices, especially with other melodic tracks.
+
+Smooth voicing minimizes sorted voice movement among closed inversions that retain
+the selected root/register. Explicit inversion takes priority; tonic pads stay in
+their requested octave. A 26,880-transition audit across keys/scales/shapes verifies
+pitch-class identity, register anchoring, movement no worse than root position,
+repeat stability and octave-transposition consistency. It is currently per chord,
+with history from the last played pad, rather than a joint optimizer for multiple
+simultaneously held pads. Non-latched fingers own independent chords; latch still
+uses one current chord owner. Multi-pad latch stacking and expanded chord-quality
+controls remain proposed work.
+
+## Smooth voicing and Part writing
+
+<img src="../../assets/screens/merthsoft/android-part-writing.png" width="280" alt="Fresh Android Perform capture with Part writing enabled, Smooth voicing disabled, and latched D minor voiced as D-A-F">
+
+The former Voice lead checkbox is named **Smooth voicing**. It minimizes movement
+among closed inversions and retains the existing register/root restrictions.
+**Part writing** is a separate checkbox that takes precedence while enabled;
+Smooth voicing is disabled in the UI without losing its saved preference.
+
+Part writing preserves the base chord's three/four tone identities, selected root
+pitch and bass octave band. It searches octave placements within a two-octave span,
+then ranks candidates in this order: fewer parallel fifths/octaves (including
+compound intervals); fewer missed leading-tone/chord-seventh resolutions when the
+next chord contains a resolution tone; fewer similar-motion outer perfect intervals
+and voice overlaps; fewer large leaps; less total movement; narrower span. Sorted
+pitch positions act as low-to-high voice identities, preventing simultaneous crossing.
+Repeated notes may sustain as common tones. A raised leading tone in a minor key
+is recognized from its actual pitch, including a forced-major dominant.
+
+This is a local part-writing preference, not strict SATB composition. Inversions
+remain authoritative; a change between three and four base voices uses Smooth
+voicing as a fallback. New chords without history use their requested voicing.
+Register/root requirements can force parallels or frustrate resolution. The optional
+bass is included when actually routed; fixed root/bass octave doublings may be
+unavoidable. Thickness's ornamental octave copies are added afterward, not judged
+as independent contrapuntal voices. No extra voices, doubling/omission policy,
+progression look-ahead or harmonic rewriting is introduced.
+
+Touch and controller chord roots use separate base-voicing histories. Presets store
+Part writing, defaulting it off for older presets. Latch/retrigger behavior and
+app/FM1 octave changes retain their existing contracts. Multi-pad combinations
+still use the last chord's history, rather than jointly optimizing every held pad.
+
+Rule references: [Open Music Theory's parallel-motion examples](https://meganlavengood.github.io/musictheoryexamples/2024/12/01/parallels.html)
+and [Music Theory for the 21st-Century Classroom: seventh-chord resolution](https://musictheory.pugetsound.edu/mt21c/VoiceLeadingSeventhChordsIntro.html).
+
 ## Implementation checkpoint — 2026-10-07
 
 Perform now has direct key, scale and Oct−/Oct+ buttons. MIDI channel selection is shown only

@@ -10,8 +10,8 @@ Terminus Bold 8x16 (BDF, SIL OFL 1.1). TTF fonts also work through render()
 Glyph format: per glyph an advance width, a bitmap width and an offset; the
 bitmap starts FONT_PAD pixels left of the pen position (room for side
 bearings); rows top to bottom. A font whose pixels are all on or off (the
-Terminus pixel font) is stored at 1 bit a pixel (SLOOP 2.6: 5376 bytes
-instead of 21504), the glyph's rows one after the other, high bit first, each
+Terminus pixel font) is stored at 1 bit a pixel (5376 bytes before identical
+glyph sharing, 3952 after glyph/byte-overlap sharing, instead of 21504), the glyph's rows one after the other, high bit first, each
 glyph from a whole byte, and marked bits = 1; an anti-aliased one (TTF) stays at
 2 pixels per byte (high nibble first), alpha 0..15, bits = 0 (gfx.c cv_text).
 """
@@ -146,23 +146,39 @@ def main(out):
                   f"the {bname} bitmaps at {scale}x (0 B)")
             continue
         data, offs = [], []
+        seen = {}  # Identical packed glyphs share bytes; advances/widths remain per glyph.
         one = all(v in (0, 15) for _, _, g in glyphs for v in g)   # on / off only: 1 bit a pixel
         for adv, bw, g in glyphs:
-            offs.append(len(data))
+            key = (bw, tuple(g))
+            if key in seen:
+                offs.append(seen[key])
+                continue
+            packed = []
             if one:
                 acc = 0
                 for i, v in enumerate(g + [0] * (-len(g) % 8)):
                     acc = (acc << 1) | (v != 0)
                     if i % 8 == 7:
-                        data.append(acc)
+                        packed.append(acc)
                         acc = 0
-                unp = [15 if data[offs[-1] + i // 8] >> (7 - i % 8) & 1 else 0 for i in range(len(g))]
+                unp = [15 if packed[i // 8] >> (7 - i % 8) & 1 else 0 for i in range(len(g))]
                 assert unp == g, "1-bit packing must give the glyph back"
-                continue
-            for y in range(h):
-                row = g[y * bw:(y + 1) * bw] + [0]
-                for x in range(0, bw, 2):
-                    data.append((row[x] << 4) | row[x + 1])
+            else:
+                for y in range(h):
+                    row = g[y * bw:(y + 1) * bw] + [0]
+                    for x in range(0, bw, 2):
+                        packed.append((row[x] << 4) | row[x + 1])
+            # Offset-based rendering permits byte-aligned suffix/prefix sharing too.
+            # The complete glyph byte sequence still exists contiguously, unchanged.
+            pos = bytes(data).find(bytes(packed))
+            if pos < 0:
+                overlap = min(len(data), len(packed))
+                while overlap and data[-overlap:] != packed[:overlap]:
+                    overlap -= 1
+                pos = len(data) - overlap
+                data.extend(packed[overlap:])
+            seen[key] = pos
+            offs.append(pos)
         assert len(data) < 65536
         lines.append(f"static const uint8_t FONT_{name}_DATA[{len(data)}] = {{")
         for i in range(0, len(data), 24):

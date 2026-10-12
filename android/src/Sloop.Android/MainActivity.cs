@@ -38,6 +38,8 @@ public sealed partial class MainActivity : Activity
             var workspace = savedInstanceState.GetInt("workspace", 0);
             if (Enum.IsDefined(typeof(Workspace), workspace)) state.Workspace = (Workspace)workspace;
             state.SelectTrack(Math.Clamp(savedInstanceState.GetInt("track", 0), 0, 3));
+            quickSound=savedInstanceState.GetBoolean("quick-sound",true);quickModeChosen=savedInstanceState.ContainsKey("quick-sound");
+            sampleAdvanced=savedInstanceState.GetBoolean("sample-advanced",false);
         }
         var root = new LinearLayout(this) { Orientation = Orientation.Vertical };
         root.SetPadding(Dp(12), Dp(24), Dp(12), Dp(12));
@@ -184,6 +186,7 @@ public sealed partial class MainActivity : Activity
     {
         outState.PutInt("workspace", (int)state.Workspace);
         outState.PutInt("track", state.SelectedTrack);
+        outState.PutBoolean("quick-sound",quickSound);outState.PutBoolean("sample-advanced",sampleAdvanced);
         base.OnSaveInstanceState(outState);
     }
 

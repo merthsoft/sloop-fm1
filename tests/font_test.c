@@ -120,7 +120,7 @@ int main(int argc, char **argv)
         check(n == 21504u && render_all(&s4, 255u) == FONT_S_HASH && render_all(&l4, 95u) == FONT_L_HASH,
               "the 4-bit format (anti-aliased fonts) still draws the same pixels");
     }
-    check(sizeof FONT_S_DATA == 5376u && FONT_S.bits == 1u, "the Terminus bitmaps at 1 bit a pixel: 5376 bytes (21504 at 4 bits)");
+    check(sizeof FONT_S_DATA < 5376u && FONT_S.bits == 1u, "identical packed glyphs share bytes; every original pixel remains unchanged");
     printf("%s\n", bad ? "FONT TEST FAILED" : "font test passed");
     return bad;
 }

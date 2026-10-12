@@ -281,7 +281,7 @@ static void __attribute__((noinline)) vis_update(void)
     vs.wph += 37u;
     vs.peak = mpk;
     if (vis_style == 9u) {
-        uint32_t t, v;
+        uint32_t t, v, cut;
         vis_notes_head = (uint8_t)((vis_notes_head + 1u) % 48u);
         memcpy(vis_notes[vis_notes_head], vis_note_hits, sizeof vis_notes[0]);
         memset(vis_note_hits, 0, sizeof vis_note_hits);
@@ -290,13 +290,17 @@ static void __attribute__((noinline)) vis_update(void)
             if (trk_silent(&trk[t])) { memset(vis_notes[vis_notes_head][t], 0, sizeof vis_notes[0][0]); continue; }
             for (v = 0; v < NVOICE; v++) {
                 const voice_t *n = &trk[t].v[v];
-                if (n->active && n->note < 128u && !trk_silent(&trk[t]))
+                if (n->active && n->gate && n->note < 128u)
                     vis_notes[vis_notes_head][t][n->note >> 5] |= 1u << (n->note & 31u);
             }
         }
+        /* Rhythm follows the actual punch phase, not wet delay/reverb energy.
+         * During the crossfade the dry notes are still audible. */
+        cut = punch.cur == PX_GATE && punch.g == 32767 && punch.gp >= beat_samples() / 8u + 64u;
         fm1_irq_on();
         vis_drum_notes[vis_notes_head] = 0;
         for (t = 0; t < 16u; t++) if (pad_lit[t]) vis_drum_notes[vis_notes_head] |= (uint16_t)(1u << t);
+        if (cut) { memset(vis_notes[vis_notes_head], 0, sizeof vis_notes[0]); vis_drum_notes[vis_notes_head] = 0; }
     }
     {                                               /* the wave's scale follows the peak */
         int32_t target = mpk < 1600 ? 1600 : mpk;

@@ -57,13 +57,13 @@ public sealed class ExternalMidiNotes(Action<string,int,int> hold, Action<string
 public static class ExternalMidiHarmony
 {
     /// <summary>Exact in-scale roots only. Register comes from the controller pitch.</summary>
-    public static ChordVoicing? Chord(int pitch,int key,PerformanceScale scale,ChordShape shape,int inversion)
+    public static ChordVoicing? Chord(int pitch,int key,PerformanceScale scale,ChordShape shape,int inversion,bool smooth=false,bool partWriting=false,ChordVoicing? previous=null,bool includeBass=false)
     {
         var harmony=scale==PerformanceScale.MajorPentatonic?PerformanceScale.Major:scale==PerformanceScale.MinorPentatonic?PerformanceScale.NaturalMinor:scale;
         int relative=pitch-key,degree=Array.IndexOf(PerformanceHarmony.Scale(harmony),((relative%12)+12)%12);
         if(degree<0)return null;
         int octave=(int)Math.Floor(relative/12.0)-1;
         if(octave is < -1 or >7)return null;
-        return PerformanceHarmony.Chord(key,harmony,octave,degree,shape,inversion,false);
+        return PerformanceHarmony.Chord(key,harmony,octave,degree,shape,inversion,smooth,previous?.Notes,partWriting,previous,includeBass);
     }
 }

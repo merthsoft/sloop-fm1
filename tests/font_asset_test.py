@@ -54,7 +54,7 @@ assert re.search(r"FONT_S = .*?, 1 \};", header), "regenerate packed firmware fo
 data = bytes(int(v, 16) for v in re.findall(r"0x([0-9a-f]{2})", re.search(
     r"FONT_S_DATA\[.*?\] = \{(.*?)\};", header, re.S).group(1)))
 offsets = list(map(int, re.search(r"FONT_S_OFF\[.*?\] = \{(.*?)\};", header, re.S).group(1).split(",")))
-assert len(data) == 5376, len(data)
+assert len(data) < 4560 and len(set(offsets)) < len(offsets), (len(data), len(set(offsets)))
 for i, (_, width, pixels) in enumerate(glyphs):
     actual = [15 if data[offsets[i] + p // 8] & (1 << (7 - p % 8)) else 0 for p in range(width * height)]
     assert actual == pixels, f"packed glyph {i + 32} differs from BDF"
@@ -80,4 +80,4 @@ legacy_header = re.sub(r"FONT_S_OFF\[.*?\] = \{.*?\};", "FONT_S_OFF[224] = {" +
 old = out / "legacy"
 old.mkdir(exist_ok=True)
 (old / "felucca_font.h").write_text(legacy_header)
-print("font assets: all 224 BDF glyphs identical; 21,504 -> 5,376 bytes (16,128 saved)")
+print(f"font assets: all 224 BDF glyphs identical; 21,504 -> {len(data):,} bytes ({21504-len(data):,} saved)")

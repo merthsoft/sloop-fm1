@@ -989,8 +989,22 @@ async function editorDsyn() {
   let hdr = null;
   try { hdr = readFileSync(join(HERE, "../build/gen/felucca_drumkits.h"), "utf8"); } catch (e) { /* (not built) */ }
   if (hdr) {
-    const kits = [...hdr.matchAll(/\{"([^"]*)", "[^"]*", (0x[0-9A-Fa-f]+|\d+), \{([\s\S]*?)\}\},/g)];
-    const bytes = kits.flatMap((k) => [Number(k[2]), ...[...k[3].matchAll(/\{([^{}]*)\},/g)].flatMap((r) => r[1].split(",").map((x) => +x & 255))]);
+    let kits, bytes;
+    if (hdr.includes("DS_BASE_BITS")) {
+      const widths = /DS_BASE_BITS\[21\] = \{([^}]*)\}/.exec(hdr)[1].split(",").map(Number);
+      const bases = [.../DS_BASE\[DS_NBASE\]\[17\] = \{([\s\S]*?)\n\};/.exec(hdr)[1].matchAll(/\{([^}]*)\}/g)].map(r=>r[1].split(",").map(Number));
+      kits = [...hdr.matchAll(/\{"([^"]*)", "[^"]*", (0x[0-9A-Fa-f]+|\d+), \{([^}]*)\}, \{([^}]*)\}\},/g)];
+      bytes = kits.flatMap(k=> {
+        const indices=k[3].split(",").map(Number), levels=k[4].split(",").map(Number);
+        return [Number(k[2]), ...indices.flatMap((index,lane)=> {
+          let bit=0;const packed=bases[index];
+          return [...widths.map(width=>{let value=0;for(let b=0;b<width;b++,bit++)value|=((packed[bit>>3]>>(bit&7))&1)<<b;return value;}),levels[lane]];
+        })];
+      });
+    } else {
+      kits = [...hdr.matchAll(/\{"([^"]*)", "[^"]*", (0x[0-9A-Fa-f]+|\d+), \{([\s\S]*?)\}\},/g)];
+      bytes = kits.flatMap((k) => [Number(k[2]), ...[...k[3].matchAll(/\{([^{}]*)\},/g)].flatMap((r) => r[1].split(",").map((x) => +x & 255))]);
+    }
     ok(kits.length === 32 && js(kits.map((k) => k[1])) === js(E.DSYN_MOCK_NAMES) && js(Array.from(raw)) === js(bytes),
       "dsyn: the mock's 32 kits == build/gen/felucca_drumkits.h");
   }

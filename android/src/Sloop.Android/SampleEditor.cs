@@ -31,7 +31,7 @@ public sealed partial class MainActivity
         else Window?.ClearFlags(WindowManagerFlags.KeepScreenOn);
         if (state.Workspace != Sloop.Core.Workspace.Sample) return;
         if (samples.RecordingActive && captureUiActive && sampleStatusLabel is not null) {
-            sampleStatusLabel.Text = samples.Status;
+            sampleStatusLabel.Text = sampleAdvanced ? samples.Status : samples.Status.Split('\n')[0];
             if (captureMeter is not null) captureMeter.Progress = samples.CapturePeak;
         } else ShowWorkspace();
     }
@@ -93,7 +93,7 @@ public sealed partial class MainActivity
         }
     }
 #pragma warning restore CS0672
-    private void AddSampleEditor()
+    private void AddAdvancedSampleEditor()
     {
         void Button(string title, Action action, bool enabled = true) {
             var button = new global::Android.Widget.Button(this) { Text = title, Enabled = enabled && !samples.Busy };
@@ -289,10 +289,16 @@ internal sealed class SampleWaveView : View
     public int SelectedSlice { get; set; } = -1;
     public IReadOnlyList<long> ProposedBoundaries { get; set; } = [];
     private readonly Paint paint = new() { AntiAlias = true, StrokeWidth = 2 };
+    public bool TrimHandles { get; init; }
+    public bool ShowChops {get;init;}=true;
+    public bool ScaleQuietWaveform {get;init;}
+    public event Action<long,long>? TrimChosen;
+    private int trimEdge;
+    private long dragStart,dragEnd;
     public event Action<long>? PositionChosen;
     public SampleWaveView(Context context, SampleDocument document, float[] peaks, long cursor, SampleViewport viewport) : base(context)
     {
-        this.document = document; this.peaks = peaks; Cursor = cursor; this.viewport = viewport;
+        this.document = document; this.peaks = peaks; Cursor = cursor; this.viewport = viewport;dragStart=document.Start;dragEnd=document.End;
         ContentDescription = "Sample waveform. Tap or drag to position cursor within visible frames."; Clickable = true;
         if (viewport.Start != 0 || viewport.End != document.Source.Frames) { this.peaks = []; _ = LoadPeaksAsync(); }
     }
@@ -310,16 +316,39 @@ internal sealed class SampleWaveView : View
         var slices = document.Slices();
         if (SelectedSlice >= 0 && SelectedSlice < slices.Length) { paint.Color = Color.Argb(35,62,205,176); canvas.DrawRect(X(slices[SelectedSlice].Start),0,X(slices[SelectedSlice].End),Height,paint); }
         paint.Color = Color.Rgb(62,205,176);
-        for (int i = 0; i < peaks.Length; i++) { float x = (i+.5f)*Width/peaks.Length, size = peaks[i]*Height*.45f; canvas.DrawLine(x,Height/2f-size,x,Height/2f+size,paint); }
-        paint.Color = Color.Argb(170,10,10,10); canvas.DrawRect(0,0,X(document.Start),Height,paint); canvas.DrawRect(X(document.End),0,Width,Height,paint);
-        paint.Color = Color.Yellow; foreach (var marker in document.Markers) canvas.DrawLine(X(marker),0,X(marker),Height,paint);
+        float displayPeak=ScaleQuietWaveform?Math.Max(.001f,peaks.Length==0?1:peaks.Max()):1;
+        for (int i = 0; i < peaks.Length; i++) { float x = (i+.5f)*Width/peaks.Length, size = peaks[i]/displayPeak*Height*.45f; canvas.DrawLine(x,Height/2f-size,x,Height/2f+size,paint); }
+        paint.Color = Color.Argb(170,10,10,10); canvas.DrawRect(0,0,X(TrimHandles?dragStart:document.Start),Height,paint); canvas.DrawRect(X(TrimHandles?dragEnd:document.End),0,Width,Height,paint);
+        paint.Color = Color.Yellow; if(ShowChops)foreach (var marker in document.Markers) canvas.DrawLine(X(marker),0,X(marker),Height,paint);
         paint.Color = Color.Rgb(255,150,50); foreach (var marker in ProposedBoundaries) canvas.DrawLine(X(marker),0,X(marker),Height,paint);
         paint.Color = Color.White; canvas.DrawLine(X(Cursor),0,X(Cursor),Height,paint);
+        if(TrimHandles) {
+            paint.TextSize=12*(Resources?.DisplayMetrics?.Density??1);
+            paint.Color=Color.Rgb(82,220,188);canvas.DrawRect(X(dragStart)-5,0,X(dragStart)+5,Height,paint);canvas.DrawText("Start",Math.Clamp(X(dragStart)+8,8,Math.Max(8,Width-100)),paint.TextSize+5,paint);
+            paint.Color=Color.Rgb(255,190,90);canvas.DrawRect(X(dragEnd)-5,0,X(dragEnd)+5,Height,paint);canvas.DrawText("End",Math.Clamp(X(dragEnd)-65,8,Math.Max(8,Width-70)),paint.TextSize+5,paint);
+        }
     }
     public override bool OnTouchEvent(MotionEvent? e)
     {
         if (e is null || !Enabled) return false;
-        if (e.Action == MotionEventActions.Down) Parent?.RequestDisallowInterceptTouchEvent(true);
+        if (e.Action == MotionEventActions.Down) {
+            Parent?.RequestDisallowInterceptTouchEvent(true);
+            if(TrimHandles) {
+                float x=e.GetX(),a=(dragStart-viewport.Start)*Width/(float)viewport.Length,b=(dragEnd-viewport.Start)*Width/(float)viewport.Length;
+                float grab=28*(Resources?.DisplayMetrics?.Density??1);
+                trimEdge=Math.Min(Math.Abs(x-a),Math.Abs(x-b))<=grab?(Math.Abs(x-a)<=Math.Abs(x-b)?1:2):0;
+            }
+        }
+        if(TrimHandles&&trimEdge!=0) {
+            if(e.Action is MotionEventActions.Down or MotionEventActions.Move or MotionEventActions.Up) {
+                long frame=Math.Clamp(viewport.Start+(long)Math.Round(Math.Clamp(e.GetX()/Math.Max(1,Width),0,1)*viewport.Length),0,document.Source.Frames);
+                if(trimEdge==1)dragStart=Math.Min(frame,dragEnd-1);else dragEnd=Math.Max(frame,dragStart+1);
+                Invalidate();
+            }
+            if(e.Action==MotionEventActions.Up){trimEdge=0;Parent?.RequestDisallowInterceptTouchEvent(false);TrimChosen?.Invoke(dragStart,dragEnd);PerformClick();}
+            if(e.Action==MotionEventActions.Cancel){trimEdge=0;dragStart=document.Start;dragEnd=document.End;Invalidate();Parent?.RequestDisallowInterceptTouchEvent(false);}
+            return true;
+        }
         if (e.Action is MotionEventActions.Down or MotionEventActions.Move or MotionEventActions.Up) { PositionChosen?.Invoke(viewport.FrameAt(e.GetX()/Math.Max(1,Width))); if (e.Action == MotionEventActions.Up) PerformClick(); }
         if (e.Action is MotionEventActions.Up or MotionEventActions.Cancel) Parent?.RequestDisallowInterceptTouchEvent(false);
         return true;

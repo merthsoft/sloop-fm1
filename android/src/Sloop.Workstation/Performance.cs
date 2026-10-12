@@ -4,9 +4,9 @@ public enum PerformanceScale { Major, NaturalMinor, Dorian, Mixolydian, Harmonic
 public enum ChordShape { Diatonic, Seventh, Ninth, Sus4, Sus2, Minor, Major, InversionDown, InversionUp }
 public enum PlayStyle { Block, StrumUp, StrumDown, ArpUp, ArpDown, ArpBounce, ArpRandom, Repeat }
 public readonly record struct LiveNote(int Channel,int Pitch);
-public sealed record ChordVoicing(string Name,int[] Notes,int Bass);
+public sealed record ChordVoicing(string Name,int[] Notes,int Bass,int? SeventhPitchClass=null);
 
-public static class PerformanceHarmony
+public static partial class PerformanceHarmony
 {
     public static int EffectiveOctave(int appOctave, int? hardwareOffset, bool followHardware)
     {
@@ -23,9 +23,9 @@ public static class PerformanceHarmony
         if(key is <0 or >11||octave is < -1 or >7||degree<0)throw new ArgumentOutOfRangeException(nameof(degree));
         var s=Scale(scale);return Math.Clamp(12*(octave+1)+key+s[degree%s.Length]+12*(degree/s.Length),0,127);
     }
-    public static ChordVoicing Chord(int key,PerformanceScale scale,int octave,int degree,ChordShape shape,int inversion,bool voiceLead,int[]? previous=null) {
-        if(degree is <0 or >7||inversion is <-3 or >3)throw new ArgumentOutOfRangeException(nameof(degree));
-        // Eight chord buttons include the upper tonic; pentatonic scales affect the melody grid.
+    public static ChordVoicing Chord(int key,PerformanceScale scale,int octave,int degree,ChordShape shape,int inversion,bool voiceLead,int[]? previous=null,bool partWriting=false,ChordVoicing? previousChord=null,bool includeBass=false) {
+        if(degree is <0 or >21||inversion is <-3 or >3)throw new ArgumentOutOfRangeException(nameof(degree));
+        // Chord pads span up to three octaves; pentatonic scales affect the melody grid.
         var harmony=scale==PerformanceScale.MajorPentatonic?PerformanceScale.Major:scale==PerformanceScale.MinorPentatonic?PerformanceScale.NaturalMinor:scale;
         int root=ScaleNote(key,harmony,octave,degree);
         int third=ScaleNote(key,harmony,octave,degree+2)-root,fifth=ScaleNote(key,harmony,octave,degree+4)-root;
@@ -36,7 +36,11 @@ public static class PerformanceHarmony
             ChordShape.Sus4=>"sus4",ChordShape.Sus2=>"sus2",ChordShape.Minor=>"m",ChordShape.Major=>"",_=>third==3?(fifth==6?"dim":"m"):fifth==8?"aug":""};
         var notes=intervals.Select(n=>root+n).ToArray();
         for(int i=0;i<Math.Abs(inversion);i++){if(inversion>0){notes[0]+=12;Array.Sort(notes);}else{notes[^1]-=12;Array.Sort(notes);}}
-        if(voiceLead&&previous is {Length:>0}) {
+        previous??=previousChord?.Notes;
+        if(partWriting&&inversion==0&&previous is {Length:>0}&&previous.Length==notes.Length&&notes.All(n=>n is >=0 and <=127)) {
+            int floor=12*(octave+1)+key+12*(degree/7);
+            notes=PartWritingVoicing(notes,root,floor,previous,key,previousChord,includeBass,Math.Clamp(root-12,0,127));
+        } else if((voiceLead||partWriting)&&previous is {Length:>0}) {
             var candidates=new List<int[]>();
             // Keep automatic voice leading in the requested register. Explicit inversions retain
             // their own bass octave rather than being undone by an automatic octave shift.
@@ -44,7 +48,23 @@ public static class PerformanceHarmony
             for(int rotate=0;rotate<(inversion==0?notes.Length:1);rotate++)for(int shift=-12;shift<=12;shift+=12){var c=notes.Select((n,i)=>n+shift+(i<rotate?12:0)).Order().ToArray();if(c.All(n=>n is >=0 and <=127)&&c[0]>=floor&&c[0]<floor+12&&(inversion!=0||c.Contains(root)))candidates.Add(c);}
             if(candidates.Count>0)notes=candidates.OrderBy(c=>c.Select((n,i)=>Math.Abs(n-previous[Math.Min(i,previous.Length-1)])).Sum()).ThenBy(c=>c[0]).First();
         }
-        return new(Names[root%12]+quality,notes.Select(n=>Math.Clamp(n,0,127)).Distinct().Order().ToArray(),Math.Clamp(root-12,0,127));
+        return new(Names[root%12]+quality,notes.Select(n=>Math.Clamp(n,0,127)).Distinct().Order().ToArray(),Math.Clamp(root-12,0,127),shape is ChordShape.Seventh or ChordShape.Ninth?(root+seventh)%12:null);
+    }
+    public static string DegreeLabel(PerformanceScale scale,int degree) {
+        // Use an unclipped register so labels are independent of the playing octave.
+        var notes=Chord(0,scale,3,degree,ChordShape.Diatonic,0,false).Notes;
+        string numeral=new[]{"I","II","III","IV","V","VI","VII"}[degree%7];
+        int third=notes[1]-notes[0],fifth=notes[2]-notes[0];
+        if(third==3)numeral=numeral.ToLowerInvariant();
+        if(fifth==6)numeral+="°";
+        else if(fifth==8)numeral+="+";
+        return numeral+(degree>=7?degree<14?" ↑":$" ↑{degree/7}":"");
+    }
+    public static int[] Thicken(IEnumerable<int> notes,int extraOctaves) {
+        if(extraOctaves is <0 or >2)throw new ArgumentOutOfRangeException(nameof(extraOctaves));
+        var source=notes.ToArray();
+        if(source.Any(n=>n is <0 or >127))throw new ArgumentOutOfRangeException(nameof(notes));
+        return Enumerable.Range(0,extraOctaves+1).SelectMany(o=>source.Select(n=>n+12*o)).Where(n=>n<=127).Distinct().Order().ToArray();
     }
     public static int ArpIndex(PlayStyle style,int beat,int count,int seed=42) {
         if(count<1||beat<0)throw new ArgumentOutOfRangeException(nameof(count));

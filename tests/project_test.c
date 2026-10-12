@@ -513,6 +513,9 @@ int main(void)
     trk[0].p[P_VOICE] = V_POLY;
     trk[0].p[P_ROOT] = 4;
     trk[0].p[P_SCALE] = 2;
+    trk[0].p[P_LRATE] = 91; trk[0].p[P_LWAVE] = 2;
+    trk[0].p[P_LSYNC] = 7; trk[0].p[P_LTRIG] = 1;
+    trk[0].p[P_LD_PIT] = 3; trk[0].p[P_LD_AMP] = 127;
     trk[0].step[0].time = ST_NOTE;
     trk[0].step[0].n = 2;
     trk[0].step[0].note[0] = 64;
@@ -528,6 +531,9 @@ int main(void)
         proj_apply(&proj_slot[1], 1);
         proj_capture(&q2);
         bad += check("B reload restores instruments, voice/key settings and notes", !memcmp(&q2, &q, sizeof q));
+        bad += check("applied vibrato/tremolo rate, sync, wave and destinations survive cold project reload",
+            trk[0].p[P_LRATE] == 91 && trk[0].p[P_LWAVE] == 2 && trk[0].p[P_LSYNC] == 7 &&
+            trk[0].p[P_LTRIG] == 1 && trk[0].p[P_LD_PIT] == 3 && trk[0].p[P_LD_AMP] == 127);
     }
 
     q2 = q;

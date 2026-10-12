@@ -5,13 +5,14 @@ using System.Buffers.Binary;
 using System.Text;
 namespace Sloop.SampleEncoding;
 
-/// <summary>Loop boundaries are half-open in encoded 22050-Hz PCM. Wire loop end is inclusive.</summary>
-public sealed record ZoneInput(ReadOnlyMemory<short> Pcm, int RootNote, int? LowNote = null, int? HighNote = null, int? LoopStart = null, int? LoopEndExclusive = null);
-public sealed record ZonePreview(int InputIndex, int RootNote, int LowNote, int HighNote, int DataOffset, short[] DecodedPcm);
+/// <summary>Loop boundaries are half-open in encoded native-rate PCM. Wire loop end is inclusive.</summary>
+public sealed record ZoneInput(ReadOnlyMemory<short> Pcm, int RootNote, int? LowNote = null, int? HighNote = null, int? LoopStart = null, int? LoopEndExclusive = null,int SampleRate=22050);
+public sealed record ZonePreview(int InputIndex, int RootNote, int LowNote, int HighNote, int DataOffset, short[] DecodedPcm,int SampleRate=22050);
 public sealed record FitReport(long Samples, long DataBytes, int CapacityBytes)
 {
     public bool Fits => DataBytes <= CapacityBytes;
     public long RemainingBytes => CapacityBytes - DataBytes;
+    // Capacity-equivalent seconds at the default rate, not mixed-rate playback duration.
     public double DurationSeconds => Samples / 22050.0;
     public long Pcm16Bytes => checked(Samples * 2);
     public int ArtifactBytes => checked(512 + (int)DataBytes);
@@ -63,16 +64,17 @@ public static class SlotBuilder
             int hi = z.HighNote ?? (j == sorted.Length - 1 ? 127 : (z.RootNote + sorted[j + 1].Zone.RootNote) / 2);
             if (lo > hi) throw new ArgumentException("Automatic key split produced an empty range; use distinct roots or explicit ranges.");
             Write32(header, p, (uint)offsets[index]); Write32(header, p + 4, (uint)z.Pcm.Length);
-            Write32(header, p + 8, (uint)(z.LoopStart ?? 0)); Write32(header, p + 12, (uint)((z.LoopEndExclusive ?? z.Pcm.Length) - 1)); Write32(header, p + 16, 32768);
+            Write32(header, p + 8, (uint)(z.LoopStart ?? 0)); Write32(header, p + 12, (uint)((z.LoopEndExclusive ?? z.Pcm.Length) - 1)); Write32(header, p + 16, (uint)((ulong)z.SampleRate*65536/44100));
             BinaryPrimitives.WriteInt16LittleEndian(header.AsSpan(p + 20), (short)(z.RootNote * 16)); BinaryPrimitives.WriteInt16LittleEndian(header.AsSpan(p + 22), states[index].Predictor);
             header[p + 24] = states[index].Index; header[p + 25] = (byte)lo; header[p + 26] = (byte)hi; header[p + 27] = (byte)(z.LoopStart.HasValue ? 1 : 0);
-            previews.Add(new(index, z.RootNote, lo, hi, offsets[index], ImaAdpcm.Decode(data.AsSpan(offsets[index]), z.Pcm.Length)));
+            previews.Add(new(index, z.RootNote, lo, hi, offsets[index], ImaAdpcm.Decode(data.AsSpan(offsets[index]), z.Pcm.Length),z.SampleRate));
         }
         var image = new byte[DataOffset + data.Length]; header.CopyTo(image, 0); data.CopyTo(image, DataOffset);
         return new(header, data, image, fit, previews.AsReadOnly());
     }
     private static void Validate(ZoneInput z)
     {
+        if(z.SampleRate is <4000 or >44100)throw new ArgumentException("Invalid native sample rate.");
         if (z.RootNote is < 0 or > 127 || z.LowNote.HasValue != z.HighNote.HasValue || z.LowNote is < 0 or > 127 || z.HighNote is < 0 or > 127 || z.LowNote > z.HighNote) throw new ArgumentException("Invalid MIDI root/key range.");
         if (z.LoopStart.HasValue != z.LoopEndExclusive.HasValue || z.LoopStart < 0 || z.LoopEndExclusive > z.Pcm.Length || z.LoopStart >= z.LoopEndExclusive) throw new ArgumentException("Invalid half-open loop range.");
     }

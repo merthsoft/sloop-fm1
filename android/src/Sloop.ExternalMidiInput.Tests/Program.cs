@@ -30,3 +30,7 @@ for(int i=0;i<100&&!wire.Any();i++)await Task.Delay(5);
 Check(wire.Any(),"timed job begins");timedInput.Reset();await Task.Delay(250);
 Check(wire.Count(b=>b[0]==0x90)==wire.Count(b=>b[0]==0x80)&&!wire.Any(b=>b[0]==0x90&&b[1]==64),"disconnect cancels pending strum with balanced output");
 Console.WriteLine("Timed controller cancellation passed.");
+
+var previousChord=PerformanceHarmony.Chord(0,PerformanceScale.Major,3,0,ChordShape.Diatonic,0,false);
+var controllerParts=ExternalMidiHarmony.Chord(50,0,PerformanceScale.Major,ChordShape.Major,0,false,true,previousChord)!;
+Check(controllerParts.Notes.SequenceEqual(new[]{50,57,66}),"Controller chord roots use the same part-writing rules without changing input register");

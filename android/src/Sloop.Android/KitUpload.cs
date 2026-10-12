@@ -54,35 +54,41 @@ public sealed partial class MainActivity
             {Max=100,Progress=kitTransferPercent,ContentDescription="Sample slot transfer progress"};content.AddView(kitTransferProgress);
         var button=new Button(this){Text="Send to FM1 · choose slot",Enabled=!samples.Busy&&!connection.Snapshot.Busy&&!connection.IsPlaying&&!connection.Snapshot.IsSimulated&&connection.Snapshot.Device?.ProtocolVersion>=6};
         button.Click+=(_,_)=>ConfirmProposedSampleSlot("Choose sample slot to replace",
-            $"{artifact.Preview.Count} zones · {artifact.Data.Length:N0} bytes. Stop the FM1 song first. Choose a slot to back up and replace. If disconnected, restore its saved backup from Library.",
-            async slot=> {
-                try {
-                    if(!ReferenceEquals(samples.Converted?.Artifact,artifact)) throw new IOException("The sample or mapping changed. Prepare the kit again before sending.");
-                    if(kitDraftName!=samples.KitOptions.Name||!int.TryParse(kitDraftRoot,out var root)||root!=samples.KitOptions.RootNote)
-                        throw new IOException("Kit name or root changed. Tap Prepare/Rebuild kit before sending.");
-                    samples.StopPreview();
-                    UpdateKitTransfer($"USR{slot+1} · backing up existing slot…");
-                    await connection.EditDeviceAsync("Backing up slot and sending kit…",async(c,t)=> {
-                        var info=await c.RequestAsync(15,[],cancellationToken:t);
-                        if(info.Arguments.Length<2||slot>=info.Arguments[0]||info.Arguments[1]!=80)throw new IOException("Target slot is unsupported.");
-                        var backup=await Fm1Operations.BackupSlot(c,(byte)slot,t);
-                        var directory=System.IO.Path.Combine(FilesDir!.AbsolutePath,"slot-backups");Directory.CreateDirectory(directory);
-                        var prefix=System.IO.Path.Combine(directory,$"usr{slot+1}-{DateTime.UtcNow:yyyyMMdd-HHmmss}-{Guid.NewGuid():N}");
-                        WorkspaceFiles.StoreBytes(prefix+".before.fm1",backup);WorkspaceFiles.StoreBytes(prefix+".replacement.fm1",artifact.Image);
-                        WorkspaceFiles.StoreBytes(prefix+".transfer",System.Text.Encoding.UTF8.GetBytes("Pending replacement. Restart from BEGIN; do not resume chunks after reconnect."));
-                        UpdateKitTransfer($"USR{slot+1} · backup saved; sending…");
-                        await Fm1Operations.UploadSlot(c,(byte)slot,artifact,bytes=> {
-                            int percent=(int)(bytes*100L/Math.Max(1,artifact.Data.Length));
-                            UpdateKitTransfer(percent==100?$"USR{slot+1} · verifying readback…":$"USR{slot+1} · sending {percent}%",percent);
-                        },t);
-                        WorkspaceFiles.StoreBytes(prefix+".transfer",System.Text.Encoding.UTF8.GetBytes("Acknowledged and verified by CRC-checked byte readback."));return true;
-                    });
-                    editing.SetStatus("Sample slot verified. Previous slot and replacement retained in phone backups.");
-                    UpdateKitTransfer($"USR{slot+1} · sent and verified. Backup saved in Library.",100);
-                    ShowWorkspace();
-                    Toast.MakeText(this,"FM1 sample slot uploaded and verified.",ToastLength.Long)!.Show();
-                }catch(Exception e){editing.SetStatus("Transfer interrupted: "+e.Message);UpdateKitTransfer("Send failed: "+e.Message+" Check Library for the saved backup.");ShowWorkspace();Toast.MakeText(this,e.Message,ToastLength.Long)!.Show();}
+            $"{artifact.Preview.Count} zones · {artifact.Data.Length:N0} bytes. Stop the FM1 song first. The old slot is backed up before replacement.",
+            async slot=>await SendSampleKitAsync(artifact,slot));content.AddView(button);
+    }
+    private async Task SendSampleKitAsync(SlotArtifact artifact,int slot,bool quick=false,int? track=null)
+    {
+        bool verified=false;
+        try {
+            if(!ReferenceEquals((quick?samples.QuickConverted:samples.Converted)?.Artifact,artifact))throw new IOException("The sample or mapping changed. Prepare it again before sending.");
+            if(!quick&&(kitDraftName!=samples.KitOptions.Name||!int.TryParse(kitDraftRoot,out var root)||root!=samples.KitOptions.RootNote))throw new IOException("Kit name or root changed. Prepare the kit before sending.");
+            samples.StopPreview();UpdateKitTransfer($"USR{slot+1} · backing up existing slot…");
+            await connection.EditDeviceAsync("Backing up slot and sending samples…",async(c,t)=> {
+                var info=await c.RequestAsync(15,[],cancellationToken:t);
+                if(info.Arguments.Length<2||slot>=info.Arguments[0]||info.Arguments[1]!=80)throw new IOException("Target slot is unsupported.");
+                var backup=await Fm1Operations.BackupSlot(c,(byte)slot,t);
+                var directory=System.IO.Path.Combine(FilesDir!.AbsolutePath,"slot-backups");Directory.CreateDirectory(directory);
+                var prefix=System.IO.Path.Combine(directory,$"usr{slot+1}-{DateTime.UtcNow:yyyyMMdd-HHmmss}-{Guid.NewGuid():N}");
+                WorkspaceFiles.StoreBytes(prefix+".before.fm1",backup);WorkspaceFiles.StoreBytes(prefix+".replacement.fm1",artifact.Image);
+                WorkspaceFiles.StoreBytes(prefix+".transfer",System.Text.Encoding.UTF8.GetBytes("Pending replacement. Restart from BEGIN; do not resume chunks after reconnect."));
+                UpdateKitTransfer($"USR{slot+1} · backup saved; sending…");
+                await Fm1Operations.UploadSlot(c,(byte)slot,artifact,bytes=> {
+                    int percent=(int)(bytes*100L/Math.Max(1,artifact.Data.Length));
+                    UpdateKitTransfer(percent==100?$"USR{slot+1} · verifying readback…":$"USR{slot+1} · sending {percent}%",percent);
+                },t);
+                WorkspaceFiles.StoreBytes(prefix+".transfer",System.Text.Encoding.UTF8.GetBytes("Acknowledged and verified by CRC-checked byte readback."));verified=true;
+                if(track is {} target)await Fm1Operations.ActivateSampleSlot(c,connection.Snapshot.Device!, (byte)slot,(byte)target,t);
+                return true;
             });
-        content.AddView(button);
+            editing.SetStatus("Samples verified. Previous slot and replacement retained in phone backups.");
+            UpdateKitTransfer(track is {} target?$"Ready on Synth {target+1} · USR{slot+1}. Previous slot backed up.":$"USR{slot+1} · sent and verified. Backup saved in Library.",100);
+            if(quick&&track is {} synth){state.SelectTrack(synth);quickReadyTrack=synth;quickReadyKit=artifact;}
+            ShowWorkspace();Toast.MakeText(this,"Samples sent and verified.",ToastLength.Long)!.Show();
+        }catch(Exception e){
+            editing.SetStatus((verified?"Samples verified; instrument selection failed: ":"Transfer interrupted: ")+e.Message);
+            UpdateKitTransfer((verified?"Samples are saved. Select SAMPLE and the chosen USR slot manually. ":"Send failed. Previous slot backup is in Library. ")+e.Message);
+            ShowWorkspace();Toast.MakeText(this,e.Message,ToastLength.Long)!.Show();
+        }
     }
 }

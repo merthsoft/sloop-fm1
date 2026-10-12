@@ -5,6 +5,23 @@ using Sloop.SoundDesign;
 namespace Sloop.Workstation;
 public static class Fm1Operations
 {
+    public static async Task ActivateSampleSlot(EditorClient client,DeviceInfo info,byte slot,byte track,CancellationToken token)
+    {
+        int engine=info.Engines.ToList().IndexOf("SAMPLE");
+        if(slot>3||track>2||!info.HasSupportedTrackLayout||engine<0)throw new ArgumentException("Unsupported sample instrument destination.");
+        var selected=await client.RequestAsync(27,[track],cancellationToken:token);
+        if(selected.Arguments.Length<2||selected.Arguments[0]!=track)throw new IOException("Could not select the target synth.");
+        var preset=await client.RequestAsync(8,[(byte)engine,0],cancellationToken:token);
+        if(preset.Arguments.Length!=2||preset.Arguments[0]!=engine)throw new IOException("Could not select SAMPLE.");
+        var descriptor=await client.GetDescriptorAsync(0,(byte)info.EngineParameterStart,token);
+        int choice=descriptor.Choices.ToList().IndexOf($"USR{slot+1}");
+        if(descriptor.Label!="SET"||choice<0)throw new IOException("The sample slot is absent from the instrument's SET choices.");
+        int value=descriptor.Minimum+choice;
+        if(await client.TrackParameterAsync(track,(byte)info.EngineParameterStart,value,token)!=value)throw new IOException("Sample SET acknowledgement differs.");
+        var read=await client.RequestAsync(29,[track],cancellationToken:token);
+        if(read.Arguments.Length!=3+info.ParameterCount*2||read.Arguments[0]!=track||read.Arguments[1]!=engine||
+            EditorCodec.DecodeValue(read.Arguments.AsSpan(3+info.EngineParameterStart*2,2))!=value)throw new IOException("Sample instrument readback differs.");
+    }
     public static async Task<Patch> ReadPatch(EditorClient client,byte track,CancellationToken token)
     {
         if(track>2) throw new ArgumentOutOfRangeException(nameof(track));

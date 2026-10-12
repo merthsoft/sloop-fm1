@@ -66,6 +66,32 @@ static void step_move(int32_t delta)
     dest = clamp((int32_t)first + delta, 0, (int32_t)(len - (end - first)));
     delta = dest - (int32_t)first;
     if (!delta) return;
+    if (t->step[dest].time == ST_NOTE) {
+        uint32_t stop = (uint32_t)dest + 1u, j;
+        while (stop < len && t->step[stop].time == ST_TIE) stop++;
+        if (end-first != 1u && end-first != stop-(uint32_t)dest) {
+            ui_message("TIE LENGTH DIFFERS"); return;
+        }
+        for (i=0;i<NLOCK;i++) if (t->lock[i].step>=first && t->lock[i].step<end) {
+            ui_message("SOURCE HAS LOCKS"); return;
+        }
+        step_t merged=t->step[dest];
+        for (i=0;i<t->step[first].n;i++) {
+            uint8_t note=t->step[first].note[i];
+            for (j=0;j<merged.n && merged.note[j]!=note;j++) {}
+            if (j<merged.n) continue;
+            if (merged.n==4u) { ui_message("CHORD FULL"); return; }
+            merged.note[merged.n++]=note;
+        }
+        fm1_irq_off();
+        undo_mark(t,ui.tie_sess);
+        if (!groove_undo_matches()) starter_undo_capture(t);
+        t->step[dest]=merged;
+        for(i=first;i<end;i++) {step_clear(&t->step[i]);t->micro[i]=0;step_fill_set(t,i,0);}
+        fm1_irq_on();
+        cursor_set(dest);sync_reload=1;ui.force=1;
+        return;
+    }
     for (i = (uint32_t)dest; i < (uint32_t)dest + end - first; i++) {
         const step_t *s = &t->step[i];
         if (i >= first && i < end) continue;

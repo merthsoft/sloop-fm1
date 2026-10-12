@@ -1,6 +1,6 @@
 namespace Sloop.Workstation;
 
-/// <summary>Serializable mapping; upper tonic is deliberately not remappable.</summary>
+/// <summary>Serializable mapping; upper-octave pads are deliberately not remappable.</summary>
 public sealed record PerformanceMapping
 {
     public int[] Degrees { get; init; } = [0,1,2,3,4,5,6];
@@ -9,7 +9,7 @@ public sealed record PerformanceMapping
         if(Degrees is null || Degrees.Length!=7 || Degrees.Any(d=>d is <0 or >6) || Directions is null || Directions.Length!=8 || Directions.Any(d=>!Enum.IsDefined(d)))
             throw new ArgumentException("Mappings require seven lower degrees (0–6) and eight valid directions.");
     }
-    public int Degree(int cell) { Validate();return cell==7?7:cell is >=0 and <7?Degrees[cell]:throw new ArgumentOutOfRangeException(nameof(cell)); }
+    public int Degree(int cell) { Validate();return cell is >=7 and <=21?cell:cell is >=0 and <7?Degrees[cell]:throw new ArgumentOutOfRangeException(nameof(cell)); }
 }
 
 public enum MacroCurve { Linear, Squared, SquareRoot }

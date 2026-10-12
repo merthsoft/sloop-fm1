@@ -4,16 +4,21 @@ using Sloop.Core.Sampling;
 int checks=0;
 void Check(bool c,string m){checks++;if(!c)throw new Exception(m);}
 void Reject(Action a,string m){try{a();}catch(InvalidDataException){checks++;return;}throw new Exception(m);}
-var options=new PerformOptions(Mapping:new(){Degrees=[6,5,4,3,2,1,0]},Macro:new(true,2,new(1,10,90,20,MacroCurve.Squared),new(74,0,100,40)));
+var options=new PerformOptions(PartWriting:true,ExtraOctaves:2,PadOctaves:3,Mapping:new(){Degrees=[6,5,4,3,2,1,0]},Macro:new(true,2,new(1,10,90,20,MacroCurve.Squared),new(74,0,100,40)));
 var encoded=SessionPresetCodec.Encode(options);
 var decoded=SessionPresetCodec.Decode(encoded);
+Check(decoded.PartWriting,"Part-writing mode survives saved preset.");
 Check(decoded.Mapping!.Degrees.SequenceEqual(options.Mapping!.Degrees),"Mapped degrees survive saved preset.");
+Check(decoded.ExtraOctaves==2&&decoded.PadOctaves==3,"Chord thickness/range survives saved preset.");
 Check(decoded.Macro==options.Macro,"XY destination, ranges/defaults and curve survive preset.");
 decoded.Mapping.Degrees[0]=0;
 Check(SessionPresetCodec.Decode(encoded).Mapping!.Degrees[0]==6,"Decoded mappings have independent arrays.");
-var legacy=new Dictionary<string,string>(encoded);legacy.Remove("perform.mapping.v1");legacy.Remove("perform.macro.v1");
+var legacy=new Dictionary<string,string>(encoded);legacy.Remove("perform.mapping.v1");legacy.Remove("perform.macro.v1");legacy.Remove("ExtraOctaves");legacy.Remove("PadOctaves");legacy.Remove("PartWriting");
+Check(!SessionPresetCodec.Decode(legacy).PartWriting,"Older presets keep part writing off.");
+Check(SessionPresetCodec.Decode(legacy).ExtraOctaves==0&&SessionPresetCodec.Decode(legacy).PadOctaves==1,"Older presets retain normal eight-pad chords.");
 Check(SessionPresetCodec.Decode(legacy).Mapping is null,"Older presets retain default mapping.");
 Check(SessionPresetCodec.Decode(legacy).Macro is null,"Older presets keep macros disabled.");
+foreach(var field in new[]{"ExtraOctaves","PadOctaves"})Reject(()=>SessionPresetCodec.Decode(new(encoded){[field]="99"}),"Invalid chord range/thickness rejected.");
 foreach(var json in new[]{"null","{} broken","{\"Degrees\":[0]}","{\"Degrees\":null}","{\"Directions\":[999,0,0,0,0,0,0,0]}"}) {
  var invalid=new Dictionary<string,string>(encoded){["perform.mapping.v1"]=json};Reject(()=>SessionPresetCodec.Decode(invalid),"Malformed mapping rejected before adoption.");
 }

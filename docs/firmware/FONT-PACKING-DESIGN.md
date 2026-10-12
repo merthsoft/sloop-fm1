@@ -7,8 +7,13 @@ pixels into one-bit rows and writes an explicit `FONT_DATA_BITS=1` marker.
 previous four-bit decoding. Other font formats retain their alpha coverage.
 
 All 224 glyphs, metrics, padding and character coverage remain unchanged. Large text
-still reuses the small font at 2x. Bitmap data shrinks from 21,504 to 5,376 bytes:
-16,128 bytes saved before decoder/compiler changes. The splash remains present.
+still reuses the small font at 2x. Upstream now includes one-bit bitmap packing:
+21,504 to 5,376 bytes. This fork additionally shares identical packed glyphs through
+the existing offset table, then exact byte-aligned suffix/prefix overlap, reducing
+data to 3,952 bytes (1,424 more saved). Each complete glyph remains a contiguous,
+unchanged sequence, including raw lower-case and Latin-1 bitmaps. Drawing
+uses the same renderer with no extra decoder or runtime lookup. The current fork
+uses a text startup title rather than the splash bitmap.
 
 `tests/font_asset_test.py` compares generated glyphs against an independent BDF oracle.
 `tests/font_render_test.c` exercises the actual renderer for every glyph, colors,

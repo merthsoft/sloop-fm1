@@ -859,6 +859,12 @@ static int layers_input(uint32_t note_edges, uint32_t *pressed, uint32_t home)
         held = ly_lock;
         used[held] = 1;
     }
+    if (held >= LY_VIB && (*pressed & (1u << panel.btn[B_OCTUP]))) {
+        live_mod_apply(held - LY_VIB);
+        used[held] = 1;
+        ly_lock = LY_PLAY;
+        *pressed &= ~(1u << panel.btn[B_OCTUP]);
+    }
     punch.hold = (uint8_t)(held == LY_FX);
     if (held != LY_PLAY && held != ui.layer && ui.layer != LY_PLAY)
         ui.layer = (uint8_t)held;                         /* (from one layer straight to another) */

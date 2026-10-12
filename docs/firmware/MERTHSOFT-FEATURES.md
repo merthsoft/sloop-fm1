@@ -251,6 +251,23 @@ styles**. This fork adds **Polyrhythm, Note Trails, Groove, Stereo Field, Song
 Journey and Beat Terrain**. The [complete illustrated gallery](VISUALIZERS.md)
 describes all available styles. Performance layers and transport remain usable.
 
+Note Trails captures played/held notes rather than continuing released voices or
+delay tails; the fully wet master punch GATE cuts its current synth/drum column.
+
+**Apply modulation:** while holding LFO/ENV, tap OCT+ to copy rate, waveform, beat
+division and PIT/AMP depth into the track's saved shared LFO. The temporary effect
+stops. Other destination depths stay, sharing the new timing; vibrato depth rounds
+to existing PIT steps. Save the project normally. See [modulation](MODULATION-WHEEL.md).
+
+**LOFI chip arp:** MOTN → ARP retains its original four choices and adds every SEL
+chord shape, using the track's root/scale and the existing chip cadence. See
+[LOFI chord arpeggios](LOFI-CHORD-ARP.md).
+
+**Phone song library:** Library → FM1 songs saves named current-project/A–D snapshots
+with arrangement, samples, sound banks and edited FM6 voices. Load retains a phone
+recovery song before replacement; device preferences and MIDI mappings stay.
+See [song library](<../../android/design docs/FM1-SONG-LIBRARY.md>).
+
 USB playback lets the phone's audio come through the FM-1 speaker/headphones with
 the instrument. Playback negotiates 44.1 kHz independently of upstream's 48 kHz
 capture; return gain/mute and diagnostics are exposed to the app.

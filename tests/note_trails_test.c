@@ -29,10 +29,24 @@ int main(int argc, char **argv)
     assert(swap16(cv_px[104*240+235])==C_BLACK);
     cv_blit(0,120);cv_oy=0;ppm("note-trails-overlap");
     /* Held voices remain a continuous trail; muted parts show no queued attacks. */
-    trk[0].v[0].active=1;trk[0].v[0].note=127;
+    trk[0].v[0].active=1;trk[0].v[0].gate=1;trk[0].v[0].note=127;
     trk[1].p[P_MUTE]=1;vis_note_hits[1][0]=1;
     vis_update();assert(vis_notes[vis_notes_head][0][3]&(1u<<31));
     assert(!vis_notes[vis_notes_head][1][0]);
+    /* Released voices and echo energy do not turn tails into note events. */
+    trk[0].v[0].gate=0;punch.cur=PX_ECHO;punch.g=32767;
+    vis_update();assert(!vis_notes[vis_notes_head][0][3]);
+    /* A held source chord follows the actual full-wet gate cut/reopen phase. */
+    trk[0].v[0].gate=1;punch.cur=PX_GATE;punch.gp=0;pad_lit[0]=6;
+    vis_update();assert(vis_notes[vis_notes_head][0][3]&(1u<<31));assert(vis_drum_notes[vis_notes_head]&1);
+    punch.gp=beat_samples()/8u+64u;vis_note_hits[0][0]=1;
+    vis_update();for(uint32_t t=0;t<NPART;t++)for(uint32_t w=0;w<4;w++)assert(!vis_notes[vis_notes_head][t][w]);
+    assert(!vis_drum_notes[vis_notes_head]);
+    punch.gp=0;vis_update();assert(vis_notes[vis_notes_head][0][3]&(1u<<31));
+    assert(!vis_notes[vis_notes_head][0][0]); /* Closed-window attacks were consumed, not delayed into reopen. */
+    punch.gp=beat_samples()/8u+64u;punch.g=16000;vis_update();
+    assert(vis_notes[vis_notes_head][0][3]&(1u<<31)); /* Dry source remains during effect crossfade. */
+    punch.cur=-1;punch.g=0;
     /* Held chords must form uninterrupted lines, rather than short dashes. */
     memset(&vis_frame.trails,0,sizeof vis_frame.trails);vis_notes_head=47;
     for(uint32_t i=0;i<48;i++) for(uint32_t t=0;t<NPART;t++)

@@ -10,7 +10,7 @@ Completed chat assignments, handoffs, older checks and releases are in [archive]
 
 | Area | Documents |
 | --- | --- |
-| Architecture | [Core](CORE.md), [Android](ANDROID.md), [UI](UI.md), [Storage](STORAGE.md) |
+| Architecture | [Core](CORE.md), [Android](ANDROID.md), [UI](UI.md), [Storage](STORAGE.md), [FM1 song library](FM1-SONG-LIBRARY.md) |
 | Device and audio | [Protocol](PROTOCOL.md), [Firmware](FIRMWARE.md), [Audio](AUDIO.md), [USB playback](USB-PLAYBACK.md), [Generic MIDI](GENERIC-MIDI.md) |
 | Workstation | [Sampling](SAMPLING.md), [Performance](PERFORMANCE.md), [Sequencing](SEQUENCING.md), [Scenes](SCENES.md) |
 | Sound | [Sound workflow](SOUND.md), [Manual FM6](FM6-EDITOR.md), [Prompt sound design](AI-SOUND.md) |

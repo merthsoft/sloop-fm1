@@ -36,7 +36,7 @@ public sealed partial class SampleWorkspace
     public SampleDocument? Document { get; private set; }
     public float[] Peaks { get; private set; } = [];
     public bool Busy { get; private set; }
-    public string Status { get; private set; } = "Import a mono or stereo PCM16 WAV to begin.";
+    public string Status { get; private set; } = "Record a sound or import a WAV to begin.";
     public long Cursor { get; set; }
     public (PcmWave Source, long Start, long End)? PendingExport { get; set; }
     public event Action? Changed;
@@ -101,7 +101,7 @@ public sealed partial class SampleWorkspace
             File.WriteAllText(Pointer + ".tmp", System.IO.Path.GetFileName(destination));
             File.Move(Pointer + ".tmp", Pointer, true);
             Document = document; Peaks = result.Peaks; Cursor = 0;
-            Status = "Imported. Tap the waveform to position a chop marker.";
+            Status = "Imported. Trim the recording or choose chops.";
         }
         catch (Exception error)
         {
@@ -118,7 +118,7 @@ public sealed partial class SampleWorkspace
         catch (Exception error) { Status = "Edit failed: " + error.Message; }
         Notify();
     }
-    public async Task PreviewAsync(long start, long end, PcmWave? alternate=null)
+    public async Task PreviewAsync(long start, long end, PcmWave? alternate=null,double playbackRate=1)
     {
         if (Busy || Document is null) return;
         Busy = true; StopPreview(); Status = "Preparing local preview…"; Notify();
@@ -148,7 +148,9 @@ public sealed partial class SampleWorkspace
                 throw new IOException("Android rejected the selected output.");
             if (OperatingSystem.IsAndroidVersionAtLeast(28)) player.AddOnRoutingChangedListener(routingEvents, main);
             if (requested is not null) player.SetVolume(0, 0);
-            player.Prepare(); player.Start();
+            player.Prepare();
+            if(playbackRate!=1)player.PlaybackParams=new PlaybackParams()!.SetSpeed((float)playbackRate)!.SetPitch((float)playbackRate)!;
+            player.Start();
             previewSource = source; previewStart = start; previewEnd = end;
             if (!OperatingSystem.IsAndroidVersionAtLeast(28))
             {

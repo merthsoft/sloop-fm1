@@ -4,6 +4,11 @@ Historical coordination and evidence retained for reference. These documents des
 original checkpoint and do not define current implementation status or outstanding tasks.
 Use [current status](../STATUS.md), [component index](../README.md) and [verification](../VERIFICATION.md).
 
+Recent superseded firmware evidence: [2.6 Merthsoft.6](releases/RELEASE-2.6-Merthsoft.6.md)
+and [2.6 Merthsoft.7](releases/RELEASE-2.6-Merthsoft.7.md), plus
+[2.6 Merthsoft.8](releases/RELEASE-2.6-Merthsoft.8.md). Current behavior and
+package identity are in [release notes](../RELEASE-NOTES.md).
+
 ## Completed handoffs
 
 - [NEXT-COMPOSITION-HANDOFF](handoffs/NEXT-COMPOSITION-HANDOFF.md)

@@ -105,6 +105,23 @@ int main(void)
         tap(B_SEQ);assert(!live_mod[effect].on && ly_lock==LY_PLAY && ui.page==old_page);
         tap(B_SEQ);assert(cur_page()->fam==FAM_SEQ);go_home();frame();
     }
+    /* Apply copies to the saved shared LFO, not just the temporary panel lock. */
+    for(int effect=0;effect<2;effect++) {
+        uint32_t button=effect ? B_ENV : B_LFO;
+        song.sel=1;go_home();frame();press(button);frames(12);
+        live_mod_t *m=&live_mod[effect];m->rate=91;m->depth=127;m->wave=2;m->sync=5;
+        int other_rate=trk[0].p[P_LRATE],old_env=trk[1].p[P_ATK];
+        trk[1].p[P_LD_FLT]=17;
+        int octave=song.octave;tap(B_OCTUP);
+        assert(!m->on&&song.octave==octave&&ly_lock==LY_PLAY);
+        assert(trk[1].p[P_LRATE]==91&&trk[1].p[P_LWAVE]==2&&trk[1].p[P_LSYNC]==7);
+        assert(trk[1].p[P_LTRIG]==1&&trk[1].p[P_LPOL]==0&&trk[1].p[P_LFADE]==0);
+        assert(trk[1].p[effect ? P_LD_AMP : P_LD_PIT]==(effect ? 127 : 3));
+        assert(trk[0].p[P_LRATE]==other_rate&&trk[1].p[P_ATK]==old_env&&trk[1].p[P_LD_FLT]==17);
+        release(button);song.sel=2;frame();song.sel=1;frame();assert(trk[1].p[P_LRATE]==91);
+        static const uint8_t expect[]={0,5,6,8,10,7,9,4,3,2};
+        for(int sync=0;sync<10;sync++){m->part=1;m->sync=sync;live_mod_apply(effect);assert(trk[1].p[P_LSYNC]==expect[sync]);}
+    }
     song.sel=TRK_DRUM;frame();press(B_ENV);frames(12);tap(B_HOME);release(B_ENV);
     assert(ly_lock==LY_PLAY && !live_mod[1].on);song.sel=1;go_home();frame();
     puts("modulation: CC1, temporary vibrato/tremolo isolation and release, saved depth/rate, bounds and cleanup PASS");

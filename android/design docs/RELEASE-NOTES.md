@@ -1,4 +1,24 @@
-# Latest firmware — 2.6 Merthsoft.6
+# Latest firmware — 2.6 Merthsoft.10
+
+- Hold LFO or ENV and tap OCT+ to apply vibrato/tremolo parameters to the track's
+  saved shared LFO. Rate, waveform and beat division transfer; tremolo depth is
+  exact and vibrato depth rounds to the regular pitch destination's steps. The
+  temporary effect stops to avoid doubling; unrelated destination depths stay.
+- LOFI MOTN ARP retains OFF/OCT/MAJ/MIN and adds every SEL chord shape, using the
+  existing harmony builder and root/scale. No additional voices or persistent RAM.
+- Identical font bitmaps share offsets: 816 bytes less data, unchanged renderer
+  and exact pixels for every supported character.
+
+- STEP move brush now merges a moved onset into an existing chord (four-note
+  limit, no duplicate pitches). Destination timing/dynamics/locks remain; a single
+  source note takes its duration, or tied events require matching lengths. Source
+  locks and overflow reject before editing. Complete undo/redo is retained.
+- Duplicate LOFI MAJOR/MINOR menu entries are removed; MAJ/MIN already cover them.
+  Exact suffix/prefix glyph sharing saves a further 608 bytes, with no renderer change.
+
+- Note Trails excludes released-voice/delay-tail continuation and cuts the current
+  synth/drum column during the fully wet closed master GATE phase. Partial wet
+  retains the dry path; pending closed-phase hits are not replayed on reopening.
 
 - GLO SYSTEM always shows CPU percentage, including standalone use without USB.
   The header still indicates a configured USB connection.
@@ -18,7 +38,7 @@
 - Factory base records are bit-packed losslessly: 968 bytes less data, 64 extra
   decoder bytes and a 21-byte table; the measured net target saving is 880 bytes.
 
-Upstream SLOOP 2.6 is integrated into the android branch. Local main and origin/main
+Upstream SLOOP 2.6 is integrated into the merthsloop branch. Local main and origin/main
 match upstream revision 4365a1d; fork functionality remains on android.
 
 - Upstream's 27 punch effects replace the former black-key FX modifiers. Remote
@@ -35,15 +55,15 @@ match upstream revision 4365a1d; fork functionality remains on android.
   Startup uses a text title instead of the bitmap logo. Size compilation preserves
   hot DSP inlining, guarded against newly outlined per-sample helper calls.
 
-Target image **581,476 bytes** (88 free); static RAM **94,500/98,304**
+Target image **581,060 bytes** (504 free); static RAM **94,500/98,304**
 (3,804 free); pool **333,900/344,064** (10,164 free). Fully overwritten
 scratch uses 8,800 bytes beside the flash driver, leaving 12,820 bytes there;
 linker/build checks preserve an 8 KiB driver reserve. Stack guards are unchanged.
 HAL and call-free RAM driver checks pass.
 
 Package **609,941 bytes**, identity **FM-1_900**. SHA-256:
-`be7049498dd49c38a294741e98274f8e8a8fd8d1ac1c8c33208a11a489bc358d`.
-Installer: http://127.0.0.1:8811/webapp/installer/
+`5120a513bf70ad40e0b881983f3346367fa766d5334948258922b1067e11c0cf`.
+Installer: http://127.0.0.1:8815/webapp/installer/
 
 Host functional, serialization, UI, DSP and divide-by-zero checks pass. All 182
 reviewed audio renders match, with zero health, voice/routing or crash failures.
@@ -60,3 +80,35 @@ MIDI configuration is device-wide, not saved independently with each song.
 The earlier intermittent song-save report remains unresolved. NOR round-trip tests
 pass; no claim is made that its hardware cause has been fixed. A pre-existing
 settings-write failure also lacks automatic retry; it remains follow-up work.
+
+## Android chord labels
+
+Quick sampler workflows and the named native FM1 song library are integrated.
+Song loading retains a recovery archive before mutation, restores shared sound
+dependencies and arrangement, then verifies objects and edited FM6 track voices.
+Physical FM1 round-trip remains pending; see [song library](FM1-SONG-LIBRARY.md).
+
+- Perform chord pads and mapping choices derive Roman numeral case and diminished/augmented
+  marks from the selected scale, matching the default diatonic chords they play.
+- Workstation tests cover all eight degrees in major, natural/harmonic minor, both
+  pentatonic parent harmonies, and the differing Dorian/Mixolydian chord qualities.
+
+## Android expanded chord mode
+
+- Thickness adds one or two upper octave copies after base voice leading, with
+  duplicate/out-of-range notes omitted. Optional bass remains unchanged.
+- Pad range offers 8/15/22 pads for direct access to higher octave degrees. Higher
+  pads retain explicit register and scale-aware labels; rows stay playable in size.
+- Saved performance presets retain thickness/range and older presets remain compatible.
+- Voice leading passed 26,880 transition checks; multi-pad latch stacking remains future work.
+
+## Android Part writing
+
+- Voice lead is renamed Smooth voicing. A separate Part writing checkbox takes
+  precedence and searches wider base-chord voicings for fewer parallel perfect
+  intervals, appropriate tendency-tone resolution and independent voice movement.
+- Selected root/register and explicit inversions remain authoritative. Voice-count
+  changes fall back to smoothing; optional routed bass participates in rule scoring.
+- Thickness remains octave doubling after base voicing. Touch/controller chord
+  histories are separate. Saved presets retain the option; old presets keep it off.
+- This is a local preference mode, not a strict SATB/harmonic-rewriting engine.

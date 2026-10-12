@@ -1,4 +1,4 @@
-> Merthsoft firmware and SLOOP Mobile for Android live on the `android` branch. Original Android work uses the Unlicense, with retained third-party obligations described in [Android licensing](android/LICENSING.md).
+> Merthsoft firmware and SLOOP Mobile for Android live on the `merthsloop` branch. Original Android work uses the Unlicense, with retained third-party obligations described in [Android licensing](android/LICENSING.md).
 
 <p align="center"><img src="assets/logo/sloop-logo.png" alt="SLOOP" width="420"></p>
 
@@ -115,6 +115,16 @@ These are the implemented Merthsoft additions; the upstream engine, preset and b
 - **Layer starter sequences:** in SEQUENCES, turn **ALGORITHM** to **ADD** instead of REPLACE. Existing timing, locks and fill survive; duplicates are skipped and a fifth distinct note rejects the operation without changing the track. EDIT undo/redo covers the complete change.
 - **Six additional visualizers:** Polyrhythm, Note Trails, Groove, Stereo Field, Song Journey and Beat Terrain make track timing, pitches, stereo and arrangement visible. Note Trails captures brief attacks between frames, keeps overlapping track colors visible, and uses a high-contrast drum strip. Fourteen styles are available; see the [complete gallery](docs/firmware/VISUALIZERS.md) for screenshots and controls.
 
+Note Trails shows played/held notes rather than released voices or delay tails, and displays
+the master punch GATE rhythm by cutting trails during its fully wet closed phase.
+
+Hold **LFO** or **ENV**, then tap **OCT+** to copy a vibrato/tremolo punch-in into the
+track's saved shared LFO. Its rate, waveform, sync and destination depth carry with
+the project; vibrato depth rounds to the normal PIT steps. **LOFI → MOTN → ARP**
+also offers all SEL chord shapes alongside its original chip arpeggios.
+The STEP move brush can merge a mistimed note into an existing chord, preserving
+destination timing and dynamics, with a four-note limit and complete undo/redo.
+
 | Locked vibrato | Locked tremolo |
 | --- | --- |
 | <img src="assets/screens/merthsoft/guide/vibrato-locked.png" width="240" alt="Selected-track vibrato panel with LOCK indicator"> | <img src="assets/screens/merthsoft/guide/tremolo-locked.png" width="240" alt="Selected-track tremolo panel with LOCK indicator"> |
@@ -155,17 +165,27 @@ Bring the FM-1 and your phone: **SLOOP Mobile** is a C#/.NET Android companion f
 
 *Captures from the connected Pixel. The phone is connected to the PC for screenshots, so the FM-1 connection is shown offline.*
 
+Chord mode offers **8/15/22 scale-aware pads**, **Thickness** with up to two extra
+upper-octave layers, and two voicing choices: **Smooth voicing** minimizes movement;
+**Part writing** favors independent voices, avoids parallel fifths/octaves where
+possible, and prefers leading-tone/seventh resolutions. Explicit inversions and
+selected octaves take priority. FM1 polyphony limits still apply to dense chords.
+
 The companion also offers external MIDI device/output-port input in Perform (literal keys or bounded scale-root chords, sustain and lifecycle cleanup). FM1 arp output preserves incoming/sequenced velocities. See the [current feature status](<android/design docs/STATUS.md>) and [release evidence](<android/design docs/VERIFICATION.md>).
 
 The app has five workspaces:
+
+| Playable sound | FM1 song library |
+| --- | --- |
+| <img src="assets/screens/merthsoft/android-sampling.png" width="280" alt="Fresh Android playable-sound sampler with draggable trim handles and pitched audition keys"> | <img src="assets/screens/merthsoft/android-song-library.png" width="280" alt="Fresh Android FM1 song library with named native hardware backup and import controls"> |
 
 | Workspace | What you can do |
 | --- | --- |
 | **Perform** | Eight scale-degree chord pads including I ↑, a HiChord-style quality joystick, keyboard, scale grid, drums, ribbon and an XY MIDI CC macro. Play block chords, strums, arps or repeats; control key, scale, octave, voice leading and latch directly. Capture a performance into a loop. |
 | **Sequence** | Draw, select, move, resize and quantize notes in a touch piano roll with multi-note edits and undo. Exchange native FM-1 patterns, loop MIDI, browse drum grooves and musical starters, arrange scenes and add stepped CC automation. Generate, edit, save and exchange composition drafts. |
 | **Sound** | Manually edit FM6 algorithms, operators and envelopes; copy/swap operators and exchange SysEx. Try offline sound recipes and reviewed prompt edits, audition a patch against the original, and save a base voice to the hardware bank with verified readback. |
-| **Sample** | Import PCM16 WAV or record from microphone/USB; trim, zoom and chop manually, equally, by transients or by tapping during playback. Review root pitch, tune and gain each chop, audition the encoded result, and send a fitted sample kit to the FM-1 with backup, readback and restore. |
-| **Library** | Save named sessions, browse and reuse samples across sessions, and import/export validated session archives. Performance settings and sample processing choices travel with sessions. Composition drafts have a separate portable export/import flow. |
+| **Sample** | Choose **Playable sound** for a meow, voice or single note, or **Chopped loop** for a song phrase. Record/import, drag Start and End, listen, choose 4/8/16 chops if wanted, then Send to FM1 and choose slot/synth. Preparation and fitting happen automatically, with backup and verified readback. Advanced editor retains detailed pitch/gain, transient/tap chopping and export. |
+| **Library** | **Save from FM1** keeps named hardware songs beyond A–D, including sections, song order, samples, sound banks and edited FM6 voices. **Load onto FM1** first saves a recovery song; import/export portable song archives. Also save phone sessions, performance presets and composition drafts, and browse/reuse samples across sessions. |
 
 Prompts currently use **bounded offline procedural recipes and edit rules**. They produce notes, synth settings or reviewable edits; no audio-generation service or local language model is included. The app's MIDI performances use the connected instrument for sound, and USB sample preview can use the FM-1's audio output.
 

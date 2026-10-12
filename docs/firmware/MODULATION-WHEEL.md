@@ -1,6 +1,25 @@
 # Live performance modulation — Merthsoft.14
 
 Hold **LFO** for selected-synth vibrato; hold **ENV** for selected-synth tremolo.
+
+## Apply a punch-in to the saved track
+
+While holding LFO/ENV (or with its panel locked), tap **OCT+**. This copies RATE,
+WAVE and SYNC into the selected track's shared LFO, sets FREE trigger, bipolar
+waveform and no fade, and copies the appropriate PIT/AMP destination depth. It
+does not change keyboard octave. The temporary modulation stops so it does not
+double the saved effect. The track retains these settings when switching tracks,
+saving/reloading a project or using the phone's FM1 song library.
+
+Tremolo depth transfers exactly. Vibrato depth rounds to the regular PIT destination's
+steps (about 18.75 cents per step); a very shallow punch-in can round to zero. The
+saved LFO free phase is not transport-position locked like the temporary synced
+panel, although cycle duration follows the selected beat division. Existing destination
+depths are preserved but share the new rate/wave/polarity/fade. Applying one effect
+after the other makes both use the most recently applied LFO settings. This is not
+independent permanent vibrato/tremolo. Save the project normally for power-off storage.
+
+## Temporary performance behavior
 After 140 ms the temporary panel appears and its effect engages. Release dismisses
 it and restores the previous page and underlying sound. A quick tap still opens the
 normal LFO or ENV pages. The keyboard continues playing normally in either panel.

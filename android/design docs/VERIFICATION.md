@@ -1,3 +1,39 @@
+## Sampler, song library and native performance checkpoint — October 12
+
+- Android build: zero warnings/errors in `build/android-song-library-build.log`;
+  final APK installed non-incrementally on Pixel 7a. Live recording/retention,
+  end-handle trim (60.29 → 15.85 seconds), equal 4/8-chop redistribution, playback
+  initiation, both intent screens and offline-disabled song transfer were checked.
+  Fresh screenshots replace the sampler image and add chops/song-library images.
+- `Sloop.Fm1Songs.Tests`: 22 checks for native snapshots, edited FM6 patches and
+  their CRCs, archive round trip, invalid/duplicate/engine-layout rejection,
+  failed durable backup before writes, dependency ordering, arrangement-only
+  settings merge, MIDI preservation, readback failures and catalog reopening.
+  Physical song save/load and direct phone-to-FM1 sample upload remain pending.
+- Quick sampling: 44 checks, including effective firmware playback rate, duration,
+  pitch, root mapping, trim/undo and instrument activation. Encoding: 102 assertions
+  and nine independent Python fixtures; workstation: 134 integration + 79 mapping;
+  sampling tools: 70; saved session settings: 27; protocol: 410. External MIDI and
+  Part writing suites also pass (43 rule checks, 26,880 isolated/18,816 chained transitions).
+- Native full suite passes using `CC=build/host/optimization-cc` and
+  `CC_UB=build/host/optimization-cc-trap`. This WSL setup has no default `cc`;
+  the initial UBSan build failure was an environment issue, then rerun correctly.
+  Divide-by-zero checks ran; ASan is unavailable in this compiler and remains skipped.
+  See `build/final-song-library-firmware-tests.log`.
+- 182 golden renders unchanged, zero health/voice-routing/crash failures; target
+  budgets and all 25 per-sample inlining guards pass. Timed host CPU notes are not
+  physical deadline evidence. Native modulation tests cover OCT+ application,
+  selected-track isolation, every divider mapping and no octave change. Project
+  tests prove the copied parameters survive a simulated cold NOR reload.
+- Final affected-path run `build/move-merge-font-final-tests.log` covers move-to-chord
+  capacity/duplicates, preserved destination metadata, full undo/redo, tie lengths,
+  source-lock guards, independent BDF/renderer pixels and the 20,000-frame UI fuzz.
+  Font data is 3,952 bytes versus 5,376; renderer unchanged. No audio baseline or
+  target budget was rewritten.
+- Web factory-kit fixture checking now expands both packed and legacy generated
+  definitions before comparing all 512 sounds, rather than assuming the older
+  expanded initializer. The previous failure was a stale fixture reader, not changed sounds.
+
 ## Sequence merge audit and continuous Note Trails
 
 2.6 Merthsoft.5 retains the prior capacity totals. ADD is checked against an
@@ -450,3 +486,49 @@ live in this checkpoint. Firmware is served, not flashed by this chat.
 
 Earlier evidence: [2.4.14 checkpoint](archive/checkpoints/INTEGRATION-2.4.14.md).
 Package identity and installer: [release notes](RELEASE-NOTES.md).
+
+## Scale-aware Android chord labels
+
+Workstation integration tests pass: 112 integration checks and 79 kit-mapping checks.
+The new degree-label assertions cover major, natural minor, harmonic minor, both
+pentatonic parent harmonies, Dorian and Mixolydian, including upper-tonic and
+diminished/augmented notation. Android Debug APK builds with zero warnings/errors
+(`build/android-chord-labels-build.log`). ADB reports no connected device, so this
+change has not been installed or visually checked on the phone.
+
+## Expanded Android chord mode audit
+
+`build/android-voice-leading-audit.log`: 134 integration checks plus 79 kit mapping
+checks pass, including 26,880 degree transitions for movement, chord tone identity,
+repeat stability, octave/register preservation; octave layer de-duplication and
+MIDI upper-bound omission; extra-pad register equivalence.
+`build/android-chord-settings-tests.log`: 25 preset/sample adoption checks pass,
+including new settings round-trip, invalid ranges and backward-compatible defaults.
+
+Android expanded build succeeds with zero warnings/errors
+(`build/android-chord-expansion-build.log`). Installed successfully on the authorized
+Pixel, process remains running, and the live UI confirms both selectors and the
+three-octave 22-pad layout with scale-quality/octave labels. Fresh screenshot:
+`build/chord-mode-expanded-live.png`. Left Perform at 3-octave pad range and
++1-octave thickness for user testing. Phone is connected to PC, not FM1; audio,
+voice stealing and simultaneous multi-touch remain hardware/user validation.
+
+## Android Part writing verification
+
+- `build/part-writing-tests.log`: 43 behavioral checks, 26,880 isolated and
+  18,816 chained transitions pass. Perfect-interval parallels are reduced versus
+  Smooth voicing in 15,120 isolated cases and never increased in the audited cases.
+  Tests include same-voice leading-tone/seventh resolution, chromatically raised
+  minor-key leading tones, explicit inversion priority, voice-count fallback,
+  extra-pad octave equivalence, repeated-chord stability and MIDI boundaries.
+- `build/part-writing-settings.log`: 27 checks pass, including preset round-trip
+  and older presets defaulting Part writing off. Existing workstation integration
+  (134 + 79 kit checks) and external MIDI ownership/cancellation tests pass.
+- `build/android-part-writing-build.log`: APK builds with zero warnings/errors.
+  Successfully installed and launched on the authorized Pixel. Live hierarchy
+  verifies Part writing on disables Smooth voicing while preserving its checkbox
+  value. In latched offline preview, I then ii produces Dm MIDI 50,57,65 (D-A-F),
+  rather than the parallel-fifth root voicing D-F-A. Process remains running.
+- Fresh screenshot `assets/screens/merthsoft/android-part-writing.png` documents
+  controls and the live result. Phone is attached to PC; FM1 sound/voice-stealing
+  validation remains user testing. No firmware update is required for this mode.

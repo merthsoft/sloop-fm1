@@ -9,6 +9,8 @@ existing upstream website artifact, not the current Merthsoft build.
 - [Phone musical starter protocol](MUSICAL-STARTER-PROTOCOL.md)
 - [Arpeggio expression](ARP-EXPRESSION.md)
 - [Live vibrato, tremolo and MIDI modulation](MODULATION-WHEEL.md)
+- [LOFI chord arpeggios](LOFI-CHORD-ARP.md)
+- [Proposed track auto-wah](AUTO-WAH-DESIGN.md)
 - [Recording snap and STEP editing](SEQUENCER-EDITING.md)
 - [Persistent keyboard scale lights](KEYBOARD-SCALE-LIGHTS.md)
 - [Drum grooves](DRUM-GROOVES-DESIGN.md)
@@ -26,3 +28,4 @@ Use the [player guide](../../GUIDE.md) for controls and the
 - [Scale-aware grids and MIDI keyboard following](SCALE-MIDI-GRIDS.md)
 
 - [Upstream 2.6 integration assessment](UPSTREAM-2.6-INTEGRATION.md)
+- [PR 111 RAM and dual-core adoption assessment](PR-111-ASSESSMENT.md)

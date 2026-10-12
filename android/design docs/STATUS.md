@@ -1,19 +1,49 @@
-# Current implementation status — October 11, 2026
+# Current implementation status — October 12, 2026
 
 This is the current status index. Component docs contain both implemented checkpoints and
 future design contracts; dated release/handoff/test results remain historical evidence.
 
+## Quick sampler and FM1 song library
+
+Sample now has Playable sound and Chopped loop workflows: recording/import, drag
+trim handles, pitched audition or 4/8/16 chops and automatic fit/prepare/send with
+slot backup and readback. Advanced tools remain available. Live recording, equal
+chopping, end-handle trimming and playback initiation were checked on the Pixel;
+direct FM1 upload remains hardware validation.
+
+Library now has named FM1 songs, separate from app sessions. Save captures current
+project, A–D, arrangement and sound dependencies; Load retains a durable recovery
+song before changing hardware and verifies restored objects. Import/export works
+offline. Device preferences and MIDI configuration are retained. See
+[song-library contract](FM1-SONG-LIBRARY.md); physical hardware round-trip is pending.
+
+Branch is now `merthsloop`. PR 111's RAM/dual-core series is reviewed but not yet
+integrated; native auto-wah with LFO/envelope-follower modes is a proposed next
+feature. See the [PR assessment](../../docs/firmware/PR-111-ASSESSMENT.md) and
+[auto-wah design](../../docs/firmware/AUTO-WAH-DESIGN.md).
+
+## Android chord-mode expansion
+
+Perform has scale-quality Roman numerals, thickness (0–2 extra octave layers),
+and 8/15/22-pad octave ranges. Base voice-leading history remains independent of
+thickness; 26,880 transition checks and saved-preset compatibility checks pass.
+The former Voice lead option is now Smooth voicing; Part writing adds parallel-interval
+and tendency-resolution preferences for base chords. The APK builds cleanly and
+is installed on the Pixel; larger pad layout and both
+selectors were checked live. Simultaneous multi-pad latch, spread/drop voicings,
+and additional chord qualities remain proposals, not implemented features.
+
 ## Latest firmware
 
-**2.6 Merthsoft.6 is integrated and built.** Native ADD/REPLACE, transient-safe
-Note Trails with high-contrast drums, and preserved track effects with both-OCT
+**2.6 Merthsoft.10 is integrated and built.** Native ADD/REPLACE, transient-safe
+Note Trails with high-contrast drums and gate-aware held-note strokes, and preserved track effects with both-OCT
 reset on normal FX pages are implemented. Upstream audio, inserts, sync,
 MIDI, texture, drum mutes and note-length features coexist with the fork libraries,
 rhythms, editing, scale lights and performance modulation. Upstream's 27 physical
 punch effects replace the previous black-key FX modifiers. The installer is
-`http://127.0.0.1:8811/webapp/installer/`.
+`http://127.0.0.1:8815/webapp/installer/`.
 
-Image 581,476 bytes; static RAM 94,500 bytes; pool 333,900 bytes. Lossless factory
+Image 581,060 bytes; static RAM 94,500 bytes; pool 333,900 bytes. Lossless factory
 sound sharing, text startup, spare driver-RAM scratch and guarded hot-helper
 inlining make the combined build fit. Functional/audio/companion checks pass;
 hardware installation/playback remains user testing. See

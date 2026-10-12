@@ -2,6 +2,10 @@
 
 Current delivery: [STATUS.md](STATUS.md). Build and test evidence: [VERIFICATION.md](VERIFICATION.md).
 
+The [FM1 song library](FM1-SONG-LIBRARY.md) is implemented separately from app sessions:
+named native hardware snapshots, sound dependencies, portable archives, arrangement-only
+settings restoration and durable recovery before loading. It retains four native A–D slots.
+
 Library checkpoint (2026-10-07): named immutable session snapshots, portable ZIP archives,
 saved performance presets, name filtering, and grouped workspace/recovery files are implemented.
 Live session adoption is integrated and Library Load is enabled. See

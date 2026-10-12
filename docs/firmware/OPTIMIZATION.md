@@ -2,11 +2,20 @@
 
 ## Upstream integration
 
-The combined feature set fits the existing application slot: image 581,476 bytes
-(88 free), ordinary static RAM 94,500/98,304, pool 333,900/344,064.
+The combined feature set fits the existing application slot: image 581,060 bytes
+(504 free), ordinary static RAM 94,500/98,304, pool 333,900/344,064.
 Fully overwritten scratch uses 8,800 bytes beside the flash driver, leaving
 12,820 bytes there with an enforced 8 KiB reserve. Stack guards are unchanged.
 The earlier measurements below describe a completed prior pass, not current margins.
+
+Identical packed font glyph bitmaps now share existing offsets: data drops from
+5,376 to 3,952 bytes: 816 from identical glyphs and 608 from exact byte-aligned
+suffix/prefix sharing, with no renderer change or runtime decoding
+work. Every raw BDF glyph and rendered uppercase/Latin-1 character remains identical,
+including clipping, scaled titles, advances and anti-aliased-font compatibility.
+After LOFI chord expansion, modulation application and move merging, the image is
+432 bytes smaller than the initial gate-aware build. PR 111 is not integrated; see its
+[separate assessment](PR-111-ASSESSMENT.md).
 
 - Factory drums use a lossless dictionary: 512 sounds share 242 identical 21-byte
   parameter bases, with each sound’s final level byte stored separately. Raw factory

@@ -59,8 +59,12 @@ reference captures remain byte-identical; see [optimization evidence](OPTIMIZATI
 
 ## Note Trails capture and contrast
 
-Trails capture all synth note attacks between display updates, as well as active
-voices. Attack bits accumulate across the skipped UI frame and are consumed once,
+Trails capture synth note attacks between display updates, as well as held
+voices. Released voices and delay tails do not extend note strokes. The master
+punch GATE effect cuts the current synth/drum column during its fully wet closed
+phase; partially wet gate retains the audible dry path. Attacks consumed while
+closed are not replayed when it opens. This follows display-frame timing, not
+sample-level audio analysis. Attack bits accumulate across the skipped UI frame and are consumed once,
 so short notes and voice stealing do not erase a hit before it appears. All MIDI
 pitches 0–127 are included; muted/solo-excluded parts are suppressed. The three
 synth colors occupy offset stripes so coincident pitches remain visible. Each

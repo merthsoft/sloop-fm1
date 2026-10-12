@@ -294,9 +294,9 @@ static const int8_t CHORD_DEG[CH_OCTAVE][4] = {
     {0, 2, 4, 5},                        /* 6TH: 1 3 5 6 */
     {0, 2, 6, -1},                       /* SHELL: 1 3 7 */
 };
-static uint32_t chord_notes(const track_t *t, uint32_t n, uint8_t *c)
+static uint32_t chord_notes_type(const track_t *t, uint32_t n, uint8_t *c, uint32_t type)
 {
-    uint32_t type = (uint32_t)clamp(t->p[P_CHORD], 0, CH_COUNT - 1), mask = t->p[P_SCALE] ? scale_mask(t) : SCALE_MASK[2];
+    uint32_t mask = t->p[P_SCALE] ? scale_mask(t) : SCALE_MASK[2];
     /* In CHROM the selected scale describes a tonic quality at each literal root,
      * e.g. MAJ + TRIAD on C# gives C# major instead of a C-scale chord on C#. */
     int32_t scale_root = t->p[P_QUANT] == 3 ? (int32_t)n : t->p[P_ROOT];
@@ -326,6 +326,10 @@ static uint32_t chord_notes(const track_t *t, uint32_t n, uint8_t *c)
             c[k++] = (uint8_t)m;
     }
     return k;
+}
+static uint32_t chord_notes(const track_t *t, uint32_t n, uint8_t *c)
+{
+    return chord_notes_type(t,n,c,(uint32_t)clamp(t->p[P_CHORD],0,CH_COUNT-1));
 }
 
 /* CHORD+ (2.4, after HiChord / minichord): in chord mode the black keys are modifiers. Held while a white key

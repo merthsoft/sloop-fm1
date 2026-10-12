@@ -2,6 +2,44 @@
 
 Current delivery: [STATUS.md](STATUS.md). Build and test evidence: [VERIFICATION.md](VERIFICATION.md).
 
+## Quick sampler redesign
+
+| Playable sound | Chopped loop |
+| --- | --- |
+| <img src="../../assets/screens/merthsoft/android-sampling.png" width="280" alt="Fresh phone capture of trim handles and pitched audition"> | <img src="../../assets/screens/merthsoft/android-sampling-chops.png" width="280" alt="Fresh phone capture of eight equal chops with readable two-line pads"> |
+
+The primary Sample workspace is implemented around two intentions:
+
+- Playable sound: record phone microphone or a selected USB input, drag trim handles,
+  audition the original or nearby pitches, then Send to FM1. One zone spans the
+  piano; middle C is the unshifted recording by default. Existing chops remain
+  saved when making this single-sound derivative.
+- Chopped loop: record/import, trim the entire phrase, tap 4/8/16 equal chops or
+  split manually, audition pads, then Send to FM1. Equal chopping divides the trim:
+  a one-bar recording can give four beats, a four-bar recording four measures.
+
+Technical mapping, source-frame edits, root/gain, transient/tap proposals and export
+remain available through Advanced editor. Originals and reversible edits are retained.
+The main view exposes the waveform, trim, audition and one send action, rather than
+requiring kit preparation and MIDI mapping as separate user steps. Phone microphone
+is the default recording input; choosing another input does not start recording.
+
+Sending prepares automatically, then uses one destination dialog for user slot and
+synth track. Existing slot contents are backed up and the new bytes verified before
+selecting SAMPLE/USR on the chosen synth. Instrument replacement is explicit in
+that dialog; the track's sequence and effects are retained. A verified upload with
+failed instrument selection is reported distinctly. A USB disconnect never implies
+completion. Offline preparation/preview remains available.
+
+Highest fitting native rate is chosen from 22050, 11025, 8269 and 5513 Hz. Native
+zone-rate metadata preserves pitch and duration, including phone encoded preview.
+Lower-detail fitting is indicated before sending. Even the lowest quality has a
+finite duration limit; overlong sources require trimming, with no dropped slices.
+The guided rates align with the firmware's Q16 rate>>8 stepping (128/64/48/32
+steps per 256 output frames). The two fractional native rates are stored/converted
+at their nearest integer Hz; a 24-second phrase stays within a few milliseconds.
+Default existing conversion and slot fixtures remain byte-for-byte compatible.
+
 ## Retained sample library and tap chopping — October 8, 2026
 
 Browse retained samples lists valid owned WAV assets in the active session, with duration,

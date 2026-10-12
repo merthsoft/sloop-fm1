@@ -11,6 +11,7 @@ public sealed partial class SampleWorkspace
     private ConvertedKit? converted;
     private string? conversionKey;
     private CancellationTokenSource? conversion;
+    public bool PreparingKit=>conversion is not null;
     public byte[]? PendingKitExport {get;set;}
     public KitSettings KitOptions { get { LoadKitSettings(); return kitSettings; } }
     private string CurrentKey => Document is null ? "" : $"{Document.Source.Path}:{Document.Revision}:{Document.Start}:{Document.End}:{string.Join(',',Document.Markers)}:{KitOptions}:{ChopAudioSettings.Serialize(ChopOptions)}";
@@ -63,7 +64,7 @@ public sealed partial class SampleWorkspace
     {
         if(Busy || Converted is not { } kit || zone<0 || zone>=kit.Artifact.Preview.Count) return;
         var path=System.IO.Path.Combine(context.CacheDir!.AbsolutePath,"encoded-preview.wav");
-        SamplePreparation.WritePreview(path,kit.Artifact.Preview[zone].DecodedPcm);
+        SamplePreparation.WritePreview(path,kit.Artifact.Preview[zone].DecodedPcm,kit.Artifact.Preview[zone].SampleRate);
         var wave=PcmWave.Open(path); await PreviewAsync(0,wave.Frames,wave);
     }
     public Task PreviewConvertedChopAsync(int chop)

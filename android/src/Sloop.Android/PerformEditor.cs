@@ -18,12 +18,13 @@ public sealed partial class MainActivity
     int? latchedDegree;
     int? latchedOctave;
     ChordJoystickView? chordJoystick;
-    int[]? previousVoicing;
+    ChordVoicing? previousVoicing;
     TextView? performReadout;
     TextView? performanceRegister;
     PerformanceSurfaceView? playingSurface;
     string performanceCheck="Use plain-note settings on FM1; Check destination detects extra hardware transforms.";
     int PerformChannel=>connection.Snapshot.IsGenericMidi?(performOptions.ChannelOverride>=0?performOptions.ChannelOverride:state.SelectedTrack==3?9:state.SelectedTrack):connection.PerformanceChannels[state.SelectedTrack];
+    int PerformanceBassChannel=>performOptions.BassTrack>=0&&performOptions.BassTrack!=state.SelectedTrack?connection.Snapshot.IsGenericMidi?performOptions.BassTrack:connection.PerformanceChannels[performOptions.BassTrack]:-1;
     int PerformOctave=>PerformanceHarmony.EffectiveOctave(performOptions.Octave,connection.HardwareOctave,performOptions.FollowHardwareOctave);
     string RegisterDescription=> $"{PerformanceHarmony.Names[performOptions.Key]} {performOptions.Scale} · oct {PerformOctave}\nBase {performOptions.Octave} · "+
         (connection.Snapshot.IsGenericMidi?"generic MIDI":performOptions.FollowHardwareOctave ? connection.HardwareOctave is {} offset ? $"FM1 {offset:+0;-0;0}" : "FM1 unavailable" : "app only");
@@ -58,7 +59,7 @@ public sealed partial class MainActivity
     {
         var o=performOptions;
         return o.Surface switch {
-            PerformSurface.Chords=>Enumerable.Range(0,8).Select(d=>$"{new[]{"I","ii","iii","IV","V","vi","vii","I ↑"}[Mapping.Degree(d)]}\n{PerformanceHarmony.Chord(o.Key,o.Scale,PerformOctave,Mapping.Degree(d),ChordShape.Diatonic,0,false).Name}").ToArray(),
+            PerformSurface.Chords=>Enumerable.Range(0,7*o.PadOctaves+1).Select(d=>$"{PerformanceHarmony.DegreeLabel(o.Scale,Mapping.Degree(d))}\n{PerformanceHarmony.Chord(o.Key,o.Scale,PerformOctave,Mapping.Degree(d),ChordShape.Diatonic,0,false).Name}").ToArray(),
             PerformSurface.DrumPads=>new[]{"Kick","Low kick","Snare","Clap","Closed hat","Open hat","Pedal hat","Rim","Elec snare","Low tom","High tom","Crash","Ride","Maracas","Conga","Cowbell"},
             PerformSurface.Keyboard=>Enumerable.Range(0,24).Select(i=>PerformanceHarmony.Names[(12*(PerformOctave+1)+i+o.Key)%12]).ToArray(),
             _=>Enumerable.Range(0,24).Select(i=>{int n=PerformanceHarmony.ScaleNote(o.Key,o.Scale,PerformOctave,i);return $"{PerformanceHarmony.Names[n%12]}{n/12-1}";}).ToArray()};
@@ -110,8 +111,15 @@ public sealed partial class MainActivity
         var safety=new LinearLayout(this){Orientation=Orientation.Horizontal};
         var latch=new CheckBox(this){Text="Latch",Checked=o.Latch};latch.SetTextColor(Color.White);
         latch.CheckedChange+=(_,a)=>{StopPerformance();performOptions=performOptions with{Latch=a.IsChecked};ShowWorkspace();};safety.AddView(latch,new LinearLayout.LayoutParams(0,ViewGroup.LayoutParams.WrapContent,1));
-        var voiceLead=new CheckBox(this){Text="Voice lead",Checked=o.VoiceLead};voiceLead.SetTextColor(Color.White);
+        var voiceLead=new CheckBox(this){Text="Smooth voicing",Checked=o.VoiceLead,Enabled=!o.PartWriting};voiceLead.SetTextColor(Color.White);
         voiceLead.CheckedChange+=(_,a)=>performOptions=performOptions with{VoiceLead=a.IsChecked};safety.AddView(voiceLead,new LinearLayout.LayoutParams(0,ViewGroup.LayoutParams.WrapContent,1));content.AddView(safety);
+        if(o.Surface==PerformSurface.Chords) {
+            var partWriting=new CheckBox(this){Text="Part writing · independent voices",Checked=o.PartWriting};partWriting.SetTextColor(Color.White);
+            partWriting.CheckedChange+=(_,a)=>{performOptions=performOptions with{PartWriting=a.IsChecked};voiceLead.Enabled=!a.IsChecked;};content.AddView(partWriting);
+        }
+        if(o.Surface==PerformSurface.Chords)ButtonRow(
+            ($"Thickness · {(o.ExtraOctaves==0?"Normal":$"+{o.ExtraOctaves} oct")}",()=>ChoosePerformance("Chord thickness",["Normal","+1 octave","+2 octaves"],performOptions.ExtraOctaves,i=>performOptions=performOptions with{ExtraOctaves=i}),true),
+            ($"Pad range · {o.PadOctaves} oct",()=>ChoosePerformance("Chord pad range",["1 octave · 8 pads","2 octaves · 15 pads","3 octaves · 22 pads"],performOptions.PadOctaves-1,i=>performOptions=performOptions with{PadOctaves=i+1}),true));
         var release=new Button(this){Text="Release / stop",TextSize=12};release.Click+=(_,_)=>StopPerformance();content.AddView(release);
         content.AddView(Label("Mod wheel · slide right for vibrato; release to reset",12));
         var modStrip=new PerformanceXyView(this,"MOD → · release resets");modulationSurface=modStrip;
@@ -123,7 +131,7 @@ public sealed partial class MainActivity
         playingSurface=new PerformanceSurfaceView(this,labels,columns,o.Surface==PerformSurface.Keyboard,o.Surface==PerformSurface.Ribbon);
         playingSurface.Cancelled+=StopPerformance;
         playingSurface.Play+=(pointer,cell,velocity,held)=>PerformSafely(()=>PlayPerformance(pointer,cell,velocity,held));
-        AddPerformanceGestureView(playingSurface,o.Surface==PerformSurface.Ribbon?120:160);
+        AddPerformanceGestureView(playingSurface,o.Surface==PerformSurface.Ribbon?120:o.Surface==PerformSurface.Chords?80*((labels.Length+3)/4):160);
         chordJoystick=null;
         if(o.Surface==PerformSurface.Chords) {
             var joystick=new ChordJoystickView(this,Mapping.Directions);chordJoystick=joystick;joystick.Cancelled+=StopPerformance;joystick.Change+=shape=>PerformSafely(()=> {
@@ -158,7 +166,7 @@ public sealed partial class MainActivity
         });
         Section("perform.help", "Playing tips & destination check", () => {
         content.AddView(Label($"{o.Tempo} BPM. C3 = MIDI 48; middle C is C4 (60). FM1 octave follow requires protocol 10 firmware; older firmware uses only the app's base octave.",12));
-        content.AddView(Label($"1/{o.Division*4} notes\n{(o.Surface==PerformSurface.DrumPads?"Select Drums for the FM1 drum destination.":"Slide between cells; multiple fingers share sustained notes.")}\n{(o.Surface==PerformSurface.Ribbon?"Ribbon height controls velocity.":$"Pads use the configured velocity ({o.Velocity}); sliding does not change it.")}\nSwipe the ↕ rail beside the pads or joystick to scroll.\n{(o.Surface==PerformSurface.Chords?"I ↑ is the tonic one octave higher. Joystick: 7 / 9 / sus4 / sus2 / minor / major / inversions. Ninth chords omit the fifth to use four voices.":"")}",13));
+        content.AddView(Label($"1/{o.Division*4} notes\n{(o.Surface==PerformSurface.DrumPads?"Select Drums for the FM1 drum destination.":"Slide between cells; multiple fingers share sustained notes.")}\n{(o.Surface==PerformSurface.Ribbon?"Ribbon height controls velocity.":$"Pads use the configured velocity ({o.Velocity}); sliding does not change it.")}\nSwipe the ↕ rail beside the pads or joystick to scroll.\n{(o.Surface==PerformSurface.Chords?"↑ and ↑2/↑3 mark higher pad octaves. Thickness adds upper octave copies; FM1 voice limits can steal notes. Part writing prefers independent base voices; inversions/register can force rule conflicts. Joystick: 7 / 9 / sus4 / sus2 / minor / major / inversions. Ninth chords omit the fifth to use four voices.":"")}",13));
         AsyncButton("Check FM1 destination transforms",async()=>{StopPerformance();performanceCheck=await connection.CheckPerformanceAsync(state.SelectedTrack,PerformChannel);ShowWorkspace();},connection.CanPerform&&!connection.Snapshot.IsGenericMidi);
         content.AddView(Label(performanceCheck,13));
         });
@@ -199,9 +207,9 @@ public sealed partial class MainActivity
         if(PerformChannel<0){if(performReadout is not null)performReadout.Text="FM1 track MIDI channel is OFF · enable it in GLO > MIDI.";return;}
         if(pointer>=0)performFingers[pointer]=(cell,touchVelocity);
         int velocity=Math.Clamp(o.Velocity*touchVelocity/100,1,127);LiveNote[] notes;LiveNote? bass=null;string name;
-        if(o.Surface==PerformSurface.Chords){if(o.Latch&&pointer>=0&&freshChord)latchedOctave=PerformOctave;var chord=PerformanceHarmony.Chord(o.Key,o.Scale,o.Latch?latchedOctave??PerformOctave:PerformOctave,Mapping.Degree(cell),performShape,o.Inversion,o.VoiceLead,previousVoicing);previousVoicing=chord.Notes;
-            notes=chord.Notes.Select(n=>new LiveNote(PerformChannel,n)).ToArray();name=chord.Name;
-            if(o.BassTrack>=0&&o.BassTrack!=state.SelectedTrack){int channel=connection.Snapshot.IsGenericMidi?o.BassTrack:connection.PerformanceChannels[o.BassTrack];if(channel>=0)bass=new(channel,chord.Bass);}
+        if(o.Surface==PerformSurface.Chords){if(o.Latch&&pointer>=0&&freshChord)latchedOctave=PerformOctave;var chord=PerformanceHarmony.Chord(o.Key,o.Scale,o.Latch?latchedOctave??PerformOctave:PerformOctave,Mapping.Degree(cell),performShape,o.Inversion,o.VoiceLead,previousVoicing?.Notes,o.PartWriting,previousVoicing,PerformanceBassChannel>=0);previousVoicing=chord;
+            notes=PerformanceHarmony.Thicken(chord.Notes,o.ExtraOctaves).Select(n=>new LiveNote(PerformChannel,n)).ToArray();name=chord.Name;
+            if(PerformanceBassChannel>=0)bass=new(PerformanceBassChannel,chord.Bass);
             if(o.Latch){owner="perform:latch";latchedDegree=cell;}
         } else {int pitch=o.Surface==PerformSurface.DrumPads?SlotBuilder.DrumLaneNote(cell):o.Surface==PerformSurface.Keyboard?Math.Clamp(12*(PerformOctave+1)+o.Key+cell,0,127):PerformanceHarmony.ScaleNote(o.Key,o.Scale,PerformOctave,cell);
             notes=[new(PerformChannel,pitch)];name=o.Surface==PerformSurface.DrumPads?$"Drum {cell+1}":PerformanceHarmony.Names[pitch%12];}
@@ -224,7 +232,9 @@ public sealed partial class MainActivity
         Picker("Bass destination",["Off","Synth 1","Synth 2","Synth 3"],o.BassTrack+1,v=>o=o with{BassTrack=v-1});
         if(connection.Snapshot.IsGenericMidi)Picker("MIDI channel",new[]{"Track default"}.Concat(Enumerable.Range(1,16).Select(n=>n.ToString())).ToArray(),o.ChannelOverride+1,v=>o=o with{ChannelOverride=v-1});
         else panel.AddView(Label("FM1 destination follows the selected synth/drum track.",12));
-        var lead=new CheckBox(this){Text="Voice lead chords",Checked=o.VoiceLead};lead.CheckedChange+=(_,a)=>o=o with{VoiceLead=a.IsChecked};panel.AddView(lead);
+        var lead=new CheckBox(this){Text="Smooth voicing",Checked=o.VoiceLead,Enabled=!o.PartWriting};lead.CheckedChange+=(_,a)=>o=o with{VoiceLead=a.IsChecked};panel.AddView(lead);
+        var partLead=new CheckBox(this){Text="Part writing · prefer independent voices",Checked=o.PartWriting};
+        partLead.CheckedChange+=(_,a)=>{o=o with{PartWriting=a.IsChecked};lead.Enabled=!a.IsChecked;};panel.AddView(partLead);
         AddPerformanceControlSettings(panel,()=>o,v=>o=v);
         var scroll=new ScrollView(this);scroll.AddView(panel);
         new global::Android.App.AlertDialog.Builder(this)!.SetTitle("Performance settings")!.SetView(scroll)!.SetPositiveButton("Apply",(_,_)=>PerformSafely(()=>{(o.Mapping??new()).Validate();(o.Macro??new()).Validate();performOptions=o;ShowWorkspace();}))!.SetNegativeButton("Cancel",(_,_)=>{})!.Show();

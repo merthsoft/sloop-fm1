@@ -10,9 +10,10 @@ public sealed record ConvertedPcm(short[] Samples, ConversionReport Report);
 public static class PcmConversion
 {
     public const int TargetRate = 22050;
-    public static ConvertedPcm Convert(ReadOnlySpan<double> interleaved, int channels, int sourceRate, ConversionOptions options, CancellationToken token=default)
+    public static ConvertedPcm Convert(ReadOnlySpan<double> interleaved, int channels, int sourceRate, ConversionOptions options, CancellationToken token=default, int targetRate=TargetRate)
     {
         ArgumentNullException.ThrowIfNull(options);
+        if(targetRate is <4000 or >44100)throw new ArgumentOutOfRangeException(nameof(targetRate));
         if (channels < 1 || channels > 64 || sourceRate < 1 || sourceRate > 768000 || interleaved.IsEmpty || interleaved.Length % channels != 0) throw new ArgumentException("Complete nonempty PCM frames and a valid rate/channel count required.");
         if (!Enum.IsDefined(options.Mono) || !double.IsFinite(options.Gain) || options.Gain < 0 || options.SelectedChannel < 0 || options.SelectedChannel >= channels) throw new ArgumentException("Explicit valid downmix and finite nonnegative gain required.");
         int frames = interleaved.Length / channels, cancellation = 0;
@@ -31,7 +32,7 @@ public static class PcmConversion
             mono[f] = (options.Mono == MonoChoice.AverageChannels ? sum / channels : interleaved[f * channels + (options.Mono == MonoChoice.FirstChannel ? 0 : options.SelectedChannel)]) * options.Gain;
             if (!double.IsFinite(mono[f])) throw new ArgumentException("Gain overflow.");
         }
-        var converted = Resample(mono, sourceRate, token);
+        var converted = Resample(mono, sourceRate, token, targetRate);
         int clipped = 0; double peak = 0;
         var pcm = new short[converted.Length];
         for (int i = 0; i < pcm.Length; i++)
@@ -46,16 +47,16 @@ public static class PcmConversion
     }
     // 32 zero crossings per side, Blackman-windowed sinc. Scales support for downsampling.
     // Edge extension and normalized kernel preserve DC. Same-rate conversion is exact.
-    private static double[] Resample(double[] source, int rate, CancellationToken token)
+    private static double[] Resample(double[] source, int rate, CancellationToken token,int targetRate)
     {
-        if (rate == TargetRate) return (double[])source.Clone();
-        int count = checked((int)(((long)source.Length * TargetRate + rate - 1) / rate));
+        if (rate == targetRate) return (double[])source.Clone();
+        int count = checked((int)(((long)source.Length * targetRate + rate - 1) / rate));
         var result = new double[count];
-        double cutoff = Math.Min(1.0, (double)TargetRate / rate), radius = 32 / cutoff;
+        double cutoff = Math.Min(1.0, (double)targetRate / rate), radius = 32 / cutoff;
         for (int n = 0; n < count; n++)
         {
             if ((n & 255)==0) token.ThrowIfCancellationRequested();
-            double position = (double)n * rate / TargetRate, sum = 0, weightSum = 0;
+            double position = (double)n * rate / targetRate, sum = 0, weightSum = 0;
             int first = (int)Math.Ceiling(position - radius), last = (int)Math.Floor(position + radius);
             for (int i = first; i <= last; i++)
             {
@@ -68,9 +69,9 @@ public static class PcmConversion
         return result;
     }
     /// <summary>Map a half-open source boundary to converted frames, rounding upward.</summary>
-    public static int MapBoundary(int frame, int sourceRate)
+    public static int MapBoundary(int frame, int sourceRate,int targetRate=TargetRate)
     {
-        if (frame < 0 || sourceRate < 1 || sourceRate > 768000) throw new ArgumentOutOfRangeException(nameof(frame));
-        return checked((int)(((long)frame * TargetRate + sourceRate - 1) / sourceRate));
+        if (frame < 0 || sourceRate < 1 || sourceRate > 768000 || targetRate is <4000 or >44100) throw new ArgumentOutOfRangeException(nameof(frame));
+        return checked((int)(((long)frame * targetRate + sourceRate - 1) / sourceRate));
     }
 }

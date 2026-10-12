@@ -20,8 +20,8 @@ public sealed partial class MainActivity
         var mapping=get().Mapping??new();mapping.Validate();var degrees=(int[])mapping.Degrees.Clone();var directions=(ChordShape[])mapping.Directions.Clone();
         void Pick(string title,string[] values,int selected,Action<int> update){panel.AddView(Label(title,12));var v=new Spinner(this);v.Adapter=new ArrayAdapter<string>(this,global::Android.Resource.Layout.SimpleSpinnerDropDownItem,values);v.SetSelection(selected);v.ItemSelected+=(_,e)=>update(e.Position);panel.AddView(v);}
         void SaveMapping()=>set(get() with{Mapping=new(){Degrees=(int[])degrees.Clone(),Directions=(ChordShape[])directions.Clone()}});
-        for(int i=0;i<7;i++){int slot=i;Pick($"Chord pad {i+1}",["I","ii","iii","IV","V","vi","vii"],degrees[i],v=>{degrees[slot]=v;SaveMapping();});}
-        panel.AddView(Label("Pad 8 remains I ↑, one octave above tonic.",12));
+        for(int i=0;i<7;i++){int slot=i;Pick($"Chord pad {i+1}",Enumerable.Range(0,7).Select(d=>PerformanceHarmony.DegreeLabel(get().Scale,d)).ToArray(),degrees[i],v=>{degrees[slot]=v;SaveMapping();});}
+        panel.AddView(Label("Pad 8 remains the upper tonic, one octave above the lower tonic.",12));
         var shapes=Enum.GetValues<ChordShape>();string[] names=["N","NE","E","SE","S","SW","W","NW"];
         for(int i=0;i<8;i++){int slot=i;Pick("Joystick "+names[i],Enum.GetNames<ChordShape>(),(int)directions[i],v=>{directions[slot]=shapes[v];SaveMapping();});}
         var macro=get().Macro??new();void SaveMacro()=>set(get() with{Macro=macro});

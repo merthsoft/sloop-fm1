@@ -510,6 +510,23 @@ static void chain_sub(char *sub, uint32_t n)
 }
 
 /* KNOB 1..4 while a layer is held: what the layer gives them (the page does not see them) */
+static void live_mod_apply(uint32_t effect)
+{
+    live_mod_t *m = &live_mod[effect];
+    if (m->part >= NPART || m->part != song.sel) return;
+    track_t *t = &trk[m->part];
+    static const uint8_t sync[] = {0,5,6,8,10,7,9,4,3,2};
+    fm1_irq_off();
+    t->p[P_LRATE] = m->rate; t->p[P_LWAVE] = m->wave;
+    t->p[P_LSYNC] = sync[m->sync % NELEM(sync)];
+    t->p[P_LTRIG] = 1; t->p[P_LPOL] = 0; t->p[P_LFADE] = 0;
+    t->p[effect ? P_LD_AMP : P_LD_PIT] = effect ? m->depth : (m->depth + 24) / 48;
+    t->lfo_ph = m->phase; t->lfo_fade = 32767;
+    m->on = 0;
+    fm1_irq_on();
+    sync_reload = 1;
+    ui_message("APPLIED TO TRACK");
+}
 static void layer_knobs(uint32_t layer)
 {
     uint32_t k;

@@ -4,7 +4,7 @@ namespace Sloop.SampleEncoding;
 /// <summary>PCM and loop coordinates are relative to an already extracted immutable source slice.</summary>
 public sealed record SourceZone(ReadOnlyMemory<double> InterleavedPcm, int Channels, int SourceRate,
     ConversionOptions Options, int RootNote, int? LowNote = null, int? HighNote = null,
-    int? LoopStartFrame = null, int? LoopEndFrameExclusive = null);
+    int? LoopStartFrame = null, int? LoopEndFrameExclusive = null,int OutputRate=22050);
 public sealed record ConvertedZone(ZoneInput Zone, ConversionReport Report);
 public sealed record ConvertedKit(SlotArtifact Artifact, IReadOnlyList<ConversionReport> Reports);
 
@@ -13,17 +13,17 @@ public static class ConversionPipeline
     public static ConvertedZone ConvertZone(SourceZone source, CancellationToken token=default)
     {
         ArgumentNullException.ThrowIfNull(source);
-        var pcm = PcmConversion.Convert(source.InterleavedPcm.Span, source.Channels, source.SourceRate, source.Options, token);
+        var pcm = PcmConversion.Convert(source.InterleavedPcm.Span, source.Channels, source.SourceRate, source.Options, token,source.OutputRate);
         int? start = null, end = null;
         if (source.LoopStartFrame.HasValue != source.LoopEndFrameExclusive.HasValue || source.LoopStartFrame < 0 || source.LoopEndFrameExclusive > pcm.Report.SourceFrames || source.LoopStartFrame >= source.LoopEndFrameExclusive)
             throw new ArgumentException("Invalid source loop frame range.");
         if (source.LoopStartFrame is int ls)
         {
-            start = PcmConversion.MapBoundary(ls, source.SourceRate);
-            end = PcmConversion.MapBoundary(source.LoopEndFrameExclusive!.Value, source.SourceRate);
+            start = PcmConversion.MapBoundary(ls, source.SourceRate,source.OutputRate);
+            end = PcmConversion.MapBoundary(source.LoopEndFrameExclusive!.Value, source.SourceRate,source.OutputRate);
             if (start >= end) throw new ArgumentException("Loop collapsed during resampling; choose a longer loop.");
         }
-        return new(new(pcm.Samples, source.RootNote, source.LowNote, source.HighNote, start, end), pcm.Report);
+        return new(new(pcm.Samples, source.RootNote, source.LowNote, source.HighNote, start, end,source.OutputRate), pcm.Report);
     }
     public static ConvertedKit Build(string name, IReadOnlyList<SourceZone> sources, CancellationToken token=default)
     {

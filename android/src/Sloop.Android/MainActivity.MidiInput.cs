@@ -11,6 +11,7 @@ public sealed partial class MainActivity
     MidiInputDecoder? midiDecoder;
     ExternalMidiNotes? midiNotes;
     bool controllerChords;
+    ChordVoicing? previousControllerChord;
     string controllerStatus="External controller off";
     Button? controllerButton;
     object? controllerDestinationSession;
@@ -26,7 +27,7 @@ public sealed partial class MainActivity
         controllerButton.Click+=(_,_)=>ShowMidiInputMenu();content.AddView(controllerButton);
     }
     void SetControllerStatus(string value){controllerStatus=value;if(controllerButton is not null)controllerButton.Text=value;}
-    void ResetMidiInputNotes(){midiInput?.DiscardPending();midiNotes?.Reset();midiDecoder?.Reset();}
+    void ResetMidiInputNotes(){previousControllerChord=null;midiInput?.DiscardPending();midiNotes?.Reset();midiDecoder?.Reset();}
     void CloseMidiInput(){midiInput?.Close();ResetMidiInputNotes();SetControllerStatus("External controller off");}
     void DisposeMidiInput(){CloseMidiInput();midiInput?.Dispose();midiInput=null;}
     void ShowMidiInputMenu()
@@ -59,9 +60,10 @@ public sealed partial class MainActivity
         var o=performOptions;
         if(!controllerChords){connection.Performer.Hold(owner,[new(PerformChannel,pitch)],velocity,PlayStyle.Block);return;}
         if(state.SelectedTrack==3)return;
-        var chord=ExternalMidiHarmony.Chord(pitch,o.Key,o.Scale,performShape,o.Inversion);
+        var chord=ExternalMidiHarmony.Chord(pitch,o.Key,o.Scale,performShape,o.Inversion,o.VoiceLead,o.PartWriting,previousControllerChord,PerformanceBassChannel>=0);
         if(chord is null)return;
-        LiveNote? bass=o.BassTrack>=0&&o.BassTrack!=state.SelectedTrack?new(o.BassTrack,chord.Bass):null;
-        connection.Performer.Hold(owner,chord.Notes.Select(n=>new LiveNote(PerformChannel,n)).ToArray(),velocity,o.Style,o.Tempo,o.Division,o.StrumMs,bass);
+        previousControllerChord=chord;
+        LiveNote? bass=PerformanceBassChannel>=0?new(PerformanceBassChannel,chord.Bass):null;
+        connection.Performer.Hold(owner,PerformanceHarmony.Thicken(chord.Notes,o.ExtraOctaves).Select(n=>new LiveNote(PerformChannel,n)).ToArray(),velocity,o.Style,o.Tempo,o.Division,o.StrumMs,bass);
     }
 }

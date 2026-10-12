@@ -23,6 +23,15 @@ Moving forward into the event's own tie run moves its onset later and keeps its 
 rests without notes, dynamics, flags, locks, fill conditions or timing data.
 Otherwise STEP OCCUPIED leaves the pattern and cursor unchanged.
 
+An existing note/chord onset is now a merge destination. Unique moved pitches are
+added up to the four-note limit; duplicates do not use an extra slot. Destination
+velocity, accents, ratchet, timing, fill, slide flags and locks remain authoritative.
+A single-step source takes the destination chord's duration. A tied source can
+merge when both chains have the same length; mismatched tied lengths or source
+parameter locks reject before changing anything. Full chords reject a new fifth
+pitch. The vacated source becomes clean rests and complete undo/redo includes both
+ends. Selecting a source chord moves its whole onset, not an individual chord voice.
+
 Notes, velocity, accents, slides, ratchets, microtiming, fill conditions and parameter
 locks travel together. Vacated cells become clean rests. Direction-aware copying
 handles overlapping moves without allocating a pattern buffer. Moving requires

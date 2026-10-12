@@ -118,3 +118,16 @@ from the repository. Preserve notices and comply with GPL distribution/source
 requirements when integrating. No third-party DSP code or DSP dependency is used.
 Read tools/fm1_sample_upload.py and web/EDITOR_PROTOCOL.md alongside these sources
 for future integration. Do not add transport or firmware write behavior here.
+
+Native-rate export is supported through optional OutputRate/SampleRate parameters.
+Defaults remain 22050 Hz and retain the existing golden bytes. Zone headers store
+sourceRate/44100 in Q16; previews retain the chosen rate so exported WAV playback
+does not change pitch or duration. Supported new builder/converter rates are
+4000–44100 Hz. Guided sampling selects 22050/11025/8269/5513 Hz to fit a whole trim;
+original PCM and frame-based edits are retained. Rate-specific loop coordinates
+are mapped using the chosen output rate.
+
+The firmware render path additionally truncates the Q16 rate to rate>>8. Guided
+rates correspond to 128/64/48/32 steps per 256 output frames; their rounded-Hz
+values avoid the substantial drift that arbitrary target rates can introduce.
+Readback rounds fractional native-rate Hz upward at half-Hz ties for preview parity.

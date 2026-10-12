@@ -10,7 +10,19 @@
  * duties are 12.5 / 25 / 50 / 75 %; CRSH then sets the envelope (shown as "DCY"). */
 static const char *const N_CHIP[] = {"4BIT", "4B/2", "8BIT", "1BIT", "STEP"};
 static const char *const N_RWAVE[] = {"PLS", "TRI", "SAW", "NOIS", "WRAM"};
-static const char *const N_RARP[] = {"OFF", "OCT", "MAJ", "MIN"};
+/* Keep values 0..3 unchanged for saved songs/presets; append SEL chord shapes. */
+static const char *const N_RARP[] = {"OFF", "OCT", "MAJ", "MIN", "TRIAD", "7TH", "9TH", "SUS4", "POWER",
+    "SUS2", "ADD9", "6TH", "SHELL", "OCTAVE", "DOM7", "MAJ7", "MIN7", "DIM", "AUG", "HALFDIM", "DIM7"};
+static uint32_t chord_notes_type(const track_t *t, uint32_t n, uint8_t *c, uint32_t type);
+static int32_t lofi_arp_offset(const track_t *t, uint32_t note, uint32_t tick)
+{
+    static const int8_t old[4][3] = {{0,0,0}, {0,12,0}, {0,4,7}, {0,3,7}};
+    uint32_t ar = (uint32_t)clamp(t->p[P_E6],0,NELEM(N_RARP)-1);
+    if (ar < 4u) return old[ar][tick % 3u];
+    uint8_t notes[4];
+    uint32_t count = chord_notes_type(t,note,notes,ar-3u+(ar>=14u?2u:0u)); /* MAJ/MIN already cover fixed triads. */
+    return count ? (int32_t)notes[tick % count] - (int32_t)note : 0;
+}
 enum { CHIP_4BIT, CHIP_4B2, CHIP_8BIT, CHIP_1BIT, CHIP_STEP };
 enum { RW_PLS, RW_TRI, RW_SAW, RW_NOIS, RW_WRAM };
 
@@ -126,8 +138,6 @@ static void lofi_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const 
     int32_t bits = chip == CHIP_8BIT ? 8 : chip == CHIP_1BIT ? 1 : 4;
     int32_t hold = 1 + crush / 8 + (chip == 1u ? 1 : 0);
     int32_t lpk = 3000 + (p[P_E7] << 8) + (m->cutoff > 0 ? m->cutoff : 0);
-    static const int8_t ARPS[4][3] = {{0, 0, 0}, {0, 12, 0}, {0, 4, 7}, {0, 3, 7}};
-    int32_t ar = p[P_E6];
     int32_t pitch, held = v->s[0], cnt = v->s[1], lp = v->s[4];   /* state in locals: out[] may alias v->s[] */
     uint32_t inc, ph0 = v->ph[0], lfsr = (uint32_t)v->s[2];
     const uint8_t *wr = WRAM[((uint32_t)p[P_E2] >> 3) & 15u];
@@ -142,7 +152,7 @@ static void lofi_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const 
     if (v->s[3] < 4096)                                 /* past 2047 + an arp step the pitch is 0 anyway */
         v->s[3] += p[P_E4] / 8;
     v->s[5]++;
-    pitch = m->pitch16 - v->s[3] + ARPS[ar & 3][(v->s[5] / 28) % 3] * 16;   /* ~50 Hz, chip-style */
+    pitch = m->pitch16 - v->s[3] + lofi_arp_offset(t,v->note,(uint32_t)v->s[5]/28u) * 16;   /* ~50 Hz, chip-style */
     inc = pitch_inc(clamp(pitch, 0, 2047));
     if (p[P_E5])
         inc += (uint32_t)(((int32_t)(inc >> 12) * (((osc_sine(v->ph[1]) >> 8) * p[P_E5]) >> 4)) >> 4);   /* no overflow */
@@ -224,7 +234,7 @@ static const engine_t ENG_LOFI = {
         {"CRSH", F_PCT, 0, 127, 0, 0, 0},               /* STEP: the envelope (lofi_desc) */
         {"SWP", F_PCT, 0, 127, 0, 0, 0},
         {"VIB", F_PCT, 0, 127, 0, 0, 0},
-        {"ARP", F_ENUM, 0, 3, 0, N_RARP, 0},
+        {"ARP", F_ENUM, 0, NELEM(N_RARP)-1, 0, N_RARP, 0},
         {"TONE", F_PCT, 0, 127, 127, 0, 0},
     },
     LOFI_PRESETS, sizeof(LOFI_PRESETS) / sizeof(LOFI_PRESETS[0]), 1, lofi_note_on, lofi_render,

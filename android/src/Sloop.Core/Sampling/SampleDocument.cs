@@ -19,6 +19,13 @@ public sealed class SampleDocument
         Remember(); Start = start; End = end;
         markers.RemoveWhere(m => m <= Start || m >= End);
     }
+    public void TrimAndEqualParts(long start,long end,int count)
+    {
+        if(start<0||end>Source.Frames||start>=end||count is <1 or >16||end-start<count)throw new ArgumentOutOfRangeException(nameof(start));
+        var cuts=Enumerable.Range(1,count-1).Select(i=>start+(end-start)*i/count).ToArray();
+        if(start==Start&&end==End&&markers.SequenceEqual(cuts))return;
+        Remember();Start=start;End=end;markers.Clear();markers.UnionWith(cuts);
+    }
     public bool Split(long frame)
     {
         if (frame <= Start || frame >= End || markers.Contains(frame) || markers.Count >= 15) return false;

@@ -786,7 +786,7 @@ Each engine's eight parameters are on **EDIT 1** (KNOB 1–4) and **EDIT 2** (KN
 | **ANALOG** | virtual analogue: two oscillators, filter | WAVE (SAW, SQR, TRI, SIN, PWM) · DTN detune · MIX · NOIS noise | CUT cutoff · RES resonance · DRV drive · KTR key tracking |
 | **DIGITAL** | 4-operator FM | ALG algorithm 1–8 · R2 · R3 · R4 (operator ratios) | IDX FM amount · MDEC modulator decay · FB feedback · — |
 | **PHASE** | phase distortion (CZ style) | WAVE · WAVE2 (a second wave, or –) · DCW (the distortion amount) · ENV (its envelope) | DTN detune · LINE: MIX / RING · SUB sub-oscillator · — |
-| **LOFI** | 8-bit chip | CHIP: 4BIT, 4B/2, 8BIT, 1BIT, STEP · WAVE: PLS, TRI, SAW, NOIS, WRAM · DUTY (pulse width / wave table) · CRSH crush (DCY on STEP) | SWP pitch sweep · VIB vibrato · ARP: OFF, OCT, MAJ, MIN (chip arpeggio) · TONE |
+| **LOFI** | 8-bit chip | CHIP: 4BIT, 4B/2, 8BIT, 1BIT, STEP · WAVE: PLS, TRI, SAW, NOIS, WRAM · DUTY (pulse width / wave table) · CRSH crush (DCY on STEP) | SWP pitch sweep · VIB vibrato · ARP: OFF, OCT, MAJ, MIN plus all SEL chord shapes (chip arpeggio) · TONE |
 | **SAMPLE** | sampler | SET: PIANO, BASS, VIBES, HORNS, STRGS, FLUTE, SCRCH, PERC, **USR1–USR4** · TUNE ±24 · BITS (bit reduction) · LOOP: OFF / ON | CUT (tone) · — · DRV drive · — |
 | **VOICE** | formant voice (choirs, talkbox) | VOWL vowel · VOWL2 second vowel · TALK (time from one to the other) · SHIFT formant shift ±12 | BUZZ · BRTH breath · Q · RAND |
 | **TRIO** | three oscillators | WAVE (16 combinations) · INT2 · INT3 (intervals of oscillators 2 and 3, ±24) · DTN | MODE: LP, BP, HP, NOT (filter type) · CUT · RES · PW pulse width |
@@ -1043,6 +1043,11 @@ rules. See [implementation details](docs/firmware/SCALE-MIDI-GRIDS.md).
 ### Live vibrato, tremolo and modulation wheel (Merthsoft.14)
 
 Select a synth track, then hold **LFO** for gentle vibrato or **ENV** for tremolo.
+Tap **OCT+** while that panel is held or locked to apply its parameters to the track's
+saved shared LFO. The temporary effect stops, and octave does not change. Rate,
+waveform and beat division transfer; tremolo depth is exact, vibrato depth rounds
+to PIT steps. Other destination depths remain but share the new timing/waveform.
+Save the project normally to retain it after power-off.
 A temporary panel appears after 140 ms. **Knob 1** adjusts speed, **knob 2** depth,
 **knob 3** waveform (sine / triangle / saw / square), and **knob 4** beat sync.
 SYNC offers OFF, 1/4, 1/8, 1/16, 1/32, 8T, 16T, 1/2, 1BAR and 2BAR.

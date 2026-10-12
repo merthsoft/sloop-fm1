@@ -72,6 +72,12 @@ public sealed partial class Fm1Connection
     }
 
     private readonly Dictionary<int,(int Preset,int Selector)> soundFingerprints=new();
+    public async Task RefreshAfterSongLoadAsync()
+    {
+        if(client is null||epoch is null||Snapshot.Busy)throw new IOException("Reconnect to refresh the loaded song.");
+        soundFingerprints.Clear();
+        await HandshakeAsync(client,epoch,Snapshot.IsSimulated);
+    }
     public async Task<T> EditDeviceAsync<T>(string status,Func<EditorClient,CancellationToken,Task<T>> operation)
     {
         if(IsPlaying||IsRecording||Performer.Active||Snapshot.Busy||client is null||epoch is null||Snapshot.IsSimulated) throw new IOException("Connect a physical FM1 and release performance/MIDI preview first.");

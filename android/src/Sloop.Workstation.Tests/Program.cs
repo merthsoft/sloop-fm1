@@ -80,6 +80,13 @@ try {
     try {await HardwarePatterns.Read(client,info26 with { EngineParameterStart=53 },null,CancellationToken.None);throw new Exception("mixed layout accepted");}catch(IOException){checks++;}
     Check(writes26==transport.NativeWrites,"unsupported mixed parameter layout fails before writes");
     Check(SlotImages.Read(transport.Slot).Data.SequenceEqual(kit.Artifact.Data),"restore reader validates and retains ADPCM");
+    string[] majorDegrees=["I","ii","iii","IV","V","vi","vii°","I ↑"];
+    string[] minorDegrees=["i","ii°","III","iv","v","VI","VII","i ↑"];
+    string[] harmonicDegrees=["i","ii°","III+","iv","V","VI","vii°","i ↑"];
+    foreach(var (scale,labels) in new[]{(PerformanceScale.Major,majorDegrees),(PerformanceScale.NaturalMinor,minorDegrees),(PerformanceScale.HarmonicMinor,harmonicDegrees),(PerformanceScale.MajorPentatonic,majorDegrees),(PerformanceScale.MinorPentatonic,minorDegrees)})
+        for(int degree=0;degree<8;degree++)Check(PerformanceHarmony.DegreeLabel(scale,degree)==labels[degree],$"{scale} degree {degree} quality label");
+    Check(PerformanceHarmony.DegreeLabel(PerformanceScale.Dorian,3)=="IV","Dorian major fourth label");
+    Check(PerformanceHarmony.DegreeLabel(PerformanceScale.Mixolydian,4)=="v","Mixolydian minor fifth label");
     var cMajor=PerformanceHarmony.Chord(0,PerformanceScale.Major,3,0,ChordShape.Diatonic,0,false);
     Check(cMajor.Name=="C"&&cMajor.Notes.SequenceEqual(new[]{48,52,55})&&cMajor.Bass==36,"diatonic root voicing and bass");
     Check(PerformanceHarmony.EffectiveOctave(3,null,true)==3,"older firmware falls back to app octave");
@@ -112,6 +119,36 @@ try {
         if(v.Notes.Length is <3 or >4||v.Notes.Any(n=>n is <0 or >127)||v.Notes.Distinct().Count()!=v.Notes.Length)throw new Exception("invalid performance voicing");voicings++;
     }
     Check(voicings==36288,"all scales/shapes/keys/degrees/registers remain representable");
+    int auditedTransitions=0;
+    foreach(var scale in Enum.GetValues<PerformanceScale>())for(int key=0;key<12;key++)
+    foreach(var shape in new[]{ChordShape.Diatonic,ChordShape.Seventh,ChordShape.Ninth,ChordShape.Sus2,ChordShape.Sus4})
+    for(int from=0;from<8;from++)for(int to=0;to<8;to++) {
+        var before=PerformanceHarmony.Chord(key,scale,3,from,shape,0,false).Notes;
+        var closed=PerformanceHarmony.Chord(key,scale,3,to,shape,0,false).Notes;
+        var led=PerformanceHarmony.Chord(key,scale,3,to,shape,0,true,before).Notes;
+        int Movement(int[] notes)=>notes.Select((n,i)=>Math.Abs(n-before[Math.Min(i,before.Length-1)])).Sum();
+        if(Movement(led)>Movement(closed))throw new Exception("Voice leading increased movement over root position.");
+        if(!led.Select(n=>n%12).Order().SequenceEqual(closed.Select(n=>n%12).Order()))throw new Exception("Voice leading changed chord tones.");
+        if(!led.Contains(closed[0]))throw new Exception("Voice leading moved the requested root out of its register.");
+        if(!PerformanceHarmony.Chord(key,scale,3,to,shape,0,true,led).Notes.SequenceEqual(led))throw new Exception("Repeated chord drifted.");
+        if(!PerformanceHarmony.Chord(key,scale,4,to,shape,0,true,before.Select(n=>n+12).ToArray()).Notes.SequenceEqual(led.Select(n=>n+12)))throw new Exception("Voice leading ignored an octave shift.");
+        auditedTransitions++;
+    }
+    Check(auditedTransitions==26880,"voice-leading transitions retain chord tones/register, never increase movement, repeat stably and transpose consistently");
+    var smoothFourth=PerformanceHarmony.Chord(0,PerformanceScale.Major,3,3,ChordShape.Diatonic,0,true,cMajor.Notes);
+    Check(smoothFourth.Notes.SequenceEqual(new[]{48,53,57}),"I to IV keeps common C and moves E/G by one/two semitones");
+    Check(PerformanceHarmony.Chord(0,PerformanceScale.Major,3,3,ChordShape.Diatonic,0,false,cMajor.Notes).Notes.SequenceEqual(new[]{53,57,60}),"voice-leading off retains root position regardless of history");
+    Check(PerformanceHarmony.Thicken([48,52,55],1).SequenceEqual(new[]{48,52,55,60,64,67}),"thickness adds exact upper octave triad");
+    Check(PerformanceHarmony.Thicken([48,52,55],2).Length==9,"two extra octave layers retain nine distinct notes");
+    Check(PerformanceHarmony.Thicken([115,119,122],2).SequenceEqual(new[]{115,119,122,127}),"thickness omits out-of-range copies without clipping them onto 127");
+    Check(PerformanceHarmony.Thicken([48,60],1).SequenceEqual(new[]{48,60,72}),"thickness de-duplicates overlapping octave pitches");
+    for(int degree=8;degree<=21;degree++) {
+        var low=PerformanceHarmony.Chord(0,PerformanceScale.NaturalMinor,3,degree%7,ChordShape.Seventh,0,false);
+        var high=PerformanceHarmony.Chord(0,PerformanceScale.NaturalMinor,3,degree,ChordShape.Seventh,0,true,low.Notes);
+        var equivalent=PerformanceHarmony.Chord(0,PerformanceScale.NaturalMinor,3+degree/7,degree%7,ChordShape.Seventh,0,true,low.Notes);
+        Check(high.Notes.SequenceEqual(equivalent.Notes),"extended pad retains selected octave despite voice-leading history");
+    }
+    Check(PerformanceHarmony.DegreeLabel(PerformanceScale.NaturalMinor,14)=="i ↑2","extra pad labels retain minor quality and octave");
     Check(Enumerable.Range(0,8).Select(i=>PerformanceHarmony.ArpIndex(PlayStyle.ArpBounce,i,3)).SequenceEqual(new[]{0,1,2,1,0,1,2,1}),"bounce arp turns without duplicated endpoints");
     var midi=new List<byte[]>();var live=new LiveNotes(b=>midi.Add(b));
     var octaveMidi=new List<byte[]>();var octaveNotes=new LiveNotes(b=>octaveMidi.Add(b));

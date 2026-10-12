@@ -16,6 +16,9 @@
   <Project Path="Sloop.SampleEncoding.Tests/Sloop.SampleEncoding.Tests.csproj" />
   <Project Path="Sloop.Workstation/Sloop.Workstation.csproj" />
   <Project Path="Sloop.Workstation.Tests/Sloop.Workstation.Tests.csproj" />
+  <Project Path="Sloop.PartWriting.Tests/Sloop.PartWriting.Tests.csproj" />
+  <Project Path="Sloop.QuickSampling.Tests/Sloop.QuickSampling.Tests.csproj" />
+  <Project Path="Sloop.Fm1Songs.Tests/Sloop.Fm1Songs.Tests.csproj" />
   <Project Path="Sloop.Transport.Tests/Sloop.Transport.Tests.csproj" />
   <Project Path="Sloop.SamplingTools.Tests/Sloop.SamplingTools.Tests.csproj" />
   <Project Path="Sloop.Sessions.Tests/Sloop.Sessions.Tests.csproj" />

@@ -42,6 +42,7 @@ public sealed partial class MainActivity
     }
     private async Task FileResultAsync(int requestCode,Result resultCode,Intent? data)
     {
+        if(requestCode==ImportFm1SongRequest){await ImportFm1SongAsync(resultCode,data);return;}
         if (await TryHandleCompositionFileResultAsync(requestCode, resultCode, data)) return;
         if(requestCode==ExportFileRequest) {
             var bytes=exportBytes;exportBytes=null;var path=sessionExportPath;sessionExportPath=null;
@@ -73,6 +74,7 @@ public sealed partial class MainActivity
     private void AddLibraryEditor()
     {
         content.AddView(Label(editing.Status,14));
+        AddFm1SongLibrary();
         ActionButton("Browse sample library", BrowseCrossSessionSamples);
         content.AddView(Label("Sessions & performance presets",18));
         ActionButton("Save named session",()=>LibraryName("Save session",name=>{if(SampleWorkspace.Get(this).Busy)throw new InvalidOperationException("Wait for sample work to finish.");
