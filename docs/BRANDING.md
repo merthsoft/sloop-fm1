@@ -5,9 +5,9 @@ is **MerthSloop Mobile**. Upstream SLOOP and Felucca attribution and licensing r
 Historical release notes and archived designs retain their original names/numbers.
 
 Firmware versions are `<SLOOP major.minor.revision>.<fork build>`. The current version
-is **2.6.0.13**. When upstream uses `2.6`, the missing revision is `0`. The final
+is **2.6.0.14**. When upstream uses `2.6`, the missing revision is `0`. The final
 build number increases independently and never resets when adopting upstream releases:
-for example, adopting SLOOP 2.7 at this build would yield `2.7.0.13`.
+for example, adopting SLOOP 2.7 at this build would yield `2.7.0.14`.
 
 `firmware/src/version.h` is the firmware version source. Startup, About and the editor
 handshake use it; `build-sloop.ps1` reads it for packaging. Keep About attribution and

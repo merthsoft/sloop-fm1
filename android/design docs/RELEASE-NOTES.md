@@ -1,4 +1,15 @@
-# Latest firmware — MerthSloop 2.6.0.13
+# Latest firmware — MerthSloop 2.6.0.14
+
+- Wah uses a dedicated, narrower resonant band-pass response: it emphasizes a moving
+  vocal-range band and rejects lows/highs instead of only sweeping brightness.
+- Knob 3 is CENTER; the upper sweep stays in the useful wah range. Makeup gain is
+  controlled. LFO and envelope modes use the new response; ordinary filters are unchanged.
+- Real DSP tests check low/high rejection, movement of the resonant peak, output
+  bounds and ordinary-filter golden compatibility. No new runtime buffers.
+- About retains name, version and attribution; its decorative sail is removed to
+  fit the instrument feature. Target image 581,512 bytes (52 free).
+
+## Previous integrated checkpoint — MerthSloop 2.6.0.13
 
 - Auto-pan uses LFO+FX; ENV+FX remains auto-wah.
 - Ordinary keyboard notes support overlap handoff after an octave switch without

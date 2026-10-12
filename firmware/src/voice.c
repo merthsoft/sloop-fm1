@@ -46,7 +46,7 @@ enum { LIVE_MOD_COUNT = 4, WAH_ENV = NDIV_STEP + 1 };
 static live_mod_t live_mod[LIVE_MOD_COUNT] = {
     {.rate = 87, .depth = 32}, /* vibrato: about 5 Hz, +/-12.5 cents */
     {.rate = 83, .depth = 48}, /* tremolo: about 4 Hz, 38% depth */
-    {.rate = 63, .depth = 96, .wave = 16}, /* wah: sensitive, resonant sweep from low-pass base -48 */
+    {.rate = 63, .depth = 96, .wave = 16}, /* wah: sensitive band-pass sweep from base center -48 */
     {.rate = 48, .depth = 96} /* pan: slow, wide sweep */
 };
 static void mod_reset(uint32_t part)
@@ -121,8 +121,8 @@ static int32_t live_wah_filter(const track_t *t, const int32_t *b, uint32_t n)
         int32_t target = clamp((peak * (m->rate + 1)) >> 4, 0, 32767);
         m->value += (target - m->value) / (target > m->value ? 8 : 128);
     }
-    /* Remain on the low-pass side: no unintended LP/HP switching during a sweep. */
-    return clamp((int32_t)m->wave - 64 + (m->value * m->depth >> 16), -64, -12);
+    /* Keep the wah center in the vocal range instead of sweeping up to nearly full-band. */
+    return clamp((int32_t)m->wave - 64 + (m->value * m->depth >> 16), -64, -20);
 }
 static int32_t live_pan(const track_t *t)
 {

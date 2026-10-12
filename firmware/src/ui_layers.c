@@ -516,7 +516,7 @@ static void live_mod_apply(uint32_t effect)
 {
     live_mod_t *m = &live_mod[effect];
     if (m->part >= NPART || m->part != song.sel) return;
-    if (effect >= 2) { ui_message("HOME LOCKS LIVE FX"); return; }
+    if (effect >= 2) { ui_message("HOME TO LOCK"); return; }
     track_t *t = &trk[m->part];
     static const uint8_t sync[] = {0,5,6,8,10,7,9,4,3,2};
     fm1_irq_off();
@@ -559,7 +559,7 @@ static void layer_knobs(uint32_t layer)
         case LY_PAN: {
             live_mod_t *m = &live_mod[layer - LY_VIB];
             uint8_t *v = k == 0 ? &m->rate : k == 1 ? &m->depth : k == 2 ? &m->wave : &m->sync;
-            *v = (uint8_t)clamp(*v + s, 0, k == 2 ? (layer == LY_WAH ? 52 : 3) : k == 3 ? (layer == LY_WAH ? WAH_ENV : NDIV_STEP) : 127);
+            *v = (uint8_t)clamp(*v + s, 0, k == 2 ? (layer == LY_WAH ? 44 : 3) : k == 3 ? (layer == LY_WAH ? WAH_ENV : NDIV_STEP) : 127);
             if (k == 0 && m->sync != WAH_ENV) m->sync = 0; /* turning Hz deliberately returns to free rate */
             break;
         }
@@ -791,7 +791,7 @@ static void live_mod_draw(const track_t *t, uint32_t layer, uint16_t col)
     char text[24], name[4];
     cv_begin(240, 124, C_BLACK);
     if (is_drum(t)) {
-        te_text_c(120, 48, "synth tracks only", TE_G3);
+        te_text_c(120, 48, "synths only", TE_G3);
     } else {
         if (layer == LY_WAH && m->sync == WAH_ENV) {
             cv_rect(12, 48, 216, 20, TE_G1);
@@ -809,8 +809,8 @@ static void live_mod_draw(const track_t *t, uint32_t layer, uint16_t col)
         cv_rect(x - 2, live_mod_plot_y(&plot, m->phase, trem) - 2, 5, 5, C_WHITE);
         }
         if (layer == LY_WAH) {
-            fmt_int(text, clamp((int32_t)m->wave - 64 + (m->value * m->depth >> 16), -64, -12));
-            str_cpy(text + str_len(text), " cutoff", 8);
+            fmt_int(text, clamp((int32_t)m->wave - 64 + (m->value * m->depth >> 16), -64, -20));
+            str_cpy(text + str_len(text), " center", 8);
         } else if (layer == LY_PAN) {
             fmt_int(text, live_pan(t)); str_cpy(text + str_len(text), " pan", 5);
         } else if (trem) {
@@ -866,7 +866,7 @@ static void __attribute__((noinline)) layer_screen_draw(void)
     case LY_WAH:
     case LY_PAN: {
         live_mod_t *m = &live_mod[layer - LY_VIB];
-        str_cpy(sub, is_drum(t) ? "synth tracks only" : "track ", sizeof sub);
+        str_cpy(sub, is_drum(t) ? "synths only" : "track ", sizeof sub);
         if (!is_drum(t)) {
             sub[6] = (char)('1' + sel); sub[7] = ' ';
             scale_pitch_name(sub + 8, t, (uint32_t)t->p[P_ROOT] % 12u);
@@ -881,12 +881,12 @@ static void __attribute__((noinline)) layer_screen_draw(void)
         static const char *const wave[] = {"sine", "tri", "saw", "square"};
         val[2] = wave[m->wave & 3];
         if (layer == LY_WAH) {
-            lab[0] = m->sync == WAH_ENV ? "sens" : lab[0]; lab[2] = "cutoff"; lab[3] = "source";
+            lab[0] = m->sync == WAH_ENV ? "sens" : lab[0]; lab[2] = "center"; lab[3] = "source";
             fmt_int(v[2], (int32_t)m->wave - 64); val[2] = v[2];
         }
         val[3] = m->sync == WAH_ENV ? "envelope" : m->sync ? N_SDIV[(m->sync - 1u) % NDIV_STEP] : "off";
         ratio[0] = m->rate * 1000 / 127; ratio[1] = m->depth * 1000 / 127;
-        ratio[2] = m->wave * 1000 / (layer == LY_WAH ? 52 : 3);
+        ratio[2] = m->wave * 1000 / (layer == LY_WAH ? 44 : 3);
         ratio[3] = m->sync * 1000 / (layer == LY_WAH ? WAH_ENV : NDIV_STEP);
         break;
     }

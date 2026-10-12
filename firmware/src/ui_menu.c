@@ -89,8 +89,6 @@ static void __attribute__((noinline)) draw_menu(void)
         cv_oy = pass ? -124 : 0;
         if (ui.menu == 2) {
             cv_text(4, 4, &FONT_L, MERTHSLOOP_NAME, C_WHITE);
-            cv_rect(184, 10, 8, 4, TE_COL[0]), cv_rect(184, 16, 12, 4, TE_COL[1]);   /* the sail */
-            cv_rect(184, 22, 16, 4, TE_COL[2]), cv_rect(184, 28, 20, 4, TE_COL[3]);
             cv_text(4, 36, &FONT_S, "BASED ON SLOOP / FELUCCA", C_AMB);
             cv_text(4, 54, &FONT_S, FELUCCA_VERSION, C_HI);
             cv_text(cv_text(4, 72, &FONT_S, "LEO KUROSHITA", C_HI) + 8, 72, &FONT_S, "@KUROGEDELIC", C_AMB);

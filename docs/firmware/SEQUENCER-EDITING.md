@@ -85,3 +85,10 @@ C-minor Eb labels, unchanged physical erase behavior, octave/step edits, gesture
 totals, undo/redo, pitch bounds, metadata and neighboring-track isolation.
 
 Hold either OCT button and turn knob 2 to shift the selected note/chord in whole octaves. A selected tie resolves to its preceding onset. All pitches move together; MIDI bounds clamp the number of octaves without collapsing intervals. Dynamics, ties, timing, conditions and locks remain intact. One hold shares one undo session with the other STEP gestures. Recording, armed entry, free takes and drums do not use this control; ordinary unmodified knob 2 still edits semitones. OCT taps keep their existing STEP behavior.
+
+## Clear the selected synth step
+
+On STEP, choose the step with knob 1 and tap EDIT. The selected step becomes a
+rest and the cursor advances. This clears the entire step, including all its chord
+notes. Hold EDIT and tap OCT− to undo; OCT+ reapplies. OCT− plus knob 1 is the rest
+brush when clearing a longer range.

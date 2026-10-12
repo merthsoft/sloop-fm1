@@ -14,13 +14,15 @@ HOME unlocks, and STOP, panic, track change or entering a menu clears it.
 | --- | --- | --- |
 | 1 | Free rate in Hz; turning it exits beat sync | Input sensitivity, 0–127 |
 | 2 | Sweep depth | Sweep depth |
-| 3 | Base low-pass cutoff, −64 (dark) to −12 (bright) | Same |
+| 3 | Base wah center, −64 (low) to −20 (high) | Same |
 | 4 | OFF = free triangle LFO, or a beat division | ENVELOPE, after the beat divisions |
 
 Beat divisions follow the same choices as vibrato/tremolo, including triplets and
-long divisions. Triangle motion opens a resonant low-pass filter from its base without crossing
-into high-pass mode or bypassing the resonance. The existing smoothed track filter avoids abrupt coefficient
-changes. At zero depth only the chosen base cutoff is active.
+long divisions. Triangle motion sweeps a dedicated resonant band-pass center from its base. It
+rejects frequencies below and above that center, shaping the tone rather than merely
+changing brightness. The upper center is limited to the useful vocal range (about
+3.9 kHz); the low end reaches roughly 200 Hz. It never bypasses the resonant band. The existing smoothing avoids abrupt coefficient changes, and the wah center
+settles back to its resting position during silence before the next attack. At zero depth only the chosen base cutoff is active.
 
 ENVELOPE follows the selected synth's own rendered mono signal **before** distortion,
 inserts, slicing, filtering, level and sends. Other tracks, USB/master input and
@@ -28,8 +30,8 @@ reverb/delay returns cannot drive it. The block peak uses a quick attack and slo
 release (about 6 ms / 93 ms time constants); knob 1 adjusts sensitivity. This is
 an audio-level follower, not the synth's ADSR. Sensitivity is calibrated for ordinary synth output, rather than full-scale mixer
 peaks. Defaults are sensitivity 63, depth 96/127 and base cutoff −48; turn sensitivity
-down if it stays open, or up if attacks barely move the meter. The wah has higher
-resonance than the normal track filter. The saved track filter and patch
+down if it stays open, or up if attacks barely move the meter. The wah has a narrower, higher-resonance band than the normal track filter, with
+fixed makeup gain to keep the peak controlled. The saved track filter and patch
 parameters are never overwritten. This path works across synth engines, including
 SAMPLE, because it uses the track filter after rendering.
 

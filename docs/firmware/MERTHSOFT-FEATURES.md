@@ -353,7 +353,7 @@ the saved effects; INIT SOUND remains an explicit complete sound reset.
 ## Track auto-wah and auto-pan
 
 Hold **ENV+FX** for auto-wah or **LFO+FX** for auto-pan; physical keys still play and
-scale lighting stays intact. Wah knobs are rate/sensitivity, depth, base cutoff,
+scale lighting stays intact. Wah knobs are rate/sensitivity, depth, base center,
 and source (free LFO, beat division or ENVELOPE). Pan knobs are rate, depth,
 waveform and beat sync. Hold the combo and tap HOME to lock the effect; HOME,
 STOP/panic or track changes clear it. Saved patch parameters stay intact.

@@ -348,7 +348,7 @@ static void duck_block(uint32_t adv)
  * reverb send and, 2.5, delay send) */
 typedef struct {
     int32_t cut;                                        /* now, 0..127 << 8 (CUTOFF_HZ index) */
-    int8_t mode;                                        /* -1 LP, 1 HP, 0 off */
+    int8_t mode;                                        /* -2 wah BP, -1 LP, 1 HP, 0 off */
     uint8_t seed;                                       /* (2.6) bit per channel: the LP's state from its next sample */
     int32_t z[4][2];                                    /* the SVF states, per channel */
 } djf_t;
@@ -377,6 +377,7 @@ static int djf_block_res(djf_t *f, int32_t v, tsvf_t *c, int32_t resonance)
         f->mode = 0;                                    /* fully open again: off */
         return 0;
     }
+    if (f->mode < 0) f->mode = resonance == 116 ? -2 : -1; /* -2: dedicated wah band-pass */
     tsvf_coef(c, f->cut, resonance);
     return 1;
 }
@@ -389,14 +390,16 @@ static void djf_run(djf_t *f, const tsvf_t *c, int32_t *b, uint32_t n, uint32_t 
     int32_t *z = f->z[ch];
     if ((f->seed >> ch) & 1u) {
         f->seed &= (uint8_t)~(1u << ch);
-        if (f->mode < 0 && n) {
+        if (f->mode == -1 && n) {
             z[0] = 0;                                   /* at rest on this input: the output is it (DC: exact) */
             z[1] = clamp(b[0], -140000, 140000);
         }
     }
     for (i = 0; i < n; i++) {
+        int32_t previous = z[0];
         int32_t x = clamp(b[i], -140000, 140000), y = tsvf_lp(c, x, &z[0], &z[1]);
-        b[i] = f->mode < 0 ? y : x - y;
+        /* Recover the trapezoidal band-pass state; fixed makeup keeps its peak controlled. */
+        b[i] = f->mode == -2 ? ((previous + z[0]) >> 2) : f->mode < 0 ? y : x - y;
     }
 }
 /* a track's filter on a signal at 4x its level (b >> 2 into the filter's range, back << 2) */
@@ -663,6 +666,9 @@ static void mix_part_run(track_t *t, uint32_t n)
     else if ((!t->tail || !(t->p[P_DIST] | t->p[P_ITYPE]) || !--t->tail) && !slicer_busy(t) &&
              !(t->ins_run && t->ins_res > 16u && t->ins_xt < 255u && ++t->ins_xt)) {   /* (2.6: the INSERT's DC
                                                          * blocker run out first, up to 255 blocks more: no step) */
+        if (live_mod[2].on && live_mod[2].part == (uint32_t)(t-trk)) {
+            tsvf_t rest;djf_block_res(&tflt[(uint32_t)(t-trk)], filter, &rest, 116);
+        } /* settle the wah center at rest before the next attack */
         slicer_track(t, 0, n);                          /* (the SLICER's step clock runs on) */
         if (t->ins_run && !t->p[P_ITYPE])
             ins_rest(t);                                /* TYPE OFF while silent: no fade-out left for the next note */
@@ -690,7 +696,7 @@ static void mix_part_run(track_t *t, uint32_t n)
         {
             tsvf_t fc;                                  /* the track's FILTER (P_TFLT), after the SLICER */
             djf_t *f = &tflt[(uint32_t)(t - trk) % NTRK];
-            if (djf_block_res(f, filter, &fc, live_mod[2].on && live_mod[2].part == (uint32_t)(t-trk) ? 100 : 40))
+            if (djf_block_res(f, filter, &fc, live_mod[2].on && live_mod[2].part == (uint32_t)(t-trk) ? 116 : 40))
                 tflt_run(f, &fc, b, n, 0);
         }
         int32_t lvl0 = t->lvl ? t->lvl : lvl, dl = (lvl - lvl0) >> CTL_LOG2;   /* a new sound's trim: ramped */

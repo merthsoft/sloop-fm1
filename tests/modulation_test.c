@@ -166,17 +166,21 @@ int main(void)
     int opened=live_wah_filter(&trk[1],normal,CTL);assert(opened-closed>=20);
     assert(filter_energy(opened,100,2000)>4*filter_energy(closed,100,2000));
     assert(filter_energy(-40,100,CUTOFF_HZ[71])>3*filter_energy(-40,40,CUTOFF_HZ[71]));
+    double wah_band=filter_energy(-40,116,CUTOFF_HZ[71]);
+    assert(wah_band>20*filter_energy(-40,116,100));
+    assert(wah_band>20*filter_energy(-40,116,6000));
+    assert(filter_energy(-50,116,CUTOFF_HZ[56])>5*filter_energy(-30,116,CUTOFF_HZ[56]));
     wah->rate=0;wah->value=0;for(int i=0;i<100;i++)live_wah_filter(&trk[1],normal,CTL);
     assert(live_wah_filter(&trk[1],normal,CTL)<opened-15);
     wah->wave=0;wah->depth=127;wah->rate=63;wah->value=0;
     for(int i=0;i<100;i++)live_wah_filter(&trk[1],loud,CTL);
-    int open=wah->value;assert(open>30000&&live_wah_filter(&trk[1],loud,CTL)==-12);
+    int open=wah->value;assert(open>30000&&live_wah_filter(&trk[1],loud,CTL)==-20);
     assert(live_wah_filter(&trk[0],loud,CTL)==other&&wah->value>=open);
     for(int i=0;i<1000;i++)live_wah_filter(&trk[1],silence,CTL);
     assert(wah->value<200&&trk[1].p[P_TFLT]==base);
     host_tracks_init();song.sel=1;wah->on=1;wah->part=1;wah->sync=WAH_ENV;wah->value=32767;
     for(int i=0;i<1000;i++)mix_part_run(&trk[1],CTL);
-    assert(wah->value<200); /* actual silent mixer path must still release the follower */
+    assert(wah->value<200 && tflt[1].mode==-2 && tflt[1].cut<(60<<8)); /* follower and center settle before next attack */
     base=trk[1].p[P_TFLT];
     wah->sync=1;song.playing=1;clk_beat=0;clk_pos=BEAT_U/4;live_mod_tick(&trk[1]);
     uint32_t phase=wah->phase;wah->rate=110;live_mod_tick(&trk[1]);assert(wah->phase==phase);song.playing=0;
@@ -186,7 +190,7 @@ int main(void)
     mod_reset(NTRK);assert(!wah->on&&!pan->on&&live_pan(&trk[1])==63&&live_wah_filter(&trk[1],loud,CTL)==base);
     /* Knob/source bounds, cleanup and panel images use real frame/input paths. */
     song.sel=1;go_home();frame();press(B_ENV);press(B_FX);frames(12);
-    encs[panel.enc[EN_K3]]=200;encs[panel.enc[EN_K4]]=200;frame();assert(wah->wave==52&&wah->sync==WAH_ENV);
+    encs[panel.enc[EN_K3]]=200;encs[panel.enc[EN_K4]]=200;frame();assert(wah->wave==44&&wah->sync==WAH_ENV);
     wah->wave=24;wah->depth=96;wah->rate=63;trk[1].p[P_ROOT]=4;trk[1].p[P_SCALE]=2;
     fm1_in.notes=1u<<key_of_white(4);frames(12);ui.force=1;frame();ppm("auto-wah-envelope");fm1_in.notes=0;frame();tap(B_HOME);release(B_ENV);release(B_FX);
     panic_req=2;frame();assert(!wah->on&&ly_lock==LY_PLAY);

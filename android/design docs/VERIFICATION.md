@@ -594,3 +594,17 @@ HAL and RAM-text checks pass. Hardware handoff validation remains user testing.
 
 Auto-pan is now LFO+FX. Real-panel regression covers both press/release orders,
 consumed component taps and no simultaneous vibrato/tremolo activation.
+
+## MerthSloop 2.6.0.14: dedicated band-pass wah
+
+`build/merthsloop14-wah-tests.log`: real band-pass response emphasizes its center
+more than 20 times the energy at 100 Hz and 6 kHz; shifting the center changes
+near-band energy by more than fivefold. Bounded output, follower, gesture/isolation
+and cleanup checks pass. Ordinary filter output is checked against all 182 golden
+renders (`build/merthsloop14-audio-tests.log`). Target image 581,512 bytes (52 free),
+static RAM/pool unchanged; HAL, RAM text and hot-DSP budgets pass.
+About's decorative sail is removed to fit the new DSP; attribution is retained.
+Hardware feel remains user audition; no physical flash is claimed.
+
+The active wah center also settles during silent mixer blocks; the regression
+asserts the band-pass mode and resting center before the next attack.
