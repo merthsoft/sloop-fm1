@@ -38,8 +38,11 @@
 - Factory base records are bit-packed losslessly: 968 bytes less data, 64 extra
   decoder bytes and a 21-byte table; the measured net target saving is 880 bytes.
 
-Upstream SLOOP 2.6 is integrated into the merthsloop branch. Local main and origin/main
-match upstream revision 4365a1d; fork functionality remains on android.
+Upstream SLOOP 2.6 is integrated into merthsloop. Local main and origin/main
+match upstream revision 8fad1a1. Five follow-up web commits add firmware WASM audio
+preview, inline sequence editing, sample gain/level matching and offline/PWA support.
+The browser adapter uses the fork's multi-note arp cleanup and firmware memory routines;
+all twelve engines match the native reference sample-for-sample.
 
 - Upstream's 27 punch effects replace the former black-key FX modifiers. Remote
   performance negotiates sixteen or twenty-seven effects with the connected firmware.

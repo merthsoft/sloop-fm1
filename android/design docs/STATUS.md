@@ -22,6 +22,12 @@ integrated; native auto-wah with LFO/envelope-follower modes is a proposed next
 feature. See the [PR assessment](../../docs/firmware/PR-111-ASSESSMENT.md) and
 [auto-wah design](../../docs/firmware/AUTO-WAH-DESIGN.md).
 
+Upstream main/origin main are reconciled through `8fad1a1`: five web commits add
+browser firmware audio preview, inline sequence editing, sample gain/level matching,
+offline service-worker caching and installation. These coexist with the native
+Android app and fork protocols. The browser DSP is rebuilt from our merged sources;
+all twelve engines match the native reference sample-for-sample.
+
 ## Android chord-mode expansion
 
 Perform has scale-quality Roman numerals, thickness (0–2 extra octave layers),

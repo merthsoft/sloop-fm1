@@ -2,6 +2,17 @@
 
 Current delivery: [STATUS.md](STATUS.md). Build and test evidence: [VERIFICATION.md](VERIFICATION.md).
 
+## Queued: flick-to-bend
+
+User request: flicking the phone while playing should bend the current note like a
+guitar string. Proposed opt-in motion input in Perform, with calibrated direction,
+adjustable sensitivity and semitone range, a short attack and spring return to center.
+Prefer gyroscope rotation over raw acceleration so normal translation does not trigger
+large bends. Target the currently played synth/output channel; use MIDI pitch bend
+and the negotiated/configured receiver range. Center it on note release, track/channel
+change, leaving Perform, backgrounding, sensor loss or disconnect. Keep touch controls
+usable and let the user disable motion input immediately. This is queued, not implemented.
+
 UI refinement checkpoint (2026-10-07): The shared frame now uses a compact connection menu and selected track/workspace highlights. Playing tips and destination checks are expandable, keeping the chord surface and joystick central.
 
 Chord pad Roman numerals follow the selected scale’s diatonic triad quality: uppercase

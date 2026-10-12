@@ -1,8 +1,8 @@
 # Upstream SLOOP 2.6 integration assessment
 
-Upstream main: `4365a1d0075b9194de1c44826325abbd39751bc1`, following the 2.6
-implementation commit `d30d655`. Local main and origin/main were fast-forwarded to
-this revision. The `merthsloop` working tree now contains the integration as **2.6 Merthsoft.10**.
+Original 2.6 base: `4365a1d0075b9194de1c44826325abbd39751bc1`, following `d30d655`.
+Local main and origin/main now match upstream `8fad1a1`; its five subsequent web
+commits are integrated on `merthsloop`. The native firmware remains **2.6 Merthsoft.10**.
 Source and protocol conflicts are resolved. The combined package builds with guarded
 hot DSP inlining, passes audio/functional checks and is served at
 http://127.0.0.1:8815/webapp/installer/. Hardware flashing/timing was not tested in

@@ -1,5 +1,14 @@
 ## Sampler, song library and native performance checkpoint — October 12
 
+Upstream five-commit web follow-up through `8fad1a1`: merged protocol/package/editor
+suite passes (`build/upstream-web-tests.log`); site generation, offline file, manifest,
+cache content and content-hash refresh checks pass (`build/upstream-site-tests.log`).
+Browser WASM has no runtime/hardware imports and matches the native reference exactly
+on all twelve engines; playback, mutes, live edits, samples, playhead/divisions and
+inline editing pass (`build/upstream-preview-tests.log`). Windows native reference
+uses binary pipes. Actual Chromium offline/PWA checks were skipped because Playwright
+is unavailable. This does not claim an on-device PWA installation check.
+
 - Android build: zero warnings/errors in `build/android-song-library-build.log`;
   final APK installed non-incrementally on Pixel 7a. Live recording/retention,
   end-handle trim (60.29 → 15.85 seconds), equal 4/8-chop redistribution, playback
