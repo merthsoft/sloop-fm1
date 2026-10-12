@@ -4,9 +4,10 @@
     <OutputType>Exe</OutputType>
     <SupportedOSPlatformVersion>26.0</SupportedOSPlatformVersion>
     <ApplicationId>org.sloopfm.mobile</ApplicationId>
-    <ApplicationTitle>SLOOP Mobile</ApplicationTitle>
-    <ApplicationVersion>1</ApplicationVersion>
-    <ApplicationDisplayVersion>0.1.0</ApplicationDisplayVersion>
+    <ApplicationTitle>MerthSloop Mobile</ApplicationTitle>
+    <MerthSloopVersion>$([System.Text.RegularExpressions.Regex]::Match($([System.IO.File]::ReadAllText('$(MSBuildProjectDirectory)/../../../firmware/src/version.h')), '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+').Value)</MerthSloopVersion>
+    <ApplicationVersion>$([System.Text.RegularExpressions.Regex]::Match('$(MerthSloopVersion)', '[0-9]+$').Value)</ApplicationVersion>
+    <ApplicationDisplayVersion>$(MerthSloopVersion)</ApplicationDisplayVersion>
     <!-- APKs must launch when installed directly with adb, without IDE fast-deployment files. -->
     <EmbedAssembliesIntoApk>true</EmbedAssembliesIntoApk>
   </PropertyGroup>

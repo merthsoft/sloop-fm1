@@ -33,6 +33,7 @@ static uint64_t fnv(uint64_t h, const int32_t *x, uint32_t n)
 
 typedef struct { uint8_t e, pi; int8_t model; const char *name; } cfg_t;   /* model >= 0: PHYS MODEL forced */
 static const cfg_t CFG[] = {
+    {ENGI_DRAWBAR, 0, -1, "DRAWBAR ORGAN"}, {ENGI_DRAWBAR, 3, -1, "DRAWBAR ROTARY"},
     {ENGI_GRAIN, 0, -1, "GRAIN LOFI CLOUD"}, {ENGI_GRAIN, 4, -1, "GRAIN SHIMMER"},
     {ENGI_FM6, 0, -1, "FM6 TINE EP"}, {ENGI_FM6, 2, -1, "FM6 ROUND BASS"},
     {ENGI_PHYS, 0, 0, "PHYS MODAL"}, {ENGI_PHYS, 2, 1, "PHYS STRING"}, {ENGI_PHYS, 5, 2, "PHYS MEMB"},

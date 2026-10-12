@@ -92,3 +92,6 @@ phone musical starters and arp expression are now integrated; follow the active
 - [Merthsoft.11 performance modulation release](releases/RELEASE-2.5-Merthsoft.11.md)
 
 - [Merthsoft.12 keyboard illumination fix](releases/RELEASE-2.5-Merthsoft.12.md)
+
+Archived documents retain the names and versions used at their original checkpoints.
+The current product is [MerthSloop](../../../docs/BRANDING.md).

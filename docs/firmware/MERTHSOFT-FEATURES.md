@@ -1,9 +1,9 @@
-# Playing the Merthsoft firmware
+# Playing the MerthSloop firmware
 
-This guide covers the additions to upstream SLOOP 2.5 in the `android` branch,
+This guide covers the additions to upstream SLOOP in the `merthsloop` branch,
 including the current scale guides and EDIT pitch tools. Everything below works without
 a phone. The [complete player guide](../../GUIDE.md) also covers upstream features;
-the [Android overview](../../README.md#sloop-mobile-for-android) covers the companion.
+the [Android overview](../../README.md#merthsloop-mobile-for-android) covers the companion.
 
 **SEL** is the physical button between FX and ENV, historically labelled SCL in
 firmware. **SELECT** is the separate rotary encoder. They do different things.
@@ -349,3 +349,18 @@ Changing a track's instrument preserves its drive, chorus, delay/reverb sends,
 insert, slicer and filter. On a normal FX-family page, press OCT− and OCT+ together
 to reset only these parameters on the selected track. Song loading still recalls
 the saved effects; INIT SOUND remains an explicit complete sound reset.
+
+## Track auto-wah and auto-pan
+
+Hold **ENV+FX** for auto-wah or **SEL+FX** for auto-pan; physical keys still play and
+scale lighting stays intact. Wah knobs are rate/sensitivity, depth, base cutoff,
+and source (free LFO, beat division or ENVELOPE). Pan knobs are rate, depth,
+waveform and beat sync. Hold the combo and tap HOME to lock the effect; HOME,
+STOP/panic or track changes clear it. Saved patch parameters stay intact.
+See [the full controls](AUTO-WAH-DESIGN.md) and [branding/version policy](../BRANDING.md).
+
+| Track envelope wah | Track auto-pan |
+| --- | --- |
+| <img src="../../assets/screens/merthsoft/guide/auto-wah-envelope.png" width="240" alt="MerthSloop signal-following auto-wah with sensitivity and cutoff controls"> | <img src="../../assets/screens/merthsoft/guide/auto-pan.png" width="240" alt="MerthSloop track auto-pan with waveform and beat sync"> |
+
+*Fresh production UI/audio harness renders.*

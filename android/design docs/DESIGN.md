@@ -1,4 +1,4 @@
-# SLOOP Mobile workstation design
+# MerthSloop Mobile workstation design
 
 Current delivery: [STATUS.md](STATUS.md). Build and test evidence: [VERIFICATION.md](VERIFICATION.md).
 

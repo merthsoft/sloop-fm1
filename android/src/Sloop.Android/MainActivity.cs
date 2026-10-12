@@ -8,7 +8,7 @@ using Sloop.Android.Services;
 
 namespace Sloop.Android;
 
-[Activity(Label = "SLOOP Mobile", MainLauncher = true, Exported = true)]
+[Activity(Label = "MerthSloop Mobile", MainLauncher = true, Exported = true)]
 public sealed partial class MainActivity : Activity
 {
     private readonly WorkstationState state = new();
@@ -47,7 +47,7 @@ public sealed partial class MainActivity : Activity
         root.SetBackgroundColor(Color.Rgb(18, 20, 24));
         var header = new LinearLayout(this) { Orientation = Orientation.Horizontal };
         header.SetGravity(GravityFlags.CenterVertical);
-        header.AddView(Label("SLOOP", 22), new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WrapContent, 1));
+        header.AddView(Label("MerthSloop", 22), new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WrapContent, 1));
         connectButton = new Button(this) { Text = "Connect" };
         connectButton.Click += (_, _) => ShowConnectionMenu();
         header.AddView(connectButton);
@@ -102,7 +102,7 @@ public sealed partial class MainActivity : Activity
     private void ShowConnectionMenu()
     {
         new AlertDialog.Builder(this)!.SetTitle("MIDI connection")!
-            .SetItems(new[] { "Connect SLOOP FM1", "Connect generic MIDI", "Try simulator (silent)", "Disconnect", "Connection details" }, async (_, args) =>
+            .SetItems(new[] { "Connect MerthSloop FM1", "Connect generic MIDI", "Try simulator (silent)", "Disconnect", "Connection details" }, async (_, args) =>
             {
                 if (args.Which == 0) ChooseDevice();
                 else if (args.Which == 1) ChooseDevice(generic:true);

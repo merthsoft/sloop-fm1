@@ -1,4 +1,17 @@
-# Latest firmware — 2.6 Merthsoft.10
+# Latest firmware — MerthSloop 2.6.0.11
+
+- ENV+FX: selected-synth auto-wah, free/beat-synced LFO or own-signal envelope follower.
+- SEL+FX: selected-synth auto-pan, waveform/depth and beat sync.
+- Both preserve keyboard/scale lights, support HOME locking and clear on release,
+  STOP/panic or track change. They do not overwrite saved patch parameters.
+- PR 111 independent memory adaptations: packed MIDI owners, DRAWBAR arena state,
+  shared main-loop/OTA scratch and flash XIP preset banks. Dual-core is deferred.
+- STEP OCT+/OCT− help persists while held, with transient warning priority.
+- MerthSloop startup, About, installer/editor and Android labels. Firmware uses
+  upstream major.minor.revision plus independent build number, now 2.6.0.11.
+- Target: image 581,420 bytes, static RAM 82,100 bytes, pool 332,876 bytes.
+
+## Previous integrated checkpoint — 2.6 Merthsoft.10
 
 - Hold LFO or ENV and tap OCT+ to apply vibrato/tremolo parameters to the track's
   saved shared LFO. Rate, waveform and beat division transfer; tremolo depth is

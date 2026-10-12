@@ -618,7 +618,9 @@ static void draw_tracks(void)
 
 /* Ordinary scope and full-screen visualizer are exclusive; each fills this
  * snapshot before drawing. Share the visualizer FFT real-input allocation. */
-static int16_t ui_scope_snap[SCOPE_N] __attribute__((section(".pool")));
+#include "scratch.h"
+#define ui_scope_snap (main_scratch.snap)
+_Static_assert(sizeof main_scratch.snap == SCOPE_N * sizeof(int16_t), "scope scratch size");
 /* oscilloscope of the output, triggered on a rising zero crossing */
 static void graph_scope(uint16_t c)
 {
@@ -673,7 +675,7 @@ static void graph_big(void)
     }
 }
 
-static void draw_graph(void)
+static void __attribute__((noinline)) draw_graph(void)
 {
     const page_t *pg = cur_page();
     const track_t *t = TSEL;

@@ -28,6 +28,7 @@ static int st_prog(uint32_t off, const void *src, uint32_t n)
         nor[off + i] &= s[i];
     return 0;
 }
+#define ST_XIP_PTR(off) (nor + (off))
 #include "../firmware/src/storage.c"
 
 static int check(const char *what, int ok)
@@ -133,6 +134,24 @@ int main(void)
         bad += check("2.6 erase: loads 0 bytes (an empty slot)", n == 0);
         bad += check("2.6 erase: saved again", st_save(OBJ_PROJECT0 + 2u, a2, sizeof a2) == 0 &&
                      st_load(OBJ_PROJECT0 + 2u, got3, sizeof got3) == (int)sizeof a2 && !memcmp(got3, a2, sizeof a2));
+    }
+    { /* The production XIP path must agree with A/B loads after writes, tears and rot. */
+        uint32_t len=0;const uint8_t *p;
+        memset(nor,0xFF,sizeof nor);
+        bad+=check("XIP empty bank",!st_xip(OBJ_UPRESET0,&len));
+        st_save(OBJ_UPRESET0,a,sizeof a);p=st_xip(OBJ_UPRESET0,&len);
+        bad+=check("XIP first bank is a flash pointer",p==nor+st_sector(OBJ_UPRESET0,0)+ST_PAYLOAD_OFF&&len==sizeof a&&!memcmp(p,a,len));
+        st_save(OBJ_UPRESET0,b,sizeof b);p=st_xip(OBJ_UPRESET0,&len);
+        bad+=check("XIP follows new A/B copy",p==nor+st_sector(OBJ_UPRESET0,1)+ST_PAYLOAD_OFF&&!memcmp(p,b,len));
+        fail_after=1;st_save(OBJ_UPRESET0,a,sizeof a);fail_after=-1;
+        p=st_xip(OBJ_UPRESET0,&len);bad+=check("XIP torn save keeps committed bank",p&&!memcmp(p,b,len));
+        st_save(OBJ_UPRESET0,a,sizeof a);
+        nor[st_sector(OBJ_UPRESET0,0)+ST_PAYLOAD_OFF]^=1;
+        p=st_xip(OBJ_UPRESET0,&len);bad+=check("XIP corrupt newest falls back",p&&!memcmp(p,b,len));
+        nor[st_sector(OBJ_UPRESET0,1)+ST_PAYLOAD_OFF]^=1;
+        bad+=check("XIP both copies corrupt rejected",!st_xip(OBJ_UPRESET0,&len));
+        st_save(OBJ_UPRESET0,a,0);p=st_xip(OBJ_UPRESET0,&len);
+        bad+=check("XIP empty committed object",p&&len==0);
     }
     printf("%s\n", bad ? "STORAGE TEST FAILED" : "storage test passed");
     return bad != 0;

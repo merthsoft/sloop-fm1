@@ -124,6 +124,52 @@ int main(void)
     }
     song.sel=TRK_DRUM;frame();press(B_ENV);frames(12);tap(B_HOME);release(B_ENV);
     assert(ly_lock==LY_PLAY && !live_mod[1].on);song.sel=1;go_home();frame();
+    /* Two-button panels own the gesture in either order, with no FX/SEL/ENV taps on release. */
+    for(int effect=2;effect<4;effect++) for(int order=0;order<2;order++) {
+        uint32_t partner=effect==2?B_ENV:B_SCL, first=order?B_FX:partner,second=order?partner:B_FX;
+        song.sel=1;mod_reset(NTRK);go_home();frame();uint32_t page=ui.page,home=ui.home;
+        press(first);press(second);frames(12);
+        assert(ui.layer==LY_VIB+effect&&live_mod[effect].on&&live_mod[effect].part==1);
+        assert(!live_mod[1].on&&!punch.hold&&layer_now()==LY_PLAY);
+        assert(keys_notes_dim()==scale_keys(0));
+        fm1_in.notes=1u<<key_of_white(4);frame();uint32_t gates=0;
+        for(int v=0;v<NVOICE;v++)gates+=trk[1].v[v].gate;assert(gates);
+        fm1_in.notes=0;frame();
+        release(first);frames(12);assert(!live_mod[effect].on&&ui.layer==LY_PLAY&&layer_now()==LY_PLAY);
+        release(second);assert(ui.page==page&&ui.home==home);
+        press(first);press(second);frames(12);tap(B_HOME);release(first);release(second);frames(12);
+        assert(ly_lock==LY_VIB+effect&&live_mod[effect].on&&layer_now()==LY_PLAY);
+        song.sel=2;frame();assert(!live_mod[effect].on&&ly_lock==LY_PLAY);song.sel=1;frame();
+    }
+    live_mod_t *wah=&live_mod[2],*pan=&live_mod[3];int32_t loud[CTL],silence[CTL]={0};
+    for(int i=0;i<CTL;i++)loud[i]=i&1?-400000:400000;
+    wah->on=1;wah->part=1;wah->sync=WAH_ENV;wah->rate=63;wah->wave=0;wah->depth=127;wah->value=0;
+    int base=trk[1].p[P_TFLT],other=trk[0].p[P_TFLT];
+    for(int i=0;i<100;i++)assert(live_wah_filter(&trk[1],loud,CTL)>=-64);
+    int open=wah->value;assert(open>30000&&live_wah_filter(&trk[1],loud,CTL)>-8);
+    assert(live_wah_filter(&trk[0],loud,CTL)==other&&wah->value>=open);
+    for(int i=0;i<1000;i++)live_wah_filter(&trk[1],silence,CTL);
+    assert(wah->value<200&&trk[1].p[P_TFLT]==base);
+    host_tracks_init();song.sel=1;wah->on=1;wah->part=1;wah->sync=WAH_ENV;wah->value=32767;
+    for(int i=0;i<1000;i++)mix_part_run(&trk[1],CTL);
+    assert(wah->value<200); /* actual silent mixer path must still release the follower */
+    base=trk[1].p[P_TFLT];
+    wah->sync=1;song.playing=1;clk_beat=0;clk_pos=BEAT_U/4;live_mod_tick(&trk[1]);
+    uint32_t phase=wah->phase;wah->rate=110;live_mod_tick(&trk[1]);assert(wah->phase==phase);song.playing=0;
+    pan->on=1;pan->part=1;pan->depth=127;trk[1].p[P_PAN]=0;
+    pan->value=-32768;assert(live_pan(&trk[1])==-64&&live_pan(&trk[0])==trk[0].p[P_PAN]);
+    pan->value=32767;assert(live_pan(&trk[1])==63);trk[1].p[P_PAN]=63;assert(live_pan(&trk[1])==63);
+    mod_reset(NTRK);assert(!wah->on&&!pan->on&&live_pan(&trk[1])==63&&live_wah_filter(&trk[1],loud,CTL)==base);
+    /* Knob/source bounds, cleanup and panel images use real frame/input paths. */
+    song.sel=1;go_home();frame();press(B_ENV);press(B_FX);frames(12);
+    encs[panel.enc[EN_K3]]=200;encs[panel.enc[EN_K4]]=200;frame();assert(wah->wave==64&&wah->sync==WAH_ENV);
+    wah->wave=24;wah->depth=96;wah->rate=63;trk[1].p[P_ROOT]=4;trk[1].p[P_SCALE]=2;
+    fm1_in.notes=1u<<key_of_white(4);frames(12);ui.force=1;frame();ppm("auto-wah-envelope");fm1_in.notes=0;frame();tap(B_HOME);release(B_ENV);release(B_FX);
+    panic_req=2;frame();assert(!wah->on&&ly_lock==LY_PLAY);
+    trk[1].p[P_PAN]=0;pan->depth=96;pan->rate=48;
+    press(B_SCL);press(B_FX);frames(12);ui.force=1;frame();ppm("auto-pan");release(B_SCL);release(B_FX);
+    song.sel=TRK_DRUM;frame();press(B_ENV);press(B_FX);frames(12);assert(!wah->on);release(B_ENV);release(B_FX);
+    puts("wah/pan: press order, playing keys/scale lights, release/lock, track isolation, follower decay, sync, bounds and cleanup PASS");
     puts("modulation: CC1, temporary vibrato/tremolo isolation and release, saved depth/rate, bounds and cleanup PASS");
     return 0;
 }

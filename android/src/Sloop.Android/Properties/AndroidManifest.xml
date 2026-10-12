@@ -4,5 +4,5 @@
   <uses-feature android:name="android.hardware.microphone" android:required="false" />
   <uses-feature android:name="android.hardware.usb.host" android:required="false" />
   <uses-feature android:name="android.software.midi" android:required="false" />
-  <application android:allowBackup="false" android:label="SLOOP Mobile" android:theme="@android:style/Theme.Material.NoActionBar" />
+  <application android:allowBackup="false" android:label="MerthSloop Mobile" android:theme="@android:style/Theme.Material.NoActionBar" />
 </manifest>

@@ -17,10 +17,12 @@ song before changing hardware and verifies restored objects. Import/export works
 offline. Device preferences and MIDI configuration are retained. See
 [song-library contract](FM1-SONG-LIBRARY.md); physical hardware round-trip is pending.
 
-Branch is now `merthsloop`. PR 111's RAM/dual-core series is reviewed but not yet
-integrated; native auto-wah with LFO/envelope-follower modes is a proposed next
-feature. See the [PR assessment](../../docs/firmware/PR-111-ASSESSMENT.md) and
-[auto-wah design](../../docs/firmware/AUTO-WAH-DESIGN.md).
+Branding is **MerthSloop**, with **MerthSloop Mobile** for Android; firmware
+version policy is documented in [BRANDING](../../docs/BRANDING.md). The branch is
+`merthsloop`. Independent PR 111 RAM reductions are integrated; dual-core and
+low-memory relocation are deferred. Track auto-wah (LFO/signal follower) and auto-pan
+are implemented. See [PR assessment](../../docs/firmware/PR-111-ASSESSMENT.md) and
+[wah/pan controls](../../docs/firmware/AUTO-WAH-DESIGN.md).
 
 Upstream main/origin main are reconciled through `8fad1a1`: five web commits add
 browser firmware audio preview, inline sequence editing, sample gain/level matching,
@@ -41,15 +43,16 @@ and additional chord qualities remain proposals, not implemented features.
 
 ## Latest firmware
 
-**2.6 Merthsoft.10 is integrated and built.** Native ADD/REPLACE, transient-safe
+**MerthSloop 2.6.0.11 is integrated and built.** Native ADD/REPLACE, transient-safe
 Note Trails with high-contrast drums and gate-aware held-note strokes, and preserved track effects with both-OCT
 reset on normal FX pages are implemented. Upstream audio, inserts, sync,
 MIDI, texture, drum mutes and note-length features coexist with the fork libraries,
 rhythms, editing, scale lights and performance modulation. Upstream's 27 physical
 punch effects replace the previous black-key FX modifiers. The installer is
-`http://127.0.0.1:8815/webapp/installer/`.
+`http://127.0.0.1:8816/webapp/installer/`.
 
-Image 581,060 bytes; static RAM 94,500 bytes; pool 333,900 bytes. Lossless factory
+Image 581,420 bytes (144 free); static RAM 82,100/98,304 (16,204 free);
+pool 332,876/344,064 (11,188 free). Lossless factory
 sound sharing, text startup, spare driver-RAM scratch and guarded hot-helper
 inlining make the combined build fit. Functional/audio/companion checks pass;
 hardware installation/playback remains user testing. See

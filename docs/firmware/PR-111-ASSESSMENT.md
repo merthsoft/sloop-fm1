@@ -1,8 +1,9 @@
 # PR 111 assessment
 
 Reviewed [the proposed dual-core/RAM series](https://github.com/isod89/sloop-fm1/pull/111)
-against the current `merthsloop` branch. The MIDI routing-table reduction is now
-integrated; the remaining series is pending.
+against the current `merthsloop` branch. The independent MIDI routing, DRAWBAR arena,
+main-loop scratch and XIP preset-bank reductions are integrated. Dual-core rendering
+and low-memory relocation remain deferred.
 
 The proposal is useful, but should be adapted in stages. Its author reports unchanged
 golden audio renders and about 38 KB less ordinary static RAM on its own upstream base.
@@ -20,10 +21,39 @@ STEP held-help fix included, the target build reports 93,476 bytes of static RAM
 (previously 94,500), unchanged pool usage of 333,900 bytes, and an application
 image of 581,356 bytes. These are measured fork results, not the PR's total savings.
 
-DRAWBAR arena storage, XIP banks, shared scratch, memory placement and dual-core
-rendering have **not** been integrated yet.
+## Additional integrated reductions
 
-## Remaining order
+Adapted `904d386`, `d024b41` and `72300ea` with the fork's existing arenas, visualizer
+histories, project recovery and flash-driver reserve intact:
+
+- DRAWBAR shares the per-track engine arena; compile-time size/index checks protect
+  the layout. Its wheel state resets after an arena engine takes over, as intended.
+- Storage payload and decoded OTA frames share main-loop scratch. OTA staging uses
+  `proj_tmp` during its blocking session. Scope/FFT real input also shares scratch,
+  saving 1,024 pool bytes. Existing `.scratch` visualizer histories remain separate.
+- User-preset banks are read from the flash XIP window. Writes stage separately in
+  `proj_tmp`, and pointers are refreshed after saves and editor restores. Empty,
+  corrupt or absent-flash banks remain empty; absent flash reports NO FLASH.
+
+The pure additional memory pass measures **11,440 fewer static RAM bytes** and
+**1,024 fewer pool bytes**. Together with MIDI packing, the reductions recover
+12,464 static bytes before new runtime effects. MerthSloop 2.6.0.11 with wah/pan
+uses 82,100 static bytes and 332,876 pool bytes; its image is 581,420 bytes.
+
+Full host tests pass: unchanged 182 golden audio renders, expanded DRAWBAR takeover
+and random-switch tests, XIP A/B/torn-write/corruption tests, storage, OTA/loader,
+project recovery and 20,000-frame UI fuzz. Hardware timing/flash-cache validation
+is still a physical-device check.
+
+## Deliberately deferred
+
+The `.lowram` relocation and dual-core renderer are **not** integrated. We already
+use spare flash-driver RAM under a reserve check; transplanting that memory map
+would overlap existing state. Dual-core also needs separate interrupt/order,
+stack high-water and timeout-fallback hardware validation. These are not required
+for the independent savings or the new wah/pan effects.
+
+## Original staged assessment
 
 1. Pack `midi_sel_on` into nibbles. Values are 0–4; this reduces the routing table
    by 1,024 bytes. Our held-note/latch logic also reads the table, so adapt every access
@@ -34,7 +64,7 @@ rendering have **not** been integrated yet.
 3. Adapt XIP user preset banks and shared main-loop scratch separately, checking
    pointer invalidation after A/B writes, no-flash behavior, and scratch lifetimes in
    our backup, preview, undo, scene and visualizer paths. The PR's shared-scratch
-   change adds code, which matters with our current 72-byte application margin.
+   change adds code, which matters with our limited application margin.
 4. Reconcile `.lowram` with our existing `.scratch` placement and enforced flash-driver
    reserve before dual-core work. Both use SRAM below the ordinary RAM region;
    their reported savings cannot simply be added to ours.

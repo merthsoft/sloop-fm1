@@ -141,3 +141,17 @@ presets/features or altering persistent formats are outside this pass.
 Changes are confined to branch modules and a few UI function declarations. Future
 upstream merges need no replacement linker script, compiler-wide flags or rewritten
 DSP engine. Remeasure annotations after compiler changes or major UI edits.
+
+## MerthSloop: independent PR 111 reductions and live effects
+
+MIDI packing, DRAWBAR arena storage, shared main-loop/OTA scratch and XIP preset
+banks recover 12,464 static RAM bytes before new effects, plus 1,024 pool bytes.
+Wah/pan share the existing modulation clock/structure and add 64 runtime bytes.
+No project format, sound-bank content or polyphony capacity is reduced.
+
+Cold UI boundaries (`draw_graph`, `draw_menu`, `layers_input`) saved 592 measured
+image bytes in this pass versus letting them inline into the large UI functions.
+No DSP loop was moved out of line; annotations that saved nothing were removed.
+The final branded image is 581,420 bytes and static RAM is 82,100 bytes.
+Dual-core and overlapping low-memory relocation are deferred; see
+[PR adoption assessment](PR-111-ASSESSMENT.md).

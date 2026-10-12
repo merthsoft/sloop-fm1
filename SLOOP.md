@@ -6,7 +6,7 @@
 
 SLOOP is free and open source (GPL-3.0), based on [Felucca](https://github.com/hugelton/Felucca) by Leo Kuroshita / Hügelton Instruments.
 
-> **Status:** upstream reference updated for the Merthsoft integration. Combined target memory fitting and release validation are still in progress. Still a beta: install at your own risk, and please report what you find (GitHub issues).
+> **Status:** upstream reference for MerthSloop; branch-specific controls are documented in the illustrated firmware guide. Still a beta: install at your own risk, and please report what you find (GitHub issues).
 
 > The merged fork also includes the native groove/starter libraries, independent rhythms, scale lights, extended arpeggios, editing shortcuts and held modulation panels. See the [illustrated fork guide](docs/firmware/MERTHSOFT-FEATURES.md). The history below describes upstream releases; current controls are in GUIDE.md.
 

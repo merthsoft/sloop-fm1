@@ -34,7 +34,7 @@ static void sloop_splash(void)
     sloop_logo_draw(10);
 #else
     cv_begin(240, 64, C_BLACK);
-    cv_text(120 - text_w(&FONT_L, "SLOOP") / 2, 16, &FONT_L, "SLOOP", C_WHITE);
+    cv_text(120 - text_w(&FONT_L, MERTHSLOOP_NAME) / 2, 16, &FONT_L, MERTHSLOOP_NAME, C_WHITE);
     cv_blit(0, 72);
 #endif
     const char *v = FELUCCA_VERSION;
@@ -42,6 +42,6 @@ static void sloop_splash(void)
         v += 6;                                         /* "SLOOP 1.0" -> "1.0" under the wordmark */
     cv_begin(240, 36, C_BLACK);
     cv_text(120 - text_w(&FONT_S, v) / 2, 0, &FONT_S, v, RGB(196, 196, 204));
-    cv_text(120 - text_w(&FONT_S, "based on felucca") / 2, 18, &FONT_S, "based on felucca", RGB(96, 96, 104));
+    cv_text(120 - text_w(&FONT_S, "SLOOP / FELUCCA") / 2, 18, &FONT_S, "SLOOP / FELUCCA", RGB(96, 96, 104));
     cv_blit(0, 202);
 }

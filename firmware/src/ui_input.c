@@ -169,7 +169,7 @@ static uint32_t keys_lit(void)
 /* These temporary modulation panels leave the keyboard in its playing role. */
 static int keys_playing_layer(void)
 {
-    return ui.layer == LY_PLAY || ui.layer == LY_VIB || ui.layer == LY_TREM;
+    return ui.layer == LY_PLAY || ui.layer >= LY_VIB;
 }
 
 /* menu NOTES, on the layers whose keys are tiles (FX effects, SEQ steps, GLO mute / solo): what
@@ -773,7 +773,7 @@ static int latch_notes_physically_held(uint32_t part)
 
 /* the layers, once a frame: which one is held (or locked), the taps on release, its keys and knobs.
  * Returns 1 while one is held or locked (the page does not take the knobs then) */
-static int layers_input(uint32_t note_edges, uint32_t *pressed, uint32_t home)
+static int __attribute__((noinline)) layers_input(uint32_t note_edges, uint32_t *pressed, uint32_t home)
 {
     static uint8_t down[LY_COUNT], used[LY_COUNT];
     static uint8_t latch_part[LY_COUNT];
@@ -789,8 +789,15 @@ static int layers_input(uint32_t note_edges, uint32_t *pressed, uint32_t home)
             *pressed &= ~eat;
         }
     }
+    uint32_t combo = (fm1_in.buttons & ly_bit[LY_WAH]) == ly_bit[LY_WAH] ? LY_WAH :
+        (fm1_in.buttons & ly_bit[LY_PAN]) == ly_bit[LY_PAN] ? LY_PAN : LY_PLAY;
+    if (combo) live_combo_tail = ly_bit[combo];
+    else if (!(fm1_in.buttons & live_combo_tail)) live_combo_tail = 0;
     for (l = LY_FX; l < LY_COUNT; l++) {
-        uint32_t d = (fm1_in.buttons & ly_bit[l]) != 0u;
+        uint32_t d = (fm1_in.buttons & ly_bit[l]) == ly_bit[l];
+        if (l != combo && live_combo_tail && (ly_bit[l] & live_combo_tail) && l < LY_WAH) {
+            d = 0; used[l] = 1; /* combo consumes both taps, irrespective of press order */
+        }
         if (d && !down[l]) {
             t0[l] = now;
             used[l] = (uint8_t)((eat & ly_bit[l]) != 0u);  /* (the press that unlocked: not a tap) */
@@ -1046,9 +1053,9 @@ static void ui_input(void)
     if (ly_lock >= LY_VIB && ly_lock < LY_COUNT &&
         (!live_mod[ly_lock - LY_VIB].on || song.sel != live_mod[ly_lock - LY_VIB].part || ui.menu || ui.confirm))
         layer_unlock();                               /* STOP/panic/track changes also dismiss the locked panel */
-    for (uint32_t i = 0; i < 2; i++)
+    for (uint32_t i = 0; i < LIVE_MOD_COUNT; i++)
         if (ui.menu || ui.confirm || song.sel != live_mod[i].part ||
-            (!(fm1_in.buttons & ly_bit[LY_VIB + i]) && ly_lock != LY_VIB + i)) live_mod[i].on = 0;
+            ((fm1_in.buttons & ly_bit[LY_VIB + i]) != ly_bit[LY_VIB + i] && ly_lock != LY_VIB + i)) live_mod[i].on = 0;
     if (pressed || notes)
         ui_input_ms = fm1_ms;
     pc_poll();                                          /* MIDI Program Change: a sound (2.6, ui.c) */

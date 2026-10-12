@@ -117,13 +117,18 @@ static int st_prog(uint32_t off, const void *src, uint32_t n)
         return -8;
     return fl_write(off, src, n);
 }
+#define ST_XIP_PTR(off) fm1_xip_ptr(off)   /* sloop-lab: storage.c st_xip, an object read where it is (fm1_xip.h) */
 #include "storage.c"
 #endif
-#include "upreset.c"          /* user presets (RAM mirror; flash with FELUCCA_FLASH) */
+#include "upreset.c"          /* user presets (read in the XIP window; the host test keeps a RAM mirror) */
 #include "project.c"
 #if FELUCCA_OTA
 static uint8_t recovery_active;
 #define OTA_IDENTITY (recovery_active ? "FM-1_000" : FELUCCA_ID)
+#if FELUCCA_FLASH
+#define OTA_STAGE_RAM ((uint8_t *)&proj_tmp)   /* sloop-lab: the update's staging in the project buffer (ota.c) */
+_Static_assert(sizeof proj_tmp >= 0x400u + 512u + 512u + 112u, "the project buffer holds the OTA staging");
+#endif
 #include "ota.c"
 static void recovery_poll(void);
 static uint32_t ota_now_ms(void) { return fm1_ms; }

@@ -1,7 +1,7 @@
 # Android licensing
 
 Original Android application code, platform-neutral libraries, tests, scripts and design
-documents created for SLOOP Mobile are released under the [Unlicense](UNLICENSE).
+documents created for MerthSloop Mobile are released under the [Unlicense](UNLICENSE).
 This overrides the repository's default GPL terms for that original work. Contributions
 to original Android work are accepted under the Unlicense.
 

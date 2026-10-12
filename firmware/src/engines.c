@@ -31,9 +31,12 @@ DSP_INLINE int32_t soft_knee(int32_t y, int32_t k)   /* linear up to k, then onl
 
 typedef union {
     gr_part_t grain;
+    drw_part_t drawbar;
     fm6_note_t fm6[FM6_POLY];
     uint32_t phys[PHYS_ARENA / 4u];      /* eng_phys.c: two SYMP slots or three small ones */
 } eng_arena_t;
+_Static_assert(sizeof(drw_part_t) <= PHYS_ARENA, "DRAWBAR fits existing arena");
+_Static_assert(ENGI_DRAWBAR == 7u, "DRAWBAR engine index");
 static eng_arena_t eng_arena[NPART] __attribute__((section(".pool")));
 static uint8_t eng_arena_own[NPART];            /* the engine + 1 whose state is in it, 0 = none */
 #ifdef ARENA_STATS

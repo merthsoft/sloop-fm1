@@ -168,7 +168,8 @@ static uint32_t scale_mask(const track_t *t)
 }
 
 /* ---------------------------------------------------------- layers --- */
-enum { LY_PLAY, LY_FX, LY_ERASE, LY_ROLL, LY_STEP, LY_SCALE, LY_MIX, LY_SONG, LY_VIB, LY_TREM, LY_COUNT };
+enum { LY_PLAY, LY_FX, LY_ERASE, LY_ROLL, LY_STEP, LY_SCALE, LY_MIX, LY_SONG, LY_VIB, LY_TREM, LY_WAH, LY_PAN, LY_COUNT };
+static volatile uint32_t live_combo_tail; /* suppress component layers until both combo buttons are released */
 static uint32_t ly_bit[LY_COUNT];        /* the button (fm1_in.buttons bit) of each layer: the UI sets them */
 static uint32_t dyn_bit[2];              /* OCT- / OCT+: ghost / hard on the drum track */
 /* a layer locked open (its button held + HOME tapped: ui_input.c), LY_PLAY = none: the keys and knobs
@@ -180,6 +181,9 @@ static uint32_t layer_buttons(void) { return fm1_in.buttons | (ly_lock != LY_PLA
 static uint32_t layer_now(void)
 {
     uint32_t b = layer_buttons(), l;
+    if ((ly_bit[LY_WAH] && (b & ly_bit[LY_WAH]) == ly_bit[LY_WAH]) ||
+        (ly_bit[LY_PAN] && (b & ly_bit[LY_PAN]) == ly_bit[LY_PAN])) return LY_PLAY;
+    if (b & live_combo_tail) return LY_PLAY;
     for (l = LY_FX; l < LY_VIB; l++)
         if (b & ly_bit[l])
             return l;

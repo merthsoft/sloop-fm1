@@ -1,6 +1,6 @@
-> Merthsoft firmware and SLOOP Mobile for Android live on the `merthsloop` branch. Original Android work uses the Unlicense, with retained third-party obligations described in [Android licensing](android/LICENSING.md).
+> MerthSloop firmware and MerthSloop Mobile for Android live on the `merthsloop` branch. Original Android work uses the Unlicense, with retained third-party obligations described in [Android licensing](android/LICENSING.md).
 
-<p align="center"><img src="assets/logo/sloop-logo.png" alt="SLOOP" width="420"></p>
+<p align="center"><img src="assets/logo/merthsloop-logo.svg" alt="MerthSloop" width="420"></p>
 
 <p align="center"><b>A live groovebox firmware for the M-VAVE FM-1 — for any style.</b><br>
 Free and open source (GPL-3.0), based on <a href="https://github.com/hugelton/Felucca">Felucca</a> by Leo Kuroshita / Hügelton Instruments.</p>
@@ -25,9 +25,9 @@ SLOOP turns the FM-1 into a four-track groovebox you play live: **three synths a
 
 ## Contents
 
-- [Merthsoft firmware and the one-minute workflow](#merthsoft-firmware)
+- [MerthSloop firmware and the one-minute workflow](#merthsloop-firmware)
 - [Visualizers added in this fork](#visualizers-added-in-this-fork)
-- [SLOOP Mobile for Android](#sloop-mobile-for-android)
+- [MerthSloop Mobile for Android](#merthsloop-mobile-for-android)
 
 1. [Upstream capabilities](#upstream-capabilities)
 2. [Screenshots](#screenshots)
@@ -49,11 +49,14 @@ SLOOP turns the FM-1 into a four-track groovebox you play live: **three synths a
 
 ---
 
-## Merthsoft firmware
+## MerthSloop firmware
 
 This fork keeps SLOOP's synth engines and adds ways to build and perform a complete loop quickly on the FM-1. **No phone is required for these firmware features.**
 
-Read the [illustrated Merthsoft feature guide](docs/firmware/MERTHSOFT-FEATURES.md) for the full branch additions, physical controls and fresh firmware screenshots.
+Read the [illustrated MerthSloop feature guide](docs/firmware/MERTHSOFT-FEATURES.md) for the full branch additions, physical controls and fresh firmware screenshots.
+
+MerthSloop builds on upstream SLOOP and Felucca. Firmware versions use upstream
+`major.minor.revision` followed by our independent build number; see [branding and version policy](docs/BRANDING.md).
 
 ### The one-minute workflow
 
@@ -81,7 +84,7 @@ The [illustrated guide](docs/firmware/MERTHSOFT-FEATURES.md#record-and-correct-n
 
 ### What this fork adds to upstream SLOOP
 
-These are the implemented Merthsoft additions; the upstream engine, preset and base groovebox features are described separately below.
+These are the implemented MerthSloop additions; the upstream engine, preset and base groovebox features are described separately below.
 
 - **Persistent scale lights:** hold physical **SEL** and press **OCT+** to toggle a dim keyboard guide matching the selected synth's SEL-page ROOT/SCALE. It replaces ordinary keyboard backlighting, so off-scale keys stay dark unless played. It follows key/scale changes, survives reboot, and leaves drum/step/FX controls clear. CHR lights every pitch class; it does not change the sound or quantize notes.
 - **24 drum grooves:** four-on-the-floor, breaks, a four-bar Amen, funk, broken house, Afro clave, electro, boom bap and more. Preview using your current kit, then apply with complete pattern/metadata undo. The phone can browse and apply the canonical groove bank too.
@@ -99,6 +102,15 @@ These are the implemented Merthsoft additions; the upstream engine, preset and b
 | <img src="assets/screens/merthsoft/scale-grid-c-minor.png" width="240" alt="SEL grid showing C minor pitches and literal root-selection hints"> | <img src="assets/screens/merthsoft/guide/feature-vibrato-scale-guide.png" width="240" alt="Selected-track vibrato waveform, phase marker and E minor guide"> | <img src="assets/screens/merthsoft/guide/feature-tremolo-envelope.png" width="240" alt="Selected-track tremolo envelope, phase marker and E minor guide"> |
 
 *Fresh renders from production firmware code in the host UI/audio harness.*
+
+- **Track auto-wah and auto-pan:** hold **ENV+FX** for wah or **SEL+FX** for pan on the selected synth. Wah uses a triangle LFO (free Hz or beat divisions) or follows the track’s own signal; pan offers waveform, depth and beat sync. **Hold the combo + tap HOME** to lock it until HOME/STOP/panic/track change. Keyboard playing and scale lights stay intact. These live effects leave saved parameters unchanged; see [controls](docs/firmware/AUTO-WAH-DESIGN.md).
+
+
+| Track envelope wah | Track auto-pan |
+| --- | --- |
+| <img src="assets/screens/merthsoft/guide/auto-wah-envelope.png" width="240" alt="MerthSloop signal-following auto-wah with sensitivity and cutoff controls"> | <img src="assets/screens/merthsoft/guide/auto-pan.png" width="240" alt="MerthSloop track auto-pan with waveform and beat sync"> |
+
+*Fresh production UI/audio harness renders.*
 
 - **More chord and arp choices:** SUS2, ADD9, 6TH, SHELL, OCTAVE and explicit major/minor/seventh/diminished/augmented qualities; OUTIN, SHUF, ROOTALT, DNUP, UPDNREP, INOUT, WALK and PULSE arpeggios. See the [playing guide](docs/firmware/MERTHSOFT-FEATURES.md#play-chords-and-arpeggios) for ordering, latch and sequencer input.
 - **Chord latch and literal roots:** SCL page 2 knob 4 exposes LATCH. In non-CHROM chord mode, modifier presses update the sounding latched chord immediately and remain toggled until pressed again. **KEYS/QNT CHROM** allows every piano key, including black keys, to be a literal chord root; the other keyboard modes keep their modifier controls.
@@ -151,9 +163,9 @@ See the [complete 14-style gallery](docs/firmware/VISUALIZERS.md) for the retain
 
 To install **this fork**, build its firmware and local browser installer with [`build-sloop.ps1`](build-sloop.ps1); see [building](#building-and-tests) for prerequisites. The upstream browser installer linked above installs upstream SLOOP. See the [guide](GUIDE.md), [musical starters](docs/firmware/SEQUENCE-STARTERS-DESIGN.md), [drum grooves](docs/firmware/DRUM-GROOVES-DESIGN.md) and [rhythm shaping](docs/firmware/RHYTHM-SHAPING-DESIGN.md) for the controls and limits.
 
-## SLOOP Mobile for Android
+## MerthSloop Mobile for Android
 
-Bring the FM-1 and your phone: **SLOOP Mobile** is a C#/.NET Android companion for touch performance, sequencing, sound editing, sampling and session management over USB. Connect using a USB data cable and a phone that supports USB host mode. SLOOP mode routes performance by selected synth; **generic MIDI mode** also drives other MIDI receivers.
+Bring the FM-1 and your phone: **MerthSloop Mobile** is a C#/.NET Android companion for touch performance, sequencing, sound editing, sampling and session management over USB. Connect using a USB data cable and a phone that supports USB host mode. SLOOP mode routes performance by selected synth; **generic MIDI mode** also drives other MIDI receivers.
 
 | Perform | FM6 sound editing |
 | --- | --- |

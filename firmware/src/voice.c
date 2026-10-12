@@ -42,22 +42,26 @@ typedef struct {
     int32_t value;
     uint8_t on, part, rate, depth, wave, sync;
 } live_mod_t;
-static live_mod_t live_mod[2] = {
+enum { LIVE_MOD_COUNT = 4, WAH_ENV = NDIV_STEP + 1 };
+static live_mod_t live_mod[LIVE_MOD_COUNT] = {
     {.rate = 87, .depth = 32}, /* vibrato: about 5 Hz, +/-12.5 cents */
-    {.rate = 83, .depth = 48}  /* tremolo: about 4 Hz, 38% depth */
+    {.rate = 83, .depth = 48}, /* tremolo: about 4 Hz, 38% depth */
+    {.rate = 60, .depth = 64, .wave = 24}, /* wah: low-pass base -40 */
+    {.rate = 48, .depth = 96} /* pan: slow, wide sweep */
 };
 static void mod_reset(uint32_t part)
 {
     if (part == NTRK) memset(mod_midi, 0, sizeof mod_midi);
     else if (part < NPART) mod_midi[part] = 0;
-    for (uint32_t i = 0; i < 2; i++)
+    for (uint32_t i = 0; i < LIVE_MOD_COUNT; i++)
         if (part == NTRK || live_mod[i].part == part) live_mod[i].on = 0;
 }
 static void live_mod_tick(const track_t *t)
 {
-    for (uint32_t i = 0; i < 2; i++) {
+    for (uint32_t i = 0; i < LIVE_MOD_COUNT; i++) {
         live_mod_t *m = &live_mod[i];
         if (!m->on || m->part != (uint32_t)(t - trk)) continue;
+        if (i == 2 && m->sync == WAH_ENV) continue; /* signal follower runs before track FX */
         if (m->sync) {
             uint32_t div = (m->sync - 1u) % NDIV_STEP;
             if (song.playing) {
@@ -80,10 +84,11 @@ static void live_mod_tick(const track_t *t)
                 m->phase += div < NDIV_SHORT ? inc * DIV_DEN[div] : inc / DIV_BEATS[div - NDIV_SHORT];
             }
         } else m->phase += LFO_INC[m->rate];
-        int32_t w = m->wave == 1 ? osc_tri(m->phase) :
-            m->wave == 2 ? (int32_t)(m->phase >> 16) - 32768 :
-            m->wave == 3 ? (m->phase < 0x80000000u ? 32767 : -32767) : osc_sine(m->phase);
-        m->value = i ? (w + 32768) >> 1 : w;
+        uint32_t wave = i == 2 ? 1 : m->wave;
+        int32_t w = wave == 1 ? osc_tri(m->phase) :
+            wave == 2 ? (int32_t)(m->phase >> 16) - 32768 :
+            wave == 3 ? (m->phase < 0x80000000u ? 32767 : -32767) : osc_sine(m->phase);
+        m->value = i == 1 || i == 2 ? (w + 32768) >> 1 : w;
     }
 }
 static int32_t mod_pitch(const track_t *t, int32_t lfo)
@@ -99,6 +104,31 @@ static int32_t live_tremolo(const track_t *t)
     live_mod_t *m = &live_mod[1];
     return m->on && m->part == (uint32_t)(t - trk) ?
         32767 - mulq15(m->value, m->depth * 258) : 32767;
+}
+
+/* Selected-track motion before inserts, slicer and sends; returns never drive the follower. */
+static int32_t live_wah_filter(const track_t *t, const int32_t *b, uint32_t n)
+{
+    live_mod_t *m = &live_mod[2];
+    if (!m->on || m->part != (uint32_t)(t - trk)) return t->p[P_TFLT];
+    if (m->sync == WAH_ENV) {
+        int32_t peak = 0;
+        for (uint32_t i=0;i<n;i++) {
+            int32_t a = clamp(b[i], -524287, 524287);
+            if (a < 0) a = -a;
+            if (a > peak) peak = a;
+        }
+        int32_t target = clamp((peak >> 4) * (m->rate + 1) / 32, 0, 32767);
+        m->value += (target - m->value) / (target > m->value ? 8 : 128);
+    }
+    /* Remain on the low-pass side: no unintended LP/HP switching during a sweep. */
+    return clamp((int32_t)m->wave - 64 + (m->value * m->depth >> 16), -64, 0);
+}
+static int32_t live_pan(const track_t *t)
+{
+    live_mod_t *m = &live_mod[3];
+    return clamp(t->p[P_PAN] + (m->on && m->part == (uint32_t)(t-trk) ?
+        (m->value * m->depth >> 16) : 0), -64, 63);
 }
 
 /* LFO 2 (SLOOP 2.6, after Felucca 1.4 by Leo Kuroshita, #154; params.c N_LSYNC): with SYNC on, one cycle lasts the

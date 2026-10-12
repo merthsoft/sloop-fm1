@@ -177,7 +177,7 @@ Startup shows the firmware title; the bitmap splash is omitted to keep room for 
 
 ---
 
-For the additions specific to this branch, see the [illustrated Merthsoft firmware guide](docs/firmware/MERTHSOFT-FEATURES.md).
+For the additions specific to this branch, see the [illustrated MerthSloop firmware guide](docs/firmware/MERTHSOFT-FEATURES.md).
 
 ## 6. Playing the keys
 
@@ -1445,3 +1445,13 @@ sends, insert, slicer and filter. On a normal FX-family page, press both octave
 buttons together to reset those effects to their parameter defaults; individual
 OCT buttons on these pages do not transpose. This reset does not change the sound
 engine, sequence, key, or global effects. INIT SOUND resets the whole sound.
+
+### MerthSloop track auto-wah and auto-pan
+
+Hold ENV+FX for wah, SEL+FX for pan. Keys remain playable with scale lights intact.
+Wah knobs are rate/sensitivity, depth, low-pass base cutoff and source (free LFO,
+beat division or ENVELOPE). Pan knobs are rate, depth, waveform and beat sync.
+Hold the combination and tap HOME to lock it; HOME, STOP/panic or track changes
+clear it. These live controls retain saved patch settings. See the
+[wah/pan controls](docs/firmware/AUTO-WAH-DESIGN.md) and
+[MerthSloop version policy](docs/BRANDING.md).

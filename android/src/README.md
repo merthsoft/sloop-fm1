@@ -1,4 +1,4 @@
-# SLOOP Mobile source
+# MerthSloop Mobile source
 
 Original Android work uses the [Unlicense](../UNLICENSE). GPL-derived sample encoding
 and factory patches retain their licenses; distributing the combined application must

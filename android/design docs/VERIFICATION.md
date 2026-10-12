@@ -541,3 +541,32 @@ voice stealing and simultaneous multi-touch remain hardware/user validation.
 - Fresh screenshot `assets/screens/merthsoft/android-part-writing.png` documents
   controls and the live result. Phone is attached to PC; FM1 sound/voice-stealing
   validation remains user testing. No firmware update is required for this mode.
+
+## MerthSloop 2.6.0.11 integration
+
+Independent PR 111 RAM changes passed the full native host suite, including 182
+unchanged golden audio renders, DRAWBAR arena takeover/random switching, storage
+XIP A/B/torn writes/corruption, OTA and loader, project recovery and UI fuzz.
+The expanded modulation regression checks wah/pan gesture orders, scale lights,
+normal playing, locks/cleanup, track isolation, follower decay, beat sync and bounds.
+Final target build: image 581,420 bytes (144 free), static RAM 82,100/98,304,
+pool 332,876/344,064, `.scratch` 8,800 with flash-driver reserve 12,820.
+HAL and call-free 925-instruction RAM text checks pass.
+Logs: `build/pr111-full-tests.log`, `build/merthsloop11-full-tests.log`,
+`build/merthsloop11-target.log`. The final full native suite passes, including
+legacy roll/erase/punch routing and sanitizer checks. No physical firmware flash is claimed.
+
+Final supplemental checks pass: `build/merthsloop11-motion-tests.log` includes actual
+silent mixer follower decay and corrected cutoff/sensitivity UI; browser/native
+preview matches on all 12 engines (`build/merthsloop11-preview-tests.log`), web
+protocol/sample/updater tests pass (`build/merthsloop11-web-tests.log`), and Android
+build succeeds with zero warnings/errors (`build/merthsloop11-android-build.log`).
+The phone reconnected: APK installed successfully and launched on the Pixel.
+ADB confirms versionName 2.6.0.11/versionCode 11; the live UI shows MerthSloop and
+the app remains running. A fresh branding screenshot is in `assets/screens/merthsoft/android-merthsloop.png`.
+No FM1 USB round-trip was performed during this app branding check.
+The updater serves at http://127.0.0.1:8816/webapp/installer/ (HTTP 200 verified).
+Package SHA-256: `58de633133962fb2599ad7cdbfdf67c248d2c30029e383d6960a19af7b90f9d6`.
+
+The checked-in website is regenerated with the same branded package, preview and
+service-worker content stamp; offline-site/manifest/download consistency checks pass.

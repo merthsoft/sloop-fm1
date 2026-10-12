@@ -20,8 +20,8 @@
  * The keys' part runs in the audio ISR (seq.c layer_now: no lag, no lost press); the SEQ, SEL and
  * GLO keys come to the UI through seq.c lk_q. HOLD: REC held clears the track, SAVE held saves the
  * project (a ring fills; let go before and nothing happens). */
-static const uint8_t LAYER_BTN[LY_COUNT] = {NB, B_FX, B_EDIT, B_ARP, B_SEQ, B_SCL, B_GLO, B_SAVE, B_LFO, B_ENV};
-static const char *const LAYER_NAME[LY_COUNT] = {"", "punch", "erase", "roll", "steps", "key", "mix", "song", "vibrato", "tremolo"};
+static const uint8_t LAYER_BTN[LY_COUNT] = {NB, B_FX, B_EDIT, B_ARP, B_SEQ, B_SCL, B_GLO, B_SAVE, B_LFO, B_ENV, NB, NB};
+static const char *const LAYER_NAME[LY_COUNT] = {"", "punch", "erase", "roll", "steps", "key", "mix", "song", "vibrato", "tremolo", "auto wah", "auto pan"};
 static void section_store(uint32_t s);                  /* project.c */
 static void section_load(uint32_t s);
 static uint8_t sec_armed;                               /* 1..4 store section, 5 NEW: key again within 3 s */
@@ -35,8 +35,10 @@ static uint8_t chain_tap[CHAIN_MAX], chain_taps;        /* the section keys tapp
 static void layers_init(void)
 {
     uint32_t l;
-    for (l = LY_FX; l < LY_COUNT; l++)
+    for (l = LY_FX; l < LY_WAH; l++)
         ly_bit[l] = 1u << panel.btn[LAYER_BTN[l]];
+    ly_bit[LY_WAH] = ly_bit[LY_TREM] | ly_bit[LY_FX];
+    ly_bit[LY_PAN] = ly_bit[LY_SCALE] | ly_bit[LY_FX];
     dyn_bit[0] = 1u << panel.btn[B_OCTDN];
     dyn_bit[1] = 1u << panel.btn[B_OCTUP];
     ft_btn_mask = 1u << panel.btn[B_REC];
@@ -514,6 +516,7 @@ static void live_mod_apply(uint32_t effect)
 {
     live_mod_t *m = &live_mod[effect];
     if (m->part >= NPART || m->part != song.sel) return;
+    if (effect >= 2) { ui_message("HOME LOCKS LIVE FX"); return; }
     track_t *t = &trk[m->part];
     static const uint8_t sync[] = {0,5,6,8,10,7,9,4,3,2};
     fm1_irq_off();
@@ -551,11 +554,13 @@ static void layer_knobs(uint32_t layer)
         ui.hot_t = 40;
         switch (layer) {
         case LY_VIB:
-        case LY_TREM: {
+        case LY_TREM:
+        case LY_WAH:
+        case LY_PAN: {
             live_mod_t *m = &live_mod[layer - LY_VIB];
             uint8_t *v = k == 0 ? &m->rate : k == 1 ? &m->depth : k == 2 ? &m->wave : &m->sync;
-            *v = (uint8_t)clamp(*v + s, 0, k == 2 ? 3 : k == 3 ? NDIV_STEP : 127);
-            if (k == 0) m->sync = 0; /* turning Hz deliberately returns to free rate */
+            *v = (uint8_t)clamp(*v + s, 0, k == 2 ? (layer == LY_WAH ? 64 : 3) : k == 3 ? (layer == LY_WAH ? WAH_ENV : NDIV_STEP) : 127);
+            if (k == 0 && m->sync != WAH_ENV) m->sync = 0; /* turning Hz deliberately returns to free rate */
             break;
         }
         case LY_FX:
@@ -781,22 +786,34 @@ static void live_mod_draw(const track_t *t, uint32_t layer, uint16_t col)
 {
     const live_mod_t *m = &live_mod[layer - LY_VIB];
     int trem = layer == LY_TREM;
+    live_mod_t plot = *m;
+    if (layer == LY_WAH) plot.wave = 1;
     char text[24], name[4];
     cv_begin(240, 124, C_BLACK);
     if (is_drum(t)) {
         te_text_c(120, 48, "synth tracks only", TE_G3);
     } else {
+        if (layer == LY_WAH && m->sync == WAH_ENV) {
+            cv_rect(12, 48, 216, 20, TE_G1);
+            cv_rect(12, 48, m->value * 216 / 32768, 20, col);
+        } else {
         cv_line(12, trem ? 20 : 62, 228, trem ? 20 : 62, TE_G2);
-        int32_t py = live_mod_plot_y(m, 0, trem);
+        int32_t py = live_mod_plot_y(&plot, 0, trem);
         for (uint32_t x = 1; x <= 216; x++) {
-            int32_t y = live_mod_plot_y(m, (x % 216u) * (UINT32_MAX / 216u), trem);
+            int32_t y = live_mod_plot_y(&plot, (x % 216u) * (UINT32_MAX / 216u), trem);
             cv_line(11 + x, py, 12 + x, y, col);
             py = y;
         }
         int32_t x = 12 + (m->phase >> 24) * 216 / 256;
         cv_line(x, 18, x, 106, TE_G2);
-        cv_rect(x - 2, live_mod_plot_y(m, m->phase, trem) - 2, 5, 5, C_WHITE);
-        if (trem) {
+        cv_rect(x - 2, live_mod_plot_y(&plot, m->phase, trem) - 2, 5, 5, C_WHITE);
+        }
+        if (layer == LY_WAH) {
+            fmt_int(text, clamp((int32_t)m->wave - 64 + (m->value * m->depth >> 16), -64, 0));
+            str_cpy(text + str_len(text), " cutoff", 8);
+        } else if (layer == LY_PAN) {
+            fmt_int(text, live_pan(t)); str_cpy(text + str_len(text), " pan", 5);
+        } else if (trem) {
             fmt_int(text, live_tremolo(t) * 100 / 32767);
             str_cpy(text + str_len(text), "% level", 12);
         } else {
@@ -845,7 +862,9 @@ static void __attribute__((noinline)) layer_screen_draw(void)
     sub[7] = 0;
     switch (layer) {
     case LY_VIB:
-    case LY_TREM: {
+    case LY_TREM:
+    case LY_WAH:
+    case LY_PAN: {
         live_mod_t *m = &live_mod[layer - LY_VIB];
         str_cpy(sub, is_drum(t) ? "synth tracks only" : "track ", sizeof sub);
         if (!is_drum(t)) {
@@ -857,12 +876,18 @@ static void __attribute__((noinline)) layer_screen_draw(void)
         lab[0] = m->sync ? "free Hz" : "rate Hz"; lab[1] = "depth %"; lab[2] = "wave"; lab[3] = "sync";
         const char *unit;
         param_format(&TP[P_LRATE], m->rate, v[0], &unit);
+        if (layer == LY_WAH && m->sync == WAH_ENV) fmt_int(v[0], m->rate);
         fmt_int(v[1], m->depth * 100 / 127);
         static const char *const wave[] = {"sine", "tri", "saw", "square"};
         val[2] = wave[m->wave & 3];
-        val[3] = m->sync ? N_SDIV[(m->sync - 1u) % NDIV_STEP] : "off";
+        if (layer == LY_WAH) {
+            lab[0] = m->sync == WAH_ENV ? "sens" : lab[0]; lab[2] = "cutoff"; lab[3] = "source";
+            fmt_int(v[2], (int32_t)m->wave - 64); val[2] = v[2];
+        }
+        val[3] = m->sync == WAH_ENV ? "envelope" : m->sync ? N_SDIV[(m->sync - 1u) % NDIV_STEP] : "off";
         ratio[0] = m->rate * 1000 / 127; ratio[1] = m->depth * 1000 / 127;
-        ratio[2] = m->wave * 1000 / 3; ratio[3] = m->sync * 1000 / NDIV_STEP;
+        ratio[2] = m->wave * 1000 / (layer == LY_WAH ? 64 : 3);
+        ratio[3] = m->sync * 1000 / (layer == LY_WAH ? WAH_ENV : NDIV_STEP);
         break;
     }
     case LY_FX:                                         /* the 27 punch-in effects: 16 white keys, 11 black */
@@ -1203,7 +1228,7 @@ static void __attribute__((noinline)) layer_screen_draw(void)
     }
     layer_sub_shown = sub;
     layer_title(LAYER_NAME[layer % LY_COUNT], sub, col, &head);
-    if (layer == LY_VIB || layer == LY_TREM) live_mod_draw(t, layer, col);
+    if (layer >= LY_VIB) live_mod_draw(t, layer, col);
     else if (layer == LY_FX)
         punch_tiles_draw(tl, &tiles);
     else

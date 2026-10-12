@@ -1,16 +1,16 @@
 # Firmware design and implementation
 
 Current native firmware features and their implementation contracts live here;
-`firmware/` holds source. The public firmware package in this directory is an
-existing upstream website artifact, not the current Merthsoft build.
+`firmware/` holds source. Generated installer firmware packages also live here;
+the website installer references the current MerthSloop package.
 
-- [Illustrated guide to all Merthsoft firmware additions](MERTHSOFT-FEATURES.md)
+- [Illustrated guide to all MerthSloop firmware additions](MERTHSOFT-FEATURES.md)
 - [Musical sequence starters](SEQUENCE-STARTERS-DESIGN.md)
 - [Phone musical starter protocol](MUSICAL-STARTER-PROTOCOL.md)
 - [Arpeggio expression](ARP-EXPRESSION.md)
 - [Live vibrato, tremolo and MIDI modulation](MODULATION-WHEEL.md)
 - [LOFI chord arpeggios](LOFI-CHORD-ARP.md)
-- [Proposed track auto-wah](AUTO-WAH-DESIGN.md)
+- [Live track auto-wah and auto-pan](AUTO-WAH-DESIGN.md)
 - [Recording snap and STEP editing](SEQUENCER-EDITING.md)
 - [Persistent keyboard scale lights](KEYBOARD-SCALE-LIGHTS.md)
 - [Drum grooves](DRUM-GROOVES-DESIGN.md)
