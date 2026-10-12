@@ -570,3 +570,14 @@ Package SHA-256: `58de633133962fb2599ad7cdbfdf67c248d2c30029e383d6960a19af7b90f9
 
 The checked-in website is regenerated with the same branded package, preview and
 service-worker content stamp; offline-site/manifest/download consistency checks pass.
+
+## MerthSloop 2.6.0.12: envelope wah response
+
+`build/merthsloop12-wah-tests.log` passes typical-level attack/sensitivity, real DSP
+frequency-response and resonant-emphasis checks alongside all existing gesture,
+isolation, decay and cleanup assertions. The opened filter passes at least four
+times the test-tone energy of the closed filter; resonance increases near-cutoff
+energy more than threefold versus the normal filter setting. Bounded output checks pass.
+`build/merthsloop12-audio-tests.log`: all 182 golden renders unchanged, zero health,
+routing or crash failures. Target hot-DSP budgets pass. Image 581,276 bytes,
+static RAM 82,100 bytes, pool 332,876 bytes. Physical wah feel remains user audition.

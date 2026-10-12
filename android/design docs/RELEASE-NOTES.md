@@ -1,4 +1,14 @@
-# Latest firmware — MerthSloop 2.6.0.11
+# Latest firmware — MerthSloop 2.6.0.12
+
+- Envelope wah responds to typical synth levels: sensitivity gain is corrected and
+  defaults favor a pronounced attack/release sweep.
+- Wah now uses a resonant low-pass with a useful dark-to-bright cutoff range,
+  retaining resonance at the open end. Ordinary track/global filters are unchanged.
+- DSP response tests verify frequency sweep, resonant emphasis and sensitivity;
+  all 182 inactive-effect golden renders remain unchanged.
+- Target image 581,276 bytes (288 free); static RAM and pool unchanged.
+
+## Previous integrated checkpoint — MerthSloop 2.6.0.11
 
 - ENV+FX: selected-synth auto-wah, free/beat-synced LFO or own-signal envelope follower.
 - SEL+FX: selected-synth auto-pan, waveform/depth and beat sync.

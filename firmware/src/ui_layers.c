@@ -559,7 +559,7 @@ static void layer_knobs(uint32_t layer)
         case LY_PAN: {
             live_mod_t *m = &live_mod[layer - LY_VIB];
             uint8_t *v = k == 0 ? &m->rate : k == 1 ? &m->depth : k == 2 ? &m->wave : &m->sync;
-            *v = (uint8_t)clamp(*v + s, 0, k == 2 ? (layer == LY_WAH ? 64 : 3) : k == 3 ? (layer == LY_WAH ? WAH_ENV : NDIV_STEP) : 127);
+            *v = (uint8_t)clamp(*v + s, 0, k == 2 ? (layer == LY_WAH ? 52 : 3) : k == 3 ? (layer == LY_WAH ? WAH_ENV : NDIV_STEP) : 127);
             if (k == 0 && m->sync != WAH_ENV) m->sync = 0; /* turning Hz deliberately returns to free rate */
             break;
         }
@@ -809,7 +809,7 @@ static void live_mod_draw(const track_t *t, uint32_t layer, uint16_t col)
         cv_rect(x - 2, live_mod_plot_y(&plot, m->phase, trem) - 2, 5, 5, C_WHITE);
         }
         if (layer == LY_WAH) {
-            fmt_int(text, clamp((int32_t)m->wave - 64 + (m->value * m->depth >> 16), -64, 0));
+            fmt_int(text, clamp((int32_t)m->wave - 64 + (m->value * m->depth >> 16), -64, -12));
             str_cpy(text + str_len(text), " cutoff", 8);
         } else if (layer == LY_PAN) {
             fmt_int(text, live_pan(t)); str_cpy(text + str_len(text), " pan", 5);
@@ -886,7 +886,7 @@ static void __attribute__((noinline)) layer_screen_draw(void)
         }
         val[3] = m->sync == WAH_ENV ? "envelope" : m->sync ? N_SDIV[(m->sync - 1u) % NDIV_STEP] : "off";
         ratio[0] = m->rate * 1000 / 127; ratio[1] = m->depth * 1000 / 127;
-        ratio[2] = m->wave * 1000 / (layer == LY_WAH ? 64 : 3);
+        ratio[2] = m->wave * 1000 / (layer == LY_WAH ? 52 : 3);
         ratio[3] = m->sync * 1000 / (layer == LY_WAH ? WAH_ENV : NDIV_STEP);
         break;
     }

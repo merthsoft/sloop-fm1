@@ -103,7 +103,7 @@ These are the implemented MerthSloop additions; the upstream engine, preset and 
 
 *Fresh renders from production firmware code in the host UI/audio harness.*
 
-- **Track auto-wah and auto-pan:** hold **ENV+FX** for wah or **SEL+FX** for pan on the selected synth. Wah uses a triangle LFO (free Hz or beat divisions) or follows the track’s own signal; pan offers waveform, depth and beat sync. **Hold the combo + tap HOME** to lock it until HOME/STOP/panic/track change. Keyboard playing and scale lights stay intact. These live effects leave saved parameters unchanged; see [controls](docs/firmware/AUTO-WAH-DESIGN.md).
+- **Track auto-wah and auto-pan:** hold **ENV+FX** for wah or **SEL+FX** for pan on the selected synth. Wah uses a resonant low-pass sweep with a triangle LFO (free Hz or beat divisions) or follows the track’s own signal; pan offers waveform, depth and beat sync. **Hold the combo + tap HOME** to lock it until HOME/STOP/panic/track change. Keyboard playing and scale lights stay intact. These live effects leave saved parameters unchanged; see [controls](docs/firmware/AUTO-WAH-DESIGN.md).
 
 
 | Track envelope wah | Track auto-pan |

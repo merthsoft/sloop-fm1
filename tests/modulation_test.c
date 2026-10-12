@@ -1,6 +1,18 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
 #define UI_PAGES_HARNESS_ONLY 1
 #include "ui_pages_test.c"
+/* Measure the actual filter response, rather than only checking knob arithmetic. */
+static double filter_energy(int cutoff, int resonance, int hz)
+{
+    djf_t f={0};tsvf_t c;int32_t b[CTL];uint32_t phase=0;
+    uint32_t inc=(uint32_t)(((uint64_t)hz<<32)/FS);double energy=0;
+    for(int block=0;block<600;block++) {
+        for(int i=0;i<CTL;i++){phase+=inc;b[i]=osc_sine(phase)/8;}
+        assert(djf_block_res(&f,cutoff,&c,resonance));tflt_run(&f,&c,b,CTL,0);
+        for(int i=0;i<CTL;i++){assert(b[i]>-200000&&b[i]<200000);if(block>=300)energy+=(double)b[i]*b[i];}
+    }
+    return energy;
+}
 int main(void)
 {
     panel=PANEL_DEFAULT;layers_init();host_tracks_init();palette_set(4);
@@ -146,7 +158,19 @@ int main(void)
     wah->on=1;wah->part=1;wah->sync=WAH_ENV;wah->rate=63;wah->wave=0;wah->depth=127;wah->value=0;
     int base=trk[1].p[P_TFLT],other=trk[0].p[P_TFLT];
     for(int i=0;i<100;i++)assert(live_wah_filter(&trk[1],loud,CTL)>=-64);
-    int open=wah->value;assert(open>30000&&live_wah_filter(&trk[1],loud,CTL)>-8);
+    /* Typical synth-level attacks must sweep audibly; sensitivity must also matter. */
+    int32_t normal[CTL];for(int i=0;i<CTL;i++)normal[i]=i&1?-4096:4096;
+    wah->wave=16;wah->depth=96;wah->rate=63;wah->value=0;
+    int closed=live_wah_filter(&trk[1],silence,CTL);
+    for(int i=0;i<100;i++)live_wah_filter(&trk[1],normal,CTL);
+    int opened=live_wah_filter(&trk[1],normal,CTL);assert(opened-closed>=20);
+    assert(filter_energy(opened,100,2000)>4*filter_energy(closed,100,2000));
+    assert(filter_energy(-40,100,CUTOFF_HZ[71])>3*filter_energy(-40,40,CUTOFF_HZ[71]));
+    wah->rate=0;wah->value=0;for(int i=0;i<100;i++)live_wah_filter(&trk[1],normal,CTL);
+    assert(live_wah_filter(&trk[1],normal,CTL)<opened-15);
+    wah->wave=0;wah->depth=127;wah->rate=63;wah->value=0;
+    for(int i=0;i<100;i++)live_wah_filter(&trk[1],loud,CTL);
+    int open=wah->value;assert(open>30000&&live_wah_filter(&trk[1],loud,CTL)==-12);
     assert(live_wah_filter(&trk[0],loud,CTL)==other&&wah->value>=open);
     for(int i=0;i<1000;i++)live_wah_filter(&trk[1],silence,CTL);
     assert(wah->value<200&&trk[1].p[P_TFLT]==base);
@@ -162,7 +186,7 @@ int main(void)
     mod_reset(NTRK);assert(!wah->on&&!pan->on&&live_pan(&trk[1])==63&&live_wah_filter(&trk[1],loud,CTL)==base);
     /* Knob/source bounds, cleanup and panel images use real frame/input paths. */
     song.sel=1;go_home();frame();press(B_ENV);press(B_FX);frames(12);
-    encs[panel.enc[EN_K3]]=200;encs[panel.enc[EN_K4]]=200;frame();assert(wah->wave==64&&wah->sync==WAH_ENV);
+    encs[panel.enc[EN_K3]]=200;encs[panel.enc[EN_K4]]=200;frame();assert(wah->wave==52&&wah->sync==WAH_ENV);
     wah->wave=24;wah->depth=96;wah->rate=63;trk[1].p[P_ROOT]=4;trk[1].p[P_SCALE]=2;
     fm1_in.notes=1u<<key_of_white(4);frames(12);ui.force=1;frame();ppm("auto-wah-envelope");fm1_in.notes=0;frame();tap(B_HOME);release(B_ENV);release(B_FX);
     panic_req=2;frame();assert(!wah->on&&ly_lock==LY_PLAY);

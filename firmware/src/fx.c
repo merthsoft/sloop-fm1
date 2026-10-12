@@ -355,7 +355,7 @@ typedef struct {
 static djf_t djf, tflt[NTRK];
 
 /* the knob v -> this block's coefficients in *c; 0 = bypassed (nothing to do) */
-static int djf_block(djf_t *f, int32_t v, tsvf_t *c)
+static int djf_block_res(djf_t *f, int32_t v, tsvf_t *c, int32_t resonance)
 {
     int32_t to;
     if (v < 0 && f->mode >= 0) {                        /* (switching side: from open) */
@@ -377,9 +377,11 @@ static int djf_block(djf_t *f, int32_t v, tsvf_t *c)
         f->mode = 0;                                    /* fully open again: off */
         return 0;
     }
-    tsvf_coef(c, f->cut, 40);
+    tsvf_coef(c, f->cut, resonance);
     return 1;
 }
+static int djf_block(djf_t *f, int32_t v, tsvf_t *c) { return djf_block_res(f, v, c, 40); }
+
 /* n samples of channel ch through the filter (x within +-140000) */
 static void djf_run(djf_t *f, const tsvf_t *c, int32_t *b, uint32_t n, uint32_t ch)
 {
@@ -688,7 +690,7 @@ static void mix_part_run(track_t *t, uint32_t n)
         {
             tsvf_t fc;                                  /* the track's FILTER (P_TFLT), after the SLICER */
             djf_t *f = &tflt[(uint32_t)(t - trk) % NTRK];
-            if (djf_block(f, filter, &fc))
+            if (djf_block_res(f, filter, &fc, live_mod[2].on && live_mod[2].part == (uint32_t)(t-trk) ? 100 : 40))
                 tflt_run(f, &fc, b, n, 0);
         }
         int32_t lvl0 = t->lvl ? t->lvl : lvl, dl = (lvl - lvl0) >> CTL_LOG2;   /* a new sound's trim: ramped */

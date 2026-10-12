@@ -20,8 +20,8 @@ offline. Device preferences and MIDI configuration are retained. See
 Branding is **MerthSloop**, with **MerthSloop Mobile** for Android; firmware
 version policy is documented in [BRANDING](../../docs/BRANDING.md). The branch is
 `merthsloop`. Independent PR 111 RAM reductions are integrated; dual-core and
-low-memory relocation are deferred. Track auto-wah (LFO/signal follower) and auto-pan
-are implemented. See [PR assessment](../../docs/firmware/PR-111-ASSESSMENT.md) and
+low-memory relocation are deferred. Track auto-wah (resonant LFO/signal follower, calibrated for typical synth levels)
+and auto-pan are implemented. See [PR assessment](../../docs/firmware/PR-111-ASSESSMENT.md) and
 [wah/pan controls](../../docs/firmware/AUTO-WAH-DESIGN.md).
 
 Upstream main/origin main are reconciled through `8fad1a1`: five web commits add
@@ -43,15 +43,15 @@ and additional chord qualities remain proposals, not implemented features.
 
 ## Latest firmware
 
-**MerthSloop 2.6.0.11 is integrated and built.** Native ADD/REPLACE, transient-safe
+**MerthSloop 2.6.0.12 is integrated and built.** Native ADD/REPLACE, transient-safe
 Note Trails with high-contrast drums and gate-aware held-note strokes, and preserved track effects with both-OCT
 reset on normal FX pages are implemented. Upstream audio, inserts, sync,
 MIDI, texture, drum mutes and note-length features coexist with the fork libraries,
 rhythms, editing, scale lights and performance modulation. Upstream's 27 physical
 punch effects replace the previous black-key FX modifiers. The installer is
-`http://127.0.0.1:8816/webapp/installer/`.
+`http://127.0.0.1:8817/webapp/installer/`.
 
-Image 581,420 bytes (144 free); static RAM 82,100/98,304 (16,204 free);
+Image 581,276 bytes (288 free); static RAM 82,100/98,304 (16,204 free);
 pool 332,876/344,064 (11,188 free). Lossless factory
 sound sharing, text startup, spare driver-RAM scratch and guarded hot-helper
 inlining make the combined build fit. Functional/audio/companion checks pass;
