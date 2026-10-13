@@ -79,6 +79,16 @@ try {
     int writes26=transport.NativeWrites;
     try {await HardwarePatterns.Read(client,info26 with { EngineParameterStart=53 },null,CancellationToken.None);throw new Exception("mixed layout accepted");}catch(IOException){checks++;}
     Check(writes26==transport.NativeWrites,"unsupported mixed parameter layout fails before writes");
+    var midiPart=new MidiFilePart("Import",0,[new(0,480,60,100),new(0,480,64,90),new(0,480,67,80)]);
+    var midiFile=new MidiFileDocument(480,120,[midiPart],[]);
+    var midiPlan=MidiFileHardware.Convert(midiFile,midiPart,native26,2);
+    var midiProposal=EditProposal.Between(native26,midiPlan.Pattern,new("MIDI import","test"));
+    var midiApplied=await HardwarePatterns.Apply(client,info26,midiProposal,CancellationToken.None);
+    Check(((SynthStep)midiApplied.Tracks[2].Steps[0]).Count==3&&((SynthStep)midiApplied.Tracks[2].Steps[0]).Slots.Take(3).Select(n=>n.Pitch).SequenceEqual(new[]{60,64,67}),"MIDI conversion survives native wire write and verified readback");
+    Check(new[]{0,1,3}.All(t=>HardwareSteps.ContentEquals(native26.Tracks[t],midiApplied.Tracks[t])),"MIDI transfer leaves other hardware tracks intact");
+    int midiWrites=transport.NativeWrites;
+    try{await HardwarePatterns.Apply(client,info26,midiProposal,CancellationToken.None);throw new Exception("stale MIDI import accepted");}catch(IOException){checks++;}
+    Check(transport.NativeWrites==midiWrites,"stale MIDI transfer rejects before any writes");
     Check(SlotImages.Read(transport.Slot).Data.SequenceEqual(kit.Artifact.Data),"restore reader validates and retains ADPCM");
     string[] majorDegrees=["I","ii","iii","IV","V","vi","vii°","I ↑"];
     string[] minorDegrees=["i","ii°","III","iv","v","VI","VII","i ↑"];

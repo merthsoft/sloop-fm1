@@ -1,3 +1,20 @@
+## MIDI file import — October 12
+
+- `build/midi-import-tests.log`: 1,120 checks pass, including every-prefix truncation,
+  running status, repeated-pitch ownership, malformed/fuzz input, ignored MIDI events,
+  PPQ rescaling, undo, all nine native DIVs, low-PPQ audition, chord truncation, tie
+  shortening, GM drum mapping and unchanged dormant/other-track content.
+- `build/midi-import-integration.log`: 138 workstation integration checks plus 79
+  kit mappings pass. New checks apply imported chords through the native protocol,
+  verify readback and other tracks, and reject stale imports before writing.
+- Android APK compilation succeeds with zero warnings/errors. Preview-to-transfer
+  waits for note cleanup; workspace/source changes, dismissed reviews and reconnected
+  device sessions invalidate pending transfer actions.
+- ADB reports no connected phone. File picker, dialog layout and physical FM1 audition/
+  transfer are still pending live validation. Firmware and its installer are unchanged.
+
+See [MIDI import](MIDI-IMPORT.md) for supported formats and conversion behavior.
+
 ## Sampler, song library and native performance checkpoint — October 12
 
 Upstream five-commit web follow-up through `8fad1a1`: merged protocol/package/editor

@@ -3,6 +3,15 @@
 This is the current status index. Component docs contain both implemented checkpoints and
 future design contracts; dated release/handoff/test results remain historical evidence.
 
+## MIDI file import
+
+Sequence includes MIDI file import: bounded format 0/1 PPQ parsing, source track/channel
+selection, destination mapping, audition and undoable app-channel replacement. Physical
+FM1 transfer has a separate conversion review at the destination's current DIV/length,
+loss counts, converted audition, explicit replacement and fresh-baseline/readback checks.
+Other hardware tracks, dormant steps, sound parameters and locks remain intact. No
+phone/device validation is claimed for this feature yet. See [MIDI import](MIDI-IMPORT.md).
+
 ## Quick sampler and FM1 song library
 
 Sample now has Playable sound and Chopped loop workflows: recording/import, drag

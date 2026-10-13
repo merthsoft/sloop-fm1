@@ -1,0 +1,36 @@
+name: Publish MerthSloop installer
+
+on:
+  push:
+    branches: [merthsloop]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.ref == 'refs/heads/merthsloop'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v6
+      - name: Test deployment checks
+        run: python3 tests/pages_deployment_test.py
+      - name: Verify packaged installer matches firmware version
+        run: python3 tools/check_pages.py
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: docs
+      - name: Publish
+        id: deployment
+        uses: actions/deploy-pages@v4

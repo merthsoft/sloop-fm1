@@ -42,6 +42,7 @@ public sealed partial class MainActivity
     }
     private async Task FileResultAsync(int requestCode,Result resultCode,Intent? data)
     {
+        if(requestCode==ImportMidiRequest){await ImportMidiFileResult(resultCode,data);return;}
         if(requestCode==ImportFm1SongRequest){await ImportFm1SongAsync(resultCode,data);return;}
         if (await TryHandleCompositionFileResultAsync(requestCode, resultCode, data)) return;
         if(requestCode==ExportFileRequest) {

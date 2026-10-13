@@ -2,6 +2,10 @@
 
 Current delivery: [STATUS.md](STATUS.md). Build and test evidence: [VERIFICATION.md](VERIFICATION.md).
 
+MIDI-file import is implemented with source-part/destination selection, audition,
+undoable local import and separately reviewed native transfer. See [MIDI import](MIDI-IMPORT.md)
+for format support, conversion limits and validation boundaries.
+
 Latest implementation checkpoint (2026-10-08): App patterns now have a touch piano roll
 with creation, single/multi selection, group movement, duration resizing, deletion,
 quantization, zoom/pan, protected notes and existing undo/redo. The gesture/domain runner passes 71 checks.

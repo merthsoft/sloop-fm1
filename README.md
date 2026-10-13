@@ -164,9 +164,13 @@ See the [complete 14-style gallery](docs/firmware/VISUALIZERS.md) for the retain
 
 To install **this fork**, build its firmware and local browser installer with [`build-sloop.ps1`](build-sloop.ps1); see [building](#building-and-tests) for prerequisites. The upstream browser installer linked above installs upstream SLOOP. See the [guide](GUIDE.md), [musical starters](docs/firmware/SEQUENCE-STARTERS-DESIGN.md), [drum grooves](docs/firmware/DRUM-GROOVES-DESIGN.md) and [rhythm shaping](docs/firmware/RHYTHM-SHAPING-DESIGN.md) for the controls and limits.
 
+Automatic GitHub Pages hosting is configured for pushes to `merthsloop`; enable GitHub Actions as the repository's Pages source to activate it. The workflow publishes the built installer/editor in `docs`, checking the firmware version and package hash first. See [Pages deployment](docs/firmware/PAGES-DEPLOYMENT.md).
+
 ## MerthSloop Mobile for Android
 
 Bring the FM-1 and your phone: **MerthSloop Mobile** is a C#/.NET Android companion for touch performance, sequencing, sound editing, sampling and session management over USB. Connect using a USB data cable and a phone that supports USB host mode. SLOOP mode routes performance by selected synth; **generic MIDI mode** also drives other MIDI receivers.
+
+**Import MIDI files:** in Sequence, choose **Import MIDI file…**, select a source part and destination track, then audition it. Import into the editable app pattern with undo, or review the FM1 conversion and explicitly replace its track with verified readback. Hardware conversion uses the track's current DIV and active length and reports quantization, truncated notes and chord limits before sending. Format 0/1 musical-time MIDI is supported; tempo changes, controllers and patch changes are not imported.
 
 | Perform | FM6 sound editing |
 | --- | --- |

@@ -1,4 +1,5 @@
 <Solution>
+  <Project Path="Sloop.MidiFile.Tests/Sloop.MidiFile.Tests.csproj" />
   <Project Path="Sloop.Core/Sloop.Core.csproj" />
   <Project Path="Sloop.Protocol.UsbPlayback.Tests/Sloop.Protocol.UsbPlayback.Tests.csproj" />
   <Project Path="Sloop.Protocol/Sloop.Protocol.csproj" />

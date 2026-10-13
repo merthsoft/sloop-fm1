@@ -31,7 +31,7 @@ import sys
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-ONLINE = "https://isod89.github.io/sloop-fm1/"                 # (the offline editor's links)
+ONLINE = "https://merthsoft.github.io/sloop-fm1/"               # (the offline editor's links)
 
 
 def offline_editor(html):
