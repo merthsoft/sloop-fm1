@@ -30,7 +30,7 @@ static const panel_t PANEL_DEFAULT = {
     {1, 1, 1, 1, 1, 1, 1},
 };
 
-static void panel_init(void)                     /* also after a flash load: ids are used as array indexes and shifts */
+UI_SMALL static void panel_init(void)                     /* also after a flash load: ids are used as array indexes and shifts */
 {
     uint32_t i, ok = panel.magic == PANEL_MAGIC;
     for (i = 0; ok && i < NB; i++)
@@ -41,7 +41,7 @@ static void panel_init(void)                     /* also after a flash load: ids
         panel = PANEL_DEFAULT;
 }
 
-static uint32_t panel_btn_of(uint32_t matrix_id)        /* label of a matrix button, NB if none */
+UI_SMALL static uint32_t panel_btn_of(uint32_t matrix_id)        /* label of a matrix button, NB if none */
 {
     uint32_t b;
     for (b = 0; b < NB; b++)
@@ -50,14 +50,14 @@ static uint32_t panel_btn_of(uint32_t matrix_id)        /* label of a matrix but
     return NB;
 }
 
-static void panel_led(uint32_t label, int on) { fm1_led_key(panel.btn[label], on); }
+UI_SMALL static void panel_led(uint32_t label, int on) { fm1_led_key(panel.btn[label], on); }
 
 /* steps of a role, + = clockwise */
 static uint32_t ui_input_ms;                    /* the last button, key or knob turn (ui_input.c; autosave) */
 /* the knobs (roles, bit per EN_*) not to be read again in this UI pass (ui_input: a layer took them, #102 of
  * Felucca): panel_enc returns 0 and leaves their detents for the next pass */
 static uint32_t enc_hold;
-static int32_t panel_enc(uint32_t role)
+UI_SMALL static int32_t panel_enc(uint32_t role)
 {
     int32_t s;
     if ((enc_hold >> role) & 1u)
@@ -79,57 +79,92 @@ enum { LIGHTS_OFF, LIGHTS_LOW, LIGHTS_MID, LIGHTS_HIGH, LIGHTS_N };
 enum { KEYS_OFF, KEYS_C, KEYS_WHITE, KEYS_ALL, KEYS_N };   /* (ALL: SLOOP 2.4; an older SLOOP reads it as OFF) */
 static uint8_t lights_lvl, lights_keys;
 static uint8_t lights_notes;                   /* 1: on a synth track the sounding notes light their keys */
-static uint8_t lights_scale;                   /* SEL + OCT+: persistent scale guide, settings bit 22 */
+static uint8_t lights_scale;                   /* SEL + OCT+: persistent scale guide, fork side record */
 static uint8_t lights_sync;                    /* GLO > SYSTEM > SYNC (G_SYNC), kept here: 0 INT, 1 USB, 2 TRS */
 static uint8_t lights_mout;                    /* GLO > SYSTEM > MIDI (G_MIDI): 1 = the sequencer goes to MIDI OUT too */
 static uint8_t lights_min;                     /* GLO > SYSTEM > IN (G_ROUTE): 0 NOTES, 1 CLOCK only, 2..17 (2.6) CH 1..16 only */
 /* 2.6: GLO > MIDI CH1 CH2 CH3, GLO > DRUMS > CH, GLO > MIDI > OTHER: settings of the FM-1 (kept with the MIDI LEARN map
  * after the SYN kits: project.c midi_part), mirrored in song.g (felucca_init) */
-#define MIDI_SET_DEF {1, 2, 3, 10, 0, 2}            /* CH1 CH2 CH3, drums, OTHER, (2.6) BEND */
-static uint8_t midi_set[6] = MIDI_SET_DEF;
+#define MIDI_SET_DEF {1, 2, 3, 10, 0, 2, 0, 0, 0, 0}   /* CH1 CH2 CH3, drums, OTHER, (2.6) BEND, (2.7) FX CH, DR MAP, REMOTE,
+                                                     * CLK OUT */
+static uint8_t midi_set[10] = MIDI_SET_DEF;
 static const uint16_t LIGHTS_NS[LIGHTS_N] = {0u, 500u, 1000u, 2000u};   /* the backlight pulse a frame (ns): a lit
                                                 * LED ~95 us, the glow (landmarks) 4 us (fm1_input.h) */
 static uint8_t usb_serial;                      /* menu USB SERIAL: 1 = the serial console presented (usb.c) */
+static uint8_t usb_rate;                        /* menu USB RATE (2.7 beta): 0 AUTO, 1 44.1, 2 48 kHz (usb.c usb_rate_mode, at the next start) */
+static uint8_t cpu1_off;                        /* menu 2ND CORE: 1 = OFF, every render unit on core 0 (cpu1.h cpu1_units);
+                                                 * 2.7: ON by default (bit 26 set = OFF); core 1 starts at power-on only when ON */
+static uint8_t vis_style;                       /* the visualiser's style, 0..11 (ui_vis.c) */
+static uint8_t knob_accel_off;                  /* menu KNOB ACCEL (2.7): 1 = OFF, one value a detent however fast (ui_input.c accel) */
 #define VIS_STYLE_COUNT 14u
-/* Preserve the original persisted IDs for retained styles. Removed IDs fall back to scope. */
-static const uint8_t VIS_STYLE_IDS[VIS_STYLE_COUNT] = {0,1,2,3,4,5,9,10,13,14,15,18,19,20};
-static uint8_t vis_style;
-static uint32_t lights_word(void)
+/* Retained upstream styles keep their canonical IDs; fork-only styles live in the side record. */
+static uint8_t vis_upstream_id(void) { return vis_style < 6u ? vis_style : vis_style == 6u ? 9u : vis_style == 7u ? 10u : 0u; }
+UI_SMALL static uint32_t fork_settings_word(void)
+{
+    return (uint32_t)(lights_scale != 0u) | (uint32_t)(midi_scale != 0u) << 1 |
+           (uint32_t)(swing_eighth != 0u) << 2 | (uint32_t)(vis_style % VIS_STYLE_COUNT) << 8;
+}
+UI_SMALL static void fork_settings_from_word(uint32_t w)
+{
+    lights_scale = w & 1u;
+    midi_scale = (w >> 1) & 1u;
+    swing_eighth = (w >> 2) & 1u;
+    vis_style = (uint8_t)(((w >> 8) & 255u) < VIS_STYLE_COUNT ? (w >> 8) & 255u : 0u);
+}
+UI_SMALL static uint32_t lights_word(void)
 {
     return (uint32_t)lights_lvl | (uint32_t)lights_keys << 4 | (uint32_t)(lights_notes != 0u) << 8 |
            (uint32_t)(rec_tempo != 0u) << 9 | (uint32_t)(rec_count != 0u) << 10 | (uint32_t)(usb_full != 0u) << 11 |
            (uint32_t)(lights_sync % 3u) << 12 | (uint32_t)(lights_mout != 0u) << 14 | (uint32_t)(lights_min == 1u) << 15 |
-            (uint32_t)(usb_serial != 0u) << 16 | (uint32_t)VIS_STYLE_IDS[vis_style % VIS_STYLE_COUNT] << 17 |
-            (uint32_t)(lights_scale != 0u) << 22 | (uint32_t)(midi_scale != 0u) << 23 | (uint32_t)(swing_eighth != 0u) << 24 |
-            (uint32_t)(lights_min >= 2u && lights_min <= 17u ? lights_min - 1u : 0u) << 26 | 0x80000000u;
+           (uint32_t)(usb_serial != 0u) << 16 | (uint32_t)vis_upstream_id() << 17 |
+           (uint32_t)(lights_min >= 2u && lights_min <= 17u ? lights_min - 1u : 0u) << 21 |   /* 2.6: CH n (n 1..16; 0 none) */
+           (uint32_t)(cpu1_off != 0u) << 26 |          /* 2ND CORE OFF (2.7: ON by default; 2.6 took 21..25) */
+           (uint32_t)(knob_accel_off != 0u) << 27 |    /* KNOB ACCEL OFF (2.7; 0 = ON, as before 2.7) */
+           (uint32_t)(usb_rate % 3u) << 28 |           /* USB RATE (2.7 beta; 0 = AUTO, as before) */
+           (uint32_t)(theme_on != 0u) << 30 |
+           (uint32_t)(rec_quant_off != 0u) << 31;      /* REC screen QUANT OFF (2.7, seq.c; 0 = ON, as before) */           /* COLOR on your theme (2.7; gfx.c; an older SLOOP shows palette) */
 }
-static void lights_from_word(uint32_t w)
+UI_SMALL static void lights_from_word(uint32_t w)
 {
     lights_lvl = (uint8_t)((w & 15u) < LIGHTS_N ? (w & 15u) : LIGHTS_OFF);
     lights_keys = (uint8_t)(((w >> 4) & 15u) < KEYS_N ? ((w >> 4) & 15u) : KEYS_OFF);
     lights_notes = (uint8_t)((w >> 8) & 1u);
-    lights_scale = (uint8_t)((w >> 22) & 1u);
-    midi_scale = (uint8_t)((w >> 23) & 1u);
-    swing_eighth = (uint8_t)((w >> 24) & 1u);
+    lights_scale = midi_scale = swing_eighth = 0;
     rec_tempo = (uint8_t)((w >> 9) & 1u);       /* the REC screen: MODE, START (seq.c) */
     rec_count = (uint8_t)((w >> 10) & 1u);
     usb_full = (uint8_t)((w >> 11) & 1u);       /* menu USB AUDIO (fx.c) */
     lights_sync = (uint8_t)(((w >> 12) & 3u) % 3u);
     lights_mout = (uint8_t)((w >> 14) & 1u);    /* GLO > SYSTEM > MIDI (seq.c) */
     lights_min = (uint8_t)((w >> 15) & 1u);     /* GLO > SYSTEM > IN (seq.c) */
-    /* Unmarked words keep the fork's old layout; upstream 2.6 bits21..25 are ambiguous with it. */
-    if ((w & 0x80000000u) && ((w >> 26) & 31u) >= 1u && ((w >> 26) & 31u) <= 16u)
-        lights_min = (uint8_t)(((w >> 26) & 31u) + 1u);   /* 2.6: CH n (an older SLOOP reads NOTES) */
+    if (((w >> 21) & 31u) >= 1u && ((w >> 21) & 31u) <= 16u)
+        lights_min = (uint8_t)(((w >> 21) & 31u) + 1u);
     usb_serial = (uint8_t)((w >> 16) & 1u);
-    { uint32_t stored = (w >> 17) & 31u, i;
-      vis_style = 0;
-      for (i = 0; i < VIS_STYLE_COUNT; i++) if (VIS_STYLE_IDS[i] == stored) { vis_style = (uint8_t)i; break; } }
+    { uint32_t v = (w >> 17) & 15u;
+      vis_style = (uint8_t)(v < 6u ? v : v == 9u ? 6u : v == 10u ? 7u : 0u); }
+    cpu1_off = (uint8_t)((w >> 26) & 1u);       /* menu 2ND CORE (ui_menu.c); 2.7: bit 26 set = OFF, so any older settings
+                                                 * word (2.6 and before: 0) reads as ON, the two-core SLOOP (an early 2.7 beta
+                                                 * set it for ON: that FM-1 reads OFF once) */
+    cpu1_units = cpu1_off ? 0 : -1;
+    knob_accel_off = (uint8_t)((w >> 27) & 1u);  /* menu KNOB ACCEL (2.7): an older word reads ON */
+    usb_rate = (uint8_t)(((w >> 28) & 3u) % 3u); /* menu USB RATE (2.7 beta): an older word reads AUTO */
+    theme_on = (uint8_t)((w >> 30) & 1u);
+    rec_quant_off = (uint8_t)((w >> 31) & 1u);  /* REC screen QUANT (2.7): an older word reads ON */        /* menu COLOR on your theme (2.7, gfx.c): shown once it is there */
 }
 
 static void settings_save(void);              /* project.c: flash copy (FELUCCA_FLASH) */
+/* Importing canonical settings (including a phone's song-order-only write)
+ * retains device-local fork preferences. An explicitly changed upstream visualizer wins. */
+UI_SMALL static void settings_restore_word(uint32_t w)
+{
+    uint32_t previous = lights_word(), forked = fork_settings_word();
+    lights_from_word(w);
+    if ((w ^ previous) & (15u << 17))
+        forked = (forked & 7u) | (uint32_t)vis_style << 8;
+    fork_settings_from_word(forked);
+}
 static uint8_t settings_later;                 /* changed while playing: saved once stopped (project.c) */
 
-static void settings_init(void)
+UI_SMALL static void settings_init(void)
 {
     if (settings.magic != SETTINGS_MAGIC || settings.palette >= NPALETTES) {
         settings.magic = SETTINGS_MAGIC;

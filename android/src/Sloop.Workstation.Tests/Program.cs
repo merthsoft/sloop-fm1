@@ -19,7 +19,10 @@ try {
     Check(kit.Artifact.Fit.DataBytes==SamplePreparation.Measure(doc).DataBytes,"preflight fit matches final bytes including odd zones");
     Check(File.ReadAllBytes(wavePath).SequenceEqual(original),"source PCM untouched by conversion");
     var loopKit=SamplePreparation.Build(doc,new("LOOP",SampleMapping.Chops,60,MonoChoice.FirstChannel,1,true));
-    Check(loopKit.Artifact.Header[59]==1&&System.Buffers.Binary.BinaryPrimitives.ReadUInt32LittleEndian(loopKit.Artifact.Header.AsSpan(44))==734,"full-slice loop maps to inclusive wire end");
+    Check(loopKit.Artifact.Header[59]==2&&System.Buffers.Binary.BinaryPrimitives.ReadUInt32LittleEndian(loopKit.Artifact.Header.AsSpan(44))==734,"upstream held-loop mode with inclusive wire end");
+    Check(SlotImages.Read(loopKit.Artifact.Image).Header[59]==2,"slot import preserves upstream held-loop metadata");
+    var invalidLoop=loopKit.Artifact.Image.ToArray(); invalidLoop[59]=3;
+    try { SlotImages.Read(invalidLoop); throw new Exception("unknown loop mode accepted"); } catch (FormatException) { checks++; }
     var previewPath=Path.Combine(directory,"preview.wav"); SamplePreparation.WritePreview(previewPath,kit.Artifact.Preview[0].DecodedPcm);
     var preview=PcmWave.Open(previewPath);Check(preview.SampleRate==22050&&preview.Channels==1&&preview.Frames==735,"ADPCM preview WAV format");
     using(var cts=new CancellationTokenSource()) {cts.Cancel();try{SamplePreparation.Build(doc,new("KIT",SampleMapping.Chops,60,MonoChoice.FirstChannel,1),cts.Token);throw new Exception("cancel ignored");}catch(OperationCanceledException){checks++;}}
@@ -57,6 +60,10 @@ try {
     Check(transport.Selected==0&&native.Tracks.Length==4,"native read restores selection and includes every track");
     Check(((SynthStep)native.Tracks[0].Steps[0]).Slots[3].Pitch==99&&((SynthStep)native.Tracks[0].Steps[0]).Slots[3].Ratchet==4,"native read preserves inactive slot high bits");
     Check(((DrumStep)native.Tracks[3].Steps[0]).Lanes[15].On&&((DrumStep)native.Tracks[3].Steps[0]).Lanes[15].Level==HitLevel.Hard,"native read preserves drum lane 16");
+    var continuationStep=(SynthStep)native.Tracks[0].Steps[0] with { Flags=StepFlags.Accent|StepFlags.Slide|StepFlags.Continue1|StepFlags.Continue2|StepFlags.Continue3|StepFlags.Continue4 };
+    var continuationBytes=HardwareSteps.Encode(continuationStep);
+    Check(continuationBytes[6]==123 && HardwareSteps.DecodeSynth(continuationBytes,continuationStep,continuationStep.Micro,continuationStep.Fill).Flags==continuationStep.Flags,"upstream bits 3..6 survive native snapshots and edits");
+    continuationBytes[6]=4;try{HardwareSteps.DecodeSynth(continuationBytes,continuationStep,continuationStep.Micro,continuationStep.Fill);throw new Exception("reserved preset bit accepted");}catch(FormatException){checks++;}
     var nativePath=Path.Combine(directory,"native");WorkspaceFiles.SaveHardware(nativePath,native);var nativeRestored=WorkspaceFiles.LoadHardware(nativePath);
     Check(native.Tracks.Zip(nativeRestored.Tracks).All(pair=>HardwareSteps.ContentEquals(pair.First,pair.Second))&&nativeRestored.Tracks[0].Steps[0].Id==native.Tracks[0].Steps[0].Id,"native durable snapshot retains all fields and identities");
     var proposal=HardwareEditor.Propose(native,new(native.Tracks[0].Id,new(new(0),new(1))),HardwareEdit.Transpose(1));

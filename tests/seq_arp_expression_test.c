@@ -44,11 +44,14 @@ int main(void)
     s.flags=SF_ACCENT; seq_step(&trk[0],&s,BEAT_U/4,0);
     seq_step(&trk[0],&tie,BEAT_U/4,0); assert(velocity_at(64)==step_vel(&s,1));
     /* Every selector carries the velocity of the selected expanded tone. */
-    for(unsigned mode=ARP_UP;mode<=ARP_WALK;mode++) {
+    for(unsigned mode=ARP_UP;mode<ARP_COUNT;mode++) {
+        if(mode==ARP_CHORD||mode==ARP_PULSE)continue;
         trk[0].p[P_AMODE]=mode; trk[0].arp_idx=0xffffffffu;
         for(unsigned hit=0;hit<70;hit++) {
             uint32_t vel=0, note=arp_next_velocity(&trk[0],&vel);
-            assert(vel==velocity_at(note));
+            unsigned expected=velocity_at(note);
+            if(mode==ARP_UP8 && !expected)expected=velocity_at(note-24u);
+            assert(vel==expected);
         }
     }
     /* Production pulse audio and generated MIDI use the same expression. */

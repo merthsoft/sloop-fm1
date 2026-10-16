@@ -1,3 +1,37 @@
+# Integrated build measurements
+
+MerthSloop 2.7.1.19 fits upstream dual-core/features and the fork workflows in
+559,992 image bytes: 21,572 flash bytes free. Static RAM is 74,888/98,304,
+low RAM 22,772 bytes and pool 333,308/344,064. Main-loop histories/undo use 8,800
+bytes inside the explicitly zeroed RAM region, disjoint from core 1 code/stacks.
+
+Factory IMA ADPCM remains byte-identical. A static Huffman tree packs independent
+128-byte blocks; ROM offsets, fast decode table and per-decoder caches support
+random seeks without a shared mutable cache. Per-grain caches prevent unrelated
+grains from evicting each other's blocks. Uploaded samples bypass this layer and
+retain upstream XIP layout and loop semantics. The generated header includes a
+raw branch for verification (`SMP_ROM_PACKED=0`).
+
+Raw factory bytes 303,054 → packed payload 259,930 plus offsets 7,104, fast table 512
+and tree 1,020 = 268,566 bytes. Comparing complete builds with packing off/on gives
+593,736 → 559,992 bytes: **33,744 bytes net flash saved**, including decoder code
+and compiler layout changes. The raw build exceeds the unchanged flash limit by
+12,172 bytes; it is only an analysis build and is never packaged for installation.
+
+Every byte matches forward/reverse and 100,000 random reads; all 182 audio renders
+match the raw build. Split-render tests include SAMPLE/GRAIN sharing factory
+material across threads, seven scenes and eleven splits, delayed/lost core jobs.
+Packing adds cache-hit checks and block decoding on misses; it has a real CPU/RAM
+cost. Host timing is indicative only; target load and worst-case audio still need
+hardware audition. Per-sample math helpers remain explicitly inlined. The static
+budget recognizes cache-miss calls and SLICER's per-step timing call; USB playback
+code is unchanged, although code layout changes its nested-loop cost heuristic.
+
+Cold UI/protocol functions use upstream size annotations with explicit function
+boundaries. The previous optimization checkpoints follow as historical evidence.
+
+---
+
 # Firmware optimization
 
 ## Upstream integration

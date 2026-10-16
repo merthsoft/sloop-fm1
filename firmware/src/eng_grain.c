@@ -72,6 +72,7 @@ static const int16_t GR_NORM[GR_NG + 1] = {32767, 32767, 23170, 18918, 16384, 14
 
 typedef struct {
     const smp_zone_t *z;
+    smp_cache_t sample_cache;
     uint32_t pos;                /* forward: the next sample to decode; reverse: the index of a */
     int32_t frac;                /* Q16 between a and b */
     uint32_t step;               /* Q16 source samples per output sample */
@@ -87,6 +88,7 @@ typedef struct {
 } gr_grain_t;
 
 typedef struct {
+    smp_cache_t sample_cache;
     gr_grain_t g[GR_NG];
     int16_t rb[GR_NG][GR_RB];    /* reverse windows */
     int16_t ipred[GR_NIDX];      /* seek index: the state before sample k * GR_SEG of a zone */
@@ -112,9 +114,9 @@ DSP_INLINE uint32_t gr_rnd(gr_part_t *P) { return noise32(&P->rng); }
 DSP_INLINE uint32_t gr_scale(uint32_t n, uint32_t f16) { return (n >> 16) * f16 + (((n & 0xFFFFu) * f16) >> 16); }
 
 /* one IMA ADPCM sample of zone z at index pos */
-DSP_INLINE int32_t gr_dec(const smp_zone_t *z, uint32_t pos, int32_t *pred, int32_t *idx)
+DSP_INLINE int32_t gr_dec(smp_cache_t *cache, const smp_zone_t *z, uint32_t pos, int32_t *pred, int32_t *idx)
 {
-    uint32_t b = SMP_DATA[z->off + (pos >> 1)], code = (pos & 1u) ? (b >> 4) : (b & 15u);
+    uint32_t b = smp_rom_byte(cache, z->off + (pos >> 1)), code = (pos & 1u) ? (b >> 4) : (b & 15u);
     int32_t step = IMA_STEP[*idx], vd = step >> 3;
     if (code & 4u)
         vd += step;
@@ -187,30 +189,30 @@ static void gr_build(gr_part_t *P, const track_t *t)
     idx = P->iidx[e];
     pos = (k - 1u) << GR_SEG_LOG2;
     for (i = 0; i < GR_SEG; i++)
-        gr_dec(z, pos + i, &pred, &idx);
+        gr_dec(&P->sample_cache, z, pos + i, &pred, &idx);
     P->ipred[e + 1u] = (int16_t)pred;
     P->iidx[e + 1u] = (uint8_t)idx;
     P->zdone[zl] = (uint16_t)(k + 1u);
 }
 
 /* the decoder at sample p of zone zl (p's entry must be built) */
-static void gr_seek(const gr_part_t *P, const smp_zone_t *z, uint32_t zl, uint32_t p, int32_t *pred, int32_t *idx)
+static void gr_seek(gr_part_t *P, const smp_zone_t *z, uint32_t zl, uint32_t p, int32_t *pred, int32_t *idx)
 {
     uint32_t e = P->zbase[zl] + (p >> GR_SEG_LOG2), q;
     *pred = P->ipred[e];
     *idx = P->iidx[e];
     for (q = p & ~(GR_SEG - 1u); q < p; q++)
-        gr_dec(z, q, pred, idx);
+        gr_dec(&P->sample_cache, z, q, pred, idx);
 }
 
 /* reverse: decode [hi - GR_RB + 1, hi] into the grain's window */
-static void gr_fill(const gr_part_t *P, gr_grain_t *g, int16_t *rb, uint32_t zl, uint32_t hi)
+static void gr_fill(gr_part_t *P, gr_grain_t *g, int16_t *rb, uint32_t zl, uint32_t hi)
 {
     uint32_t lo = hi >= GR_RB - 1u ? hi - (GR_RB - 1u) : 0u, q;
     int32_t pred, idx;
     gr_seek(P, g->z, zl, lo, &pred, &idx);
     for (q = lo; q <= hi; q++)
-        rb[q - lo] = (int16_t)gr_dec(g->z, q, &pred, &idx);
+        rb[q - lo] = (int16_t)gr_dec(&g->sample_cache, g->z, q, &pred, &idx);
     g->rlo = lo;
 }
 
@@ -277,8 +279,8 @@ static void gr_spawn(gr_part_t *P, const track_t *t, uint32_t vi, uint32_t zl, u
         g->b = rb[g->pos + 1u - g->rlo];
     } else {
         gr_seek(P, z, zl, (uint32_t)pos, &g->pred, &g->idx);
-        g->a = gr_dec(z, (uint32_t)pos, &g->pred, &g->idx);
-        g->b = gr_dec(z, (uint32_t)pos + 1u, &g->pred, &g->idx);
+        g->a = gr_dec(&g->sample_cache, z, (uint32_t)pos, &g->pred, &g->idx);
+        g->b = gr_dec(&g->sample_cache, z, (uint32_t)pos + 1u, &g->pred, &g->idx);
         g->pos = (uint32_t)pos + 2u;
     }
 }
@@ -312,7 +314,7 @@ static int gr_run(gr_part_t *P, gr_grain_t *g, int32_t *acc, uint32_t n)
             while (frac >= 65536) {
                 frac -= 65536;
                 a = b;
-                b = pos < z->n ? gr_dec(z, pos++, &pred, &idx) : a;
+                b = pos < z->n ? gr_dec(&g->sample_cache, z, pos++, &pred, &idx) : a;
             }
         }
         g->pred = pred;

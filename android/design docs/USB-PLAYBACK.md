@@ -42,7 +42,7 @@ Two-minute host simulations at 44,117.6, 43,900 and 44,300 codec Hz pass with si
 capture and MIDI, including 256-frame render bursts. Target CPU, latency and resampler
 fidelity remain measurement gates.
 
-Negotiated return gain/mute and diagnostics now use editor command 75 on INFO
+Negotiated return gain/mute and diagnostics now use editor command 88 on INFO
 protocol 12. Query suboperation 0 returns schema 1 and feature flags; older INFO
 versions are not probed. Gain Q12 0..4096 scales the existing -6 dB monitor;
 mute keeps the stored gain and fades the effective level to zero in 256 frames.
@@ -104,7 +104,7 @@ was flashed. The remaining physical and integration acceptance checklist follows
 
 Reference: [Android USB audio](https://source.android.com/docs/core/audio/usb).
 
-## Negotiated command 75, schema 1 (host validated)
+## Negotiated command 88, schema 1 (host validated)
 
 All payload bytes are 7-bit. Requests: `[0]` capabilities, `[1]` control read,
 `[1,gainLo,gainHi,mute]` control write, `[2]` diagnostic snapshot, `[3]` counter

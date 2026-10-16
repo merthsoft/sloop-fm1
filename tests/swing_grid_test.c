@@ -121,9 +121,10 @@ static void display_and_settings(void)
     seq_stop();swing_eighth=0;uint32_t original=lights_word();
     ui.menu=1;ui.menu_sel=MI_SWING;encs[panel.enc[EN_K1]]=1;frame();
     assert(swing_eighth && settings_later);
-    uint32_t saved=lights_word();assert((saved^original)==(1u<<24));
-    swing_eighth=0;lights_from_word(saved);assert(swing_eighth);
-    lights_from_word(saved&~(1u<<24));assert(!swing_eighth);
+    uint32_t saved=lights_word();assert(saved==original); /* canonical upstream settings bits remain untouched */
+    side_rec_t record;side_fill(&record);
+    swing_eighth=0;lights_from_word(saved);side_take(&record);assert(swing_eighth);
+    memset(&record,0xff,sizeof record);lights_from_word(saved);side_take(&record);assert(!swing_eighth);
     encs[panel.enc[EN_K1]]=1;frame();ui.force=1;frame();outdir="build/host";ppm("swing-grid-eighth");
     ui.menu=0;studio_open(SC_TRK);song.g[G_SWING]=0;
     encs[panel.enc[EN_K1]]=100;frame();assert(song.g[G_SWING]==100);

@@ -37,7 +37,7 @@ try {
     SamplePreparation.WritePreview(path,Enumerable.Range(0,11025).Select(i=>(short)(10000*Math.Sin(2*Math.PI*220*i/22050))).ToArray());
     var looping=SamplePreparation.Build(new SampleDocument(PcmWave.Open(path)),settings with {Loop=true},default,new[]{new ChopAudio(0,11025,1,-12)});
     Check(looping.Artifact.Fit.Samples==22050,"down tuning duration");
-    Check(BinaryPrimitives.ReadUInt32LittleEndian(looping.Artifact.Header.AsSpan(44))==22049&&looping.Artifact.Header[59]==1,"tuned full loop boundaries");
+    Check(BinaryPrimitives.ReadUInt32LittleEndian(looping.Artifact.Header.AsSpan(44))==22049&&looping.Artifact.Header[59]==2,"tuned full loop boundaries");
     SamplePreparation.WritePreview(path,looping.Artifact.Preview[0].DecodedPcm);
     Check(Math.Abs(SamplePitch.Estimate(PcmWave.Open(path),0,22050)!.Hertz-110)<1,"encoded down tuning pitch");
         using(var writer=new BinaryWriter(File.Create(path))) {

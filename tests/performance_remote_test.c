@@ -8,7 +8,7 @@ static uint32_t fm1_icfg(void) { return 0; }
 static void fm1_irq_off(void) {}
 static void fm1_icfg_set(uint32_t v) { (void)v; }
 static uint8_t reply[32]; static uint32_t length;
-static void ed_begin(uint32_t cmd) { assert(cmd == 73); length = 0; }
+static void ed_begin(uint32_t cmd) { assert(cmd == 86); length = 0; }
 static void ed_b(uint32_t v) { reply[length++] = v & 127; }
 static void ed_send(void) {}
 #include "../firmware/src/editor_performance.c"

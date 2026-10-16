@@ -1,6 +1,6 @@
 # Firmware musical starter protocol
 
-Command **76**, schema **1**, is additive to INFO protocol version **14**. Command 74 drum grooves and 75 USB playback retain their contracts. Frames use the existing FL SysEx envelope and seven-bit payload bytes. Clients must require protocol >=14 **and** validate command 76 capabilities; a version number alone is not discovery. Unsupported devices show an update message, with no fallback phone generator.
+Command **89**, schema **1**, is additive to INFO protocol version **15**. Command 87 drum grooves and 88 USB playback retain their contracts. Frames use the existing FL SysEx envelope and seven-bit payload bytes. Clients must require protocol >=15 **and** validate command 89 capabilities; a version number alone is not discovery. Unsupported devices show an update message, with no fallback phone generator.
 
 Requests/replies:
 

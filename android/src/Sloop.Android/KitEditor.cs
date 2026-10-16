@@ -28,7 +28,7 @@ public sealed partial class MainActivity
         Choice("Mapping",options.Mapping,v=>samples.SetKitOptions(samples.KitOptions with {Mapping=v}));
         Section("sample.encoding", "Audio settings · mono, gain & looping", () => {
         Choice("Mono conversion",options.Mono,v=>samples.SetKitOptions(samples.KitOptions with {Mono=v}));
-        var loop=new CheckBox(this){Text="Loop each complete slice",Checked=options.Loop,Enabled=!samples.Busy};loop.SetTextColor(global::Android.Graphics.Color.White);
+        var loop=new CheckBox(this){Text="Loop each slice while held",Checked=options.Loop,Enabled=!samples.Busy};loop.SetTextColor(global::Android.Graphics.Color.White);
         loop.CheckedChange+=(_,a)=>samples.SetKitOptions(samples.KitOptions with{Loop=a.IsChecked});content.AddView(loop);
         var gain=new EditText(this){Text=options.Gain.ToString(System.Globalization.CultureInfo.InvariantCulture),Hint="Linear gain (0–8)",InputType=global::Android.Text.InputTypes.ClassNumber|global::Android.Text.InputTypes.NumberFlagDecimal}; content.AddView(gain);
         var saveGain=new Button(this){Text="Save gain",Enabled=!samples.Busy};

@@ -66,7 +66,7 @@ public static class SlotBuilder
             Write32(header, p, (uint)offsets[index]); Write32(header, p + 4, (uint)z.Pcm.Length);
             Write32(header, p + 8, (uint)(z.LoopStart ?? 0)); Write32(header, p + 12, (uint)((z.LoopEndExclusive ?? z.Pcm.Length) - 1)); Write32(header, p + 16, (uint)((ulong)z.SampleRate*65536/44100));
             BinaryPrimitives.WriteInt16LittleEndian(header.AsSpan(p + 20), (short)(z.RootNote * 16)); BinaryPrimitives.WriteInt16LittleEndian(header.AsSpan(p + 22), states[index].Predictor);
-            header[p + 24] = states[index].Index; header[p + 25] = (byte)lo; header[p + 26] = (byte)hi; header[p + 27] = (byte)(z.LoopStart.HasValue ? 1 : 0);
+            header[p + 24] = states[index].Index; header[p + 25] = (byte)lo; header[p + 26] = (byte)hi; header[p + 27] = (byte)(z.LoopStart.HasValue ? 2 : 0);
             previews.Add(new(index, z.RootNote, lo, hi, offsets[index], ImaAdpcm.Decode(data.AsSpan(offsets[index]), z.Pcm.Length),z.SampleRate));
         }
         var image = new byte[DataOffset + data.Length]; header.CopyTo(image, 0); data.CopyTo(image, DataOffset);

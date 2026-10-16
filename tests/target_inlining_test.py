@@ -15,8 +15,10 @@ LOOP_CALL_CAPS = {
     "analog_render": 0, "digital_render": 0, "phase_render": 2,
     "lofi_render": 0, "sample_render": 1, "formant_render": 0,
     "trio_render": 2, "trio_pass": 0, "drawbar_render": 0,
-    "drawbar_block": 0, "grain_render": 1, "grain_block": 1,
-    "slicer_track": 0, "drums_mix": 1, "fm6_op_run": 0,
+    # The extra SAMPLE/GRAIN/drum call is a cache miss per 128 ADPCM bytes,
+    # not an outlined per-sample DSP helper. SLICER's swing call is per step.
+    "drawbar_block": 0, "grain_render": 2, "grain_block": 2,
+    "slicer_track": 1, "drums_mix": 2, "fm6_op_run": 0,
     "fm6_op_fb": 0, "fm6_render": 6, "uac_play_mix": 0,
     "fm1_alnk0_irq": 4,
     "phys_render": 0, "noise_render": 0, "px_modal_run": 0,

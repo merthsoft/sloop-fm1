@@ -48,17 +48,17 @@ int main(void)
       assert(sc_tx_request(begin,sizeof begin,reply)==24 && reply[1]==SC_UNSUPPORTED);
       assert(sc_tx.state==SC_IDLE && sc_tx.token==0 && sc_tx.received==0); }
     /* Full SysEx collection excludes F0/F7 and is consumed before legacy editor. */
-    { const uint8_t f[]={0xf0,0x7d,0x46,0x4c,72,0,0xf7}; unsigned i;
+    { const uint8_t f[]={0xf0,0x7d,0x46,0x4c,85,0,0xf7}; unsigned i;
       for(i=0;i<sizeof f;i++) sysex_byte(f[i]); }
     assert(sx_ready && sx_frame_len==5);
     assert(!ota_frame_get(&p,&n)); assert(!sx_ready && so_w==10);
     assert((sx_out_q[0]>>8 & 255)==0xf0);
-    assert((sx_out_q[1]>>16 & 255)==72);
+    assert((sx_out_q[1]>>16 & 255)==85);
 #else
     /* Production default omits staging RAM and leaves unknown commands to editor. */
-    { const uint8_t f[]={0xf0,0x7d,0x46,0x4c,72,0,0xf7}; unsigned i;
+    { const uint8_t f[]={0xf0,0x7d,0x46,0x4c,85,0,0xf7}; unsigned i;
       for(i=0;i<sizeof f;i++) sysex_byte(f[i]); }
-    assert(ota_frame_get(&p,&n) && n==5 && p[3]==72);
+    assert(ota_frame_get(&p,&n) && n==5 && p[3]==85);
     assert(so_w==0); ota_frame_done();
 #endif
     /* Legacy INFO remains available and passes through unchanged. */

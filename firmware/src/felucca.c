@@ -11,12 +11,14 @@
 #include "fm1_audio.h"
 #include "fm1_adc.h"
 #include "fm1_lcd_hw.h"
+#include "fm1_cpu1.h"      /* the second core (X0X): started in main.c, used by the render later */
 #include "felucca_tables.h"
 
 #include "libc.c"
 #include "lcd.c"
 #include "gfx.c"
 #include "core.h"
+#include "cpu1.h"           /* the second core's job API (defined in cpu1.c; the host tests have their own) */
 #include "engines.c"
 #include "drums.c"
 #include "params.c"
@@ -29,11 +31,15 @@
 #ifndef FELUCCA_OTA_DRYRUN
 #define FELUCCA_OTA_DRYRUN 0     /* 1 = stage, ask "success", then undo: no record, no reset */
 #endif
+#ifndef FELUCCA_CPU1
+#define FELUCCA_CPU1 1          /* the second core (cpu1.c); 0: one core, as SLOOP 2.5 */
+#endif
 #ifndef FELUCCA_ID
 #define FELUCCA_ID "FM-1_900"    /* package identity (build.py: the .fwsc marker string) */
 #endif
 #ifndef FELUCCA_CDC
-#define FELUCCA_CDC 1            /* USB CDC-ACM serial console */
+#define FELUCCA_CDC 0            /* USB CDC-ACM serial console, a developer's tool (menu USB SERIAL). 2.7: out of the FM-1
+                                  * build (its 6-8 KB: the flash is full); FELUCCA_CDC=1 builds it back */
 #endif
 #ifndef FELUCCA_UAC                      /* (before usb.c: it defaults to 0) */
 #define FELUCCA_UAC 1            /* USB audio input: the master output, 16-bit stereo 44.1 kHz (usb.c, after Felucca 1.0) */
@@ -52,6 +58,7 @@
 #include "arranger.c"
 #include "seq.c"
 #include "audio.c"
+#include "cpu1.c"           /* the second core: boot, self-test, state (ABOUT, console) */
 #include "panel.c"
 #include "ui.c"
 #include "ui_song.c"

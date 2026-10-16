@@ -1,26 +1,28 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
-/* Editor protocol v13 (SLOOP 2.5 Merthsoft.1): the DRUM SYNTH page, your synthesised kits SYN1..SYN4 (drum_synth.c dsu).
+/* Editor protocol v10: the DRUM SYNTH page, your synthesised kits SYN1..SYN4 (drum_synth.c dsu).
  * A sound travels as its 22 dsnd_t bytes (pack7), in the struct's order. The editor changes the kits in RAM
  * (heard at once), STORE writes them to flash with the settings (only while the song is stopped: rc 3).
- *   80 DSYN_LIST  -> factory count, user count, stored (0: an edit not stored yet), the factory names,
+ *   72 DSYN_LIST  -> factory count, user count, stored (0: an edit not stored yet), the factory names,
  *                    then per user kit: its name, the factory kit it started from
- *   81 DSYN_GET   which (0.. a factory kit, 64 + k: SYNk+1) -> which, rc, name, pack7(crush, src, 16 x 22)
- *   82 DSYN_PUT   k, part, pack7 data -> k, part, rc. part 0..15: a sound (22 bytes); 16: name (8) + crush +
+ *   73 DSYN_GET   which (0.. a factory kit, 64 + k: SYNk+1) -> which, rc, name, pack7(crush, src, 16 x 22)
+ *   74 DSYN_PUT   k, part, pack7 data -> k, part, rc. part 0..15: a sound (22 bytes); 16: name (8) + crush +
  *                 src; 17: the whole kit from a factory kit (1 byte: its index)
- *   83 DSYN_STORE -> rc (0 ok, 3 stop the song first, 4 flash)
- *   84 DSYN_PLAY  k, lane, velocity -> k, lane, rc: the sound, on the drum voices (the drum track's level) */
-/* Protocol 13 moves SYN commands away from scene/performance/groove/USB return IDs. */
-enum { ED_DSYN_LIST = 80, ED_DSYN_GET, ED_DSYN_PUT, ED_DSYN_STORE, ED_DSYN_PLAY };
+ *   75 DSYN_STORE -> rc (0 ok, 3 stop the song first, 4 flash)
+ *   76 DSYN_PLAY  k, lane, velocity -> k, lane, rc: the sound, on the drum voices (the drum track's level) */
+#ifndef UI_SMALL                 /* (2.7) compiled for size: not the audio path (gfx.c UI_SMALL); the host tests: nothing */
+#define UI_SMALL
+#endif
+enum { ED_DSYN_LIST = 72, ED_DSYN_GET, ED_DSYN_PUT, ED_DSYN_STORE, ED_DSYN_PLAY };
 #define ED_DSYN_USER 64u
 
-static void ed_dsyn_name(const char *n8)
+UI_SMALL static void ed_dsyn_name(const char *n8)
 {
     char s[9];
     memcpy(s, n8, 8);
     s[8] = 0;
     ed_str(s, 8);
 }
-static uint32_t ed_dsyn_store(void)
+UI_SMALL static uint32_t ed_dsyn_store(void)
 {
 #if FELUCCA_FLASH
     persist_t p;
@@ -38,7 +40,7 @@ static uint32_t ed_dsyn_store(void)
 #endif
 }
 
-static int ed_dsyn_handle(uint32_t cmd, const uint8_t *a, uint32_t n)
+UI_SMALL static int ed_dsyn_handle(uint32_t cmd, const uint8_t *a, uint32_t n)
 {
     uint8_t b[2u + DS_LANES * sizeof(dsnd_t)];
     uint32_t i, rc;

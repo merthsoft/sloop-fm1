@@ -47,9 +47,9 @@ static void ed_b(uint32_t v) { control_reply[control_n++]=(uint8_t)(v&127u); }
 int main(void)
 {
     uint8_t query[]={0},state[]={1};
-    ed_usb_playback_handle(75,query,1);
+    ed_usb_playback_handle(88,query,1);
     if(control_n!=8||control_reply[3]!=0)return 1;
-    control_n=0;ed_usb_playback_handle(75,state,1);
+    control_n=0;ed_usb_playback_handle(88,state,1);
     if(control_n!=2||control_reply[1]!=2)return 1;
     const uint8_t *c,*d;uint16_t n,dn;uint32_t k;
     get_desc(0x200,&c,&n);get_desc(0x100,&d,&dn);
@@ -268,7 +268,7 @@ static void test_service_and_capture(void)
 static uint8_t control_reply[100]; static uint32_t control_n;
 static void ed_b(uint32_t v) { control_reply[control_n++]=(uint8_t)(v&127u); }
 #include "../firmware/src/editor_usb_playback.c"
-static void control(const uint8_t *a,uint32_t n) { control_n=0; ed_usb_playback_handle(75,a,n); }
+static void control(const uint8_t *a,uint32_t n) { control_n=0; ed_usb_playback_handle(88,a,n); }
 static void test_editor_controls(void)
 {
     clear_play(); uint8_t query[]={0}, bad[]={1,1,32,0}, set[]={1,0,32,1};

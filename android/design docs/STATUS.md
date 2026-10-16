@@ -1,3 +1,23 @@
+# Upstream integration checkpoint
+
+Current firmware is MerthSloop 2.7.1.19. Upstream's canonical song/continuation,
+arp and settings layouts are adopted; old-fork migration is out of scope.
+Dual-core/low-RAM, themes/favorites, drum sound controls, sample held loops/tails,
+QUANT OFF/overdub, expanded arp/keyboard HOLD, MIDI remote/clock and web LIVE/song
+tools are integrated. Existing fork performance/editing/starter workflows remain.
+
+INFO protocol 15 keeps upstream SYN 72–76/LIVE 77; fork extensions are 85–89. Android discovery
+requires 15 before using them. Song-library/sample import accepts upstream held-loop
+zones; new looped slices use held-loop mode. The 31 domain runners pass, plus a full
+Android UI reference-assembly typecheck. The ARM64 APK is built using matched project-local workload manifests. No new phone installation is claimed.
+
+See [integration/validation](../../docs/firmware/UPSTREAM-2.7-INTEGRATION.md) and
+[measured memory](../../docs/firmware/OPTIMIZATION.md). Hardware validation remains
+pending. The earlier component checkpoints below retain their historical context;
+their old protocol IDs and memory figures do not describe the current build.
+
+---
+
 # Current implementation status
 
 This is the current status index. Component docs contain both implemented checkpoints and

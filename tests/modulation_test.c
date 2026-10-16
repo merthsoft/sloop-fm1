@@ -179,7 +179,7 @@ int main(void)
     for(int i=0;i<1000;i++)live_wah_filter(&trk[1],silence,CTL);
     assert(wah->value<200&&trk[1].p[P_TFLT]==base);
     host_tracks_init();song.sel=1;wah->on=1;wah->part=1;wah->sync=WAH_ENV;wah->value=32767;
-    for(int i=0;i<1000;i++)mix_part_run(&trk[1],CTL);
+    for(int i=0;i<1000;i++)mix_part_run(&trk[1],CTL,&acc[0],part_buf[0]);
     assert(wah->value<200 && tflt[1].mode==-2 && tflt[1].cut<(60<<8)); /* follower and center settle before next attack */
     base=trk[1].p[P_TFLT];
     wah->sync=1;song.playing=1;clk_beat=0;clk_pos=BEAT_U/4;live_mod_tick(&trk[1]);

@@ -16,7 +16,7 @@ public sealed record SceneTransactionReply(SceneTransactionOperation Operation, 
 /// <summary>Canonical v1 schema, independent of firmware struct padding. Owns all synth pattern bytes.</summary>
 public static class SceneTransactionCodec
 {
-    public const byte Command = 72;
+    public const byte Command = 85;
     public const int MaximumBytes = 3072, ChunkBytes = 96, SchemaBytes = 2956, TrackBytes = 984;
     public static byte[] Build(int tempo, IReadOnlyList<byte[]> tracks,
         IEnumerable<SceneSampleDependency>? dependencies = null)
@@ -48,7 +48,7 @@ public static class SceneTransactionCodec
             for (int i = 0; i < 64; i++, o += 11)
             {
                 for (int j = 0; j < 4; j++) if (p[o + j] > 127) throw new FormatException("Invalid note.");
-                if (p[o + 4] > 4 || p[o + 5] > 2 || p[o + 6] > 3 || p[o + 7] > 127 || p[o + 10] > 63)
+                if (p[o + 4] > 4 || p[o + 5] > 2 || (p[o + 6] & ~0x7b) != 0 || p[o + 7] > 127 || p[o + 10] > 63)
                     throw new FormatException("Invalid step.");
             }
             for (int i = 0; i < 16; i++, o++) for (int j = 0; j < 4; j++)
@@ -88,7 +88,7 @@ public sealed class SceneTransactionClient(EditorClient client)
 {
     public async Task<SceneTransactionReply> CapabilitiesAsync(int protocolVersion, CancellationToken token = default)
     {
-        if (protocolVersion < 11) throw new NotSupportedException("Use the stopped-only sound fallback on protocol 10 or earlier.");
+        if (protocolVersion < 15) throw new NotSupportedException("Use the stopped-only sound fallback on protocol 10 or earlier.");
         return SceneTransactionCodec.Parse(await client.RequestAsync(SceneTransactionCodec.Command, [0], cancellationToken: token));
     }
     public async Task<SceneTransactionReply> StageAsync(SceneTransactionReply capabilities, int id, int revision,

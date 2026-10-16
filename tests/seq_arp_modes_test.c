@@ -133,19 +133,20 @@ int main(void)
      * from the USB MIDI queue, not by directly calling arp_next. */
     setup(ARP_UP);uint32_t slot=0;
     for(uint32_t mode=ARP_UP;mode<ARP_PULSE;mode++) {
+        if(mode==ARP_CHORD) continue; /* chord pulses have several note-ons per grid */
         if(slot) { trk[0].p[P_AMODE]=mode;at((slot-1)*u+3*u/4);assert(ntrace==slot); }
         printf("mode %u:",mode);
         for(uint32_t k=0;k<16;k++,slot++) {
             current_grid=slot;at(slot*u);assert(ntrace==slot+1);
             uint8_t note=note_trace[slot];
-            assert(note==60||note==64||note==67||note==69);
+            assert(note==60||note==64||note==67||note==69||(mode==ARP_UP8&&note==72));
             assert(grid_trace[slot]==slot&&seq_harmony[0].n==4);
             printf(" %u",note);at(slot*u+u/2);assert(ntrace==slot+1);
         }
         puts("");
         uint32_t start=slot-16;
         static const uint8_t order[]={67,60,64,69},outside[]={60,69,64,67},rootalt[]={60,64,60,67,60,69};
-        static const uint8_t downup[]={69,67,64,60,64,67},repeat[]={60,64,67,69,69,67,64,60},inside[]={64,67,60,69};
+        static const uint8_t downup[]={69,67,64,60,64,67},repeat[]={60,64,67,69,69,67,64,60},inside[]={67,64,69,60};
         const uint8_t *cycle=0;uint32_t length=0;
         if(mode==ARP_UP) {cycle=up;length=4;}
         if(mode==ARP_DOWN) {cycle=down;length=4;}

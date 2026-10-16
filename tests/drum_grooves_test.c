@@ -12,7 +12,7 @@ int main(int argc, char **argv)
     static track_t before, synth;
     static project_t saved;
     panel = PANEL_DEFAULT; layers_init(); host_tracks_init(); palette_set(4);
-    song.sel = TRK_DRUM; studio_open(SC_DRUM); drum_page = 2;
+    song.sel = TRK_DRUM; studio_open(SC_DRUM); drum_page = 3;
     outdir = argc > 1 ? argv[1] : "build/host";
     for (g = 0; g < NDRUM_GROOVES; g++) {
         const drum_groove_t *p = &DRUM_GROOVES[g];
@@ -79,22 +79,22 @@ int main(int argc, char **argv)
     TDRUM->p[P_SLEN] = 64; TDRUM->p[P_SDIV] = 3; TDRUM->p[P_SSWING] = 12;
     TDRUM->seq_active = 1;
     before = *TDRUM; synth = trk[0];
-    encs[panel.enc[EN_K1]] = -99; drum_screen_input(0, 0);
-    encs[panel.enc[EN_K2]] = 99; drum_screen_input(0, 0);
-    encs[panel.enc[EN_K3]] = 99; drum_screen_input(0, 0);
+    encs[panel.enc[EN_K1]] = -99; drum_screen_input(0, 0, 0);
+    encs[panel.enc[EN_K2]] = 99; drum_screen_input(0, 0, 0);
+    encs[panel.enc[EN_K3]] = 99; drum_screen_input(0, 0, 0);
     check(!memcmp(&before, TDRUM, sizeof before), "browsing changes no drum state");
-    drum_screen_input(BT(B_OCTUP), 0);
+    drum_screen_input(BT(B_OCTUP), 0, 0);
     check(groove_confirm && !memcmp(&before, TDRUM, sizeof before), "existing content needs second apply press");
-    drum_screen_input(BT(B_OCTDN), 0);
+    drum_screen_input(BT(B_OCTDN), 0, 0);
     check(!groove_confirm && drum_page == 0 && !memcmp(&before, TDRUM, sizeof before), "cancel preserves pattern and metadata");
-    drum_page = 2; song.playing = 1;
-    drum_screen_input(BT(B_OCTUP), 0);
+    drum_page = 3; song.playing = 1;
+    drum_screen_input(BT(B_OCTUP), 0, 0);
     check(!groove_confirm && !strcmp(ui.msg, "STOP FIRST") && !memcmp(&before, TDRUM, sizeof before), "running apply refuses safely");
     song.playing = 0; transport_req = 1;
     check(!drum_groove_apply(0), "pending transport start refuses apply"); transport_req = 0;
     rec_wait = 1; check(!drum_groove_apply(0), "record arm refuses apply"); rec_wait = 0;
     groove_sel = 0;
-    drum_screen_input(BT(B_OCTUP), 0); drum_screen_input(BT(B_OCTUP), 0);
+    drum_screen_input(BT(B_OCTUP), 0, 0); drum_screen_input(BT(B_OCTUP), 0, 0);
     check(TDRUM->p[P_SLEN] == 16 && TDRUM->p[P_SDIV] == 2 && TDRUM->p[P_SSWING] == 0, "apply aligns length/division and removes local swing");
     for (i = 0; i < NSTEP; i++) {
         dstep_t s = drum_groove_step(0, i);
@@ -114,7 +114,7 @@ int main(int argc, char **argv)
     check(!undo_swap(0), "project adoption invalidates pre-load groove undo");
     check(!memcmp(before.dstep, TDRUM->dstep, sizeof before.dstep) && TDRUM->p[P_SLEN] == 16 && TDRUM->p[P_SDIV] == 2, "ordinary pattern project roundtrip");
     for (g = 0; g < NDRUM_GROOVES; g++) {
-        groove_sel = (uint8_t)g; drum_page = 2; ui.force = 1; groove_screen_draw();
+        groove_sel = (uint8_t)g; drum_page = 3; ui.force = 1; groove_screen_draw();
     }
     groove_sel = 0; ui.msg_t = 0; groove_cursor = 0; groove_lane = 0; groove_screen_draw(); ppm("live-groove");
     { uint32_t lit = 0; for (i = 180 * 240; i < 240 * 240; i++) lit += screen[i] != 0; check(lit > 100, "groove knob labels render below canvas split"); }
@@ -131,30 +131,34 @@ int main(int argc, char **argv)
     tap(B_SEQ);
     check(on_drum_page() && drum_page == 1, "second SEQ tap reaches KIT");
     tap(B_SEQ);
-    check(on_drum_page() && drum_page == 2, "third SEQ tap reaches GROOVE rather than SONG");
+    check(on_drum_page() && drum_page == 2, "third SEQ tap reaches SOUND");
     tap(B_SEQ);
-    check(on_drum_page() && drum_page == 3, "fourth SEQ tap reaches SHAPE");
+    check(on_drum_page() && drum_page == 3, "fourth SEQ tap reaches GROOVE rather than SONG");
     tap(B_SEQ);
-    check(on_drum_page() && drum_page == 0, "fifth SEQ tap wraps to GRID");
+    check(on_drum_page() && drum_page == 4, "fifth SEQ tap reaches SHAPE");
+    tap(B_SEQ);
+    check(on_drum_page() && drum_page == 0, "sixth SEQ tap wraps to GRID");
     encs[panel.enc[EN_SELECT]] = 1; frame();
     check(on_drum_page() && drum_page == 1, "SELECT detent advances GRID to KIT");
     encs[panel.enc[EN_SELECT]] = 1; frame();
-    check(on_drum_page() && drum_page == 2, "SELECT detent advances KIT to GROOVE");
+    check(on_drum_page() && drum_page == 2, "SELECT detent advances KIT to SOUND");
     encs[panel.enc[EN_SELECT]] = 1; frame();
-    check(on_drum_page() && drum_page == 3, "SELECT reaches SHAPE");
-    studio_open(SC_DRUM); drum_page = 1;
+    check(on_drum_page() && drum_page == 3, "SELECT detent advances SOUND to GROOVE");
+    encs[panel.enc[EN_SELECT]] = 1; frame();
+    check(on_drum_page() && drum_page == 4, "SELECT reaches SHAPE");
+    studio_open(SC_DRUM); drum_page = 2;
     tap(B_SEQ);
-    check(drum_page == 2, "physical SEQ tap enters groove view from kit");
+    check(drum_page == 3, "physical SEQ tap enters groove view from sound");
     tap(B_OCTUP);
     check(groove_confirm, "physical OCT+ requests replacement confirmation");
     tap(B_OCTDN);
     check(!groove_confirm && drum_page == 0, "physical OCT- cancels to grid");
-    encs[panel.enc[EN_SELECT]] = 2; frame();
-    check(drum_page == 2, "physical SELECT reaches groove view");
+    encs[panel.enc[EN_SELECT]] = 3; frame();
+    check(drum_page == 3, "physical SELECT reaches groove view");
     groove_sel = 0;
     for (g = 1; g < NDRUM_GROOVES; g++) {
         encs[panel.enc[EN_K1]] = 1; frame();
-        check(groove_sel == g && drum_page == 2, "physical knob 1 reaches every groove");
+        check(groove_sel == g && drum_page == 3, "physical knob 1 reaches every groove");
     }
     encs[panel.enc[EN_K1]] = 1; frame();
     check(groove_sel == NDRUM_GROOVES - 1, "groove selector clamps at last entry");
@@ -165,7 +169,7 @@ int main(int argc, char **argv)
     tap(B_OCTUP); tap(B_OCTUP);
     check(!groove_confirm && groove_undo_matches(), "physical OCT+ applies on second press");
     { uint32_t first_sess;
-      groove_sel = 16; groove_confirm = 0; drum_page = 2;
+      groove_sel = 16; groove_confirm = 0; drum_page = 3;
       before = *TDRUM; first_sess = undo.sess;
       press(B_OCTUP); frames(20);
       check(groove_confirm && undo.sess == first_sess && !memcmp(before.dstep, TDRUM->dstep, sizeof before.dstep),
@@ -184,7 +188,7 @@ int main(int argc, char **argv)
       press(B_OCTUP); frames(20); song.rec = 1; frames(40); release(B_OCTUP); song.rec = 0;
       check(!memcmp(before.dstep, TDRUM->dstep, sizeof before.dstep), "held OCT+: recording blocks replacement");
     }
-    groove_sel = 14; groove_confirm = 0; drum_page = 2; song.playing = 0; song.rec = 0; rec_wait = 0; transport_req = 0;
+    groove_sel = 14; groove_confirm = 0; drum_page = 3; song.playing = 0; song.rec = 0; rec_wait = 0; transport_req = 0;
     proj_capture(&saved);
     tap(B_OCTDN);
     assert(groove_preview.active);
@@ -199,15 +203,15 @@ int main(int argc, char **argv)
     }
     { project_t after; proj_capture(&after); assert(!memcmp(&saved, &after, sizeof after)); }
     assert(!song.playing && !song.rec);
-    tap(B_OCTDN); assert(!groove_preview.active && drum_page == 2);
+    tap(B_OCTDN); assert(!groove_preview.active && drum_page == 3);
     check(1, "preview loops full Amen phrase with exact hits and no project or transport mutation");
     tap(B_OCTDN); tap(B_SEQ); assert(!groove_preview.active);
-    drum_page = 2; tap(B_OCTDN); seq_stop(); assert(!groove_preview.active);
+    drum_page = 3; tap(B_OCTDN); seq_stop(); assert(!groove_preview.active);
     tap(B_OCTDN); song.playing = 1; groove_preview_block(1); assert(!groove_preview.active); song.playing = 0;
     tap(B_OCTDN); proj_apply(&saved, 1); assert(!groove_preview.active);
     tap(B_OCTDN); encs[panel.enc[EN_K1]] = -1; frame(); assert(!groove_preview.active);
     tap(B_OCTDN); track_select(0); assert(!groove_preview.active);
-    song.sel = TRK_DRUM; drum_page = 2; studio_open(SC_DRUM);
+    song.sel = TRK_DRUM; drum_page = 3; studio_open(SC_DRUM);
     song.playing = 1; tap(B_OCTDN); assert(!groove_preview.active); song.playing = 0;
     song.rec = 1; tap(B_OCTDN); assert(!groove_preview.active); song.rec = 0;
     check(1, "preview cancels on exit, STOP, playback, project adoption, selection and refuses recording");

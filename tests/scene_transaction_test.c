@@ -28,6 +28,9 @@ static void payload(void)
         o+=16; for(i=0;i<24;i++,o+=5) data[o]=255;
     }
     assert(o==sizeof data); assert(sc_tx_schema_valid(data,sizeof data));
+    data[154]=120; assert(sc_tx_schema_valid(data,sizeof data)); /* canonical upstream note continuation bits */
+    data[154]=4; assert(!sc_tx_schema_valid(data,sizeof data)); /* preset-only tie encoding remains reserved */
+    data[154]=0;
 }
 static int begin(uint32_t token)
 {

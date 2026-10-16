@@ -1,3 +1,6 @@
+#ifndef UI_SMALL
+#define UI_SMALL
+#endif
 /* SPDX-License-Identifier: GPL-3.0-only */
 /* ROM musical starters: four scale-degree bars, no patch or song state.
  * Included after drum_grooves.c in ui.c; shares its supplemental undo. */
@@ -204,7 +207,7 @@ static void sequence_preview_block(uint32_t n)
     sequence_preview.phase += n * (uint32_t)song.g[G_BPM];
 }
 
-static int sequence_starter_has_content(const track_t *t)
+UI_SMALL static int sequence_starter_has_content(const track_t *t)
 {
     uint32_t i;
     for (i = 0; i < NSTEP; i++)
@@ -214,7 +217,7 @@ static int sequence_starter_has_content(const track_t *t)
 }
 
 /* Ties hold a whole step, so independent layers share attacks and dynamics. */
-static int sequence_starter_add(track_t *t, step_t *out)
+UI_SMALL static int sequence_starter_add(track_t *t, step_t *out)
 {
     const step_t empty = {{0}}, *old = &empty, *prev = &empty;
     step_t add = {{0}};
@@ -247,7 +250,7 @@ static int sequence_starter_add(track_t *t, step_t *out)
     }
     return 1;
 }
-static int sequence_starter_apply_mode(uint32_t additive)
+UI_SMALL static int sequence_starter_apply_mode(uint32_t additive)
 {
     uint32_t i;
     track_t *t;
@@ -273,4 +276,4 @@ static int sequence_starter_apply_mode(uint32_t additive)
     ui.step_sess = 0; sync_reload = 1; ui.force = 1;
     return 1;
 }
-static int sequence_starter_apply(void) { return sequence_starter_apply_mode(0); }
+UI_SMALL static int sequence_starter_apply(void) { return sequence_starter_apply_mode(0); }

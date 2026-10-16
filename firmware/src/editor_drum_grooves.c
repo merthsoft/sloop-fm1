@@ -1,5 +1,8 @@
+#ifndef UI_SMALL
+#define UI_SMALL
+#endif
 /* SPDX-License-Identifier: GPL-3.0-only */
-/* Command 74, schema 1. Included by editor.c after reply helpers.
+/* Command 87, schema 1. Included by editor.c after reply helpers.
  * Requests: [0]; [1]; [2,id,overwrite(0/1)].
  * Replies: [0,status,1,bank_count,1(capability flag: apply with undo)];
  * [1,status,count, (id,len,div,name ASCII NUL)*]; [2,status,id].
@@ -7,8 +10,8 @@
  * Errors omit trailing capabilities/list data. Bank <=24, name <=20.
  * Status: 0 OK, 1 malformed, 2 busy, 3 overwrite confirmation needed.
  * IDs follow the immutable firmware ROM bank; browsing is read-only. */
-#define ED_DRUM_GROOVES 74u
-static int ed_drum_grooves_handle(uint32_t cmd, const uint8_t *a, uint32_t na)
+#define ED_DRUM_GROOVES 87u
+UI_SMALL static int ed_drum_grooves_handle(uint32_t cmd, const uint8_t *a, uint32_t na)
 {
     uint32_t op = na ? a[0] : 127u, id = na > 1 ? a[1] : 127u, i;
     if (cmd != ED_DRUM_GROOVES) return 0;

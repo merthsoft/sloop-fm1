@@ -19,8 +19,8 @@ static const char *const VIS_NAME[VIS_N] = {"OSCILLOSCOPE", "SPECTRUM", "SPECTRO
 _Static_assert(SCOPE_N == VIS_FFT, "shared scope/FFT snapshot size");
 #define vis_re ui_scope_snap
 static int16_t vis_im[VIS_FFT] __attribute__((section(".pool")));
-/* Histories share spare flash-driver RAM. Scope fills every sample; trail and
- * Lissajous histories clear on entry before reading, so no boot zeroing needed. */
+/* Histories share a union in zeroed ordinary RAM. Trail and Lissajous histories
+ * also clear on entry, so switching styles never reads another style's data. */
 static union {
     struct { int16_t l[VIS_FFT], r[VIS_FFT]; } scope;
     struct { uint32_t notes[48][3][4]; uint16_t drums[48]; } trails;
@@ -49,16 +49,16 @@ static struct {
 static const uint8_t VIS_EDGE[33] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 21, 25, 29, 35,
                                      41, 49, 58, 69, 82, 98, 116, 138, 164, 195, 232};
 
-static int vis_shown(void) { return vis_on && !ui.home && !ui.menu && cur_page()->scope == SC_TRK; }
-static void vis_open(void)
+UI_SMALL static int vis_shown(void) { return vis_on && !ui.home && !ui.menu && cur_page()->scope == SC_TRK; }
+UI_SMALL static void vis_open(void)
 {
     vis_on = 1;
     vis_name_t = 30;
     ui.force = 1;
 }
-static int32_t isin(uint32_t a) { return SINE[a & 1023u]; }          /* a: 1024 a turn; Q15 */
-static int32_t icos(uint32_t a) { return SINE[(a + 256u) & 1023u]; }
-static uint16_t mix565(uint16_t a, uint16_t b, int32_t k) /* share UI colour blending code */
+UI_SMALL static int32_t isin(uint32_t a) { return SINE[a & 1023u]; }          /* a: 1024 a turn; Q15 */
+UI_SMALL static int32_t icos(uint32_t a) { return SINE[(a + 256u) & 1023u]; }
+UI_SMALL static uint16_t mix565(uint16_t a, uint16_t b, int32_t k) /* share UI colour blending code */
 {
     int32_t r = (a >> 11) + ((((b >> 11) - (a >> 11)) * k) >> 8);
     int32_t g = ((a >> 5) & 63) + (((((b >> 5) & 63) - ((a >> 5) & 63)) * k) >> 8);
@@ -66,7 +66,7 @@ static uint16_t mix565(uint16_t a, uint16_t b, int32_t k) /* share UI colour ble
     return (uint16_t)(r << 11 | g << 5 | bl);
 }
 /* |x| (Q15) -> 0..1000 over 48 dB (8 log2: 6 dB a step of 8) */
-static int32_t vis_lvl(int32_t a)
+UI_SMALL static int32_t vis_lvl(int32_t a)
 {
     int32_t lg = 0, v;
     if (a < 0)
@@ -80,7 +80,7 @@ static int32_t vis_lvl(int32_t a)
 }
 
 /* ---- drawing helpers (canvas coordinates; cv_oy picks the band) ---- */
-static void vis_ellipse(int32_t cx, int32_t cy, int32_t rx, int32_t ry, uint16_t c)
+UI_SMALL static void vis_ellipse(int32_t cx, int32_t cy, int32_t rx, int32_t ry, uint16_t c)
 {
     int32_t y;
     if (rx < 1 || ry < 1)
@@ -93,7 +93,7 @@ static void vis_ellipse(int32_t cx, int32_t cy, int32_t rx, int32_t ry, uint16_t
             cv_rect(cx - w + 1, cy + y, 2 * w - 1, 1, c);
     }
 }
-static void vis_circle(int32_t cx, int32_t cy, int32_t r, uint16_t c) /* an outline */
+UI_SMALL static void vis_circle(int32_t cx, int32_t cy, int32_t r, uint16_t c) /* an outline */
 {
     int32_t x = r, y = 0, e = 1 - r;
     while (x >= y) {
@@ -106,13 +106,13 @@ static void vis_circle(int32_t cx, int32_t cy, int32_t r, uint16_t c) /* an outl
             e += 2 * (y - --x) + 1;
     }
 }
-static void vis_thick(int32_t x0, int32_t y0, int32_t x1, int32_t y1, uint16_t c)   /* 2 px */
+UI_SMALL static void vis_thick(int32_t x0, int32_t y0, int32_t x1, int32_t y1, uint16_t c)   /* 2 px */
 {
     cv_line(x0, y0, x1, y1, c);
     cv_line(x0, y0 + 1, x1, y1 + 1, c);
 }
 /* a polygon, points in 1/16 px (n <= 8), filled by scan lines (even-odd) inside the band */
-static void vis_poly(const int32_t *px, const int32_t *py, uint32_t n, uint16_t c)
+UI_SMALL static void vis_poly(const int32_t *px, const int32_t *py, uint32_t n, uint16_t c)
 {
     int32_t y0 = 0x7FFFFFFF, y1 = -0x7FFFFFFF, y;
     uint32_t i;
@@ -140,12 +140,12 @@ static void vis_poly(const int32_t *px, const int32_t *py, uint32_t n, uint16_t 
     }
 }
 /* a seven-segment digit, the unlit segments faintly there (an LCD) */
-static void vis_seg(int32_t x, int32_t y, int32_t w, int32_t h, int32_t t, int ch, uint16_t c)
+UI_SMALL static void vis_seg(int32_t x, int32_t y, int32_t w, int32_t h, int32_t t, int ch, uint16_t c)
 {
     static const uint8_t SEG[10] = {0x3F, 0x06, 0x5B, 0x4F, 0x66, 0x6D, 0x7D, 0x07, 0x7F, 0x6F};   /* gfedcba */
     uint32_t m = ch >= 0 && ch <= 9 ? SEG[ch] : 0u;
     int32_t hh = h / 2;
-    uint16_t off = RGB(18, 18, 21);
+    uint16_t off = te_gray(RGB(18, 18, 21));
     cv_rect(x + t, y, w - 2 * t, t, m & 0x01 ? c : off);
     cv_rect(x + w - t, y + t, t, hh - t, m & 0x02 ? c : off);
     cv_rect(x + w - t, y + hh, t, hh - t, m & 0x04 ? c : off);
@@ -157,13 +157,13 @@ static void vis_seg(int32_t x, int32_t y, int32_t w, int32_t h, int32_t t, int c
 
 /* ---- the frame's data ---- */
 /* beats since PLAY in 1/256 (stopped: a free count at the tempo, for what moves anyway) */
-static uint32_t vis_beat_q8(void)
+UI_SMALL static uint32_t vis_beat_q8(void)
 {
     if (song.playing)
         return clk_beat * 256u + clk_pos / (BEAT_U / 256u);
     return vs.free_q8;
 }
-static void vis_fft(void)
+UI_SMALL static void vis_fft(void)
 {
     uint32_t i, j = 0, bit, len;
     for (i = 0; i < VIS_FFT; i++) {                 /* Hann window */
@@ -195,7 +195,7 @@ static void vis_fft(void)
     }
 }
 /* the 32 bands of the last FFT, 0..1000 (60 dB under a full-scale sine) */
-static void vis_bands(int16_t *out)
+UI_SMALL static void vis_bands(int16_t *out)
 {
     uint32_t k, i;
     for (k = 0; k < 32u; k++) {
@@ -218,7 +218,7 @@ static void vis_bands(int16_t *out)
 }
 
 /* Keeping frame preparation separate reduces target UI code size. */
-static void __attribute__((noinline)) vis_update(void)
+UI_SMALL static void vis_update(void)
 {
     uint32_t i, w, hit, now = fm1_ms;
     int32_t pk[4], mpk = 0;
@@ -372,7 +372,7 @@ static void __attribute__((noinline)) vis_update(void)
 }
 
 /* ---- the styles (each draws the whole screen; called once per band) ---- */
-static void vis_scope(void)
+UI_SMALL static void vis_scope(void)
 {
     uint32_t i0 = 0, i;
     int32_t py = 0;
@@ -395,7 +395,7 @@ static void vis_scope(void)
         py = y;
     }
 }
-static void vis_spectrum(void)
+UI_SMALL static void vis_spectrum(void)
 {
     uint32_t k;
     for (k = 0; k < 32u; k++) {
@@ -405,7 +405,7 @@ static void vis_spectrum(void)
         cv_rect(x0, cy - 1, 5, 2, C_WHITE);
     }
 }
-static uint16_t vis_heat(uint32_t v)               /* 0..255: black, blue, green, yellow, white */
+UI_SMALL static uint16_t vis_heat(uint32_t v)               /* 0..255: black, blue, green, yellow, white */
 {
     static const uint16_t ST[5] = {RGB(0, 0, 0), RGB(40, 124, 255), RGB(30, 204, 112), RGB(255, 198, 24), RGB(255, 255, 255)};
     static const uint8_t AT[5] = {0, 77, 140, 204, 255};
@@ -417,7 +417,7 @@ static uint16_t vis_heat(uint32_t v)               /* 0..255: black, blue, green
         return ST[4];
     return mix565(ST[k - 1u], ST[k], (int32_t)((v - AT[k - 1u]) * 256u / (AT[k] - AT[k - 1u])));
 }
-static void vis_spectrogram(void)
+UI_SMALL static void vis_spectrogram(void)
 {
     uint32_t r, c;
     for (r = 0; r < VIS_SG_H; r++) {
@@ -433,7 +433,7 @@ static void vis_spectrogram(void)
     cv_text(132, 2, &FONT_S, "1k", C_DIM);
     cv_text(196, 2, &FONT_S, "4k", C_DIM);
 }
-static void vis_lissajous(void)
+UI_SMALL static void vis_lissajous(void)
 {
     uint32_t f, i;
     static const uint16_t COLS[3] = {RGB(10, 66, 38), RGB(20, 136, 76), RGB(30, 204, 112)};
@@ -448,7 +448,7 @@ static void vis_lissajous(void)
     cv_text(6, 112, &FONT_S, "L", C_DIM);
     cv_text(226, 112, &FONT_S, "R", C_DIM);
 }
-static void vis_meters(void)
+UI_SMALL static void vis_meters(void)
 {
     uint32_t i, k;
     for (i = 0; i < 5u; i++) {
@@ -465,7 +465,7 @@ static void vis_meters(void)
         cv_text(x0 + 13, 216, &FONT_S, lab, c);
     }
 }
-static void vis_ring(void)
+UI_SMALL static void vis_ring(void)
 {
     int32_t k = vs.kick, r0 = 52 + k * 18 / 255, rc = r0 * 6 / 10, sc = vs.peak > vs.scale ? vs.peak : vs.scale;
     int32_t px = 0, py = 0, i;
@@ -482,7 +482,7 @@ static void vis_ring(void)
         px = x, py = y;
     }
 }
-static void vis_orbit(void)
+UI_SMALL static void vis_orbit(void)
 {
     static const uint8_t RAD[4] = {42, 62, 82, 102}, PER[4] = {1, 2, 4, 8};
     uint32_t bq = vis_beat_q8(), i, k;
@@ -490,7 +490,7 @@ static void vis_orbit(void)
     for (i = 0; i < 4u; i++) {
         uint32_t a = (bq * 4u / PER[i]) - 256u;     /* a turn = 1024: per beats, from the top */
         int32_t pr = 4 + vs.lvl[i] * 8 / 1000;
-        vis_circle(120, 120, RAD[i], RGB(36, 36, 42));
+        vis_circle(120, 120, RAD[i], te_gray(RGB(36, 36, 42)));
         for (k = 1; k < 7u; k++) {                  /* its trail */
             uint32_t ak = a - k * 13u;
             vis_ellipse(120 + ((icos(ak) * RAD[i]) >> 15), 120 + ((isin(ak) * RAD[i]) >> 15), 2, 2,
@@ -500,7 +500,7 @@ static void vis_orbit(void)
     }
     vis_ellipse(120, 120, rs, rs, C_WHITE);
 }
-static void vis_wires(void)
+UI_SMALL static void vis_wires(void)
 {
     uint32_t i, x;
     for (i = 0; i < 4u; i++) {
@@ -524,17 +524,17 @@ static void vis_wires(void)
 
 
 /* Sequencer views use each track's own grid, including long divisions and swing. */
-static uint32_t vis_position(const track_t *t, uint32_t *fraction)
+UI_SMALL static uint32_t vis_position(const track_t *t, uint32_t *fraction)
 {
     uint32_t into, len, at = trk_grid(t, &into, &len), unit = len / 256u;
     *fraction = clamp((int32_t)(into / (unit ? unit : 1u)), 0, 255);
     return at % trk_len(t);
 }
-static int vis_has(const track_t *t, uint32_t s)
+UI_SMALL static int vis_has(const track_t *t, uint32_t s)
 {
     return is_drum(t) ? dstep_mask(&t->dstep[s]) != 0 : t->step[s].n && t->step[s].time != ST_REST;
 }
-static void vis_polyrhythm(void)
+UI_SMALL static void vis_polyrhythm(void)
 {
     uint32_t t, s;
     for (t = 0; t < 4u; t++) {
@@ -551,7 +551,7 @@ static void vis_polyrhythm(void)
           vis_ellipse(120 + icos(a) * r / 32768, 123 + isin(a) * r / 32768, 4, 4, C_WHITE); }
     }
 }
-static void vis_trails(void)
+UI_SMALL static void vis_trails(void)
 {
     uint32_t i, t, n;
     for (n = 0; n < 128u; n += 12u)
@@ -568,7 +568,7 @@ static void vis_trails(void)
             if ((vis_drum_notes[(vis_notes_head + 1u + i) % 48u] >> n) & 1u)
                 cv_rect((int32_t)i * 5, 223 + (int32_t)n, 5, 1, C_WHITE);
 }
-static void vis_groove(void)
+UI_SMALL static void vis_groove(void)
 {
     uint32_t t, s;
     cv_text(8, 24, &FONT_S, "GRID / SWING / NUDGE", C_DIM);
@@ -603,7 +603,7 @@ static void vis_groove(void)
         }
     }
 }
-static void vis_stereo(void)
+UI_SMALL static void vis_stereo(void)
 {
     uint32_t i;
     int32_t lsum = 0, rsum = 0, diff = 0, total = 0, scale = vs.scale > 1600 ? vs.scale : 1600;
@@ -619,7 +619,7 @@ static void vis_stereo(void)
     vis_ellipse(120 + (rsum - lsum) * 90 / (total ? total : 1), 225, 4, 4, C_WHITE);
     cv_rect(20, 234, clamp(diff * 200 / (total ? total : 1), 0, 200), 3, TE_COL[0]);
 }
-static void vis_journey(void)
+UI_SMALL static void vis_journey(void)
 {
     uint32_t i, n = chain_n ? chain_n : arrangement.count, at = chain_n ? chain_i : arrangement_clock.index;
     uint32_t bars = chain_n ? chain_bars : arrangement.entry[at % ARR_STEPS].bars;
@@ -643,7 +643,7 @@ static void vis_journey(void)
     cv_rect(12, 230, 216, 4, C_LINE);
     cv_rect(12, 230, (int32_t)(elapsed < bars ? elapsed : bars) * 216 / (int32_t)(bars ? bars : 1u), 4, TE_COL[0]);
 }
-static void vis_terrain(void)
+UI_SMALL static void vis_terrain(void)
 {
     int32_t row, col, px[17], py[17], prevx[17], prevy[17];
     uint32_t beat = vis_beat_q8();
@@ -663,7 +663,7 @@ static void vis_terrain(void)
 }
 
 /* the visualiser, every other frame: the update, then both bands */
-static void __attribute__((noinline)) vis_draw(void)
+UI_SMALL static void vis_draw(void)
 {
     uint32_t pass;
     if (!vis_shown_last || ui.force) {
@@ -711,7 +711,7 @@ static void __attribute__((noinline)) vis_draw(void)
         vis_name_t--;
 }
 /* SELECT on the visualiser: the next / previous style (round) */
-static void vis_select(int32_t s)
+UI_SMALL static void vis_select(int32_t s)
 {
     vis_style = (uint8_t)((vis_style + (s > 0 ? 1u : VIS_N - 1u)) % VIS_N);
     vis_name_t = 30;

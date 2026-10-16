@@ -1,7 +1,7 @@
 # FM1 remote fills and punch effects
 
-Command **73** is reserved exclusively for this feature. Production discovery requires
-INFO protocol **12**. It does not change firmware identity/version. Schema **1** is separate
+Command **86** is reserved exclusively for this feature. Production discovery requires
+INFO protocol **15**. It does not change firmware identity/version. Schema **1** is separate
 from INFO version. All bytes are unsigned MIDI-safe 7-bit values; tokens are unsigned u28,
 four bytes least-significant first, **not** the offset signed editor-value format.
 
@@ -16,7 +16,7 @@ four bytes least-significant first, **not** the offset signed editor-value forma
 Statuses: 0 OK, 1 Malformed, 2 Full, 3 Missing. Unknown opcodes/lengths return Malformed;
 no mutation occurs. Discovery returns schema=1, flags=7 (bit0 held fill, bit1 punch,
 bit2 next-bar fill), owners=8, lease=750 milliseconds (unsigned u14), effects=16.
-Client rejects unknown schemas/capability shapes and never probes protocol <12.
+Client rejects unknown schemas/capability shapes and never probes protocol <15.
 
 Kinds: 0 held fill (value=0), 1 punch (value 0–15), 2 next-bar fill (value=0).
 Punch indices match the existing DSP: Loop4, Loop8, Loop16, Loop32, Stutter, Reverse,
@@ -41,9 +41,9 @@ The engine helper is included by punch.c; punch_process already uses panel-prior
 `punch.req >= 0 ? punch.req : perf_punch(fm1_ms)`. The parent integrated these hooks:
 
 1. In editor.c, after ed_* response helpers and before ed_handle: `#include "editor_performance.c"`.
-2. In command dispatch: `case 73: ed_performance(a, na); break;` (use actual argument-count name).
+2. In command dispatch: `case 86: ed_performance(a, na); break;` (use actual argument-count name).
 3. At the beginning of ed_sync, **before WATCH's early return**: `ed_performance_service();`.
-   This must execute with WATCH disabled. INFO reports protocol12 with the production hooks installed.
+   This must execute with WATCH disabled. INFO reports protocol15 with the production hooks installed.
 4. In seq_stop: `perf_reset();` before clearing physical fill state.
 5. At each detected new bar, before `fill_bar_on = fill_arm`: `perf_take_bar(fm1_ms);`.
 6. Per-block fill aggregation: `fill_now = (uint8_t)(fill_held || fill_bar_on || perf_fill(fm1_ms));`.

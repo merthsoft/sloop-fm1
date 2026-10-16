@@ -2,10 +2,10 @@ using Sloop.Protocol;
 static void Check(bool value,string message) { if(!value) throw new Exception(message); }
 var transport=new Wire();using var client=new EditorClient(transport);
 DeviceInfo Info(int v)=>new("test",1,1,1,16,0,["FM"],4,v);
-Check(!(await client.GetUsbPlaybackCapabilitiesAsync(Info(11))).Supported && transport.Sent==0,"old device must not be probed");
+Check(!(await client.GetUsbPlaybackCapabilitiesAsync(Info(12))).Supported && transport.Sent==0,"old device must not be probed");
 transport.Reply=[0,0,1,0,0,32,0,2];
-Check(!(await client.GetUsbPlaybackCapabilitiesAsync(Info(12))).Supported,"UAC absent capabilities");
-transport.Reply=[0,0,1,15,0,32,0,2];var caps=await client.GetUsbPlaybackCapabilitiesAsync(Info(12));
+Check(!(await client.GetUsbPlaybackCapabilitiesAsync(Info(15))).Supported,"UAC absent capabilities");
+transport.Reply=[0,0,1,15,0,32,0,2];var caps=await client.GetUsbPlaybackCapabilitiesAsync(Info(15));
 Check(caps.Supported && caps.RampFrames==256,"capabilities");
 transport.Reply=[1,0,0,16,1];var state=await client.UsbPlaybackControlAsync(caps,new(2048,true));
 Check(state==new UsbPlaybackControl(2048,true) && transport.Last.SequenceEqual(new byte[]{1,0,16,1}),"gain/mute wire round trip");
@@ -27,6 +27,6 @@ sealed class Wire:IMidiTransport
     public byte[] Reply=[]; public byte[] Last=[];public int Sent;
     public ValueTask SendAsync(ReadOnlyMemory<byte> bytes,CancellationToken token) {
         token.ThrowIfCancellationRequested();Sent++;Last=bytes.Span[5..^1].ToArray();
-        BytesReceived?.Invoke(EditorCodec.Encode(75,Reply));return ValueTask.CompletedTask;
+        BytesReceived?.Invoke(EditorCodec.Encode(88,Reply));return ValueTask.CompletedTask;
     }
 }

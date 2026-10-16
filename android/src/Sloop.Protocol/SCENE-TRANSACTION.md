@@ -1,10 +1,10 @@
-# Scene RAM transaction extension, revision 1 (command 72)
+# Scene RAM transaction extension, revision 1 (command 85)
 
 Implemented staging contract, October 8, 2026. This is a reserved extension under
 the existing `F0 7D 46 4C command args F7` envelope. All arguments are 7-bit.
-Protocol 11 advertisement in parent-owned editor.c is still required. Hosts must
-not probe this on INFO <=10: old firmware can time out and fault EditorClient.
-The shipped source currently retains INFO 10, so production UI uses its existing fallback.
+INFO15 reserves command85 for this extension; clients must not probe older
+protocols. Production staging remains disabled and uses the existing stopped
+fallback. Capability discovery is required before any staged transaction.
 
 Unsigned integers use little-endian base128 digits: u14 = two bytes, u28 = four.
 CRC-32/ISO-HDLC uses five digits, with final digit <=15 (full 32 bits).

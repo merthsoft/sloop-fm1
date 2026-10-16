@@ -4,17 +4,17 @@ static uint8_t sequence_browser, sequence_page, sequence_confirm, sequence_initi
 static uint8_t sequence_add, sequence_custom_slot;
 static uint32_t sequence_hold_t0;
 static const char *const STARTER_MODE_NAMES[] = {"CHORD", "BASS", "ARP NOTES"};
-static void sequence_preview_cancel(void)
+UI_SMALL static void sequence_preview_cancel(void)
 { fm1_irq_off(); sequence_preview_stop(); fm1_irq_on(); }
 
-static void sequence_screen_close(void)
+UI_SMALL static void sequence_screen_close(void)
 {
     sequence_preview_cancel();
     sequence_preview_tick = 0; sequence_preview_end = 0;
     sequence_browser = sequence_confirm = 0;
     sequence_hold_t0 = 0; ui.force = 1;
 }
-static void sequence_screen_open(void)
+UI_SMALL static void sequence_screen_open(void)
 {
     if (song.sel >= NPART) return;
     /* Seed once from the first track, then keep the workstation's choices when
@@ -32,7 +32,7 @@ static void sequence_screen_open(void)
     sequence_hold_t0 = 0; ui.force = 1;
 }
 /* Keep these cold screens out of the main UI handlers (measured target size). */
-static void __attribute__((noinline)) sequence_screen_draw(void)
+UI_SMALL static void sequence_screen_draw(void)
 {
     static uint32_t head;
     const char *name=sequence_sel==NSEQUENCE_STARTERS?"CUSTOM":SEQUENCE_STARTERS[sequence_sel].name;
@@ -75,7 +75,7 @@ static void __attribute__((noinline)) sequence_screen_draw(void)
     if (ui.msg_t) { cv_rect(0,0,240,20,C_WHITE); cv_text(4,2,&FONT_S,ui.msg,C_BLACK); }
     cv_blit(0,160);
 }
-static void __attribute__((noinline)) sequence_screen_input(uint32_t pressed,uint32_t home)
+UI_SMALL static void sequence_screen_input(uint32_t pressed,uint32_t home)
 {
     uint32_t k; int32_t s; int changed=0, apply=0;
     if (song.sel >= NPART || home == 1u) { sequence_screen_close(); return; }

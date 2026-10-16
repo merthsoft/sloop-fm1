@@ -9,7 +9,7 @@ static void ed_str(const char *s, uint32_t max) { uint32_t i; for (i = 0; s[i] &
 #include "../firmware/src/editor_drum_grooves.c"
 static void command(const uint8_t *a, uint32_t n, uint32_t status)
 {
-    reply_n = 0; assert(ed_drum_grooves_handle(74, a, n));
+    reply_n = 0; assert(ed_drum_grooves_handle(87, a, n));
     assert(reply_n >= 2 && reply[0] == (n ? a[0] : 127) && reply[1] == status);
 }
 int main(void)

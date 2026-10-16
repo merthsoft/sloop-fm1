@@ -8,11 +8,11 @@ acceptance gates.
 
 UAC1 PCM16 stereo, 44,100 Hz: IF2 capture stays at EP4 IN (`0x84`);
 new IF3 playback uses adaptive EP4 OUT (`0x04`), idle/active alternate
-settings, 184-byte maximum packets at 1 ms. Terminals 3 (USB streaming)
+settings, up to196-byte maximum packets at1ms (184 in fixed44.1 mode). Terminals 3 (USB streaming)
 and 4 (speaker) describe playback separately from capture terminals 1/2.
 CDC shifts to IF4/5; MIDI IF1 and its endpoint addresses are unchanged.
 Configuration lengths are 249 bytes plain and 323 with CDC. Device versions
-are 3.20/3.21; the loader remains MIDI-only at its previous version/PID.
+are3.40/3.41 in AUTO (fixed44.1:3.30/3.31, fixed48:3.50/3.51); the loader remains MIDI-only at its previous version/PID.
 CDC compiled in but hidden produces the exact same descriptors as no CDC.
 The existing shared audio/MIDI AC collection and IAD scheme is preserved.
 
@@ -110,7 +110,7 @@ runtime is unavailable in the bundled host compiler, so ASan is unverified.
 
 Negotiated gain/mute and diagnostic snapshots are implemented in
 `src/editor_usb_playback.c`, `src/usb.c`, `EditorClient.UsbPlayback.cs`, and the
-Android USB playback service/UI. Command 75 is reserved exclusively for this
+Android USB playback service/UI. Command 88 is reserved exclusively for this
 feature, with INFO protocol 12; schema/capability query is suboperation 0.
 Combined capture remains unimplemented; both capture modes exclude return.
 
@@ -123,7 +123,7 @@ FM1. Ensure instrument capture never contains phone return and explicit Android
 routing stops on removal. Validate optional CDC separately. No physical result
 is claimed by this implementation.
 
-## Negotiated command 75, schema 1 (host validated)
+## Negotiated command 88, schema 1 (host validated)
 
 All payload bytes are 7-bit. Requests: `[0]` capabilities, `[1]` control read,
 `[1,gainLo,gainHi,mute]` control write, `[2]` diagnostic snapshot, `[3]` counter

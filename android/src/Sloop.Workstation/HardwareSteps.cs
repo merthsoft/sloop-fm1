@@ -21,7 +21,7 @@ public static class HardwareSteps
     }
     public static SynthStep DecodeSynth(ReadOnlySpan<byte> bytes,SynthStep identity,MicroOffset micro,FillCondition fill)
     {
-        if(bytes.Length!=11||bytes[0]>4||bytes[5]>2||(bytes[6]&~3)!=0||bytes[9]>3)throw new FormatException("Invalid native synth step.");
+        if(bytes.Length!=11||bytes[0]>4||bytes[5]>2||(bytes[6]&~0x7b)!=0||bytes[9]>3)throw new FormatException("Invalid native synth step.");
         uint level=(uint)(bytes[8]|(bytes[9]&1)<<7),rat=(uint)(bytes[10]|(bytes[9]>>1)<<7);
         var raw=bytes.ToArray();
         return identity with {Count=bytes[0],Time=(StepTime)bytes[5],Flags=(StepFlags)bytes[6],Velocity=bytes[7],Micro=micro,Fill=fill,

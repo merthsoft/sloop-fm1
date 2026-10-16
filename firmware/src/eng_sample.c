@@ -10,13 +10,16 @@ typedef struct {
     uint32_t rate;               /* source rate / 44100, Q16 */
     int16_t root16;              /* root pitch in 1/16 semitone */
     int16_t pred;                /* ADPCM state at the loop start */
-    uint8_t idx, lo, hi, looped;
+    uint8_t idx, lo, hi, looped; /* looped: 0 one-shot, 1 loops [ls, le] (the factory sets), 2 (2.7, user slots: the
+                                  * editor's LOOP and LOOP+TAIL) loops while the note is held, then plays on to the end */
 } smp_zone_t;
+#define SMP_LOOP_HELD 2u
 typedef struct {
     const char *name;
     uint16_t z0, nz;
 } smp_set_t;
 #include "felucca_samples.h"
+#include "sample_rom.c"
 
 static const int16_t IMA_STEP[89] = {
     7, 8, 9, 10, 11, 12, 13, 14, 16, 17, 19, 21, 23, 25, 28, 31, 34, 37, 41, 45, 50, 55, 60, 66, 73, 80, 88, 97,
@@ -113,7 +116,7 @@ DSP_INLINE const smp_zone_t *smp_zone(uint32_t zi)
  * index, s[2] previous sample, s[3] current sample, s[4] zone, s[5] step Q16 */
 DSP_INLINE int32_t sample_next_inline(const smp_zone_t *z, voice_t *v, int loop)
 {
-    uint32_t pos = v->ph[0], b = SMP_DATA[z->off + (pos >> 1)];
+    uint32_t pos = v->ph[0], b = smp_rom_byte(&v->sample_cache, z->off + (pos >> 1));
     uint32_t code = (pos & 1u) ? (b >> 4) : (b & 15u);
     int32_t step = IMA_STEP[(uint32_t)v->s[1] <= 88u ? v->s[1] : 88], vd = step >> 3;
     if (code & 4u)
@@ -125,7 +128,7 @@ DSP_INLINE int32_t sample_next_inline(const smp_zone_t *z, voice_t *v, int loop)
     v->s[0] = clamp(v->s[0] + ((code & 8u) ? -vd : vd), -32768, 32767);
     v->s[1] = clamp(v->s[1] + IMA_IDX[code & 7u], 0, 88);
     pos++;
-    if (pos > z->le && z->looped && loop) {
+    if (pos > z->le && z->looped && loop && (z->looped != SMP_LOOP_HELD || v->gate)) {   /* (HELD, let go: the tail) */
         pos = z->ls;
         v->s[0] = z->pred;
         v->s[1] = z->idx;

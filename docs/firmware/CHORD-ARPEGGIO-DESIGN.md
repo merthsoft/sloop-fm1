@@ -1,5 +1,11 @@
 # FM1 shared harmony, chord, and arpeggio design
 
+Current integration uses upstream canonical arp IDs 0–14 (OFF through CHORD),
+with SHUF, ROOTALT, UPDNREP and PULSE appended at 15–18. CONV and DIVG replace
+the former OUTIN and INOUT names. Earlier incremental notes below describe the
+pre-merge checkpoints; their original ID-stability claims do not apply across
+this merge. Upstream song compatibility takes priority over old fork songs.
+
 2026-10-09: Merthsoft.6 extracts the existing nearest-inversion policy into
 `firmware/src/harmony_voicing.h`, shared by live chords and the optional native
 sequence-starter VLEAD renderer. Starter voicing derives from a fixed first-bar

@@ -1,4 +1,4 @@
-> **Merthsoft integration:** INFO reports protocol 14 with the upstream 2.6 track layout (71 parameters, engine parameters 63–70; 45 globals). Companion commands 72–76 retain their meanings. DRUM SYNTH uses 80–84; the web editor negotiates these IDs from INFO and retains upstream protocol 10 IDs 72–76. Native backup projects use FUN6; MIDI settings and learn data use optional object 10. See [starter wire contract](../docs/firmware/MUSICAL-STARTER-PROTOCOL.md). Earlier sections describe their original releases.
+> **Current MerthSloop integration:** INFO protocol **15**, upstream 2.7.1 layout (71 track parameters, engine parameters 63–70). DSYN **72–76** and LIVE **77** keep upstream meanings. Fork extensions: scene **85** (reserved/disabled in production), performance **86**, grooves **87**, USB return **88**, musical starters **89**. Continuations use upstream flags bits **3–6**. Discover descriptors and capabilities; earlier sections retain historical release context.
 
 
 # SLOOP editor protocol (SysEx over USB-MIDI)
@@ -62,7 +62,7 @@ after an engine change.
 | 3 SET | scope, id, v14 | scope, id, v14 (the value after clamping). Setting global `G_ENGSEL` (id from DESC label "ENG") changes the engine with its defaults |
 | 4 DUMP | — | engine, preset, then P_COUNT × v14 (the selected track), then G_COUNT × v14 (globals) |
 | 5 DESC | scope, id | scope, id, fmt, min v14, max v14, def v14, label string, unit string, then for an enum (fmt 8) one name string per value (at most 64; firmware before SLOOP sent at most 16) |
-| 6 STEP_GET | index 0..NSTEP−1 | index, n (0..4 notes), note0..note3, time (0 NOTE, 1 TIE, 2 REST), flags (1 accent, 2 slide; MerthSloop bits 2–5 continue note slots 0–3), vel, then (v5) lvl, hi, rat |
+| 6 STEP_GET | index 0..NSTEP−1 | index, n (0..4 notes), note0..note3, time (0 NOTE, 1 TIE, 2 REST), flags (1 accent, 2 slide; upstream bits 3–6 continue note slots 0–3), vel, then (v5) lvl, hi, rat |
 | 7 STEP_SET | index, n, note0..3, time, flags, vel [, lvl, hi, rat (v5)] | same as STEP_GET (after the write). Without the v5 bytes the step's levels and ratchets become 0 |
 
 | 8 PRESET | engine, preset | engine, preset (applies the preset: sound, sends, arp; never the pattern, the mix or the key: `LEVEL PAN MUTE`, `LEN DIV SWG GATE`, `ROOT SCL QNT CHORD` stay) |
@@ -147,7 +147,7 @@ checked byte for byte by `web/test_web.mjs`): header at 0, ADPCM data at 512.
 | 0 | magic `"FSMP"` (u32 0x504D5346), u16 version 1, u8 zone count 1..16, u8 0 |
 | 8 | name, 8 ASCII bytes (0-padded) |
 | 16 | u32 data length (bytes), u32 CRC-32 (zlib) of the data, 8 bytes 0 |
-| 32 | 16 zones × 28 bytes: u32 off (in the data), n (samples), loop start, loop end, rate (Hz / 44100 × 65536); i16 root × 16 (MIDI note), ADPCM predictor at the loop start; u8 step index at the loop start, lo note, hi note, looped (0/1) |
+| 32 | 16 zones × 28 bytes: u32 off (in the data), n (samples), loop start, loop end, rate (Hz / 44100 × 65536); i16 root × 16 (MIDI note), ADPCM predictor at the loop start; u8 step index at the loop start, lo note, hi note, looped (0 one-shot, 1 always, 2 while the note is held then the rest to the end: SLOOP 2.7, the editor's LOOP and LOOP+TAIL; 2.6 plays 2 as 1) |
 
 Data is IMA ADPCM, 4 bit, low nibble first, starting from predictor 0 and step index 0.
 All little endian.
@@ -304,7 +304,7 @@ empty). Numbers are 5 × 7 bit (u35, LSB first); data is pack7.
 | --- | --- | --- |
 | 34 BK_LIST | — | rc (0 ok, 4 no flash), count, then per object: id, length u35, CRC-32 u35 (zlib). Takes a snapshot of the working project and the settings for GET |
 | 35 BK_GET | id, offset u35, count (2 × 7 bit, 1..256) | id, rc (0 ok, 1 arguments, 5 the snapshot is gone: LIST again), offset u35, count, pack7 data |
-| 36 BK_PUT | op 0 begin: id 0..9 (8: v9, 9: v10), length u35, CRC-32 u35 · op 1 data: id, offset u35, pack7 (≤ 256 bytes, in order) · op 2 commit: id · op 3 abort: id | op, id, rc: 0 ok, 1 arguments, 2 not a valid object (CRC, magic, sizes, ranges), 3 stop the song first (projects and preset banks; since 2.5 the settings too when their song order differs), 4 flash, 5 no begin for this object (or more than 15 s ago) |
+| 36 BK_PUT | op 0 begin: id 0..11 (8: v9, 9: v10, 10: 2.6, 11: v11), length u35, CRC-32 u35 · op 1 data: id, offset u35, pack7 (≤ 256 bytes, in order) · op 2 commit: id · op 3 abort: id | op, id, rc: 0 ok, 1 arguments, 2 not a valid object (CRC, magic, sizes, ranges), 3 stop the song first (projects and preset banks; since 2.5 the settings too when their song order differs), 4 flash, 5 no begin for this object (or more than 15 s ago) |
 
 A restore stages one object in RAM (the project load buffer), checks it at the commit as a load checks it
 (projects: magic, size and sum, older formats converted; banks: magic, record size, slot count; settings:
@@ -464,6 +464,49 @@ backup is one an older editor reads. Its commit checks every entry
 (a CC that learns, a parameter the firmware knows; the others become empty), writes it with the settings, and answers rc 3
 while the song plays. A device before 2.6 answers its begin with rc 5: the editor skips it.
 
+## v11: your theme (SLOOP 2.7)
+
+`INFO` ends with 11. Backup object **11** is the theme (gfx.c `theme_t`, 36 bytes, little-endian): "THM1", the name (8
+ASCII, 0-padded), the screen's five colours darkest first (lines, dim, labels, secondary, values) and the four tracks'
+colours (T1 T2 T3 drums), the background (0: black), RGB565 each, then the CRC-32 of the 32 bytes before it. BK_LIST names it only while
+there is one. A begin with length 0 removes it. Its commit checks the record (magic, CRC, a printable name, the
+brightest colour with a channel 96 or more apart from the background's, on 0..255: rc 2 otherwise), keeps it with the settings (in the settings sector's
+side record: firmware before 2.7 never reads it), shows it (MENU > COLOR on it) and answers rc 3 while the song plays. A
+device before 2.7 answers its begin with rc 5: the editor skips it. The editor's Theme page shares a theme as one line,
+`SLOOP-THEME-1:` + the 36 bytes in base64.
+
+## v12: LIVE (SLOOP 2.7)
+
+`INFO` ends with 12. Command **77**, `LIVE` (firmware `editor_live.c`), drives the editor's LIVE page: `op [args]`,
+and every reply is `op` followed by the live state. Each op runs the code of the FM-1's own buttons:
+
+| op | args | does |
+| --- | --- | --- |
+| 0 | — | nothing: the state only (the page asks about 8 times a second) |
+| 1 | 0 / 1 / 2 | PLAY: stop, play, or as the PLAY button (play / stop). Song mode with an empty section: *EMPTY SECTION: REC* |
+| 2 | layer, white key 0..15, down 1 / up 0 | a key of a layer, as the layer's button held + that key (`ui_layers.c layer_key`): layer 6 GLO (keys 1..4 mute, 5..8 solo, 9 fill while held, 10 fill the next bar, 16 tap tempo), 7 SAVE (1..4 play A..D on the next bar or, stopped, load it; 5..8 store the loop, a used section only on a second press within 3 s; 13 loop / song; 14 SONG REC), 5 SEL (the song's key) |
+| 3 | effect 0..26, on 1 / off 0 | a punch-in effect, as GLO > MIDI 3 > FX CH (`seq.c midi_fx`): one at a time; an FM-1 key with FX held takes over |
+| 4 | — | REC, as the REC button (`rec_toggle`) |
+| 5 | 0 undo / 1 redo | as EDIT + OCT− / OCT+ |
+| 6 | track, note (drums: lane 0..15), level (0 NORM, 1 GHOST, 2 SOFT, 3 HARD), down 1 / up 0 | ROLL, as ARP + key (`seq.c roll_start`): the note repeats at GLO's ROLL rate while held (recorded with REC on). The page's rolls use the key 0x80 + note, so letting go of ARP on the FM-1 does not end them; up does |
+| 7 | track, note (drums: lane), down / up | ERASE, as EDIT + key: playing, the steps it passes; stopped, every step (`erase_now`, one undo) |
+| 8 | track, tool (0 shift, 1 length, 2 transpose), 1 up / 0 down | the pattern, as EDIT + KNOB 1..3 (`pattern_rotate`, `pattern_length` ×2 / ½, `pattern_transpose`): each one undo |
+| 9 | n, then n sections 0..3 (n ≤ 8; 0: the chain stops) | a chain, as SAVE + several keys (`chain_release`): the first is asked for the next bar, each plays its bars, looped. Only while playing; an empty section refuses it |
+| 10 | bits (1 the reverb, 2 the echo; 0 let go) | THROW, as FX + OCT− / OCT+ (`thr_ed`, with the FM-1's own) |
+| 11 | 0..126, or 127 | the master level from the page; 127, or turning the MASTER knob, gives it back to the knob (`ed_master`, main.c) |
+| 12 | lane, TUNE + 8 (0..15), DECAY + 4 (0..7) | a drum sound's TUNE and DECAY, as the DRUMS screen's SOUND page |
+
+The state, 50 bytes after `op` (an early 2.7 test build: 32, without the last 18, and without ops 6..12): flags (bit 0 playing, 1 PLAY asked, 2 song mode, 3 the song plays, 4 a fill now, 5 fill
+next bar, 6 SONG REC), flags 2 (bit 0 REC armed and waiting for a note, 1 undo there, 2 redo there), BPM (v14), the
+section playing + 1 (0 none), the one asked for + 1, the chain's entries and the one playing, the mutes (bit per track),
+the solos, the REC tracks, the selected track, the punch-in effect + 1, CPU %, the song's entry, entries, bar and that
+entry's bars, the sections stored (bit per section), then per track its step, its pattern length and its meter
+(8 log2 |peak|: 48 = −54 dB, 128 = +6 dB, 0 silent, as the TRACKS meters), the master (0: the knob, else the page's
+level + 1), the THROWs (bits), and the 16 drum sounds' TUNE + 8 | DECAY + 4 << 4. Requests that toggle (op 2's mute, solo,
+fill bar…) are sent once, never repeated on a timeout. The notes are not SysEx: the page plays them as MIDI notes on
+the tracks' channels (GLO > MIDI; OTHER = SEL: a free channel on the selected track; DR MAP for the drums). A device
+before 2.7 does not answer `LIVE`: the page keeps its mixer and keys (TRACK_MIX, TRACK_PARAM, SET, notes).
+
 ## Notes for the editor
 
 - **One request at a time.** Wait for the reply, about 10–50 ms, before sending the next.
@@ -489,3 +532,9 @@ Older command layouts are unchanged; command 72 remains disabled in production.
 See [performance wire](../android/src/Sloop.Protocol/PERFORMANCE-WIRE.md),
 [groove bank](../docs/firmware/DRUM-GROOVES-DESIGN.md), and
 [USB playback](../docs/firmware/USB-PLAYBACK-IMPLEMENTATION.md).
+
+## MerthSloop companion extension namespace
+
+MerthSloop protocol 15 uses the upstream SYN kit command IDs **72–76** and LIVE **77** unchanged. Companion-only commands are **85** scene transactions (reserved; production staging remains disabled), **86** performance leases, **87** drum groove bank, **88** USB return controls, and **89** musical starters. Hosts must discover INFO protocol 15 before sending these extensions; upstream protocol 12 does not advertise them. Historical MerthSloop protocols 13–14 used relocated SYN commands 80–84; the web editor negotiates those old devices separately.
+
+Native synth step flags use upstream continuation bits **3–6**, one bit per note slot; accent/slide remain bits 0–1 and bit 2 stays reserved for preset pattern encoding. Companion snapshots and edits preserve all four continuation bits. Arp IDs 0–14 follow upstream, with additional MerthSloop modes appended.

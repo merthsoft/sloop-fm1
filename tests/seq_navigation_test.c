@@ -4,6 +4,7 @@
 #include "ui_pages_test.c"
 static void expect_page(const char *title)
 {
+    if(ui.home || strcmp(cur_page()->title,title)) fprintf(stderr,"page wanted %s, got %s home=%u browser=%u sub=%u\n",title,cur_page()->title,ui.home,sequence_browser,sequence_page);
     assert(!ui.home && !strcmp(cur_page()->title,title));
 }
 static void select_turn(int32_t amount)

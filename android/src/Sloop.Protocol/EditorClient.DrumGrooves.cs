@@ -7,19 +7,19 @@ public sealed partial class EditorClient
 {
     public async Task<IReadOnlyList<DrumGroove>> ListDrumGroovesAsync(DeviceInfo info, CancellationToken token = default)
     {
-        if (info.ProtocolVersion < 12) throw new NotSupportedException("Update SLOOP firmware to browse its groove bank.");
-        var caps = await RequestAsync(74, [0], cancellationToken: token).ConfigureAwait(false);
+        if (info.ProtocolVersion < 15) throw new NotSupportedException("Update SLOOP firmware to browse its groove bank.");
+        var caps = await RequestAsync(87, [0], cancellationToken: token).ConfigureAwait(false);
         var a = caps.Arguments;
         if (a.Length != 5 || a[0] != 0 || a[1] != 0 || a[2] != 1 || a[3] is < 1 or > 24 || a[4] != 1)
             throw new FormatException("Unsupported drum groove bank capabilities.");
-        var entries = DecodeDrumGrooves(await RequestAsync(74, [1], cancellationToken: token).ConfigureAwait(false));
+        var entries = DecodeDrumGrooves(await RequestAsync(87, [1], cancellationToken: token).ConfigureAwait(false));
         if (entries.Count != a[3]) throw new FormatException("Groove bank changed during discovery.");
         return entries;
     }
 
     public static IReadOnlyList<DrumGroove> DecodeDrumGrooves(EditorFrame frame)
     {
-        if (frame.Command != 74) throw new FormatException("Expected drum groove bank.");
+        if (frame.Command != 87) throw new FormatException("Expected drum groove bank.");
         var r = new PayloadReader(frame.Arguments);
         if (r.Byte() != 1 || r.Byte() != 0) throw new FormatException("Drum groove bank unavailable.");
         int count = r.Byte();
@@ -39,7 +39,7 @@ public sealed partial class EditorClient
     public async Task<DrumGrooveStatus> ApplyDrumGrooveAsync(byte id, bool replacementConfirmed, CancellationToken token = default)
     {
         if (id >= 24) throw new ArgumentOutOfRangeException(nameof(id));
-        var frame = await RequestAsync(74, [2, id, (byte)(replacementConfirmed ? 1 : 0)],
+        var frame = await RequestAsync(87, [2, id, (byte)(replacementConfirmed ? 1 : 0)],
             cancellationToken: token).ConfigureAwait(false);
         var a = frame.Arguments;
         if (a.Length != 3 || a[0] != 2 || a[2] != id || a[1] > 3)

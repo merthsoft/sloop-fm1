@@ -1,10 +1,13 @@
+#ifndef UI_SMALL
+#define UI_SMALL
+#endif
 /* SPDX-License-Identifier: GPL-3.0-only */
-/* Additive command 76; all musical material comes from the native ROM bank. */
-#define ED_MUSICAL_STARTERS 76u
+/* Additive command 89; all musical material comes from the native ROM bank. */
+#define ED_MUSICAL_STARTERS 89u
 #define ED_STARTER_LEASE 1500u
 static uint32_t ed_starter_until, ed_starter_resets;
 static uint16_t ed_starter_token;
-static int ed_starter_busy(void)
+UI_SMALL static int ed_starter_busy(void)
 {
     uint32_t k;
     if (song.playing || transport_req || song.rec || rec_wait || ft_on || panic_req || fm1_in.notes) return 1;
@@ -12,13 +15,13 @@ static int ed_starter_busy(void)
     return 0;
 }
 /* Scan only on START/APPLY; never on the audio tick. Reuses routing ownership RAM. */
-static int ed_starter_midi_held(void)
+UI_SMALL static int ed_starter_midi_held(void)
 {
     uint32_t ch,note;
     for(ch=0;ch<16;ch++)for(note=0;note<128;note++)if(midi_sel_get(ch,note))return 1;
     return 0;
 }
-static void ed_starter_end(void)
+UI_SMALL static void ed_starter_end(void)
 {
     sequence_preview_stop(); ed_starter_token=0;
 }
@@ -35,7 +38,7 @@ static void ed_starter_service(void)
        (int32_t)(fm1_ms-ed_starter_until)>=0 || !sequence_preview.active)) ed_starter_end();
     fm1_icfg_set(irq);
 }
-static int ed_musical_starters_handle(uint32_t cmd,const uint8_t *a,uint32_t n)
+UI_SMALL static int ed_musical_starters_handle(uint32_t cmd,const uint8_t *a,uint32_t n)
 {
     uint32_t op=n?a[0]:127u, status=0,k,token=0,irq;
     if(cmd!=ED_MUSICAL_STARTERS) return 0;

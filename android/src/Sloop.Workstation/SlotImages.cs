@@ -17,7 +17,7 @@ public static class SlotImages
             int loopStart=checked((int)BinaryPrimitives.ReadUInt32LittleEndian(bytes.AsSpan(p+8))),loopEnd=checked((int)BinaryPrimitives.ReadUInt32LittleEndian(bytes.AsSpan(p+12)));
             int rate=checked((int)BinaryPrimitives.ReadUInt32LittleEndian(bytes.AsSpan(p+16)));
             int root=BinaryPrimitives.ReadInt16LittleEndian(bytes.AsSpan(p+20)); int lo=bytes[p+25],hi=bytes[p+26];
-            if(count<1||offset<0||offset>dataLength||((long)count+1)/2>dataLength-offset||lo>hi||loopStart<0||loopEnd>=count||loopStart>loopEnd||bytes[p+24]>88||bytes[p+27]>1||rate is <1 or >262144)
+            if(count<1||offset<0||offset>dataLength||((long)count+1)/2>dataLength-offset||lo>hi||loopStart<0||loopEnd>=count||loopStart>loopEnd||bytes[p+24]>88||bytes[p+27]>2||rate is <1 or >262144)
                 throw new FormatException("Invalid slot zone metadata.");
             samples+=count;previews.Add(new(zone,root/16,lo,hi,offset,ImaAdpcm.Decode(bytes.AsSpan(512+offset),count),checked((int)Math.Round(rate*44100.0/65536,MidpointRounding.AwayFromZero))));
         }

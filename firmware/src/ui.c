@@ -21,7 +21,7 @@ static uint32_t up_rank(uint32_t slot);
 static void up_name(uint32_t k, char *b);
 static void up_slot_label(char *b, uint32_t k);
 static void up_ui(uint32_t op, uint32_t k);
-static uint32_t user_of(const track_t *t)    /* user preset slot its sound came from, UP_SLOTS = none */
+UI_SMALL static uint32_t user_of(const track_t *t)    /* user preset slot its sound came from, UP_SLOTS = none */
 {
     return t->user && up_used(t->user - 1u) ? t->user - 1u : UP_SLOTS;
 }
@@ -92,7 +92,7 @@ static struct {
     uint8_t graph_top;           /* the graph strip's top G_OY rows hold something */
 } ui;
 
-static const page_t *cur_page(void) { return &PAGES[ui.page]; }
+UI_SMALL static const page_t *cur_page(void) { return &PAGES[ui.page]; }
 static int32_t accel(uint32_t role, int32_t s, int32_t range);   /* ui_input.c */
 static void layer_screen_draw(void);                            /* ui_layers.c */
 static void hold_screen_draw(void);
@@ -101,7 +101,7 @@ enum { BT_NONE, BT_TAP, BT_HOLD };
 static void sequence_screen_open(void);
 static void sequence_screen_close(void);
 
-static uint32_t page_first(uint32_t fam)
+UI_SMALL static uint32_t page_first(uint32_t fam)
 {
     uint32_t i;
     for (i = 0; i < NPAGES; i++)
@@ -111,7 +111,7 @@ static uint32_t page_first(uint32_t fam)
 }
 
 /* transient message in the top bar: a + b */
-static void ui_say(const char *a, const char *b)
+UI_SMALL static void ui_say(const char *a, const char *b)
 {
     uint32_t n;
     str_cpy(ui.msg, a, sizeof ui.msg);
@@ -120,11 +120,11 @@ static void ui_say(const char *a, const char *b)
     ui.msg_t = 40;
 }
 
-static void ui_message(const char *s) { ui_say(s, ""); }
-static void note_edit_error(int result)
+UI_SMALL static void ui_message(const char *s) { ui_say(s, ""); }
+UI_SMALL static void note_edit_error(int result)
 {ui_message(result==-2?"CHORD FULL":result==-3?"SELECT A NOTE":result==-4?"SET VOICE TO POLY":"NOTE AHEAD");}
 
-static void page_entered(void)
+UI_SMALL static void page_entered(void)
 {
     ui.tie_voice=0;ui.tie_start=255;
     groove_preview.active = 0;
@@ -151,7 +151,7 @@ static void page_entered(void)
 /* (2.6) GLO > MIDI: two tracks never share a channel (it would play the first only, the other silent): a channel
  * turned (a knob, the editor, a backup) onto one another track has goes on to the next free one, the way it was
  * turned, and says whose it was. Every frame (ui_input) */
-static void midi_chan_fix(void)
+UI_SMALL static void midi_chan_fix(void)
 {
     static const uint8_t ID[4] = {G_CH1, G_CH2, G_CH3, G_DRCH};
     static int16_t was[4] = {-1, -1, -1, -1};
@@ -193,13 +193,13 @@ static void midi_chan_fix(void)
     }
 }
 
-static int step_on(const step_t *st) { return st->time == ST_NOTE && st->n; }
+UI_SMALL static int step_on(const step_t *st) { return st->time == ST_NOTE && st->n; }
 /* LEN (SLOOP 2.6, after Felucca 1.5 by Leo Kuroshita, Discussions #178, #173): a NOTE step's length is the step and
  * the TIE steps after it (inside LEN, no wrap); SEQ > STEP's KNOB 3 on a note sets it (ui_input.c step_edit). Longer:
  * the steps after it become clean TIEs (a REST or an empty step; it stops at the next step holding notes, which stays,
  * and at LEN); shorter: its last TIEs become RESTs (one holding notes keeps them). The steps' locks and nudges stay;
  * the turns on one step are one undo (ui_input.c). Returns the length it got */
-static uint32_t note_len(const track_t *t, uint32_t i)
+UI_SMALL static uint32_t note_len(const track_t *t, uint32_t i)
 {
     step_t s;note_effective(t,i,&s);uint32_t n=1;
     for (uint32_t k=0;k<s.n;k++) {
@@ -207,12 +207,12 @@ static uint32_t note_len(const track_t *t, uint32_t i)
     }
     return n;
 }
-static uint32_t note_voice_len(const track_t *t,uint32_t i,uint32_t voice)
+UI_SMALL static uint32_t note_voice_len(const track_t *t,uint32_t i,uint32_t voice)
 {
     step_t s;note_effective(t,i,&s);
     return voice && voice<=s.n?note_chain_len(t,i,s.note[voice-1]):note_len(t,i);
 }
-static uint32_t note_edit_target(uint32_t *voice)
+UI_SMALL static uint32_t note_edit_target(uint32_t *voice)
 {
     uint32_t i=ui.tie_start<trk_len(TSEL)?ui.tie_start:ui.cursor;*voice=0;
     if (ui.tie_voice && ui.tie_start<trk_len(TSEL)) {
@@ -225,7 +225,7 @@ static uint32_t note_edit_target(uint32_t *voice)
     while (i && TSEL->step[i].time==ST_TIE) i--;
     return i;
 }
-static uint32_t note_set_voice_len(track_t *t,uint32_t i,uint32_t voice,uint32_t want)
+UI_SMALL static uint32_t note_set_voice_len(track_t *t,uint32_t i,uint32_t voice,uint32_t want)
 {
     step_t s;note_effective(t,i,&s);
     uint32_t n=note_voice_len(t,i,voice);want=(uint32_t)clamp(want,1,trk_len(t)-i);
@@ -245,21 +245,21 @@ static uint32_t note_set_voice_len(track_t *t,uint32_t i,uint32_t voice,uint32_t
     }
     return want;
 }
-static uint32_t note_set_len(track_t *t,uint32_t i,uint32_t want)
+UI_SMALL static uint32_t note_set_len(track_t *t,uint32_t i,uint32_t want)
 {return note_set_voice_len(t,i,0,want);}
 /* a synth step's velocity as it plays (seq.c step_vel: ACC 127, else its VEL, 96 when 0, through its first note's level) */
-static uint32_t step_vel_shown(const step_t *st)
+UI_SMALL static uint32_t step_vel_shown(const step_t *st)
 {
     uint32_t base = (st->flags & SF_ACCENT) ? 127u : (st->vel ? st->vel : 96u);
     return lvl_vel(st->lvl & 3u, base);
 }
 /* step i of track t has something to play (synth: notes, drums: a lane) */
-static int trk_step_on(const track_t *t, uint32_t i)
+UI_SMALL static int trk_step_on(const track_t *t, uint32_t i)
 {
     return is_drum(t) ? dstep_mask(&t->dstep[i % NSTEP]) != 0u : step_on(&t->step[i % NSTEP]);
 }
 
-static void step_clear(step_t *st)
+UI_SMALL static void step_clear(step_t *st)
 {
     memset(st, 0, sizeof *st);
     st->time = ST_REST;
@@ -270,7 +270,7 @@ static void step_clear(step_t *st)
 #include "sequence_starters.c"
 
 /* undo / redo (EDIT + OCT- / OCT+): the marked pattern and the one now swap places */
-static int undo_swap(int redo)
+UI_SMALL static int undo_swap(int redo)
 {
     track_t *t;
     int16_t len;
@@ -288,8 +288,11 @@ static int undo_swap(int redo)
         uint32_t i;
         for (i = 0; i < NSTEP; i++) {
             step_t x = t->step[i];
+            int8_t m = t->micro[i];
             t->step[i] = undo.st[i];
             undo.st[i] = x;
+            t->micro[i] = undo.micro[i];                 /* (2.7) and its nudge */
+            undo.micro[i] = m;
         }
     }
     len = t->p[P_SLEN];
@@ -304,7 +307,7 @@ static int undo_swap(int redo)
 }
 
 /* SEQ cursor: wraps inside the pattern length, the bank follows, a step entry ends */
-static void cursor_set(int32_t c)
+UI_SMALL static void cursor_set(int32_t c)
 {
     int32_t len = TSEL->p[P_SLEN] > 0 ? TSEL->p[P_SLEN] : 1;
     ui.cursor = (uint8_t)((c % len + len) % len);
@@ -313,20 +316,20 @@ static void cursor_set(int32_t c)
     if (!(fm1_in.buttons&(1u<<panel.btn[B_OCTUP]))) {ui.tie_voice=0;ui.tie_start=255;}
 }
 
-static void cursor_fix(void)                           /* LEN got shorter: onto the last step */
+UI_SMALL static void cursor_fix(void)                           /* LEN got shorter: onto the last step */
 {
     if (ui.cursor >= (uint32_t)TSEL->p[P_SLEN])
         cursor_set(TSEL->p[P_SLEN] - 1);
 }
 
-static void note_name(char *b, uint32_t n)
+UI_SMALL static void note_name(char *b, uint32_t n)
 {
     str_cpy(b, N_NOTE[n % 12u], 4);
     fmt_int(b + str_len(b), (int32_t)(n / 12u) - 1);
 }
 
 /* Spell seven-note scales by letter degree; other scales use the key's accidentals. */
-static void scale_pitch_name(char *b, const track_t *t, uint32_t n)
+UI_SMALL static void scale_pitch_name(char *b, const track_t *t, uint32_t n)
 {
     static const char *const flat[] = {"C","Db","D","Eb","E","F","Gb","G","Ab","A","Bb","B"};
     static const uint8_t relative[] = {0,0,3,10,5,0,3,3,8,7,1,3,3,0,0,0};
@@ -350,7 +353,7 @@ static void scale_pitch_name(char *b, const track_t *t, uint32_t n)
     }
     str_cpy(b, flats ? flat[pc] : N_NOTE[pc], 4);
 }
-static void scale_note_name(char *b, const track_t *t, uint32_t n)
+UI_SMALL static void scale_note_name(char *b, const track_t *t, uint32_t n)
 {
     scale_pitch_name(b, t, n);
     int32_t octave = (int32_t)(n / 12u) - 1;
@@ -359,7 +362,7 @@ static void scale_note_name(char *b, const track_t *t, uint32_t n)
     fmt_int(b + str_len(b), octave);
 }
 
-static void open_family(uint32_t fam)
+UI_SMALL static void open_family(uint32_t fam)
 {
     if (!ui.home && cur_page()->fam == fam) {          /* same button again: next page */
         uint32_t i = ui.page + 1u;
@@ -380,15 +383,15 @@ static void open_family(uint32_t fam)
 /* SELECT on a page: the previous / next page of its family, as tapping the button again but both ways,
  * stopping at the ends. Not the screens of their own (SONG, DRUMS) nor a family of one page (TRACKS):
  * 0 then, and SELECT is the tempo there */
-static int page_walk(int32_t s)
+UI_SMALL static int page_walk(int32_t s)
 {
     const page_t *pg = cur_page();
     uint32_t i, fam = pg->fam, n = 0;
     int32_t cur = -1, to;
-    uint8_t idx[8];
+    uint8_t idx[16];                               /* (2.7: GLO has 9 pages with MIDI 3) */
     if (ui.home || pg->scope == SC_DRUM)
         return 0;
-    for (i = 0; i < NPAGES && n < 8u; i++) {
+    for (i = 0; i < NPAGES && n < 16u; i++) {
         if (PAGES[i].fam != fam || PAGES[i].scope == SC_DRUM || !page_shown(&PAGES[i]))
             continue;
         if (i == ui.page)
@@ -408,7 +411,7 @@ static int page_walk(int32_t s)
 
 /* the page shown is one the selected track has (2.6: EDIT > FILTER, ANALOG only): after a track or engine change,
  * from the previous page of the family that it has (a hidden page is never the first one), once a frame */
-static void page_fix(void)
+UI_SMALL static void page_fix(void)
 {
     uint32_t i = ui.page, fam = PAGES[i].fam;
     if (ui.home || page_shown(&PAGES[i]))
@@ -420,7 +423,7 @@ static void page_fix(void)
     page_entered();
 }
 
-static void go_home(void)
+UI_SMALL static void go_home(void)
 {
     groove_preview.active = 0;
     sequence_screen_close();
@@ -442,33 +445,40 @@ static void go_home(void)
 
 /* the parts' sounds at power-on (engine, preset): bass, pad, lead */
 static const uint8_t TRK_DEF[NPART][2] = {{0, 0}, {1, 0}, {4, 5}};   /* ANALOG 808 BOOM, DIGITAL RHODES, SAMPLE LOFI FLUTE */
-static uint32_t trk_def_engine(uint32_t i) { return i < NPART ? TRK_DEF[i][0] : 0u; }
+UI_SMALL static uint32_t trk_def_engine(uint32_t i) { return i < NPART ? TRK_DEF[i][0] : 0u; }
 
-static int seq_is_empty(const track_t *t) { return track_empty(t); }
+UI_SMALL static int seq_is_empty(const track_t *t) { return track_empty(t); }
 
 /* SEL page is per synth; the held layer and LEDs show that same track's key.
  * Drums have no musical scale controls, so retain synth 1 as their fallback. */
-static const track_t *ui_scale_track(void) { return is_drum(TSEL) ? &trk[0] : TSEL; }
+UI_SMALL static const track_t *ui_scale_track(void) { return is_drum(TSEL) ? &trk[0] : TSEL; }
 
-static void track_defaults_steps(track_t *t) { steps_clear(t); }
+UI_SMALL static void track_defaults_steps(track_t *t) { steps_clear(t); }
 
 /* what loading a sound (factory or user preset) leaves alone: the mix (LEVEL, PAN, MUTE:
  * the TRACKS faders, and the track FILTER), the pattern parameters (LEN, DIV, SWING, GATE) and the key the part plays
  * in (ROOT, SCALE, QNT, CHORD: the song's; SEL + key sets the root of every part). The SLICER is
  * part of the sound: a factory preset turns it OFF (its defaults), a user preset brings its own */
-static int param_kept(uint32_t i)
+UI_SMALL static int param_kept(uint32_t i)
 {
     return i == P_LEVEL || i == P_PAN || i == P_MUTE || (i >= P_SLEN && i <= P_SGATE) ||
            (i >= P_ROOT && i <= P_QUANT) || i == P_CHORD || i == P_TFLT || i == P_STRUM || i == P_VLEAD || i == P_AHOLD;
 }
 
 /* preset pi of the engine the track asked for: the whole sound (not the pattern parameters) */
-static void apply_preset_to(track_t *t, uint32_t pi)
+/* SLOOP 2.7: a sound loaded while the track's arpeggiator runs keeps it: its settings (MODE … ORDER, never written: the
+ * audio ISR never sees them change) and the notes it holds (seq.c arp_keep_req: the panic of this track leaves them).
+ * With the arp OFF, a preset brings its own arp, as before */
+UI_SMALL static int arp_param(uint32_t i) { return i >= P_AMODE && i <= P_AORDER; }
+UI_SMALL static void apply_preset_to(track_t *t, uint32_t pi)
 {
     const engine_t *e = ENGINES[t->eng_req % NENGINES];
     uint32_t i;
+    int keep_arp = t->p[P_AMODE] != 0, kbd_hold = !t->p[P_AMODE] && t->p[P_AHOLD];   /* (2.7: KBD HOLD stays on) */
     if (is_drum(t))
         return;
+    if (keep_arp)
+        arp_keep_req |= (uint8_t)(1u << trk_index(t));   /* (before the panic below) */
     sound_change(t);                                  /* (2.6: what sounds fades out with the old sound, no click) */
     panic_req |= (uint8_t)(1u << trk_index(t));       /* MONO/POLY may change: release what sounds */
     t->user = 0;
@@ -479,7 +489,7 @@ static void apply_preset_to(track_t *t, uint32_t pi)
     pi %= e->npresets;
     t->preset = (uint8_t)pi;
     for (i = 0; i < P_E0; i++)                        /* the rest of the sound to its defaults: a preset */
-        if (!param_kept(i))
+        if (!param_kept(i) && !(keep_arp && arp_param(i)) && !(kbd_hold && i == P_AHOLD))
             t->p[i] = TP[i].def;                     /* sounds the same after any edit (not the pattern, not the mix) */
     for (i = 0; i < 8u; i++)
         t->p[P_E0 + i] = (int16_t)e->presets[pi].e[i];
@@ -495,7 +505,8 @@ static void apply_preset_to(track_t *t, uint32_t pi)
         const preset_t *pr = &e->presets[pi];
         for (i = 0; i < 4u; i++) {
             t->p[P_DIST + i] = (int16_t)(pr->fx[i] ? pr->fx[i] - 1 : FX_DEF[i]);
-            t->p[P_AMODE + i] = (int16_t)(pr->arp[i] ? pr->arp[i] - 1 : TP[P_AMODE + i].def);
+            if (!keep_arp)
+                t->p[P_AMODE + i] = (int16_t)(pr->arp[i] ? pr->arp[i] - 1 : TP[P_AMODE + i].def);
         }
         preset_extras(t->p, pr);                     /* glide, pitch / LFO modulation, voice mode */
     }
@@ -504,7 +515,7 @@ static void apply_preset_to(track_t *t, uint32_t pi)
 
 /* the engine's defaults and its first preset. With the audio IRQ off: the ISR sees the old engine with
  * its values or the new one with its own (voice.c engine_block), never one with the other's */
-static void set_engine_of(track_t *t, uint32_t ei)
+UI_SMALL static void set_engine_of(track_t *t, uint32_t ei)
 {
     const engine_t *e = ENGINES[ei % NENGINES];
     uint32_t i;
@@ -525,7 +536,7 @@ static const uint8_t TRACK_FX[] = {P_DIST,P_CHOR,P_DLY,P_REV,P_ITYPE,P_IA,P_IB,P
 /* Track playing preferences survive browsing, but are not part of FX RESET. */
 static const uint8_t TRACK_PLAY[] = {P_VOICE,P_GLIDE,P_GLMODE,P_PRIO,P_ALLOC};
 #define TRACK_BROWSE_COUNT (NELEM(TRACK_FX) + NELEM(TRACK_PLAY))
-static void track_fx_values(track_t *t, int16_t *v, uint32_t restore)
+UI_SMALL static void track_fx_values(track_t *t, int16_t *v, uint32_t restore)
 {
     if (!restore) locks_restore(t);
     for (uint32_t i=0;i<TRACK_BROWSE_COUNT;i++) {
@@ -533,23 +544,23 @@ static void track_fx_values(track_t *t, int16_t *v, uint32_t restore)
         if (restore) t->p[id]=v[i]; else v[i]=t->p[id];
     }
 }
-static void apply_preset(uint32_t pi)
+UI_SMALL static void apply_preset(uint32_t pi)
 {
     int16_t fx[TRACK_BROWSE_COUNT];track_fx_values(TSEL,fx,0);
     apply_preset_to(TSEL,pi);track_fx_values(TSEL,fx,1);
 }
-static void set_engine(uint32_t ei)
+UI_SMALL static void set_engine(uint32_t ei)
 {
     int16_t fx[TRACK_BROWSE_COUNT];track_fx_values(TSEL,fx,0);
     set_engine_of(TSEL,ei);track_fx_values(TSEL,fx,1);
 }
-static void track_fx_reset(void)
+UI_SMALL static void track_fx_reset(void)
 {
     for(uint32_t i=0;i<NELEM(TRACK_FX);i++) TSEL->p[TRACK_FX[i]]=TP[TRACK_FX[i]].def;
     sync_reload=1;ui_message("TRACK FX RESET");ui.force=1;
 }
 
-static void track_defaults(track_t *t)
+UI_SMALL static void track_defaults(track_t *t)
 {
     uint32_t i;
     for (i = 0; i < P_E0; i++)
@@ -558,7 +569,7 @@ static void track_defaults(track_t *t)
 }
 
 /* switch engine (its defaults + first preset) and say so */
-static void select_engine(uint32_t e)
+UI_SMALL static void select_engine(uint32_t e)
 {
     if (is_drum(TSEL))
         return;
@@ -628,7 +639,7 @@ static const struct __attribute__((packed)) { uint8_t kind:4, e:4; const char *n
 #define NBANK (sizeof BANK / sizeof BANK[0])
 static uint8_t bank_pi[NBANK];                       /* the preset index of each entry in its engine */
 static uint8_t bank_ready;
-static void bank_resolve(void)
+UI_SMALL static void bank_resolve(void)
 {
     uint32_t i, k;
     for (i = 0; i < NBANK; i++) {
@@ -640,7 +651,7 @@ static void bank_resolve(void)
     }
     bank_ready = 1;
 }
-static uint32_t preset_pos(uint32_t *total)          /* list index of the selected track's preset */
+UI_SMALL static uint32_t base_pos(uint32_t *total)            /* list index of the selected track's preset (no favourites) */
 {
     uint32_t i, cur = 0;
     if (!bank_ready)
@@ -654,8 +665,8 @@ static uint32_t preset_pos(uint32_t *total)          /* list index of the select
     return cur;
 }
 
-/* list index n (< total) -> engine, *k its preset; NENGINES = user preset, *k its slot */
-static uint32_t preset_at(uint32_t n, uint32_t *k)
+/* list index n (< total) -> engine, *k its preset; NENGINES = user preset, *k its slot (no favourites) */
+UI_SMALL static uint32_t base_at(uint32_t n, uint32_t *k)
 {
     if (!bank_ready)
         bank_resolve();
@@ -666,10 +677,142 @@ static uint32_t preset_at(uint32_t n, uint32_t *k)
     *k = bank_pi[n] == 0xFF ? 0u : bank_pi[n];
     return BANK[n].e;
 }
-static const char *preset_kind(uint32_t n) { return n < NBANK ? BANK_KIND[BANK[n].kind] : "USER"; }
+UI_SMALL static const char *base_kind(uint32_t n) { return n < NBANK ? BANK_KIND[BANK[n].kind] : "USER"; }
+
+/* SLOOP 2.7: favourites (PRESETS page, KNOB 4): up to 16 sounds at the top of the PRESETS list, kept in the FM-1's
+ * settings (project.c, the settings' side record). An entry: a factory sound, its BANK index; a user preset, FAV_USER |
+ * its slot (an erased one is left out of the list). Program Change keeps the list without them (pc_poll) */
+#define FAV_N 16u
+#define FAV_NONE 0xFFFFu
+#define FAV_USER 0x8000u
+static uint16_t fav[FAV_N] = {FAV_NONE, FAV_NONE, FAV_NONE, FAV_NONE, FAV_NONE, FAV_NONE, FAV_NONE, FAV_NONE,
+                              FAV_NONE, FAV_NONE, FAV_NONE, FAV_NONE, FAV_NONE, FAV_NONE, FAV_NONE, FAV_NONE};
+static uint8_t fav_dirty;                            /* changed since the settings were written */
+static int8_t fav_at = -1;                           /* the favourite the selected track's sound was loaded from */
+UI_SMALL static uint32_t fav_list(uint32_t *b)                /* the favourites as base list indices, in order */
+{
+    uint32_t i, n = 0;
+    for (i = 0; i < FAV_N; i++) {
+        uint32_t f = fav[i];
+        if (f == FAV_NONE)
+            continue;
+        if (f & FAV_USER) {
+            if (!up_used(f & 0xFFu))
+                continue;
+            b[n++] = NBANK + up_rank(f & 0xFFu);
+        } else if (f < NBANK) {
+            b[n++] = f;
+        }
+    }
+    return n;
+}
+UI_SMALL static uint32_t fav_key(void)                        /* the selected track's sound as a favourite entry */
+{
+    uint32_t i;
+    if (!bank_ready)
+        bank_resolve();
+    if (user_of(TSEL) < UP_SLOTS)
+        return FAV_USER | user_of(TSEL);
+    for (i = 0; i < NBANK; i++)
+        if (BANK[i].e == TSEL->eng_req && bank_pi[i] == TSEL->preset)
+            return i;
+    return FAV_NONE;
+}
+UI_SMALL static int fav_has(uint32_t key)
+{
+    uint32_t i;
+    for (i = 0; i < FAV_N; i++)
+        if (key != FAV_NONE && fav[i] == key)
+            return 1;
+    return 0;
+}
+UI_SMALL static void fav_toggle(int add)                      /* KNOB 4 on the PRESETS page: right adds, left removes */
+{
+    uint32_t key = fav_key(), i;
+    if (key == FAV_NONE || is_drum(TSEL))
+        return;
+    if (add) {
+        if (fav_has(key)) {
+            ui_message("FAV: ALREADY");
+            return;
+        }
+        for (i = 0; i < FAV_N && fav[i] != FAV_NONE; i++)
+            ;
+        if (i == FAV_N) {
+            ui_message("FAVS FULL (16)");
+            return;
+        }
+        fav[i] = (uint16_t)key;
+        ui_message("FAV ADDED");
+    } else {
+        for (i = 0; i < FAV_N && fav[i] != key; i++)
+            ;
+        if (i == FAV_N)
+            return;
+        for (; i + 1u < FAV_N; i++)                  /* (the order kept) */
+            fav[i] = fav[i + 1u];
+        fav[FAV_N - 1u] = FAV_NONE;
+        fav_at = -1;
+        ui_message("FAV REMOVED");
+    }
+    fav_dirty = 1;
+    ui.force = 1;
+}
+/* (2.7) the settings' side record: the theme (40 bytes, zero: none), then the favourites (ui.c fav) with a magic and a
+ * CRC. A 2.7 beta wrote the theme alone (the rest erased: no favourites); an older SLOOP never reads it */
+#define FAVS_MAGIC 0x31564146u                      /* "FAV1" */
+typedef struct {
+    theme_t th;
+    uint32_t fmagic;
+    uint16_t fav[FAV_N];
+    uint32_t fcrc;
+    uint32_t fork_magic, fork_flags;                 /* upstream 80-byte prefix is unchanged */
+} side_rec_t;
+#define FORK_SETTINGS_MAGIC 0x3153524du               /* MRS1 */
+UI_SMALL static void side_fill(side_rec_t *r)                /* what the settings' side record holds now */
+{
+    memset(r, 0, sizeof *r);
+    if (theme_valid)
+        r->th = theme;
+    r->fmagic = FAVS_MAGIC;
+    memcpy(r->fav, fav, sizeof fav);
+    r->fcrc = st_crc32(&r->fmagic, 4u + sizeof r->fav);
+    r->fork_magic = FORK_SETTINGS_MAGIC;
+    r->fork_flags = fork_settings_word();
+}
+UI_SMALL static void side_take(side_rec_t *r)                /* a side record read back: what checks out (theme, favourites) */
+{
+    if (r->fork_magic == FORK_SETTINGS_MAGIC)
+        fork_settings_from_word(r->fork_flags);
+    if (theme_check(&r->th)) {
+        theme = r->th;
+        theme_valid = 1;
+    }
+    if (r->fmagic == FAVS_MAGIC && r->fcrc == st_crc32(&r->fmagic, 4u + sizeof r->fav))
+        memcpy(fav, r->fav, sizeof fav);
+}
+/* the PRESETS list: the favourites, then every factory sound by kind, then the user presets */
+UI_SMALL static uint32_t preset_pos(uint32_t *total)
+{
+    uint32_t b[FAV_N], nf = fav_list(b), cur = base_pos(total);
+    *total += nf;
+    if (fav_at >= 0 && (uint32_t)fav_at < nf && b[fav_at] == cur)
+        return (uint32_t)fav_at;
+    return nf + cur;
+}
+UI_SMALL static uint32_t preset_at(uint32_t n, uint32_t *k)
+{
+    uint32_t b[FAV_N], nf = fav_list(b);
+    return base_at(n < nf ? b[n] : n - nf, k);
+}
+UI_SMALL static const char *preset_kind(uint32_t n)
+{
+    uint32_t b[FAV_N], nf = fav_list(b);
+    return n < nf ? "FAV" : base_kind(n - nf);
+}
 
 /* list index n into track t (2.6: MIDI Program Change, any track); 0 done, 1 no such sound */
-static int preset_go_to(track_t *t, uint32_t n)
+UI_SMALL static int preset_go_to(track_t *t, uint32_t n)
 {
     uint32_t k, total, e;
     int16_t fx[TRACK_BROWSE_COUNT];int result=0;
@@ -680,7 +823,7 @@ static int preset_go_to(track_t *t, uint32_t n)
     total = NBANK + up_count();
     if (n >= total)
         return 1;
-    e = preset_at(n, &k);
+    e = base_at(n, &k);
     track_fx_values(t,fx,0);
     if (e == NENGINES) result=up_load_to(t,k);
     else {
@@ -695,7 +838,7 @@ static int preset_go_to(track_t *t, uint32_t n)
  * channel plays, GLO > MIDI); here, in the main loop (a flash read, a sound loaded): a synth track takes the n-th sound
  * of the PRESETS list (0 the first factory sound, the user presets after the 153), the drum track kit n. A number past
  * the end does nothing (no wrap) */
-static void pc_poll(void)
+UI_SMALL static void pc_poll(void)
 {
     uint32_t i;
     for (i = 0; i < NTRK; i++) {
@@ -721,14 +864,28 @@ static void pc_poll(void)
         ui.force = 1;
     }
 }
-static void preset_go(uint32_t n)                    /* load list index n into the selected track */
+UI_SMALL static void preset_go(uint32_t n)                    /* load list index n into the selected track */
 {
-    preset_go_to(TSEL,n);
+    uint32_t k, e = preset_at(n, &k), b[FAV_N];
+    if (is_drum(TSEL))
+        return;                                      /* one GM kit: nothing to browse */
+    fav_at = (int8_t)(n < fav_list(b) ? (int32_t)n : -1);
+    if (e == NENGINES) {
+        int16_t fx[TRACK_BROWSE_COUNT];
+        track_fx_values(TSEL, fx, 0);
+        up_load(k);
+        track_fx_values(TSEL, fx, 1);
+        return;
+    }
+    if (e != TSEL->eng_req)
+        select_engine(e);
+    apply_preset(k);
+    ui.force = 1;
 }
 
 /* HOME: what KNOB k edits: the engine's four main parameters; on the drum track
  * LEVEL and REV (GLO > DRUMS), PAN and LEN */
-static const param_desc_t *home_param(uint32_t k, int16_t **vp)
+UI_SMALL static const param_desc_t *home_param(uint32_t k, int16_t **vp)
 {
     static const uint8_t DRUM_HOME[4][2] = {{1, G_DRLVL}, {1, G_DRREV}, {0, P_PAN}, {0, P_SLEN}};
     uint32_t id;
@@ -747,7 +904,7 @@ static const param_desc_t *home_param(uint32_t k, int16_t **vp)
 }
 
 /* select track i (KNOB 1 on TRACKS, the editor): its sound, pages and pattern from now on */
-static void track_select(uint32_t i)
+UI_SMALL static void track_select(uint32_t i)
 {
     groove_preview.active = 0;
     if (i >= NTRK || i == song.sel)
@@ -771,14 +928,14 @@ static void track_select(uint32_t i)
  * set to it, and stays until something else is learned on it or HOME > SYSTEM > LEARN CLEAR. Then turn the next knob.
  * One CC sets one parameter, a parameter has one CC: learning one again replaces both. The settings keep the map */
 static struct { uint8_t on, pick, trk, id; } mlu;
-static uint32_t ml_code(uint32_t id) { return id >= P_E0 ? ML_E0 + id - P_E0 : id + 1u; }
-static void ml_put(uint32_t i, uint32_t e)       /* (the ISR reads the entry: never half of one) */
+UI_SMALL static uint32_t ml_code(uint32_t id) { return id >= P_E0 ? ML_E0 + id - P_E0 : id + 1u; }
+UI_SMALL static void ml_put(uint32_t i, uint32_t e)       /* (the ISR reads the entry: never half of one) */
 {
     fm1_irq_off();
     ml_tab[i % ML_N] = (uint16_t)e;
     fm1_irq_on();
 }
-static uint32_t ml_count(void)
+UI_SMALL static uint32_t ml_count(void)
 {
     uint32_t i, n = 0;
     for (i = 0; i < ML_N; i++)
@@ -786,7 +943,7 @@ static uint32_t ml_count(void)
     return n;
 }
 /* cc -> parameter id of track k, in place of what either had; 0 = no room, 2 = a CC that is never learned */
-static uint32_t ml_learn(uint32_t cc, uint32_t k, uint32_t id)
+UI_SMALL static uint32_t ml_learn(uint32_t cc, uint32_t k, uint32_t id)
 {
     uint32_t i, e;
     if (!ml_free_cc(cc) || k >= NTRK || id >= P_COUNT)
@@ -801,7 +958,7 @@ static uint32_t ml_learn(uint32_t cc, uint32_t k, uint32_t id)
         }
     return 0;
 }
-static int ml_clear_all(void)                    /* HOME > SYSTEM > LEARN CLEAR; 1 = there were */
+UI_SMALL static int ml_clear_all(void)                    /* HOME > SYSTEM > LEARN CLEAR; 1 = there were */
 {
     uint32_t i, n = ml_count();
     for (i = 0; i < ML_N; i++)
@@ -810,7 +967,7 @@ static int ml_clear_all(void)                    /* HOME > SYSTEM > LEARN CLEAR;
         settings_later = 1;                      /* (saved when quiet) */
     return n != 0u;
 }
-static void ml_toggle(void)                      /* GLO + F#3 */
+UI_SMALL static void ml_toggle(void)                      /* GLO + F#3 */
 {
     mlu.on = (uint8_t)!mlu.on;
     mlu.pick = 0;
@@ -820,7 +977,7 @@ static void ml_toggle(void)                      /* GLO + F#3 */
     ui.force = 1;
 }
 /* a knob turned parameter id of track t: picked while learning (ui_input.c) */
-static void ml_knob(const track_t *t, uint32_t id)
+UI_SMALL static void ml_knob(const track_t *t, uint32_t id)
 {
     char b[16];
     if (!mlu.on || id >= P_COUNT)
@@ -839,7 +996,7 @@ static void ml_knob(const track_t *t, uint32_t id)
     ml_arm = 1;
 }
 /* each frame: a CC heard for the picked parameter is learned */
-static void ml_poll(void)
+UI_SMALL static void ml_poll(void)
 {
     uint32_t cc = ml_heard, r;
     char a[16], b[16];

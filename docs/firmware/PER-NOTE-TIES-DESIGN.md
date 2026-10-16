@@ -24,10 +24,10 @@ fill conditions and transport resets must keep their existing cleanup guarantees
 ## Representation and saved songs
 
 Keep `step_t` at ten bytes and projects at their existing size. Its `flags` byte
-already uses bits 0 and 1 for accent and slide; reserve bits 2–5 for four incoming
+already uses bits 0 and 1 for accent and slide; use upstream bits 3–6 for four incoming
 continuation flags, one for each `note[]` slot. Pitches remain plain MIDI values.
-No extra pattern buffer or per-track runtime array is required. All six bits fit
-one seven-bit MIDI/SysEx flags byte; a fourth-note continuation must not use bit 7.
+No extra pattern buffer or per-track runtime array is required. The flags fit
+one seven-bit MIDI/SysEx flags byte; bit 2 remains reserved for the upstream legacy tie marker; a fourth-note continuation must not use bit 7.
 
 Only an ST_NOTE entry uses these flags. ST_TIE still continues the entire sounding
 set and ST_REST still ends it. Empty slots' flags are ignored. Slots, continuation

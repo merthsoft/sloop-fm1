@@ -25,7 +25,7 @@ static int sc_tx_schema_valid(const uint8_t *p, uint32_t n)
         o+=2;
         for(i=0;i<64;i++,o+=11) {
             for(j=0;j<4;j++) if(p[o+j]>127) return 0;
-            if(p[o+4]>4 || p[o+5]>2 || p[o+6]>3 || p[o+7]>127 || p[o+10]>63) return 0;
+            if(p[o+4]>4 || p[o+5]>2 || (p[o+6]&~0x7bu) || p[o+7]>127 || p[o+10]>63) return 0;
         }
         for(i=0;i<16;i++,o++) for(j=0;j<4;j++) if(((p[o]>>(2*j))&3)==3) return 0;
         for(i=0;i<24;i++,o+=5)

@@ -1,3 +1,21 @@
+# Latest firmware — MerthSloop 2.7.1.19
+
+- Integrates upstream 2.7.1 with canonical song flags, arp IDs and settings. No
+  migration of old-fork formats; upstream-produced FUN6 fixture roundtrips exactly.
+- Dual-core safe fallback, drum tune/decay, held sample loops/tails, QUANT OFF and
+  recording over held notes, arp modes/KBD HOLD, favorites/themes/acceleration,
+  MIDI3 remote/clock and web LIVE/song features join existing fork workflows.
+- INFO protocol 15: upstream SYN 72–76, LIVE 77; companion extensions 85–89. Android validation
+  follows upstream continuations/held-loop metadata and guards capability discovery.
+- Fixes HOLD ownership vs chord latch, duplicate timing undo, SELECT navigation
+  through custom starter pages, and persistence of side-record-only preferences.
+- Lossless factory sample packing saves 33,744 bytes net. Image 559,992 bytes,
+  static RAM 74,888, low RAM 22,772, pool 333,308. All 182 renders match the raw build.
+- Host/source checks pass as recorded in the integration guide. Physical hardware
+  checks remain pending. The updated ARM64 APK is built.
+
+## Previous checkpoint
+
 # Latest firmware — MerthSloop 2.6.0.18
 
 - HOME menu → TIMING → SWING GRID selects STEP (existing behavior) or 1/8.

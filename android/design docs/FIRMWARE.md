@@ -9,7 +9,7 @@ HOME, then release. Keyboard and knobs remain usable; HOME or a function button
 unlocks. STOP/panic, menus and track changes clear the lock. Runtime only, with no
 new static RAM or wire/project format. See the [illustrated firmware guide](../../docs/firmware/MERTHSOFT-FEATURES.md).
 
-Production firmware is **2.5 Merthsoft.19**, with INFO protocol **14**, three synth tracks and
+Production firmware is **MerthSloop 2.7.1.19**, with INFO protocol **15**, three synth tracks and
 one drum track. Protocol 9 FM6/native-pattern exchange, sample-slot backup/upload, USB audio
 playback and MIDI note performance are integrated. Protocol 10 command 43 reports the
 physical octave offset; Android follows it without firmware transposing ordinary external MIDI.
@@ -22,17 +22,16 @@ a modifier preserves it. Qualities are owned per synth and clear on latch disabl
 STOP or panic. With ARP enabled, toggled qualities also revoice the retained arp chord after physical root release; modifiers update the arp note pool without restarting the arp clock. With latch disabled modifiers remain momentary.
 
 Latest target sizes and memory headroom are recorded in [release notes](RELEASE-NOTES.md). RAM text is 925 instructions with no calls.
-The existing CPU budget failures were not relaxed; they remain an engineering follow-up.
+Target instruction budgets pass; physical audio deadline and dual-core timing validation remain pending.
 User hardware acceptance is recorded in STATUS, independently of measured deadline evidence.
 
-Firmware accepts its upstream standard MIDI CC map for track parameters. Android XY macros emit standard MIDI CC; unsupported controllers and pitch bend remain outside this slice. Protocol 14 retains remote performance (73), drum grooves (74), USB return controls (75) and relocated SYN kits (80–84), and adds leased musical starter discovery/audition/application (76). Arpeggios now preserve source velocity across audio, generated MIDI and recording.
+Firmware accepts its upstream standard MIDI CC map for track parameters. Android XY macros emit standard MIDI CC; unsupported controllers and pitch bend remain outside this slice. INFO 15 uses upstream SYN kits (72–76) and LIVE (77). Fork extensions are scene staging (85, disabled in production), remote performance (86), drum grooves (87), USB return controls (88), and leased musical starter discovery/audition/application (89). Android gates these extensions on INFO 15. Arpeggios now preserve source velocity across audio, generated MIDI and recording.
 
 Merthsoft.8 adds a persistent scale-note LED guide: physical SEL + OCT+ toggles it
 without changing octave or latch. Merthsoft.9 aligns it and the held SEL display with
 the selected synth's SEL-page ROOT/SCALE, suppressing generic keyboard backlight
 while active. It dims scale keys
-behind bright pressed notes and excludes drum/grid and control layers. Settings bit 22
-defaults off for older settings and uses the existing deferred flash-save path.
+behind bright pressed notes and excludes drum/grid and control layers. The MRS1 side-record extension stores this device-local preference, defaulting off. Canonical upstream settings retain their original bit layout. Standard backups do not transfer these fork-only device preferences.
 
 Merthsoft.11 replaces the physical wheel gesture with temporary selected-synth
 LFO/vibrato and ENV/tremolo panels. Rate, depth, waveform and beat sync are runtime-only;
@@ -46,8 +45,8 @@ note output. No Android/wire changes. See [scale/MIDI grids](../../docs/firmware
 ## Atomic hardware scenes: remaining requirements
 
 
-The command-72 schema/client and bounded RAM staging implementation are tested scaffolding.
-Production defaults to `FELUCCA_SCENE_TX=0`: the handler/buffer are compiled out, INFO reports 14 for other extensions,
+The command-85 schema/client and bounded RAM staging implementation are tested scaffolding.
+Production defaults to `FELUCCA_SCENE_TX=0`: the handler/buffer are compiled out, INFO reports 15 for other extensions,
 and live atomic application is unavailable. Experimental builds report zero capabilities and
 Unsupported Begin until all engine hooks exist. Existing stopped-only sound transfer remains.
 Wire contract: [SCENE-TRANSACTION.md](../src/Sloop.Protocol/SCENE-TRANSACTION.md).

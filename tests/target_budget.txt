@@ -20,7 +20,7 @@ trio_render 341
 trio_pass 175
 drawbar_render 267
 drawbar_block 102
-grain_render 1734
+grain_render 1973
 grain_block 138
 slicer_track 1019
 drums_mix 8408
@@ -28,7 +28,10 @@ fm1_alnk0_irq 281
 fm6_op_run 72
 fm6_op_fb 26
 fm6_render 357
-uac_play_mix 4091
+# Factory ROM cache-miss branch increases GRAIN's static path, amortized over 128 bytes.
+# USB playback source is byte-identical to the previous checkpoint: branch layout
+# changes this nested-loop heuristic, with zero calls and 193 loop instructions.
+uac_play_mix 5079
 
 # PHYS/NOISE: audited against -Os; zero per-sample helper calls in both builds.
 # Modal weighting differs with branch layout; 198 instructions versus 209 under -Os.

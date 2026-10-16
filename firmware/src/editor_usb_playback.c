@@ -1,20 +1,23 @@
-/* Command 75, schema 1. Included after editor reply helpers, with usb.c visible.
+#ifndef UI_SMALL
+#define UI_SMALL
+#endif
+/* Command 88, schema 1. Included after editor reply helpers, with usb.c visible.
  * Replies always begin suboperation,status (0 OK,1 malformed,2 unavailable).
  * Diagnostics are bounded individual 32-bit observations, NOT an atomic multi-counter
  * instant. Reset advances counter baselines; it never changes stream/DSP state.
  * Counters wrap modulo 2^32. Extrema remain lifetime values until device reboot. */
-#define ED_USB_PLAYBACK 75u
-static void ed_usb_u32(uint32_t v)
+#define ED_USB_PLAYBACK 88u
+UI_SMALL static void ed_usb_u32(uint32_t v)
 { uint32_t i; for (i=0;i<5;i++) { ed_b(v); v >>= 7; } }
 #if FELUCCA_UAC
 static uint32_t ed_usb_base[8];
-static void ed_usb_counters(uint32_t *v)
+UI_SMALL static void ed_usb_counters(uint32_t *v)
 {
     v[0]=up.packets; v[1]=up.frames; v[2]=up.malformed; v[3]=up.overruns;
     v[4]=up.underruns; v[5]=up.hw_errors; v[6]=up.starts; v[7]=up_clipped;
 }
 #endif
-static int ed_usb_playback_handle(uint32_t cmd, const uint8_t *a, uint32_t na)
+UI_SMALL static int ed_usb_playback_handle(uint32_t cmd, const uint8_t *a, uint32_t na)
 {
     uint32_t sub=na ? a[0] : 127u, i;
     if (cmd != ED_USB_PLAYBACK) return 0;

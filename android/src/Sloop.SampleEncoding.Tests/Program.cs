@@ -5,6 +5,7 @@ using Sloop.SampleEncoding;
 int checks = 0;
 void Check(bool value, string label) { checks++; if (!value) throw new Exception(label); }
 void Reject(Action action, string label) { try { action(); } catch (ArgumentException) { checks++; return; } throw new Exception(label); }
+// Python PCM/ADPCM oracle bytes are unchanged; looped headers use upstream held-loop flag 2.
 using var fixtures = JsonDocument.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Fixtures", "golden.json")));
 foreach (var f in fixtures.RootElement.EnumerateArray())
 {

@@ -1,21 +1,24 @@
+#ifndef UI_SMALL
+#define UI_SMALL
+#endif
 /* SPDX-License-Identifier: GPL-3.0-only */
 /* Bounded native note-chain edits; no pattern-sized staging buffer. */
-static uint32_t note_slot(const step_t *s, uint32_t pitch)
+UI_SMALL static uint32_t note_slot(const step_t *s, uint32_t pitch)
 {
     uint32_t i;
     for (i=0;i<s->n && s->note[i]!=pitch;i++) {}
     return i;
 }
-static void note_effective(const track_t *t, uint32_t i, step_t *s)
+UI_SMALL static void note_effective(const track_t *t, uint32_t i, step_t *s)
 {
     if (i>=NSTEP) {memset(s,0,sizeof *s);s->time=ST_REST;return;}
     uint32_t at=i;
     while (at && t->step[at].time==ST_TIE) at--;
     *s=t->step[at];
     if (s->time!=ST_NOTE) {s->n=0;s->flags&=(uint8_t)~SF_TIES;}
-    if (at!=i) { s->flags=(uint8_t)((s->flags&3u)|(((1u<<s->n)-1u)<<2));s->rat=0; }
+    if (at!=i) { s->flags=(uint8_t)((s->flags&3u)|(((1u<<s->n)-1u)*SF_CONT0));s->rat=0; }
 }
-static uint32_t note_chain_len(const track_t *t, uint32_t i, uint32_t pitch)
+UI_SMALL static uint32_t note_chain_len(const track_t *t, uint32_t i, uint32_t pitch)
 {
     uint32_t n=1;
     for (;i+n<trk_len(t);n++) {
@@ -26,7 +29,7 @@ static uint32_t note_chain_len(const track_t *t, uint32_t i, uint32_t pitch)
     }
     return n;
 }
-static uint32_t note_origin(const track_t *t,uint32_t i,uint32_t pitch)
+UI_SMALL static uint32_t note_origin(const track_t *t,uint32_t i,uint32_t pitch)
 {
     while (i) {
         const step_t *s=&t->step[i];uint32_t k=note_slot(s,pitch);
@@ -37,7 +40,7 @@ static uint32_t note_origin(const track_t *t,uint32_t i,uint32_t pitch)
     }
     return i;
 }
-static void note_remove_slot(step_t *s,uint32_t k)
+UI_SMALL static void note_remove_slot(step_t *s,uint32_t k)
 {
     for (;k+1<s->n;k++) {
         s->note[k]=s->note[k+1];
@@ -49,7 +52,7 @@ static void note_remove_slot(step_t *s,uint32_t k)
     s->lvl&=(uint8_t)((1u<<(2*s->n))-1u);s->rat&=(uint8_t)((1u<<(2*s->n))-1u);
     if (!s->n) s->time=ST_REST;
 }
-static void note_cut(track_t *t,uint32_t first,uint32_t count,uint32_t pitch)
+UI_SMALL static void note_cut(track_t *t,uint32_t first,uint32_t count,uint32_t pitch)
 {
     for (uint32_t i=first;i<first+count;i++) {
         step_t s;note_effective(t,i,&s);
@@ -59,7 +62,7 @@ static void note_cut(track_t *t,uint32_t first,uint32_t count,uint32_t pitch)
         if (!s.n) t->step[i].time=ST_REST;
     }
 }
-static void note_erase(track_t *t,uint32_t at,uint32_t pitch)
+UI_SMALL static void note_erase(track_t *t,uint32_t at,uint32_t pitch)
 {
     step_t src;note_effective(t,at,&src);
     for (uint32_t k=0;k<src.n;k++) if (pitch>127 || src.note[k]==pitch)
@@ -67,7 +70,7 @@ static void note_erase(track_t *t,uint32_t at,uint32_t pitch)
 }
 /* Return -1 at a deliberate reattack, -2 at capacity, -3 without a source.
  * Call first with write=0: a whole scrub increment is validated before mutation. */
-static int note_extend(track_t *t,uint32_t first,uint32_t end,uint32_t voice,uint32_t write)
+UI_SMALL static int note_extend(track_t *t,uint32_t first,uint32_t end,uint32_t voice,uint32_t write)
 {
     step_t src;note_effective(t,first,&src);
     if (!src.n || voice>src.n) return -3;
@@ -98,7 +101,7 @@ static int note_extend(track_t *t,uint32_t first,uint32_t end,uint32_t voice,uin
     }
     return 0;
 }
-static int note_pattern_linked(const track_t *t)
+UI_SMALL static int note_pattern_linked(const track_t *t)
 {
     for (uint32_t i=0;i<trk_len(t);i++)
         if (t->step[i].time==ST_NOTE && (t->step[i].flags&SF_TIES)) return 1;

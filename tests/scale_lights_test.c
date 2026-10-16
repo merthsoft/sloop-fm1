@@ -62,9 +62,9 @@ int main(void)
     ui.layer=LY_PLAY;
     fm1_in.notes=1u<<5;assert(keys_lit() & (1u<<5));fm1_in.notes=0; /* played keys stay bright */
     lights_lvl=2;lights_keys=KEYS_WHITE;lights_notes=1;vis_style=3;
-    uint32_t stored=lights_word();lights_scale=0;lights_from_word(stored);
+    uint32_t stored=lights_word(), forked=fork_settings_word();lights_scale=0;lights_from_word(stored);fork_settings_from_word(forked);
     assert(lights_scale && lights_lvl==2 && lights_keys==KEYS_WHITE && lights_notes && vis_style==3);
-    lights_from_word(stored & ~(1u<<22));assert(!lights_scale); /* older settings default off */
+    lights_from_word(stored);assert(!lights_scale); /* upstream settings default off */
     lights_scale=1;press(B_SCL);tap(B_OCTUP);release(B_SCL);
     assert(!lights_scale && song.octave==octave);
     trk[1].p[P_CHORD]=1;trk[1].p[P_AHOLD]=0;

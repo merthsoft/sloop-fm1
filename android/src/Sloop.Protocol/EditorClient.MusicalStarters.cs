@@ -20,18 +20,18 @@ public sealed partial class EditorClient
 {
     public async Task<MusicalStarterBank> ListMusicalStartersAsync(DeviceInfo info, CancellationToken token = default)
     {
-        if (info.ProtocolVersion < 14) throw new NotSupportedException("Update SLOOP firmware for its musical starter library.");
-        var a = (await RequestAsync(76, [0], cancellationToken: token).ConfigureAwait(false)).Arguments;
+        if (info.ProtocolVersion < 15) throw new NotSupportedException("Update SLOOP firmware for its musical starter library.");
+        var a = (await RequestAsync(89, [0], cancellationToken: token).ConfigureAwait(false)).Arguments;
         if (a.Length != 8 || a[0] != 0 || a[1] != 0 || a[2] != 1 || a[3] != 24 || a[4] != 7 || a[5] is < 1 or > 32 ||
             (a[6] | a[7] << 7) != 1500) throw new NotSupportedException("Firmware does not advertise the supported musical starter capability.");
-        var entries = DecodeMusicalStarterNames(await RequestAsync(76, [1], cancellationToken: token).ConfigureAwait(false), 1);
-        var scales = DecodeMusicalStarterNames(await RequestAsync(76, [5], cancellationToken: token).ConfigureAwait(false), 5);
+        var entries = DecodeMusicalStarterNames(await RequestAsync(89, [1], cancellationToken: token).ConfigureAwait(false), 1);
+        var scales = DecodeMusicalStarterNames(await RequestAsync(89, [5], cancellationToken: token).ConfigureAwait(false), 5);
         if (entries.Count != a[3] || scales.Count != a[5]) throw new FormatException("Starter capabilities changed during discovery.");
         return new(entries, scales, 1500);
     }
     public static IReadOnlyList<MusicalStarter> DecodeMusicalStarterNames(EditorFrame frame, byte operation)
     {
-        if (frame.Command != 76 || operation is not (1 or 5)) throw new FormatException("Expected musical starter names.");
+        if (frame.Command != 89 || operation is not (1 or 5)) throw new FormatException("Expected musical starter names.");
         var r = new PayloadReader(frame.Arguments);
         if (r.Byte() != operation || r.Byte() != 0) throw new FormatException("Musical starter names unavailable.");
         int count = r.Byte();
@@ -53,7 +53,7 @@ public sealed partial class EditorClient
     }
     async Task<MusicalStarterStatus> StarterRequestAsync(byte[] request, CancellationToken token)
     {
-        var a = (await RequestAsync(76, request, cancellationToken: token).ConfigureAwait(false)).Arguments;
+        var a = (await RequestAsync(89, request, cancellationToken: token).ConfigureAwait(false)).Arguments;
         if (a.Length != 2 || a[0] != request[0] || a[1] > 4) throw new FormatException("Invalid starter acknowledgement. Read hardware before retrying.");
         return (MusicalStarterStatus)a[1];
     }

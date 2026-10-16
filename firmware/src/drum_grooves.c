@@ -80,7 +80,6 @@ static dstep_t drum_groove_preview_step(uint32_t i)
  * Any later undo_mark automatically supersedes this snapshot. */
 static struct {
     uint32_t sess;
-    int8_t micro[NSTEP];
     plock_t lock[NLOCK];
     uint8_t fill[NSTEP / 4], active, trk;
     int16_t div, swing;
@@ -91,7 +90,6 @@ static void groove_undo_swap(void)
 {
     uint32_t i;
     track_t *t = &trk[groove_undo.trk];
-    for (i = 0; i < NSTEP; i++) { int8_t x = t->micro[i]; t->micro[i] = groove_undo.micro[i]; groove_undo.micro[i] = x; }
     for (i = 0; i < NLOCK; i++) { plock_t x = t->lock[i]; t->lock[i] = groove_undo.lock[i]; groove_undo.lock[i] = x; }
     for (i = 0; i < sizeof groove_undo.fill; i++) { uint8_t x = t->fill[i]; t->fill[i] = groove_undo.fill[i]; groove_undo.fill[i] = x; }
     { int16_t x = t->p[P_SDIV]; t->p[P_SDIV] = groove_undo.div; groove_undo.div = x; }
@@ -109,7 +107,6 @@ static void starter_undo_capture(track_t *t)
 {
     groove_undo.trk = (uint8_t)(t - trk);
     groove_undo.sess = undo.sess;
-    memcpy(groove_undo.micro, t->micro, sizeof groove_undo.micro);
     memcpy(groove_undo.lock, t->lock, sizeof groove_undo.lock);
     memcpy(groove_undo.fill, t->fill, sizeof groove_undo.fill);
     groove_undo.div = t->p[P_SDIV]; groove_undo.swing = t->p[P_SSWING]; groove_undo.active = t->seq_active;

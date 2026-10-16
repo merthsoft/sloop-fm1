@@ -76,6 +76,7 @@ static const slc_src_t *slc_get(uint32_t src)
 typedef struct {
     int32_t pred, idx;
     uint32_t pos, seg;
+    smp_cache_t sample_cache;
 } slc_dec_t;
 DSP_INLINE void slc_dec_at(slc_dec_t *d, uint32_t pos, uint32_t st)
 {
@@ -101,7 +102,7 @@ DSP_INLINE int32_t slc_dec_next(const slc_src_t *s, slc_dec_t *d)
         d->pred = 0;
         d->idx = 0;
     }
-    b = SMP_DATA[g->off + (rel >> 1)];
+    b = smp_rom_byte(&d->sample_cache, g->off + (rel >> 1));
     code = (rel & 1u) ? (b >> 4) : (b & 15u);
     step = IMA_STEP[d->idx];
     vd = step >> 3;

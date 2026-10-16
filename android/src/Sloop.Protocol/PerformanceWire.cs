@@ -8,7 +8,7 @@ public sealed record PerformanceCapabilities(byte Schema, byte Flags, byte Owner
 }
 public static class PerformanceWire
 {
-    public const byte Command = 73;
+    public const byte Command = 86;
     public static byte[] Token(uint token)
     {
         if (token is 0 or > 0xfffffff) throw new ArgumentOutOfRangeException(nameof(token));

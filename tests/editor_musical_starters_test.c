@@ -8,7 +8,7 @@ static void ed_str(const char *s,uint32_t max){uint32_t i;for(i=0;s[i]&&i<max;i+
 static uint32_t fm1_icfg(void){return 1;}
 static void fm1_icfg_set(uint32_t v){(void)v;}
 #include "../firmware/src/editor_musical_starters.c"
-static void command(uint8_t *a,uint32_t n,uint32_t status){reply_n=0;assert(ed_musical_starters_handle(76,a,n));assert(reply[0]==(n?a[0]:127)&&reply[1]==status);}
+static void command(uint8_t *a,uint32_t n,uint32_t status){reply_n=0;assert(ed_musical_starters_handle(89,a,n));assert(reply[0]==(n?a[0]:127)&&reply[1]==status);}
 int main(void){
     static track_t before,other;uint32_t i;uint8_t query[]={0},list[]={1};
     uint8_t a[]={2,1,23,11,2,3,0,1,16,8,0,32,0,1,4},lease[]={4,1,4,1};

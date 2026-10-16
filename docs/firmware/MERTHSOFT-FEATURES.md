@@ -69,7 +69,7 @@ Page changes preserve the audition; changing a configuration knob stops it.
 The physical SEL button opens chord settings instead. Tapping SEQ leaves the
 browser for SONG; that final screen belongs to the sequence family.
 
-| Sequence rhythm | Sequence pitch | Drum SHAPE |
+| Sequence rhythm | Sequence pitch | Drum RHYTHM |
 | --- | --- | --- |
 | <img src="../../assets/screens/merthsoft/guide/feature-starter-rhythm.png" width="240" alt="Rotation offset syncopation and feel knobs"> | <img src="../../assets/screens/merthsoft/guide/feature-starter-pitch.png" width="240" alt="Octave root scale and VLEAD controls"> | <img src="../../assets/screens/merthsoft/guide/feature-groove-shape.png" width="240" alt="Drum lane shift syncopation and feel"> |
 
@@ -78,7 +78,7 @@ browser for SONG; that final screen belongs to the sequence family.
 | SEQUENCES main | Starter | Root | Scale | CHORD / BASS / ARP NOTES |
 | Sequence rhythm | Rotate | Offset | Syncopation | Feel |
 | Sequence pitch | Octave | Root | Scale | VLEAD |
-| Drum SHAPE | Target lane/all | Shift | Syncopation | Feel |
+| Drum RHYTHM | Target lane/all | Shift | Syncopation | Feel |
 
 Positive shifts move later, wrapping within the pattern. Syncopation moves eligible
 on-beat attacks into the preceding empty step; occupied destinations stay intact.
@@ -190,7 +190,7 @@ With C major selected, latch the C chord, release its root, then tap **F#**:
 to major. You do not need to reapply the root. The image shows the LATCH control;
 the modifier changes the sounding pitches, not the saved CHORD setting.
 
-Additional arp modes are **OUTIN, SHUF, ROOTALT, DNUP, UPDNREP, INOUT, WALK
+Additional arp modes are **CONV, SHUF, ROOTALT, DNUP, UPDNREP, DIVG, WALK
 and PULSE**. NOTE/PLAY ordering controls sorted pitch versus playing order;
 ORD keeps press order. ROOTALT alternates the lowest voiced pitch. PULSE plays
 the expanded distinct tones together, merging duplicate octave pitches.
@@ -317,10 +317,10 @@ USB playback lets the phone's audio come through the FM-1 speaker/headphones wit
 the instrument. Playback negotiates 44.1 kHz independently of upstream's 48 kHz
 capture; return gain/mute and diagnostics are exposed to the app.
 
-Companion protocol 14 provides hardware octave reporting, native pattern and FM6
+Companion protocol 15 provides hardware octave reporting, native pattern and FM6
 editing, sample backup/upload/readback, persistent FM6 base-voice bank saving,
-and canonical drum/musical library discovery. The web editor negotiates relocated
-upstream SYN-kit commands. Atomic live hardware scene switching remains future work.
+and canonical drum/musical library discovery. Upstream SYN-kit commands retain IDs 72–76;
+companion extensions use IDs 85–89. Atomic live hardware scene switching remains future work.
 Original Android code is Unlicensed with retained dependency obligations; firmware
 remains GPL. See [current delivery status](<../../android/design docs/STATUS.md>).
 

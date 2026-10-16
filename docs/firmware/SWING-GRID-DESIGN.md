@@ -27,10 +27,9 @@ are drawn first so shifted markers are not overwritten by later cell guides.
 
 ## Persistence and memory
 
-Settings word bit 24 is the eighth-mode flag. Existing MerthSloop words have it
-clear and retain STEP. Project and preset layouts do not change. This preference
-must be migrated explicitly during upstream 2.7 integration; its settings word
-uses conflicting bits (see UPSTREAM-2.7-INTEGRATION.md).
+The eighth-mode flag is bit2 of the MRS1 side-record extension. Upstream's settings
+word remains unchanged. A settings record without MRS1 defaults to STEP. Project
+and preset layouts do not change; older fork settings are not migrated.
 
 To fit the feature, each ROM groove keeps its seven masks in an aligned array
 of uint16_t, uint32_t or uint64_t according to pattern length. Descriptors retain

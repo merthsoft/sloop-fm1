@@ -9,7 +9,7 @@ public sealed partial class MainActivity
     void AddMusicalStarterEditor()
     {
         content.AddView(Label("Firmware's 24 musical starters · four bars · CHORD / BASS / ARP NOTES. Audition preserves patterns. Apply replaces the selected FM1 synth pattern; hardware EDIT + OCT− undoes it.",14));
-        bool ready=state.SelectedTrack<3 && connection.Snapshot.Device?.ProtocolVersion>=14 &&
+        bool ready=state.SelectedTrack<3 && connection.Snapshot.Device?.ProtocolVersion>=15 &&
             !connection.Snapshot.IsSimulated && !connection.Snapshot.IsGenericMidi && !connection.Snapshot.Busy && !connection.IsPlaying && !connection.IsRecording;
         AsyncButton("Browse FM1 musical starters…",async()=> {
             var identity=connection.Snapshot.Device!; int track=state.SelectedTrack;

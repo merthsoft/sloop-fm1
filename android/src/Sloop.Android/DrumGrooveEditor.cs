@@ -7,7 +7,7 @@ public sealed partial class MainActivity
     void AddDrumGrooveEditor()
     {
         content.AddView(Label("Apply a built-in FM1 groove to its drum pattern. The phone's app pattern is separate. Kit and tempo stay selected; hardware Undo restores the replaced pattern.", 14));
-        bool ready = connection.Snapshot.Device?.ProtocolVersion >= 12 && !connection.Snapshot.IsSimulated &&
+        bool ready = connection.Snapshot.Device?.ProtocolVersion >= 15 && !connection.Snapshot.IsSimulated &&
             !connection.Snapshot.IsGenericMidi && !connection.Snapshot.Busy && !connection.IsPlaying && !connection.IsRecording;
         AsyncButton("Browse FM1 groove bank…", async () => {
             var identity = connection.Snapshot.Device;
