@@ -27,43 +27,46 @@ retaining our native/Android workflows and choosing one implementation for overl
 | Drum tune/decay and stronger synth kicks | Take | Preserve groove/SHAPE pages, preview, per-song/section settings and reset behavior. Review intended audio golden changes. |
 | Sample loop/loop-tail support | Take | Carry loop metadata and playback through firmware, web and Android's sampler/protocol; retain our simple recording/chopping workflow. |
 | QUANT OFF and recording over held notes | Take after continuation-format reconciliation | Complements our independent editing and separate recording SNAP; these controls have different purposes. |
-| New arp modes, stopped swing, KBD HOLD | Combine | Preserve our mode values, expressive velocity, sequencer-fed ARP, modifier toggles and held ARP/SEL latch gestures. |
+| New arp modes, stopped swing, KBD HOLD | Combine | Adopt upstream mode values; retain expressive velocity, sequencer-fed ARP, modifier toggles and held ARP/SEL latch gestures. |
 | MIDI FX/REMOTE/DR MAP/CLOCK OUT and engine CC74 | Take | Keep USB/TRS ownership, generic MIDI mode and app capabilities; stop/disconnect/panic tests must cover remote-held buttons. |
 | Favorites, knob acceleration option, level/pan glide | Take | Keep instrument browsing's effect/LEGATO preferences and easy reset; preserve scale/piano handoff LEDs. |
-| Themes and USB RATE | Take | Version settings, keep current palettes/assets and MerthSloop branding. USB duplex/resampling/OTA tests are required. |
+| Themes and USB RATE | Take | Use upstream settings plus a fork extension; keep current palettes/assets and MerthSloop branding. USB duplex/resampling/OTA tests are required. |
 | Expanded web LIVE/editor/song files/playlist | Take | Retain installer identity, Pages workflow, local audio preview and our protocol extensions. Native Android stays supported. |
 | SAVE SECTION terminology | Adapt carefully | Native A-D sections already coexist with our song library and undo-load recovery; do not remove those workflows. |
 
 ## Compatibility gates
+
+Upstream compatibility is the user's priority. Existing MerthSloop songs,
+exports and settings do not require backward compatibility or migration.
+Use upstream's representation as canonical; retain fork features around it.
 
 ### Continuation flags
 
 Our `SF_TIE(k)` occupies bits2–5; upstream `SF_CONT(k)` occupies bits3–6 and
 reserves bit2 for the user-preset pattern's legacy TIE marker. Both use FUN6,
 so untagged saved notes with overlapping bits cannot be identified by magic alone.
-Do not shift every incoming project's flags or replace the playback code blindly.
-Choose a canonical representation, tag new exports, and preserve the meaning of
-existing MerthSloop slots/autosaves/library files. External untagged upstream
-imports need explicit provenance or an import option. Retain our selected-voice
-length/delete controls, slot metadata compaction and full-pattern undo.
+Adopt upstream's flags and FUN6 interpretation without an old-fork migration layer.
+Update our selected-voice length/delete controls, slot metadata compaction,
+full-pattern undo, Android library and web extensions to that representation.
+Verify upstream files round-trip without changing their note semantics.
 
 ### Arp mode IDs
 
 The first six modes match. Our indices6+ begin OUTIN/SHUF/ROOTALT; upstream's
 begin REPEAT/DNUP/UP+8. Even common names such as WALK have different indices.
-Keep our existing numeric meanings and append/adapt useful upstream modes, with
-explicit mapping for upstream project imports. Update Android enum negotiation
-and web descriptors; do not silently reinterpret existing songs or presets.
+Adopt upstream's numeric meanings. Append useful fork-only modes without
+renumbering upstream modes, and update Android enum negotiation and web descriptors.
+Old MerthSloop mode numbers do not need migration.
 
 ### Settings word
 
 Our word uses visualizer bits17–21, scale lights22, MIDI-scale23, eighth swing24,
 channel routing26–30 and a format marker31. Upstream uses channel routing21–25,
 core-off26, acceleration27, USB rate28–29, theme30 and quant-off31.
-A direct merge would change MIDI routing and settings on boot. Keep a recognizable
-MerthSloop legacy decoder, then store added preferences in a versioned extension
-(the upstream settings side record is useful infrastructure). Test old branch,
-old upstream and new settings, preserving samples, kits, favorites and calibration.
+Adopt upstream's word layout and side-record behavior. Store fork-only preferences
+in a separate extension without consuming upstream-owned bits. No old-fork decoder
+is required. Test upstream and new settings, samples, kits, favorites and calibration;
+do not treat permission to break old-fork saves as permission to erase device storage.
 
 ### Memory and audio ownership
 
