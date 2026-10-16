@@ -56,8 +56,12 @@ Ordinary keyboard notes support octave handoff: overlap the newly lit key before
 releasing the original to sustain without reattack. Held pitches remain fully lit
 in their current-octave positions independently of NOTES display.
 
-**MerthSloop 2.6.0.15 is integrated and built locally.** Native per-note tie
-extension/selection/shortening/deletion and complete undo preserve overlapping
+**MerthSloop 2.6.0.18 is integrated and built locally.** Native custom progressions support 1–8 editable degrees and adjustable spans; the
+shared draft lasts until power-off and applied notes save with the song. A saved
+STEP/1/8 swing grid makes eighth-note grooves swing on finer patterns; preview,
+recording snap, SLICER and visualizer timing follow it. Per-note tie
+display audit covers four voices, bank boundaries, cached redraws and anchored LEN.
+Native extension/selection/shortening/deletion and complete undo preserve overlapping
 voices through later attacks. Whole-step ties remain compatible. Independent
 linked-voice moves and automatic recording/import of overlaps remain follow-on
 work; native move/pitch edits guard linked patterns and whole-track transpose
@@ -72,7 +76,7 @@ punch effects replace the previous black-key FX modifiers. The installer is
 `http://127.0.0.1:8820/webapp/installer/`. The public GitHub Pages site updates on
 push to `merthsloop`; this local development batch is not yet pushed.
 
-Image 581,448 bytes (116 free); static RAM 82,116/98,304 (16,188 free);
+Image 581,360 bytes (204 free); static RAM 82,116/98,304 (16,188 free);
 pool 332,876/344,064 (11,188 free). Lossless factory
 sound sharing, text startup, spare driver-RAM scratch and guarded hot-helper
 inlining make the combined build fit. Functional/audio/companion checks pass;
@@ -275,3 +279,6 @@ Existing target audio ISR cost budgets still fail and were not relaxed.
 See [VERIFICATION.md](VERIFICATION.md) for evidence and limits.
 
 Completed chat assignments and historical evidence are retained in [archive](archive/README.md).
+
+Main and origin/main now match upstream 2.7.1 (`4ec1ac8`); the feature branch
+remains on the 2.6 base pending the [integration assessment](../../docs/firmware/UPSTREAM-2.7-INTEGRATION.md).

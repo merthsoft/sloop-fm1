@@ -150,7 +150,7 @@ UI boundaries: MIDI step entry (224), physical step entry (16), groove drawing
 format changes. Native control development additionally shares exact icon rows,
 removes padding from cold ROM lookups and shares note deletion logic; see
 [optimization notes](OPTIMIZATION.md) for the final native build measurement.
-The native build measures 581,448 image bytes, 116 flash bytes free, 82,116 static
+The native build measures 581,512 image bytes, 52 flash bytes free, 82,116 static
 RAM bytes and 332,876 pool bytes. Browser audio and opaque step transport now
 preserve the four continuation bits; phone/web duration-authoring UI remains pending.
 
@@ -163,3 +163,20 @@ and the full 20,000-frame UI fuzz pass. Screens below are fresh firmware renders
 | Extending through later attacks | One voice selected for independent length |
 | --- | --- |
 | ![All source voices](../../assets/screens/merthsoft/guide/per-note-ties-all.png) | ![Selected E voice](../../assets/screens/merthsoft/guide/per-note-ties-voice.png) |
+
+## Native display audit
+
+The roll resolves every legacy whole-step TIE to all sounding pitches, including
+at the start of a 16-step bank. Incoming independent ties join the preceding
+stroke; attack cells remain visibly separate. REST/TIE stale note payload does
+not affect the pitch range. Redraw signatures include all four pitch slots.
+STEP suppresses the enlarged knob overlay so it cannot cover upper voices.
+NOTE and LEN describe the anchored source while scrubbing (`SRC`, or `SEL` for
+one voice), rather than mixing a destination note with the source duration.
+LEN remains anchored when shortening leaves the cursor on a rest.
+
+The native UI test checks rendered pixels for four-note chords, bank crossings,
+legacy and independent ties, continuous strokes, stale payloads, cached third/
+fourth-pitch edits, forced-versus-incremental redraw equivalence and knob zoom.
+It also exercises shortening then extending again with the cursor beyond the end.
+Playback, step editing, move/merge and the full UI fuzz regression remain passing.

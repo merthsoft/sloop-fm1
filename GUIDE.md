@@ -1447,6 +1447,35 @@ buttons together to reset those effects to their parameter defaults; individual
 OCT buttons on these pages do not transpose. This reset does not change the sound
 engine, sequence, key, or global effects. INIT SOUND resets the whole sound.
 
+
+
+### Swing eighth-note grooves
+
+Hold **HOME → TIMING → SWING GRID**, then choose **1/8** with knob 1. Return to
+TRACKS and turn **SWING8** to set the amount. This shuffles eighth-note hats such
+as HALF TIME even when the pattern uses a 1/16 grid. **STEP** preserves the old
+swing behavior, following each track's DIV. The choice survives power-off; both
+global and local swing amounts follow it. Native previews and the GROOVE
+visualizer follow the timing too. Live ARP retains its separate ARP 2 SWG control.
+
+### Write a custom progression
+
+In SEQUENCES, choose **CUSTOM** after the built-in starters with knob 1, then turn
+SELECT to the fourth browser page, **CUSTOM**. Its controls are **1 COUNT** (1–8),
+**2 SLOT**, **3 DEGREE** (1–7), and **4 SPAN** (4/8/16 sixteenth-note steps per
+chord). The underline marks the edited position. Dial `5–1–2–4`, or choose three,
+six or eight positions; changing count retains hidden slots for later reuse.
+Editing count, degree or span selects CUSTOM automatically.
+
+The 64-step limit applies to the whole phrase. More than four chords limits SPAN
+to eight steps. Three chords at span 16 make 48 steps; six at span 8 also make 48.
+The footer shows steps per chord. Root, scale, octave, rhythm, shaping, VLEAD,
+CHORD/BASS/ARP NOTES, listen, ADD/REPLACE and undo work as for the factory starters.
+Preview and REPLACE use the actual phrase length. ADD keeps the destination length.
+The shared custom draft lasts until power-off; applied notes save with the song.
+
+![Native custom 5–1–2–4 progression](assets/screens/merthsoft/guide/custom-progression.png)
+
 ### Independent note sustains
 
 Use **POLY** for guitar-like overlaps. In STEP, select the starting note/chord and
@@ -1463,6 +1492,12 @@ independent ties. Use **held EDIT + knob 3/4** for whole-pattern semitone/octave
 transposition, or delete/re-enter and extend a voice. Whole-step ties still use
 the existing controls. Live recording and phone/web length editing have not yet
 been upgraded to create independent durations; use the native STEP controls.
+
+While extending, NOTE and LEN describe the source: **SRC** for all source voices,
+**SEL** for one selected pitch. LEN stays anchored after shortening beyond the
+cursor. Moving STEP normally clears that selection. The roll shows every tied
+voice across 16-step banks and keeps notes visible while turning knobs.
+
 
 ### MerthSloop track auto-wah and auto-pan
 

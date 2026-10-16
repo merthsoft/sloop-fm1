@@ -373,10 +373,11 @@ static void step_edit(uint32_t slot, int32_t steps)
         st->time = ST_NOTE;
         last_note = st->note[0];
         break;
-    case 2:                                               /* TIME; on a note its LEN (2.6: ui.c note_set_len) */
-        if (step_on(st) || st->time==ST_TIE) {
+    case 2: {                                             /* LEN follows the same anchored source as the display. */
+        uint32_t voice,first=note_edit_target(&voice);
+        step_t source;note_effective(TSEL,first,&source);
+        if (source.n) {
             static uint32_t len_sess, len_cur = 0xFFFFu;  /* the turns of LEN on one step: one undo */
-            uint32_t voice,first=note_edit_target(&voice);
             uint32_t was = note_voice_len(TSEL,first,voice), n;
             uint32_t want=(uint32_t)clamp((int32_t)was+steps,1,trk_len(TSEL)-first),key=first*5u+voice;
             if (want>was) {
@@ -397,6 +398,7 @@ static void step_edit(uint32_t slot, int32_t steps)
         }
         st->time = (uint8_t)clamp((int32_t)st->time + (steps > 0 ? 1 : -1), ST_NOTE, ST_REST);
         break;
+    }
     default: {                                            /* FLAG: - / ACC / SLD / A+S */
         uint32_t f = (st->flags & SF_ACCENT ? 1u : 0u) | (st->flags & SF_SLIDE ? 2u : 0u);
         f = (uint32_t)clamp((int32_t)f + (steps > 0 ? 1 : -1), 0, 3);

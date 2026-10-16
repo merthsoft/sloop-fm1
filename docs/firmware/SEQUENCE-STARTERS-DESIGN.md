@@ -90,3 +90,24 @@ and base velocity per step, so a change in either layer re-triggers their combin
 chord; independent legato and velocities cannot be represented on one track.
 Preview auditions the starter alone. The existing phone protocol still replaces;
 ADD is a native control and does not silently change protocol behavior.
+
+## Write a custom progression
+
+In SEQUENCES, choose **CUSTOM** after the built-in starters with knob 1, then turn
+SELECT to the fourth browser page, **CUSTOM**. Its controls are **1 COUNT** (1–8),
+**2 SLOT**, **3 DEGREE** (1–7), and **4 SPAN** (4/8/16 sixteenth-note steps per
+chord). The underline marks the edited position. Dial `5–1–2–4`, or choose three,
+six or eight positions; changing count retains hidden slots for later reuse.
+Editing count, degree or span selects CUSTOM automatically.
+
+The 64-step limit applies to the whole phrase. More than four chords limits SPAN
+to eight steps. Three chords at span 16 make 48 steps; six at span 8 also make 48.
+The footer shows steps per chord. Root, scale, octave, rhythm, shaping, VLEAD,
+CHORD/BASS/ARP NOTES, listen, ADD/REPLACE and undo work as for the factory starters.
+Preview and REPLACE use the actual phrase length. ADD keeps the destination length.
+The shared custom draft lasts until power-off; applied notes save with the song.
+
+![Native custom 5–1–2–4 progression](../../assets/screens/merthsoft/guide/custom-progression.png)
+
+Native audition now follows global swing and the saved STEP/1/8 grid. See
+[swing controls and timing](SWING-GRID-DESIGN.md).

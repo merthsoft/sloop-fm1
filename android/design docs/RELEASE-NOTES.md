@@ -1,4 +1,42 @@
-# Latest firmware — MerthSloop 2.6.0.15
+# Latest firmware — MerthSloop 2.6.0.18
+
+- HOME menu → TIMING → SWING GRID selects STEP (existing behavior) or 1/8.
+  TRACKS shows SWING8 in eighth mode. HALF TIME hats and eighth-note arps can
+  shuffle on a 1/16 pattern. The setting survives power-off without a project change.
+- Preview, recording snap, straight SLICER rates and GROOVE markers follow the grid.
+  Eighth-mode nudged events/gates/ratchets use their own step width. Grid lines no
+  longer overwrite shifted markers. Live ARP retains its own ARP 2 swing.
+- Compact aligned ROM groove masks retain every factory hit. Full image 581,360
+  bytes (204 free); static RAM 82,116 and pool 332,876 bytes are unchanged.
+- Actual mixer tests check HALF TIME at 0/375/500/875ms, legacy compatibility,
+  uneven loop and early/late FEEL preview parity, settings and visualizer pixels.
+- Local/origin main mirror upstream 2.7.1; feature-branch integration remains
+  separate. The assessment records flag, arp-ID, settings and memory conflicts.
+
+## Previous integrated checkpoint — MerthSloop 2.6.0.17
+
+- Native CUSTOM progressions: count 1–8, editable degree per position and 4/8/16-step
+  span within the 64-step pattern. Shared rhythm/key/voicing/mode controls, preview,
+  ADD/REPLACE and undo. Applied notes save with the song; draft lasts until power-off.
+- Shared sequence rendering and compact ROM degrees fit the new page. A 100,000-event
+  comparison preserves factory starter output. Custom count/span/rhythm/mode,
+  preview, undo and navigation tests pass, alongside the existing UI fuzz and ties.
+- Swing scheduling and visualizer regressions verify 0/50/100 on odd sequencer
+  steps. No swing behavior has been changed pending the reported setup details.
+- Target 581,560 bytes (4 free); static RAM 82,116 and pool 332,876 bytes.
+
+## Previous integrated checkpoint — MerthSloop 2.6.0.16
+
+- STEP renders all tied chord voices, including at bank boundaries. Independent
+  continuations connect without gaps; stale rest/tie payload cannot distort range.
+- Redraw caching tracks all four pitches. STEP knob zoom no longer covers notes.
+- NOTE and LEN share the anchored source (SRC/SEL). Shortening past the cursor
+  no longer makes subsequent LEN edits target an empty destination step.
+- Added pixel-level regression checks and anchored-length control tests. Playback,
+  editing, move/merge and the 20,000-frame UI fuzz pass. Hardware audition pending.
+- Image 581,512 bytes (52 free); static RAM and pool unchanged from the tie release.
+
+## Previous integrated checkpoint — MerthSloop 2.6.0.15
 
 - Independent note sustains can cross later note onsets. Hold OCT+ and scrub STEP
   with knob 1; knob 4 chooses ALL or one source pitch. LEN can shorten that

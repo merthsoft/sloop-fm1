@@ -39,8 +39,10 @@ A separate bounded audio-block clock and a ROM step reader trigger drum hits; no
 steps, metadata, transport, recording, project bytes or undo state are replaced.
 Preview is stopped-only and stops on apply/confirmation, bank selection, page exit, HOME,
 menu, track switch, STOP, playback/recording, panic and project adoption. Existing drum
-tails may decay after stopping. Preview ignores swing so the template spacing is explicit.
-Seven 64-bit masks plus clock/state occupy 72 bytes. It is not a phone command; phone
+tails may decay after stopping. Preview follows global swing and the selected
+STEP/1/8 grid, including shaped FEEL offsets. Its separate swing phase continues
+across uneven pattern lengths. The aligned ROM masks use only their needed width;
+preview retains its bounded mask/clock state without a full pattern buffer. It is not a phone command; phone
 command 74 continues to discover/apply all 24 entries with the updated protocol decoder.
 Tests cover every bank/list entry, all long-pattern screen windows, fourth-bar hits and
 ghosts, complete Amen looping, project preservation and preview cleanup/refusal.

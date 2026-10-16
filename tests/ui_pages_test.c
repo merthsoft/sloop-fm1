@@ -890,6 +890,8 @@ int main(int argc, char **argv)
         check(midi_scale && ui.menu_sel == MI_MIDISCALE, "MIDI SCALE knob1 enables keyboard-scale input");
         encs[panel.enc[EN_K1]] = -1; frame();
         check(!midi_scale, "MIDI SCALE knob1 disables mapping");
+        encs[panel.enc[EN_SELECT]] = 1; frame();
+        check(mi_sec(ui.menu_sel) == MS_TIMING, "menu: SELECT right: TIMING");
         encs[panel.enc[EN_SELECT]] = 5; frame();
         sec = mi_sec(ui.menu_sel);
         check(sec == MS_SYSTEM, "menu: SELECT stops at the last section, SYSTEM");
@@ -1281,6 +1283,7 @@ int main(int argc, char **argv)
         {   /* 2.6, after Felucca 1.5.1: MIDI Program Change (queued by seq.c, loaded here) and FX + OCT- / OCT+: the THROWs */
             uint8_t e0 = trk[1].eng_req, p0 = trk[1].preset;
             int16_t k0 = TDRUM->p[P_E0];
+            int32_t octave0 = song.octave;
             uint32_t k, tot = NBANK + up_count();
             go_home(); frame();
             pc_req[1] = 1;                                /* PC 0 on track 2's channel: the first sound of the list */
@@ -1306,7 +1309,7 @@ int main(int argc, char **argv)
             check(k == 1u && thr_req == 2u && !strcmp(sub_line(), "echo throw"), "FX + OCT-: REV THROW while held, FX + OCT+: ECHO THROW");
             fm1_in.buttons &= ~BT(B_OCTUP); frame();
             release(B_FX); frames(4);
-            check(thr_req == 0u && song.octave == 0, "  let go: no THROW, the octave untouched");
+            check(thr_req == 0u && song.octave == octave0, "  let go: no THROW, the octave untouched");
         }
         steps_clear(&trk[0]); go_home(); frames(16);
         {   /* SEQ: two steps held + KNOB 2: both one up (the turn accelerated once, not once a step) */

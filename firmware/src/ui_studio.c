@@ -272,7 +272,7 @@ static void studio_tracks_draw(void)
     {   /* KNOB 1 swing (the global groove), 2 level, 3 steps, 4 pan of the selected track */
         track_t *t = TSEL;
         static char v[4][8];
-        static const char *const lab[4] = {"swing", "level", "steps", "pan"};
+        const char *lab[4] = {swing_eighth?"swing8":"swing", "level", "steps", "pan"};
         const char *val[4] = {v[0], v[1], v[2], v[3]};
         int32_t ratio[4];
         uint32_t lvl = is_drum(t) ? song.g[G_DRLVL] : t->p[P_LEVEL];
@@ -578,13 +578,11 @@ static void __attribute__((noinline)) drum_screen_input(uint32_t pressed, uint32
             } else {
                 const drum_groove_t *p = &DRUM_GROOVES[groove_sel];
                 fm1_irq_off();
-                groove_preview.mask[0] = p->kick; groove_preview.mask[1] = p->snare;
-                groove_preview.mask[2] = p->clap; groove_preview.mask[3] = p->hat;
-                groove_preview.mask[4] = p->open; groove_preview.mask[5] = p->accent;
-                groove_preview.mask[6] = p->ghost;
+                for(uint32_t lane=0;lane<7;lane++) groove_preview.mask[lane]=drum_groove_mask(p,lane);
                 groove_preview.len = p->len; groove_preview.div = p->div;
                 groove_preview_id = groove_sel; groove_preview_read = drum_groove_preview_step;
-                groove_preview.phase = -(int32_t)groove_shape.feel * (int32_t)div_units(p->div) / 64;
+                groove_preview.feel=groove_shape.feel;
+                groove_preview.phase = -(int32_t)groove_shape.feel * (int32_t)swing_step_units(p->div,song.g[G_SWING],0) / 64;
                 groove_preview.step = 0; groove_preview.first = 1;
                 groove_preview.active = 1;
                 fm1_irq_on();

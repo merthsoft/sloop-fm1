@@ -574,15 +574,20 @@ static void vis_groove(void)
     cv_text(8, 24, &FONT_S, "GRID / SWING / NUDGE", C_DIM);
     for (t = 0; t < 4u; t++) {
         track_t *p = &trk[t];
-        uint32_t f, at = vis_position(p, &f), base = at / 8u * 8u, len = trk_len(p);
+        uint32_t into,slen,len=trk_len(p),abs=trk_grid(p,&into,&slen),at=abs%len,base=at/8u*8u;
         int32_t y = 65 + (int32_t)t * 48;
         cv_rect(8, y + 15, 224, 1, TE_DIM[t]);
+        /* Grid first: a shifted hit may land on the next cell's grid line. */
+        for(s=0;s<8u;s++) cv_rect(14+(int32_t)s*28,y-8,1,30,C_LINE);
         for (s = 0; s < 8u; s++) {
             uint32_t idx = (base + s) % len, k, rats = 1, velocity = 100;
             int32_t x = 14 + (int32_t)s * 28, shift = p->micro[idx] * 28 / 64;
-            if ((idx & 1u) && swings(trk_div(p)))
-                shift += clamp(p->p[P_SSWING] + song.g[G_SWING], 0, 100) * 28 / 200;
-            cv_rect(x, y - 8, 1, 30, C_LINE);
+            uint32_t group=swing_group(trk_div(p)),step=abs-at+base+s;
+            if(group && swings(trk_div(p))) {
+                uint32_t within=step%group;
+                shift+=clamp(p->p[P_SSWING]+song.g[G_SWING],0,100)*28*
+                    ((step/group)&1u?group-within:within)/200;
+            }
             if (!vis_has(p, idx)) continue;
             if (is_drum(p)) {
                 for (k = 0; k < 16u; k++) if (dstep_has(&p->dstep[idx], k)) {
@@ -658,7 +663,7 @@ static void vis_terrain(void)
 }
 
 /* the visualiser, every other frame: the update, then both bands */
-static void vis_draw(void)
+static void __attribute__((noinline)) vis_draw(void)
 {
     uint32_t pass;
     if (!vis_shown_last || ui.force) {

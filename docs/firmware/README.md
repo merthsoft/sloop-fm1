@@ -6,6 +6,7 @@ the website installer references the current MerthSloop package.
 
 - [Illustrated guide to all MerthSloop firmware additions](MERTHSOFT-FEATURES.md)
 - [Musical sequence starters](SEQUENCE-STARTERS-DESIGN.md)
+- [Custom progressions](CUSTOM-PROGRESSIONS-DESIGN.md)
 - [Phone musical starter protocol](MUSICAL-STARTER-PROTOCOL.md)
 - [Arpeggio expression](ARP-EXPRESSION.md)
 - [Live vibrato, tremolo and MIDI modulation](MODULATION-WHEEL.md)
@@ -16,6 +17,7 @@ the website installer references the current MerthSloop package.
 - [Persistent keyboard scale lights](KEYBOARD-SCALE-LIGHTS.md)
 - [Drum grooves](DRUM-GROOVES-DESIGN.md)
 - [Rhythm shaping](RHYTHM-SHAPING-DESIGN.md)
+- [Eighth-note swing grid](SWING-GRID-DESIGN.md)
 - [Chord and arpeggio architecture](CHORD-ARPEGGIO-DESIGN.md) — includes future work
 - [Punch FX and superseded modifier design](PUNCH-FX-DESIGN.md)
 - [USB playback](USB-PLAYBACK-IMPLEMENTATION.md)
@@ -30,3 +32,5 @@ Use the [player guide](../../GUIDE.md) for controls and the
 
 - [Upstream 2.6 integration assessment](UPSTREAM-2.6-INTEGRATION.md)
 - [PR 111 RAM and dual-core adoption assessment](PR-111-ASSESSMENT.md)
+
+- [Upstream 2.7.1 assessment and compatibility gates](UPSTREAM-2.7-INTEGRATION.md)

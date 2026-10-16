@@ -77,6 +77,8 @@ run "sequencer arpeggio: four-note chord plus fifteen ties, every runtime mode, 
 $CC -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/seq_arp_expression_test" tests/seq_arp_expression_test.c -lm
 run "arpeggio expression: source velocities, octave collisions, pulse, recording and preview takeover" "$OUT/seq_arp_expression_test"
 $CC -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/seq_navigation_test" tests/seq_navigation_test.c -lm
+$CC -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/swing_grid_test" tests/swing_grid_test.c -lm
+run "swing grid: HALF TIME audio timing, preview, legacy equivalence, settings and visualizer" "$OUT/swing_grid_test"
 $CC -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/note_ties_ui_test" tests/note_ties_ui_test.c -lm
 run "native per-note tie selection, overlap, shortening, deletion and undo" "$OUT/note_ties_ui_test"
 $CC -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/scale_lights_test" tests/scale_lights_test.c -lm

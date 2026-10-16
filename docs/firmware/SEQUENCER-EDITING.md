@@ -100,3 +100,8 @@ On STEP, choose the step with knob 1 and tap EDIT. The selected step becomes a
 rest and the cursor advances. This clears the entire step, including all its chord
 notes. Hold EDIT and tap OCT− to undo; OCT+ reapplies. OCT− plus knob 1 is the rest
 brush when clearing a longer range.
+
+The STEP roll displays every sustained chord voice across bank boundaries. Its
+knob feedback keeps the roll visible. During a tie gesture, NOTE and LEN stay on
+the source (`SRC`, or `SEL` for a chosen pitch), even if shortening leaves the
+cursor on an empty step. Normal STEP movement clears that source selection.

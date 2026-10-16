@@ -217,7 +217,8 @@ static int test_sync(void)
 {
     uint32_t f, k, blocks = 0, miss = 0;
     char what[160];
-    song_setup();
+    for(uint32_t grid=0;grid<2;grid++) {
+    song_setup();swing_eighth=(uint8_t)grid;
     song.g[G_SWING] = 15;
     for (k = 0; k < NTRK; k++) {
         trk[k].p[P_SSWING] = (int16_t)(10 * k);
@@ -236,7 +237,9 @@ static int test_sync(void)
         }
     }
     transport_req = 2;
-    snprintf(what, sizeof what, "sync: 4 tracks, 131 BPM, swing per track: the sequencer's step at %u blocks x 4", blocks);
+    }
+    swing_eighth=0;
+    snprintf(what, sizeof what, "sync: STEP/eighth grids, 4 tracks, 131 BPM: the sequencer's step at %u blocks x 4", blocks);
     return check(what, !miss);
 }
 

@@ -1,5 +1,9 @@
 # PR 111 assessment
 
+Upstream has now integrated its dual-core series in 2.7.1. The deferred work below
+still describes this fork; see the [integration assessment](UPSTREAM-2.7-INTEGRATION.md)
+for the current reconciliation plan.
+
 Reviewed [the proposed dual-core/RAM series](https://github.com/isod89/sloop-fm1/pull/111)
 against the current `merthsloop` branch. The independent MIDI routing, DRAWBAR arena,
 main-loop scratch and XIP preset-bank reductions are integrated. Dual-core rendering

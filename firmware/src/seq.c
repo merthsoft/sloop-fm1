@@ -90,7 +90,8 @@ static volatile uint8_t panic_req;       /* bit per track: release every soundin
 static struct {
     uint64_t mask[7];
     int32_t phase;
-    uint8_t active, first, step, len, div;
+    uint8_t active, first, step, len, div, swing_step;
+    int8_t feel;
 } groove_preview;
 /* UI browsers bind these only while open; headless audio harnesses keep no-op defaults. */
 static dstep_t (*groove_preview_read)(uint32_t);
@@ -477,11 +478,22 @@ static uint32_t grid_at(uint32_t div, uint32_t sw, uint32_t *into, uint32_t *len
  * change from one beat to the next, as on most machines) and on steps of whole beats */
 static uint32_t swings(uint32_t div) { return div < 4u; }
 static uint32_t trk_div(const track_t *t) { return (uint32_t)t->p[P_SDIV] % NDIV_STEP; }
-static uint32_t trk_grid(const track_t *t, uint32_t *into, uint32_t *len)
+/* Eighth mode stretches/compresses subdivisions inside each eighth, keeping
+ * event order, positive gates and the next quarter exactly on time at 100%. */
+static uint32_t swung_grid(uint32_t div,int32_t amount,uint32_t *into,uint32_t *len)
 {
-    uint32_t div = trk_div(t);
-    return grid_at(div, swings(div) ? swing_units(t->p[P_SSWING] + song.g[G_SWING], div_units(div)) : 0u, into, len);
+    uint32_t group=swing_group(div);
+    if(group>1u) {
+        uint32_t abs=grid_den(2,swing_units(amount,div_units(div))*group,into,len);
+        *len/=group;
+        abs=abs*group+*into / *len;
+        *into%=*len;
+        return abs;
+    }
+    return grid_at(div,group && swings(div)?swing_units(amount,div_units(div)):0u,into,len);
 }
+static uint32_t trk_grid(const track_t *t,uint32_t *into,uint32_t *len)
+{ return swung_grid(trk_div(t),t->p[P_SSWING]+song.g[G_SWING],into,len); }
 static uint32_t trk_len(const track_t *t) { return t->p[P_SLEN] > 0 ? (uint32_t)t->p[P_SLEN] : 1u; }
 #include "note_ties.c"
 
@@ -528,8 +540,7 @@ static uint32_t rec_target(const track_t *t, uint32_t *later)
         uint32_t sd = snap == REC_SNAP_EIGHTH ? 1u : 0u;
         uint32_t su = div_units(sd), tu = div_units(div);
         if (su > tu && su % tu == 0u) {
-            uint32_t target = grid_at(sd, swings(sd) ?
-                swing_units(t->p[P_SSWING] + song.g[G_SWING], su) : 0u, &into, &slen);
+            uint32_t target = swung_grid(sd,t->p[P_SSWING]+song.g[G_SWING],&into,&slen);
             half = slen / 2u;
             if (into > half + (lat < half ? lat : half)) target++;
             target *= su / tu;
@@ -1966,12 +1977,14 @@ static void groove_preview_block(uint32_t n)
         groove_preview.active = 0;
         return;
     }
-    interval = div_units(groove_preview.div);
+    if(groove_preview.first) groove_preview.swing_step=0;
+    interval=swing_preview_units(groove_preview.div,song.g[G_SWING],groove_preview.swing_step,groove_preview.feel);
     if ((groove_preview.first && groove_preview.phase >= 0) ||
         (!groove_preview.first && groove_preview.phase >= (int32_t)interval)) {
         if (!groove_preview.first) {
             groove_preview.phase -= interval;
             groove_preview.step = (uint8_t)((groove_preview.step + 1u) % groove_preview.len);
+            groove_preview.swing_step=(uint8_t)((groove_preview.swing_step+1u)&7u);
         }
         groove_preview.first = 0;
         if (groove_preview_read) {
@@ -2454,10 +2467,14 @@ static void seq_ratchets(track_t *t, uint32_t into, uint32_t slen)
 
 /* the nudge of grid step abs of track t, in units of a step slen long: where in its own step it fires
  * (micro >= 0), or how far before its step (micro < 0, as a negative number) */
+/* An early event belongs to the upcoming step, whose width may differ. Keep
+ * the legacy STEP interpretation for existing songs; eighth mode is explicit. */
+static uint32_t event_step_units(const track_t *t,uint32_t abs,uint32_t fallback)
+{ return swing_eighth?swing_step_units(trk_div(t),t->p[P_SSWING]+song.g[G_SWING],abs):fallback; }
 static int32_t micro_units(const track_t *t, uint32_t abs, uint32_t slen)
 {
     int32_t m = t->micro[abs % trk_len(t) % NSTEP];
-    return (int32_t)(slen / 64u) * m;                /* |m| <= 32: fits */
+    return (int32_t)(event_step_units(t,abs,slen) / 64u) * m;                /* |m| <= 32: fits */
 }
 
 /* The steps fire in order, one a block at most, each at its nudged time (micro: 1/64 of a step early
@@ -2538,7 +2555,7 @@ static void seq_tick(track_t *t, uint32_t adv)
                         if (s->note[i] == t->rskip[k])
                             skip |= 1u << i;
             t->rskip_n = 0;
-            seq_step(t, s, slen, skip);
+            seq_step(t, s, event_step_units(t,nabs,slen), skip);
         }
     }
     /* the ratchets of the step playing, timed from where it fired (its hits ride with its nudge) */
@@ -2549,7 +2566,7 @@ static void seq_tick(track_t *t, uint32_t adv)
     else
         rel = (int32_t)into;
     if (t->seq_abs != SEQ_NONE && !seq_arp_route(t))
-        seq_ratchets(t, rel < 0 ? 0u : (uint32_t)rel, slen);
+        seq_ratchets(t, rel < 0 ? 0u : (uint32_t)rel, event_step_units(t,t->seq_abs,slen));
 }
 
 /* MIDI in: the track that has channel ch (0..15) as its own: the drum track's GLO > DRUMS > CH, synth track i's

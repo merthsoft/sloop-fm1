@@ -6,13 +6,13 @@
  * its row), PRESETS moves the cursor; OCT+ steps the cursor's setting round or opens it (CALIBRATION, ABOUT),
  * OCT- closes (from ABOUT: back to the section). */
 /* ------------------------------------------------------------ menu --- */
-enum { MI_COLOR, MI_ZOOM, MI_LIGHTS, MI_KEYS, MI_NOTES, MI_LOWCUT, MI_USB, MI_SERIAL, MI_MIDISCALE, MI_PANEL, MI_LCLEAR, MI_ABOUT,
+enum { MI_COLOR, MI_ZOOM, MI_LIGHTS, MI_KEYS, MI_NOTES, MI_LOWCUT, MI_USB, MI_SERIAL, MI_MIDISCALE, MI_SWING, MI_PANEL, MI_LCLEAR, MI_ABOUT,
        MI_COUNT };
 static const char *const MI_NAME[MI_COUNT] = {"COLOR", "ZOOM", "LIGHTS", "KEYS", "NOTES", "SPEAKER LOWCUT", "USB AUDIO",
-                                              "USB SERIAL", "MIDI SCALE", "HARDWARE CALIBRATION", "MIDI LEARN CLEAR", "ABOUT"};
-enum { MS_SCREEN, MS_LIGHTS, MS_AUDIO, MS_MIDI, MS_SYSTEM, MS_COUNT };
-static const char *const MS_NAME[MS_COUNT] = {"SCREEN", "LIGHTS", "AUDIO", "MIDI SCALE", "SYSTEM"};   /* (AUDIO: and USB) */
-static const uint8_t MS_FIRST[MS_COUNT + 1] = {MI_COLOR, MI_LIGHTS, MI_LOWCUT, MI_MIDISCALE, MI_PANEL, MI_COUNT};   /* rows of each */
+                                              "USB SERIAL", "MIDI SCALE", "SWING GRID", "HARDWARE CALIBRATION", "MIDI LEARN CLEAR", "ABOUT"};
+enum { MS_SCREEN, MS_LIGHTS, MS_AUDIO, MS_MIDI, MS_TIMING, MS_SYSTEM, MS_COUNT };
+static const char *const MS_NAME[MS_COUNT] = {"SCREEN", "LIGHTS", "AUDIO", "MIDI SCALE", "TIMING", "SYSTEM"};   /* (AUDIO: and USB) */
+static const uint8_t MS_FIRST[MS_COUNT + 1] = {MI_COLOR, MI_LIGHTS, MI_LOWCUT, MI_MIDISCALE, MI_SWING, MI_PANEL, MI_COUNT};   /* rows of each */
 static const char *const LIGHTS_NAME[LIGHTS_N] = {"OFF", "LOW", "MID", "HIGH"};   /* every button lit, the labels readable */
 static const char *const KEYS_NAME[KEYS_N] = {"OFF", "C KEYS", "WHITE KEYS", "ALL KEYS"};      /* keys lit too, at the LIGHTS level */
 #define MI_Y0 26                                   /* the first row, under the section tabs */
@@ -38,6 +38,7 @@ static const char *mi_value(uint32_t i, uint16_t *c)
     case MI_KEYS:
         *c = lights_lvl ? C_HI : C_DIM;               /* (needs LIGHTS) */
         return KEYS_NAME[lights_keys % KEYS_N];
+    case MI_SWING: return swing_eighth?"1/8":"STEP";
     case MI_MIDISCALE: return midi_scale ? "KEYBOARD" : "OFF";
     case MI_NOTES: return lights_notes ? "ON" : "OFF";
     case MI_LOWCUT: return settings.lowcut ? "ON" : "OFF";
@@ -65,7 +66,7 @@ static void __attribute__((noinline)) draw_menu(void)
     uint32_t i, pass, sec = mi_sec(ui.menu_sel % MI_COUNT);
     uint32_t sig = ui.menu * 7u + ui.menu_sel * 131u + settings.palette * 1009u + settings.lowcut * 7919u +
                    settings.zoom * 104729u + lights_lvl * 1299709u + lights_keys * 15485863u + ml_count() * 2654435u +
-                   lights_notes * 32452843u + usb_full * 49979687u + usb_serial * 86028121u + midi_scale * 961748941u;
+                   lights_notes * 32452843u + usb_full * 49979687u + usb_serial * 86028121u + midi_scale * 961748941u + swing_eighth * 1234567u;
     if (!ui.force && sig == ui.menu_sig)
         return;
     ui.menu_sig = sig;
@@ -183,8 +184,12 @@ static void mi_set(uint32_t i, int32_t s)
         usb_serial = (uint8_t)(s > 0 ? 1u : s < 0 ? 0u : !usb_serial);
         break;
     case MI_MIDISCALE:
-        midi_scale = (uint8_t)(s > 0 ? 1u : s < 0 ? 0u : !midi_scale);
+    case MI_SWING: {
+        uint8_t *v=i==MI_SWING?&swing_eighth:&midi_scale;
+        *v=(uint8_t)(s>0?1u:s<0?0u:!*v);
+        settings_later=1;
         break;
+    }
     case MI_NOTES:
         lights_notes = (uint8_t)(s > 0 ? 1u : s < 0 ? 0u : !lights_notes);
         break;

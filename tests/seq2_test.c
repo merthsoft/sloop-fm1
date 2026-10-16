@@ -145,6 +145,20 @@ static void t_burst(void)
     check(ok1 && ok2, "DIV 1/4 -> 1/32 and 40 -> 240 BPM mid-step: one step a block, no burst");
 }
 
+static void t_swing_amounts(void)
+{
+    reset(120);track_t *t=&trk[0];t->p[P_SDIV]=2;
+    uint32_t u=div_units(2),into,len;
+    clk_beat=0;
+    for(uint32_t source=0;source<2;source++) for(uint32_t sw=0;sw<=100;sw+=50) {
+        t->p[P_SSWING]=source?sw:0;song.g[G_SWING]=source?0:sw;
+        uint32_t delay=sw*u/200;
+        clk_pos=u+delay;
+        assert(trk_grid(t,&into,&len)==1 && into==0 && len==u-delay);
+        if(delay) {clk_pos=u+delay-1;assert(trk_grid(t,&into,&len)==0);}
+    }
+    check(1,"SWING 0/50/100: local and global delay odd sixteenth steps exactly");
+}
 static void t_swing_odd(void)
 {
     uint32_t i, ok = 1, starts0 = 0, startsd = 0;
@@ -1992,6 +2006,7 @@ int main(void)
     t_shed();
     t_drift();
     t_burst();
+    t_swing_amounts();
     t_swing_odd();
     t_len_phase();
     t_ratchet();

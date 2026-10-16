@@ -93,6 +93,8 @@ int main(int argc,char **argv)
     encs[panel.enc[EN_SELECT]]=1;sequence_screen_input(0,0);
     assert(sequence_browser&&sequence_page==2);
     encs[panel.enc[EN_SELECT]]=1;sequence_screen_input(0,0);
+    assert(sequence_browser&&sequence_page==3);
+    encs[panel.enc[EN_SELECT]]=1;sequence_screen_input(0,0);
     assert(!sequence_browser&&cur_page()->scope==SC_SONG);
     ui.page=(uint8_t)i;page_entered();assert(sequence_browser);
     encs[panel.enc[EN_SELECT]]=-1;sequence_screen_input(0,0);
@@ -105,11 +107,11 @@ int main(int argc,char **argv)
         /* SELECT changes the controls in view, not audition ownership or phase. */
         uint8_t saved[sizeof sequence_preview];
         memcpy(saved,&sequence_preview,sizeof saved);
-        for(uint32_t page=1;page<=2;page++) {
+        for(uint32_t page=1;page<=3;page++) {
             encs[panel.enc[EN_SELECT]]=1;sequence_screen_input(0,0);
             assert(sequence_page==page&&!memcmp(saved,&sequence_preview,sizeof saved));
         }
-        for(int page=1;page>=0;page--) {
+        for(int page=2;page>=0;page--) {
             encs[panel.enc[EN_SELECT]]=-1;sequence_screen_input(0,0);
             assert(sequence_page==page&&!memcmp(saved,&sequence_preview,sizeof saved));
         }
@@ -130,6 +132,7 @@ int main(int argc,char **argv)
     encs[panel.enc[EN_K1]]=1;frame();assert(sequence_octave==browser_octave+1);
     assert(song.octave==physical_octave);
     sequence_screen_draw();ppm("live-sequence-pitch");
+    encs[panel.enc[EN_SELECT]]=1;frame();assert(sequence_browser&&sequence_page==3);
     encs[panel.enc[EN_SELECT]]=1;frame();assert(!sequence_browser&&cur_page()->scope==SC_SONG);
     ui.home=0;ui.page=(uint8_t)i;page_entered();
     sequence_screen_close();assert(!sequence_preview_end);
@@ -270,5 +273,57 @@ int main(int argc,char **argv)
     }
     puts("sequence UI: additive ties/slide flags, duplicates, atomic overflow, metadata, undo/redo, both Apply gestures and 1000 independent union cases PASS");
     puts("sequence UI: native entry, 700ms hold, full undo/redo, track isolation, non-destructive preview, STOP/home ownership PASS");
+    /* User recipe: actual knobs, variable length, preview/Apply, undo and guards. */
+    song.sel=0;song.playing=song.rec=transport_req=rec_wait=ft_on=0;
+    fm1_in.notes=fm1_in.buttons=0;sequence_add=0;sequence_rhythm=0;sequence_mode=STARTER_CHORD;
+    sequence_shape=(rhythm_shape_t){0,0,0,255,0};sequence_root=0;sequence_scale=1;
+    sequence_octave=0;sequence_vlead=0;sequence_sel=0;
+    sequence_screen_open();sequence_page=3;
+    const uint8_t recipe[]={4,0,1,3};
+    for(uint32_t at=0;at<4;at++) {
+        encs[panel.enc[EN_K2]]=(int32_t)at-sequence_custom_slot;sequence_screen_input(0,0);
+        encs[panel.enc[EN_K3]]=(int32_t)recipe[at]-sequence_custom_degree[at];
+        if(!encs[panel.enc[EN_K3]]) encs[panel.enc[EN_K1]]=1; /* ensure CUSTOM selection */
+        sequence_screen_input(0,0);
+    }
+    encs[panel.enc[EN_K1]]=4-sequence_custom_count;sequence_screen_input(0,0);
+    assert(sequence_sel==NSEQUENCE_STARTERS && !memcmp(recipe,sequence_custom_degree,4));
+    ui.msg_t=0;sequence_screen_draw();ppm("live-custom-progression");
+    for(uint32_t count=1;count<=8;count++) {
+        encs[panel.enc[EN_K1]]=(int32_t)count-sequence_custom_count;sequence_screen_input(0,0);
+        encs[panel.enc[EN_K4]]=100;sequence_screen_input(0,0);
+        uint32_t len=sequence_length(sequence_sel),span=sequence_span(sequence_sel);
+        assert(len==count*span && len<=NSTEP && sequence_custom_slot<count);
+        before=trk[0];assert(sequence_starter_apply());
+        assert(trk[0].p[P_SLEN]==(int32_t)len);
+        for(uint32_t at=0;at<count;at++) {
+            assert(trk[0].step[at*span].n==3);
+            assert(trk[0].step[at*span].note[0]==sequence_degree_note(sequence_custom_degree[at],0,1,0));
+        }
+        after=trk[0];sequence_screen_input(BT(B_OCTDN),0);assert(sequence_preview.active);
+        for(uint32_t at=0;at<=len;at++) {
+            sequence_preview.first=at==0;sequence_preview.phase=div_units(2);
+            sequence_preview_block(0);assert(sequence_preview.step==at%len);
+            assert(sequence_preview.n==3);
+            assert(!memcmp(sequence_preview.notes,after.step[(at%len)/span*span].note,3));
+        }
+        uint32_t phase=sequence_preview.phase;encs[panel.enc[EN_K2]]=1;sequence_screen_input(0,0);
+        assert(sequence_preview.active && sequence_preview.phase==phase);
+        encs[panel.enc[EN_K3]]=1;sequence_screen_input(0,0);
+        assert(!sequence_preview.active);
+        assert(undo_swap(0)&&same_pattern(&before,&trk[0]));
+    }
+    sequence_screen_close();
+    puts("custom progressions: 5-1-2-4 knobs, 1..8 chords, span bounds, preview wrap/parity, undo PASS");
+    /* The groove visualizer follows the same odd-step swing at 0,50,100. */
+    for(uint32_t k=0;k<NTRK;k++) {steps_clear(&trk[k]);trk[k].p[P_SLEN]=16;trk[k].p[P_SDIV]=2;trk[k].p[P_SSWING]=0;}
+    clk_beat=clk_pos=0;trk[0].step[1]=(step_t){.note={60},.n=1,.vel=100};
+    for(uint32_t sw=0;sw<=100;sw+=50) {
+        song.g[G_SWING]=sw;cv_begin(240,124,C_BLACK);cv_oy=0;vis_groove();
+        uint32_t x=42+sw*28/200;
+        assert(cv_px[65*240+x]==swap16(mix565(TE_DIM[0],TE_COL[0],200)));
+    }
+    song.g[G_SWING]=0;
+    puts("swing visualizer: exact odd-step displacement at 0/50/100 PASS");
     return 0;
 }

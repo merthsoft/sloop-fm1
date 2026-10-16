@@ -77,7 +77,7 @@
   <p id="status"></p>
   <pre id="log"></pre>
   <a class="ed" href="../editor/" data-t="editor"></a>
-  <p class="small"><a href="../editor/sloop-editor.html" download="merthsloop-editor-2.6.0.15.html" data-t="edOffline"></a></p>
+  <p class="small"><a href="../editor/sloop-editor.html" download="merthsloop-editor-2.6.0.18.html" data-t="edOffline"></a></p>
   <p><button id="app" class="ed" hidden data-t="appInstall"></button></p>
   <hr>
   <p class="small" data-t="direct"></p>
@@ -501,7 +501,7 @@ const sayK = (k, arg = "") => { lastKey = k; lastArg = arg; $("status").textCont
 const say = (txt) => { lastKey = null; $("status").textContent = txt; };
 const log = (t) => { $("log").textContent += t + "\n"; };
 let image = null;
-const meta = {"version": "2.6.0.15", "product": "FM-1_900", "pkg": "../../firmware/merthsloop-2.6.0.15.fwsc", "sha256": "2dc9705034a4ea7c7e213256936a6d2769eddad06d62dd05380d091ce5a1443b"};
+const meta = {"version": "2.6.0.18", "product": "FM-1_900", "pkg": "../../firmware/merthsloop-2.6.0.18.fwsc", "sha256": "cac6cefb0d5ea614a730b1b65fbaec229df0da8bd4c4baf96bd52a4b4c9b92aa"};
 
 let writing = false, stock = null;
 const lockAll = (on) => {

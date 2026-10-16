@@ -83,7 +83,9 @@ static void sl_enter(const track_t *t, sl_t *s)
     s->idx = (uint8_t)((s->idx + 1u) & 15u);
     s->base = BEAT_U / SL_DEN[(uint32_t)t->p[P_SLRATE] % 6u];
     sw = (uint32_t)clamp(t->p[P_SSWING] + song.g[G_SWING], 0, 100) * s->base / 200u;   /* as seq.c trk_grid */
-    s->len = (s->idx & 1u) ? s->base - sw : s->base + sw;
+    s->len = (uint32_t)t->p[P_SLRATE]<3u ?
+        swing_step_units((uint32_t)t->p[P_SLRATE]+1u,t->p[P_SSWING]+song.g[G_SWING],s->idx) :
+        (s->idx & 1u) ? s->base - sw : s->base + sw;
     s->bit = (uint8_t)((sl_pattern(t) >> s->idx) & 1u);
     s->rp = 0;
     s->loop = 0;

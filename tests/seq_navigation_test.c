@@ -115,6 +115,7 @@ int main(void)
     select_turn(1);expect_page("SEQUENCES");assert(sequence_browser);
     select_turn(1);expect_page("SEQUENCES"); /* shaping subpage */
     select_turn(1);expect_page("SEQUENCES"); /* pitch subpage */
+    select_turn(1);expect_page("SEQUENCES");assert(sequence_page==3);
     select_turn(1);expect_page("SONG");assert(!sequence_browser);
     select_turn(-1);expect_page("SEQUENCES");
     select_turn(-1);expect_page("RECORD");

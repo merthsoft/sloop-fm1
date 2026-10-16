@@ -250,14 +250,15 @@ static void graph_steps(const track_t *t, uint16_t c)
 static void __attribute__((noinline)) graph_roll(const track_t *t, uint16_t c)
 {
     uint32_t i, j, len = (uint32_t)t->p[P_SLEN], base = ui.bank * 16u;
-    int32_t lo = 127, hi = 0, prev_y = -1;
-    for (i = 0; i < len; i++)
-        for (j = 0; j < t->step[i].n; j++) {
-            if (t->step[i].note[j] < lo)
-                lo = t->step[i].note[j];
-            if (t->step[i].note[j] > hi)
-                hi = t->step[i].note[j];
+    int32_t lo = 127, hi = 0;
+    for (i = 0; i < len; i++) {
+        const step_t *st = &t->step[i];
+        if (!step_on(st)) continue; /* REST/TIE payload may be stale. */
+        for (j = 0; j < st->n; j++) {
+            if (st->note[j] < lo) lo = st->note[j];
+            if (st->note[j] > hi) hi = st->note[j];
         }
+    }
     if (lo > hi) {
         lo = 48;
         hi = 72;
@@ -266,7 +267,9 @@ static void __attribute__((noinline)) graph_roll(const track_t *t, uint16_t c)
         hi = lo + 12;
     for (i = 0; i < 16u; i++) {
         uint32_t si = base + i;
-        const step_t *st = &t->step[si];
+        step_t effective;
+        note_effective(t,si,&effective);
+        const step_t *st = &effective;
         int32_t x = (int32_t)i * 15, yb = 86;
         if (si >= len)
             break;
@@ -274,24 +277,23 @@ static void __attribute__((noinline)) graph_roll(const track_t *t, uint16_t c)
             cv_rect(x + 5, 92, 3, 3, C_WHITE);
         if (song.playing && si == t->seq_idx)
             cv_rect(x + 1, 97, 12, 1, C_WHITE);
-        if (st->time == ST_TIE && prev_y >= 0) {
-            cv_rect(x, prev_y, 14, 1, C_GRAY);
-            continue;
-        }
-        if (!step_on(st)) {
+        if (!st->n) {
             cv_rect(x + 6, yb, 2, 1, C_DIM);
-            prev_y = -1;
             continue;
         }
         for (j = 0; j < st->n; j++) {
             int32_t y = 80 - (st->note[j] - lo) * 74 / (hi - lo);
-            cv_rect(x + ((st->flags&SF_TIE(j))?0:2), y, (st->flags&SF_TIE(j))?15:10, 1,
+            /* Connect to the preceding attack, including across mixed NOTE cells.
+             * Resolve legacy TIEs before drawing so every held voice survives banks. */
+            uint32_t tied = st->flags & SF_TIE(j);
+            int32_t left = tied ? (i ? x - 3 : 0) : x + 2;
+            cv_rect(left, y, tied ? (i ? 18 : 15) : 10, 1,
                     (st->flags & SF_ACCENT) ? C_WHITE : c);
-            if (j == 0)
-                prev_y = y;
         }
-        if (st->flags & SF_SLIDE)
-            cv_line(x + 11, prev_y, x + 17, prev_y + 2, c);
+        if (t->step[si].time == ST_NOTE && (st->flags & SF_SLIDE)) {
+            int32_t y = 80 - (st->note[0] - lo) * 74 / (hi - lo);
+            cv_line(x + 11, y, x + 17, y + 2, c);
+        }
     }
 }
 static void graph_scale(const track_t *t, uint16_t c)
@@ -346,8 +348,9 @@ static uint32_t steps_hash(const track_t *t)
     uint32_t h = 2166136261u, i;
     for (i = 0; i < NSTEP; i++) {
         const step_t *st = &t->step[i];
-        h = (h ^ (st->note[0] + st->n * 128u + st->time * 1024u + st->flags * 4096u + st->note[1] * 65536u)) *
-            16777619u;
+        h = (h ^ (st->n + st->time * 8u + st->flags * 32u)) * 16777619u;
+        for (uint32_t k = 0; k < st->n; k++)
+            h = (h ^ st->note[k]) * 16777619u;
     }
     return h;
 }
@@ -745,7 +748,7 @@ static void __attribute__((noinline)) draw_graph(void)
     top = !ui.home && !drum_note && (pg->graph == GR_BROWSE || pg->graph == GR_SLOTS || pg->graph == GR_USER ||
                                      big_page(pg));   /* these draw from the top */
     cv_oy = 0;
-    if (ui.hot_t && settings.zoom && !(top && big_page(pg) && !drum_note)) {   /* (the big values show it already) */                 /* focus (menu ZOOM): the touched value, large and white */
+    if (ui.hot_t && settings.zoom && pg->graph != GR_ROLL && !(top && big_page(pg) && !drum_note)) {   /* (the big values show it already) */                 /* focus (menu ZOOM): the touched value, large and white */
         int32_t x;
         top = 1;
         cv_rect(0, 0, 150, 50, C_BLACK);
@@ -904,7 +907,9 @@ static void __attribute__((noinline)) draw_columns(void)
     }
     if (cur_page()->scope == SC_STEP) {
         static const char *const TIME_N[3] = {"NOTE", "TIE", "REST"};
-        const step_t *st = &TSEL->step[ui.cursor];
+        step_t effective;
+        note_effective(TSEL,ui.tie_start<trk_len(TSEL)?ui.tie_start:ui.cursor,&effective);
+        const step_t *st = &effective;
         char u[8];
         if (st->n) {
             note_name(val, st->note[0]);
@@ -917,9 +922,9 @@ static void __attribute__((noinline)) draw_columns(void)
             str_cpy(val, "--", 12);
             u[0] = 0;
         }
-        if (ui.tie_voice) {
-            step_t src;note_effective(TSEL,ui.tie_start,&src);
-            if (ui.tie_voice<=src.n) {note_name(val,src.note[ui.tie_voice-1]);str_cpy(u,"SEL",8);}
+        if (ui.tie_start<trk_len(TSEL) && st->n) str_cpy(u,"SRC",8);
+        if (ui.tie_voice && ui.tie_voice<=st->n) {
+            note_name(val,st->note[ui.tie_voice-1]);str_cpy(u,"SEL",8);
         }
         {
             static const char *const FLAG_N[4] = {"-", "ACC", "SLD", "A+S"};
@@ -942,8 +947,11 @@ static void __attribute__((noinline)) draw_columns(void)
                 str_cpy(val,"ALL",12);
                 if(ui.tie_voice && ui.tie_voice<=src.n) note_name(val,src.note[ui.tie_voice-1]);
                 draw_column(3,"VOICE",val,"",VAL(3u),-1,ICON_AUTO);
-            } else draw_column(3, "FLAG", FLAG_N[(st->flags & SF_ACCENT ? 1u : 0u) | (st->flags & SF_SLIDE ? 2u : 0u)],
+            } else {
+                st=&TSEL->step[ui.cursor];
+                draw_column(3, "FLAG", FLAG_N[(st->flags & SF_ACCENT ? 1u : 0u) | (st->flags & SF_SLIDE ? 2u : 0u)],
                         st->flags&SF_TIES?"TIE":"",VAL(3u), -1, ICON_AUTO);
+            }
         }
         return;
     }
@@ -989,7 +997,7 @@ static void ui_timers(void)
         ui.hot_t--;
 }
 
-static void vis_draw(void);                     /* ui_vis.c */
+static void __attribute__((noinline)) vis_draw(void);                     /* ui_vis.c */
 static int vis_shown(void);
 static uint8_t vis_on, vis_shown_last, vis_name_t;   /* the visualiser (ui_vis.c): on, drawn last frame, its name's time */
 static void ui_draw(void)

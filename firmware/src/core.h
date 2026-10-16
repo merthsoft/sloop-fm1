@@ -358,6 +358,25 @@ static uint32_t dly_units(uint32_t d)
     return d < NDIV_SHORT ? BEAT_U / DIV_DEN[d] : d == NDIV_SHORT ? BEAT_U * 3u / 4u : d == NDIV_SHORT + 1u ? BEAT_U * 3u / 8u
                                                                                          : BEAT_U * 3u / 2u;   /* 1/4D (2.6) */
 }
+/* Device timing preference; saved in the existing settings flags, not song layout. */
+static uint8_t swing_eighth;
+static uint32_t swing_group(uint32_t div)
+{ return swing_eighth && div<4u ? DIV_DEN[div]/2u : 1u; }
+static uint32_t swing_step_units(uint32_t div,int32_t amount,uint32_t step)
+{
+    uint32_t u=div_units(div),group=swing_group(div);
+    if(div>=4u || !group) return u;
+    uint32_t shift=(uint32_t)(amount<0?0:amount>100?100:amount)*u/200u;
+    return (step/group)&1u ? u-shift : u+shift;
+}
+/* Distance between preview onsets, including the changed micro-offset when
+ * adjacent swung steps have different lengths. */
+static uint32_t swing_preview_units(uint32_t div,int32_t amount,uint32_t step,int32_t feel)
+{
+    uint32_t u=swing_step_units(div,amount,step),next=swing_step_units(div,amount,step+1u);
+    int32_t n=(int32_t)u+((int32_t)next-(int32_t)u)*feel/64;
+    return n>0?(uint32_t)n:1u;
+}
 /* length of one step (N_SDIV order) in samples at the song tempo (rounded down) */
 static uint32_t div_samples(uint32_t div) { return div_units(div) / (uint32_t)song.g[G_BPM]; }
 /* length of the delay's TIME (N_DLY order) in samples at the song tempo (rounded down) */

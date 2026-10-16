@@ -1,7 +1,10 @@
 # Upstream SLOOP 2.6 integration assessment
 
+Historical integration record. Main now tracks upstream 2.7.1; see the
+[current assessment](UPSTREAM-2.7-INTEGRATION.md).
+
 Original 2.6 base: `4365a1d0075b9194de1c44826325abbd39751bc1`, following `d30d655`.
-Local main and origin/main now match upstream `8fad1a1`; its five subsequent web
+At that checkpoint, local main and origin/main matched upstream `8fad1a1`; its five subsequent web
 commits are integrated on `merthsloop`. The native firmware remains **2.6 Merthsoft.10**.
 Source and protocol conflicts are resolved. The combined package builds with guarded
 hot DSP inlining, passes audio/functional checks and is served at

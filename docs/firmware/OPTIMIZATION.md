@@ -188,3 +188,23 @@ Additional measured UI outlining saves 560 bytes: layer knobs 64, parameter
 editing 224, piano roll 32, footer 16, tracks 192 and recording controls 32.
 Shared note-slot deletion avoids duplicate compaction code. Target checks pass
 without deleting presets, icons, visualizers or instrument functionality.
+
+The subsequent native tie display audit measures 581,512 image bytes (52 free),
+82,116 static RAM bytes and 332,876 pool bytes. This includes all-voice legacy tie
+rendering, complete pitch cache keys, unobscured STEP roll and anchored LEN fixes.
+No new persistent state or audio processing is introduced.
+
+Custom progressions fit by sharing the plain/voice-led sequence renderer, storing
+four ROM degrees in twelve bits with a seventh flag, using bounded scale walking,
+and keeping the visualizer dispatcher out of the main UI draw function. Factory
+starter output matches the previous renderer in 100,000 deterministic cases.
+The custom build is 581,560 bytes (4 free); static RAM 82,116 and pool 332,876 bytes.
+Unused layout/inlining trials were discarded. No audio DSP or saved format changes.
+
+The eighth-swing build replaces seven always-64-bit masks per groove with aligned
+16/32/64-bit arrays. ROM descriptors plus masks total 736 bytes versus 1536; the
+accessor is 38 target bytes, with small alignment/caller changes measured in the
+complete image. No decoding occurs on ordinary drum hits. The full build with
+swing UI, preview, micro/gate/ratchet corrections measures 581,360 bytes (204 free),
+200 fewer than the custom-progression build; static RAM 82,116 and pool 332,876 are
+unchanged. The old groove definitions' frozen hash verifies every mask and length.
