@@ -151,6 +151,17 @@ int main(int argc, char **argv)
     check(!groove_confirm && drum_page == 0, "physical OCT- cancels to grid");
     encs[panel.enc[EN_SELECT]] = 2; frame();
     check(drum_page == 2, "physical SELECT reaches groove view");
+    groove_sel = 0;
+    for (g = 1; g < NDRUM_GROOVES; g++) {
+        encs[panel.enc[EN_K1]] = 1; frame();
+        check(groove_sel == g && drum_page == 2, "physical knob 1 reaches every groove");
+    }
+    encs[panel.enc[EN_K1]] = 1; frame();
+    check(groove_sel == NDRUM_GROOVES - 1, "groove selector clamps at last entry");
+    for (g = NDRUM_GROOVES - 1; g; g--) {
+        encs[panel.enc[EN_K1]] = -1; frame();
+        check(groove_sel == g - 1, "physical knob 1 browses grooves backwards");
+    }
     tap(B_OCTUP); tap(B_OCTUP);
     check(!groove_confirm && groove_undo_matches(), "physical OCT+ applies on second press");
     { uint32_t first_sess;

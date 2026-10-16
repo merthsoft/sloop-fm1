@@ -12,8 +12,10 @@ Input
                ink = brightness (or alpha, if the PNG has transparency), quantised to
                2 bits: 0 = background, 1 / 2 / 3 = a third / two thirds / full ink.
 
-Output: per icon cell*cell 2-bit pixels, row-major, 4 pixels per byte, first pixel in the
-high bits (12 x 12 -> 36 B), plus the enum ICON_<NAME> and FELUCCA_ICONS_N (the number of
+Output: identical 2-bit rows are shared through a byte index per icon row when
+this saves space and there are at most 256 distinct rows. Otherwise use per-icon
+cell*cell 2-bit pixels, row-major, 4 pixels per byte, first pixel in the high bits.
+Both formats keep the enum ICON_<NAME> and FELUCCA_ICONS_N (the number of
 drawn icons; 0 when the PNG, the JSON or Pillow is missing, so the firmware builds without).
 """
 import json
@@ -77,14 +79,38 @@ def main(out, assets=ASSETS):
     if n:
         bpi = (cell * cell + 3) // 4
         lines.append(f"#define ICON_BYTES {bpi}")
-        lines.append(f"static const uint8_t ICON_DATA[{n}][{bpi}] = {{")
-        for name, px in zip(names, cells):
-            px = px + [0] * (-len(px) % 4)
-            b = [(px[i] << 6) | (px[i + 1] << 4) | (px[i + 2] << 2) | px[i + 3] for i in range(0, len(px), 4)]
-            lines.append("    {" + ", ".join(f"0x{v:02x}" for v in b) + f"}},   /* {name} */")
-        lines.append("};")
+        rows, ids, index = [], [], {}
+        for px in cells:
+            glyph = []
+            for y in range(cell):
+                row = px[y * cell:(y + 1) * cell]
+                row += [0] * (-len(row) % 4)
+                packed = bytes((row[i] << 6) | (row[i+1] << 4) | (row[i+2] << 2) | row[i+3]
+                               for i in range(0, len(row), 4))
+                if packed not in index:
+                    index[packed] = len(rows)
+                    rows.append(packed)
+                glyph.append(index[packed])
+            ids.append(glyph)
+        packed_size = n * cell + len(rows) * ((cell + 3) // 4)
+        if len(rows) <= 256 and packed_size < n * bpi:
+            lines.append("#define ICON_ROWS_PACKED 1")
+            lines.append(f"static const uint8_t ICON_ROWS[{len(rows)}][{(cell+3)//4}] = {{")
+            lines += ["    {" + ", ".join(f"0x{v:02x}" for v in row) + "}," for row in rows]
+            lines.append("};")
+            lines.append(f"static const uint8_t ICON_ROW_ID[{n}][{cell}] = {{")
+            lines += ["    {" + ", ".join(map(str, glyph)) + "}," for glyph in ids]
+            lines.append("};")
+        else:
+            packed_size = n * bpi
+            lines.append(f"static const uint8_t ICON_DATA[{n}][{bpi}] = {{")
+            for name, px in zip(names, cells):
+                px = px + [0] * (-len(px) % 4)
+                b = [(px[i] << 6) | (px[i + 1] << 4) | (px[i + 2] << 2) | px[i + 3] for i in range(0, len(px), 4)]
+                lines.append("    {" + ", ".join(f"0x{v:02x}" for v in b) + f"}},   /* {name} */")
+            lines.append("};")
     Path(out).write_text("\n".join(lines) + "\n")
-    print(f"icons: {n} of {len(names)} ({note}), {n * ((cell * cell + 3) // 4)} B")
+    print(f"icons: {n} of {len(names)} ({note}), {packed_size if n else 0} B")
 
 
 if __name__ == "__main__":

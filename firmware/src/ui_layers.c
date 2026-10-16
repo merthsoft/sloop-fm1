@@ -163,6 +163,7 @@ static void step_down(uint32_t w)
     } else {
         step_t *s = &t->step[idx];
         uint32_t i, n = pen_n ? pen_n : 1u;
+        note_erase(t,idx,128);
         memset(s, 0, sizeof *s);
         for (i = 0; i < n && i < 4u; i++)
             s->note[i] = pen_n ? pen_note[i] : last_note;
@@ -187,8 +188,10 @@ static void step_up(uint32_t w)
     fm1_irq_off();
     if (is_drum(t))
         dstep_clr(&t->dstep[idx], pen_lane);
-    else
+    else {
+        note_erase(t,idx,128);
         step_clear(&t->step[idx]);
+    }
     if (!is_drum(t) || !dstep_mask(&t->dstep[idx])) {   /* an empty step keeps no lock, no nudge, no condition */
         lock_del(t, idx, P_COUNT);
         t->micro[idx] = 0;
@@ -211,6 +214,7 @@ static void pen_lane_move(int32_t s)
 static void steps_held_edit(uint32_t knob, int32_t s)
 {
     track_t *t = TSEL;
+    if (!is_drum(t) && knob==0 && note_pattern_linked(t)) {ui_message("USE EDIT TRANSPOSE");return;}
     uint32_t w, i;
     /* the accelerated turn once for every step held (a second call would see no time pass: x3 on the others) */
     int32_t sv = knob == 1u && !is_drum(t) ? accel(EN_K2, s, 126) : 0;
@@ -530,7 +534,7 @@ static void live_mod_apply(uint32_t effect)
     sync_reload = 1;
     ui_message("APPLIED TO TRACK");
 }
-static void layer_knobs(uint32_t layer)
+static void __attribute__((noinline)) layer_knobs(uint32_t layer)
 {
     uint32_t k;
     int32_t s;

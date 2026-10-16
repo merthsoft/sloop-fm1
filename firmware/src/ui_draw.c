@@ -247,7 +247,7 @@ static void graph_steps(const track_t *t, uint16_t c)
     }
 }
 /* STEP page: the cursor's 16-step bank as a little piano roll */
-static void graph_roll(const track_t *t, uint16_t c)
+static void __attribute__((noinline)) graph_roll(const track_t *t, uint16_t c)
 {
     uint32_t i, j, len = (uint32_t)t->p[P_SLEN], base = ui.bank * 16u;
     int32_t lo = 127, hi = 0, prev_y = -1;
@@ -285,7 +285,8 @@ static void graph_roll(const track_t *t, uint16_t c)
         }
         for (j = 0; j < st->n; j++) {
             int32_t y = 80 - (st->note[j] - lo) * 74 / (hi - lo);
-            cv_rect(x + 2, y, 10, 1, (st->flags & SF_ACCENT) ? C_WHITE : c);
+            cv_rect(x + ((st->flags&SF_TIE(j))?0:2), y, (st->flags&SF_TIE(j))?15:10, 1,
+                    (st->flags & SF_ACCENT) ? C_WHITE : c);
             if (j == 0)
                 prev_y = y;
         }
@@ -502,7 +503,7 @@ static void trk_short_name(uint32_t c, char *b)      /* the track's sound, b hol
         str_cpy(b, e->name, 13);
 }
 
-static void draw_tracks(void)
+static void __attribute__((noinline)) draw_tracks(void)
 {
     uint32_t c;
     if (ui.force) {
@@ -757,7 +758,7 @@ static void __attribute__((noinline)) draw_graph(void)
     ui.graph_top = (uint8_t)top;
 }
 
-static void draw_foot(void)
+static void __attribute__((noinline)) draw_foot(void)
 {
     char s[48], pn[16], en[10], ti[20];
     const track_t *t = TSEL;
@@ -840,7 +841,7 @@ static void draw_foot(void)
     cv_text(236 - text_w(&FONT_S, ti), 20, &FONT_S, ti, C_GRAY);
     cv_blit(0, Y_FOOT);
 }
-static void draw_columns(void)
+static void __attribute__((noinline)) draw_columns(void)
 {
     uint32_t c;
     char val[12];
@@ -916,6 +917,10 @@ static void draw_columns(void)
             str_cpy(val, "--", 12);
             u[0] = 0;
         }
+        if (ui.tie_voice) {
+            step_t src;note_effective(TSEL,ui.tie_start,&src);
+            if (ui.tie_voice<=src.n) {note_name(val,src.note[ui.tie_voice-1]);str_cpy(u,"SEL",8);}
+        }
         {
             static const char *const FLAG_N[4] = {"-", "ACC", "SLD", "A+S"};
             char sn[8], sl[8];
@@ -924,15 +929,21 @@ static void draw_columns(void)
             fmt_int(sl + 1, TSEL->p[P_SLEN]);
             draw_column(0, "STEP", sn, sl, VAL(0u), -1, ICON_AUTO);
             draw_column(1, "NOTE", val, u, step_on(st) ? VAL(1u) : C_DIM, -1, ICON_AUTO);
-            if (step_on(st)) {                          /* a note: its LEN (2.6), steps with the TIEs after it */
+            if (step_on(st) || st->time==ST_TIE) {
                 char ln[8];
-                fmt_int(ln, (int32_t)note_len(TSEL, ui.cursor));
+                uint32_t voice,first=note_edit_target(&voice);
+                fmt_int(ln, (int32_t)note_voice_len(TSEL,first,voice));
                 draw_column(2, "LEN", ln, "STEP", VAL(2u), -1, ICON_AUTO);
             } else {
                 draw_column(2, "TIME", TIME_N[st->time % 3u], "", VAL(2u), -1, ICON_AUTO);
             }
-            draw_column(3, "FLAG", FLAG_N[(st->flags & SF_ACCENT ? 1u : 0u) | (st->flags & SF_SLIDE ? 2u : 0u)], "",
-                        VAL(3u), -1, ICON_AUTO);
+            if (fm1_in.buttons&(1u<<panel.btn[B_OCTUP])) {
+                step_t src;note_effective(TSEL,ui.tie_start,&src);
+                str_cpy(val,"ALL",12);
+                if(ui.tie_voice && ui.tie_voice<=src.n) note_name(val,src.note[ui.tie_voice-1]);
+                draw_column(3,"VOICE",val,"",VAL(3u),-1,ICON_AUTO);
+            } else draw_column(3, "FLAG", FLAG_N[(st->flags & SF_ACCENT ? 1u : 0u) | (st->flags & SF_SLIDE ? 2u : 0u)],
+                        st->flags&SF_TIES?"TIE":"",VAL(3u), -1, ICON_AUTO);
         }
         return;
     }
@@ -990,7 +1001,7 @@ static void ui_draw(void)
     if (oct && !ui.home && !ui.menu && ui.layer == LY_PLAY && !ui.hold_kind &&
         cur_page()->scope == SC_STEP && !is_drum(TSEL) && !song.rec && !rec_wait && !ft_on) {
         if (!ui.msg_t || step_help) {
-            ui_message(oct & (1u << panel.btn[B_OCTUP]) ? "HOLD 1 TIE 2 OCT 3 MOVE" : "HOLD 1 REST 2 OCT 3 MOVE");
+            ui_message(oct & (1u << panel.btn[B_OCTUP]) ? "HOLD 1 TIE 4 VOICE" : "HOLD 1 REST 2 OCT 3 MOVE");
             ui.msg_t = 2;
         }
     } else if (step_help) ui.msg_t = 0;

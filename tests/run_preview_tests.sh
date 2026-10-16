@@ -8,4 +8,6 @@ mkdir -p build/host
 # clang (as emcc, the WASM side): the GCC build of this adapter does not finish on Linux
 CC="${CC:-$(command -v clang || echo cc)}"
 "$CC" -O2 -fwrapv -fno-strict-aliasing -w -Ibuild/gen -Ifirmware/src tests/preview_native.c -o build/host/preview_native
+"$CC" -O2 -fwrapv -fno-strict-aliasing -w -Ibuild/gen -Ifirmware/src tests/preview_note_ties_test.c -o build/host/preview_note_ties_test
+build/host/preview_note_ties_test
 node tests/preview_test.mjs

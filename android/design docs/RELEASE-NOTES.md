@@ -1,4 +1,20 @@
-# Latest firmware — MerthSloop 2.6.0.14
+# Latest firmware — MerthSloop 2.6.0.15
+
+- Independent note sustains can cross later note onsets. Hold OCT+ and scrub STEP
+  with knob 1; knob 4 chooses ALL or one source pitch. LEN can shorten that
+  selection, and EDIT deletes it without erasing the other voices. Use POLY.
+- Legacy ties and saved project layout remain compatible. Single-event move and
+  transpose are guarded for independently tied patterns; whole-pattern transpose
+  remains available. Live recording and phone/web duration editing are follow-on work.
+- Instrument browsing preserves voice mode (including LEGATO), glide, priority and
+  allocation alongside track effects. Explicit sound initialization retains defaults.
+- Lossless shared icon rows and measured UI code reductions fit the additions:
+  target image 581,448 bytes (116 free), static RAM 82,116 bytes. No audio-path
+  icon decoding or new pattern buffers.
+- Native playback/editing, voice identity, MIDI balance, project round-trip,
+  icon pixel equivalence and browser/native audio regressions pass.
+
+## Previous integrated checkpoint — MerthSloop 2.6.0.14
 
 - Wah uses a dedicated, narrower resonant band-pass response: it emphasizes a moving
   vocal-range band and rejects lows/highs instead of only sweeping brightness.

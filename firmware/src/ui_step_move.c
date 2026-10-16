@@ -5,6 +5,7 @@ static void step_octave(int32_t amount)
     track_t *t = TSEL;
     uint32_t first = ui.cursor, i, low = 127, high = 0;
     int32_t delta;
+    if (note_pattern_linked(t)) {ui_message("USE EDIT TRANSPOSE");return;}
     if (song.rec || rec_wait || ft_on) { ui_message("STOP RECORDING"); return; }
     while (first && t->step[first].time == ST_TIE) first--;
     step_t *s = &t->step[first];
@@ -28,6 +29,7 @@ static void step_move(int32_t delta)
     track_t *t = TSEL;
     uint32_t first = ui.cursor, end, len = trk_len(t), i;
     int32_t dest;
+    if (note_pattern_linked(t)) {ui_message("TIED VOICES: NO MOVE");return;}
     if (song.playing || transport_req || song.rec || rec_wait || ft_on) {
         ui_message("STOP FIRST"); return;
     }

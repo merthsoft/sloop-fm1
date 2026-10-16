@@ -16,7 +16,9 @@
 #define ICON_GAP 2                        /* px between the icon and the label */
 
 #if FELUCCA_ICONS
-typedef struct {
+/* ROM lookup only: omit three alignment bytes per entry. The compiler handles
+ * packed pointer reads; this is not a wire format or an audio-loop structure. */
+typedef struct __attribute__((packed)) {
     const char *label;
     uint8_t icon;
 } icon_map_t;
@@ -143,13 +145,24 @@ static void cv_icon(int32_t x, int32_t y, uint32_t id, uint16_t c)
         return;
     for (a = 0; a < 4u; a++)
         ramp[a] = (uint16_t)(((r * a / 3u) << 11) | ((g * a / 3u) << 5) | (b * a / 3u));
-    p = ICON_DATA[id];
-    for (j = 0; j < ICON_CELL; j++)
+    for (j = 0; j < ICON_CELL; j++) {
+#if ICON_ROWS_PACKED
+        p=ICON_ROWS[ICON_ROW_ID[id][j]];
+#else
+        p=ICON_DATA[id];
+#endif
         for (i = 0; i < ICON_CELL; i++) {
-            uint32_t k = j * ICON_CELL + i, v = (p[k >> 2] >> (6u - 2u * (k & 3u))) & 3u;
+            uint32_t k =
+#if ICON_ROWS_PACKED
+                i;
+#else
+                j * ICON_CELL + i;
+#endif
+            uint32_t v = (p[k >> 2] >> (6u - 2u * (k & 3u))) & 3u;
             if (v)
                 cv_pset(x + (int32_t)i, y + (int32_t)j, ramp[v]);
         }
+    }
 }
 #else
 static uint32_t icon_for_label(const char *l) { (void)l; return ICON_NONE; }

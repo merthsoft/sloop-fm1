@@ -189,6 +189,8 @@ typedef struct {
 enum { ST_NOTE, ST_TIE, ST_REST };
 #define SF_ACCENT 1u
 #define SF_SLIDE 2u
+#define SF_TIE(i) (4u << (i))     /* ST_NOTE: note i continues; stays in one 7-bit wire byte */
+#define SF_TIES 0x3Cu
 /* the dynamics of a note or a drum hit (2 bits each in the steps): played without velocity
  * (OCT- / OCT+ held on the drum track, the step page) or from a MIDI velocity */
 enum { LV_NORM, LV_GHOST, LV_SOFT, LV_HARD };
@@ -196,7 +198,7 @@ typedef struct {                 /* a step of a synth part (10 bytes): up to 4 n
     uint8_t note[4];
     uint8_t n;                   /* notes in use, 0 = empty */
     uint8_t time;                /* ST_NOTE / ST_TIE / ST_REST */
-    uint8_t flags;               /* SF_ACCENT | SF_SLIDE */
+    uint8_t flags;               /* SF_ACCENT | SF_SLIDE | SF_TIE(0..3) */
     uint8_t vel;
     uint8_t lvl;                 /* 2 bits per note (note k: bits 2k..2k+1): LV_* */
     uint8_t rat;                 /* 2 bits per note: the hits it plays in its step - 1 (ratchet x1..x4) */
@@ -267,7 +269,7 @@ typedef struct track {
     uint8_t arp_den;             /* the same for the arp's RATE */
     uint8_t seq_notes[4];        /* sounding seq notes */
     uint8_t seq_n;
-    uint8_t seq_hold;            /* last step slides: keep the notes until the next step */
+    uint8_t seq_hold;            /* bit 0: whole-step hold; bits 2..5: gate-protected seq_notes */
     uint8_t seq_skip;            /* the step playing failed its fill condition: nothing of it sounds */
     uint8_t slide_glide;         /* next legato note glides (slide) */
     uint32_t seq_off;            /* units to the note-off of the step's notes */

@@ -62,10 +62,21 @@ after an engine change.
 | 3 SET | scope, id, v14 | scope, id, v14 (the value after clamping). Setting global `G_ENGSEL` (id from DESC label "ENG") changes the engine with its defaults |
 | 4 DUMP | — | engine, preset, then P_COUNT × v14 (the selected track), then G_COUNT × v14 (globals) |
 | 5 DESC | scope, id | scope, id, fmt, min v14, max v14, def v14, label string, unit string, then for an enum (fmt 8) one name string per value (at most 64; firmware before SLOOP sent at most 16) |
-| 6 STEP_GET | index 0..NSTEP−1 | index, n (0..4 notes), note0..note3, time (0 NOTE, 1 TIE, 2 REST), flags (1 accent, 2 slide), vel, then (v5) lvl, hi, rat |
+| 6 STEP_GET | index 0..NSTEP−1 | index, n (0..4 notes), note0..note3, time (0 NOTE, 1 TIE, 2 REST), flags (1 accent, 2 slide; MerthSloop bits 2–5 continue note slots 0–3), vel, then (v5) lvl, hi, rat |
 | 7 STEP_SET | index, n, note0..3, time, flags, vel [, lvl, hi, rat (v5)] | same as STEP_GET (after the write). Without the v5 bytes the step's levels and ratchets become 0 |
+
 | 8 PRESET | engine, preset | engine, preset (applies the preset: sound, sends, arp; never the pattern, the mix or the key: `LEVEL PAN MUTE`, `LEN DIV SWG GATE`, `ROOT SCL QNT CHORD` stay) |
 | 9 PROJECT | op (0 load, 1 save, 2 query), slot 0..3 | op, slot, used (1/0). Save writes flash: allow ~2 s |
+
+MerthSloop independent ties use flags 4, 8, 16 and 32 on NOTE steps. These fit the
+existing seven-bit field; the firmware, browser mock and step serializer preserve
+all six defined flag bits. Browser audio honors them. A flagged slot continues a
+matching active pitch without another attack; an orphan continuation attacks once.
+Client editors must move continuation flags with their pitch slots and preserve
+other voices when changing duration. Creation/editing of independent durations in
+phone/web piano rolls is not yet implemented; use native STEP controls. Whole-step
+TIE and legacy accent/slide meanings are unchanged. Older firmware ignores the new
+flags and reattacks the stored notes.
 
 The local Studio build may append status `1` to a PROJECT reply when playback
 prevents a load/save. No operation occurred; stop playback and try again.

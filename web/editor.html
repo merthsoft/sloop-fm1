@@ -1123,7 +1123,7 @@ const req = {
     const notes = [0, 1, 2, 3].map((k) => (st.notes[k] | 0) & 0x7F);
     const ext = st.lvl == null && st.rat == null ? []   /* v5: level / ratchet kept (older firmware ignores them) */
       : [(st.lvl | 0) & 0x7F, (((st.lvl | 0) >> 7) & 1) | ((((st.rat | 0) >> 7) & 1) << 1), (st.rat | 0) & 0x7F];
-    return [CMD.STEP_SET, [i, n, ...notes, Math.max(0, Math.min(2, st.time | 0)), st.flags & 3, (st.vel | 0) & 0x7F, ...ext]];
+    return [CMD.STEP_SET, [i, n, ...notes, Math.max(0, Math.min(2, st.time | 0)), st.flags & 0x3F, (st.vel | 0) & 0x7F, ...ext]];
   },
   /* v5: get (d == null) or set the drum track's step i: {on: 16 bits, lvl[16], rat[16]} */
   drumStep: (i, d) => {
@@ -2420,7 +2420,7 @@ function makeMockDevice(opt = {}) {
   };
   /* a step written (n, 4 notes, time, flags, vel [, lvl, hi, rat]) */
   const stepIn = (x, a) => {
-    x.n = Math.min(4, a[0]); x.notes = a.slice(1, 5); x.time = Math.min(2, a[5]); x.flags = a[6] & 3; x.vel = a[7];
+    x.n = Math.min(4, a[0]); x.notes = a.slice(1, 5); x.time = Math.min(2, a[5]); x.flags = a[6] & 0x3F; x.vel = a[7];
     x.lvl = a.length >= 11 ? (a[8] & 0x7F) | ((a[9] & 1) << 7) : 0;
     x.rat = a.length >= 11 ? (a[10] & 0x7F) | (((a[9] >> 1) & 1) << 7) : 0;
   };

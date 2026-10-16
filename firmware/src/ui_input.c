@@ -318,6 +318,11 @@ static void step_edit(uint32_t slot, int32_t steps)
     uint32_t i;
     if (is_drum(TSEL))
         return;                                           /* (the drum track: its grid) */
+    if (slot==3u && (fm1_in.buttons&(1u<<panel.btn[B_OCTUP]))) {
+        step_t src;note_effective(TSEL,ui.tie_start,&src);
+        ui.tie_voice=(uint8_t)clamp((int32_t)ui.tie_voice+steps,0,src.n);
+        ui.force=1;return;
+    }
     if (slot == 1u && (fm1_in.buttons & ((1u << panel.btn[B_OCTUP]) | (1u << panel.btn[B_OCTDN])))) {
         step_octave(steps);
         return;
@@ -334,10 +339,20 @@ static void step_edit(uint32_t slot, int32_t steps)
              * Backtracking changes only the cursor, so a painted run is retained. */
             int32_t end = clamp((int32_t)ui.cursor + steps, 0, trk_len(TSEL) - 1);
             if (end > ui.cursor) {
+                if (fm1_in.buttons&(1u<<panel.btn[B_OCTUP])) {
+                    int result=note_extend(TSEL,ui.tie_start,(uint32_t)end,ui.tie_voice,0);
+                    if (result) {note_edit_error(result);return;}
+                }
                 undo_mark(TSEL, ui.tie_sess);
                 fm1_irq_off();
-                for (i = ui.cursor + 1u; i <= (uint32_t)end; i++)
-                    TSEL->step[i].time = fm1_in.buttons & (1u << panel.btn[B_OCTUP]) ? ST_TIE : ST_REST;
+                if (fm1_in.buttons&(1u<<panel.btn[B_OCTUP]))
+                    note_extend(TSEL,ui.tie_start,(uint32_t)end,ui.tie_voice,1);
+                else for (i=ui.cursor+1u;i<=(uint32_t)end;i++) {
+                    if (note_pattern_linked(TSEL)) {
+                        note_erase(TSEL,i,128);
+                    }
+                    TSEL->step[i].time=ST_REST;
+                }
                 fm1_irq_on();
             }
             cursor_set(end);
@@ -346,6 +361,7 @@ static void step_edit(uint32_t slot, int32_t steps)
         cursor_set(ui.cursor + steps);
         break;
     case 1:                                               /* NOTE: transpose the step */
+        if (note_pattern_linked(TSEL)) {ui_message("USE EDIT TRANSPOSE");break;}
         if (!st->n) {
             st->note[0] = last_note;
             st->n = 1;
@@ -358,16 +374,22 @@ static void step_edit(uint32_t slot, int32_t steps)
         last_note = st->note[0];
         break;
     case 2:                                               /* TIME; on a note its LEN (2.6: ui.c note_set_len) */
-        if (step_on(st)) {
+        if (step_on(st) || st->time==ST_TIE) {
             static uint32_t len_sess, len_cur = 0xFFFFu;  /* the turns of LEN on one step: one undo */
-            uint32_t was = note_len(TSEL, ui.cursor), n;
-            if (len_cur != ui.cursor || !undo.valid || undo.undone || undo.sess != len_sess) {
+            uint32_t voice,first=note_edit_target(&voice);
+            uint32_t was = note_voice_len(TSEL,first,voice), n;
+            uint32_t want=(uint32_t)clamp((int32_t)was+steps,1,trk_len(TSEL)-first),key=first*5u+voice;
+            if (want>was) {
+                int result=note_extend(TSEL,first,first+want-1,voice,0);
+                if (result) {note_edit_error(result);return;}
+            }
+            if (len_cur != key || !undo.valid || undo.undone || undo.sess != len_sess) {
                 len_sess = (undo_sess += 4u) | 3u;
-                len_cur = ui.cursor;
+                len_cur = key;
             }
             undo_mark(TSEL, len_sess);                    /* (EDIT + OCT- brings the steps back) */
             fm1_irq_off();
-            n = note_set_len(TSEL, ui.cursor, (uint32_t)clamp((int32_t)was + steps, 1, NSTEP));
+            n = note_set_voice_len(TSEL,first,voice,want);
             fm1_irq_on();
             if (steps > 0 && n == was)
                 ui_message(ui.cursor + n < (uint32_t)clamp(TSEL->p[P_SLEN], 1, NSTEP) ? "NOTE AHEAD" : "END OF PATTERN");
@@ -416,7 +438,7 @@ static void project_new(void)
     ui.force = 1;
 }
 
-static void edit_param(uint32_t slot, int32_t steps)
+static void __attribute__((noinline)) edit_param(uint32_t slot, int32_t steps)
 {
     int16_t *vp;
     const page_t *pg = cur_page();
@@ -546,7 +568,7 @@ static uint32_t mi_held[4];
 static uint8_t mi_ok;                                     /* the last frame reached the STEP page's entry (seq_entry: no
                                                          * layer, hold, menu, SONG or DRUMS page in the way) */
 static uint32_t midi_held(void) { return mi_held[0] | mi_held[1] | mi_held[2] | mi_held[3]; }
-static void midi_entry(void)                              /* (top of ui_input: every frame) */
+static void __attribute__((noinline)) midi_entry(void)                              /* (top of ui_input: every frame) */
 {
     track_t *t = TSEL;
     int on_page = mi_ok && song.seq_mode && cur_page()->scope == SC_STEP && !is_drum(t) && !song.rec && !rec_wait && !ft_on;
@@ -596,7 +618,9 @@ static void midi_entry(void)                              /* (top of ui_input: e
         if (!ui.entry_open) {
             ui.entry_open = 1;
             undo_mark(t, (undo_sess += 4u) | 3u);
+            fm1_irq_off();note_erase(t,ui.cursor,128);fm1_irq_on();
             st->n = 0;
+            st->flags&=(uint8_t)~SF_TIES;
             st->lvl = st->rat = 0;
             st->time = ST_NOTE;
         }
@@ -614,7 +638,7 @@ static void midi_entry(void)                              /* (top of ui_input: e
 /* SEQ step entry, acid style: the keys pressed together (POLY: up to 4, MONO:
  * the last one) become the cursor step; releasing all keys moves on. Not while recording or armed:
  * the keys record live then (they would be written twice) */
-static void seq_entry(uint32_t pressed)
+static void __attribute__((noinline)) seq_entry(uint32_t pressed)
 {
     track_t *t = TSEL;
     step_t *st = &t->step[ui.cursor];
@@ -632,7 +656,9 @@ static void seq_entry(uint32_t pressed)
         if (!ui.entry_open) {
             ui.entry_open = 1;
             undo_mark(t, (undo_sess += 4u) | 3u);
+            fm1_irq_off();note_erase(t,ui.cursor,128);fm1_irq_on();
             st->n = 0;
+            st->flags&=(uint8_t)~SF_TIES;
             st->lvl = st->rat = 0;
             st->time = ST_NOTE;
         }
@@ -708,9 +734,17 @@ static void layer_tap(uint32_t layer)
         }
         if (layer == LY_ERASE && song.seq_mode && cur_page()->scope == SC_STEP && !is_drum(TSEL)) {
             undo_mark(TSEL, (undo_sess += 4u) | 3u);      /* STEP page: EDIT clears the step */
-            step_clear(&TSEL->step[ui.cursor]);
+            fm1_irq_off();
+            uint32_t pitch=128;
+            if (ui.tie_voice) {
+                step_t anchor;note_effective(TSEL,ui.tie_start,&anchor);
+                if (ui.tie_voice<=anchor.n) pitch=anchor.note[ui.tie_voice-1];
+            }
+            note_erase(TSEL,ui.cursor,pitch);
+            if (!ui.tie_voice) step_clear(&TSEL->step[ui.cursor]);
+            fm1_irq_on();
             cursor_set(ui.cursor + 1);
-            ui_message("STEP CLEARED");
+            ui_message("NOTES CLEARED");
             break;
         }
         open_family(layer == LY_STEP ? FAM_SEQ : FAM_EDIT);
@@ -962,7 +996,7 @@ static int __attribute__((noinline)) layers_input(uint32_t note_edges, uint32_t 
 /* the REC screen while armed (ui_studio.c rec_screen_draw): KNOB 1 MODE free / tempo (an empty
  * project), KNOB 2 the length of the selected track (1, 2 or 4 bars), KNOB 3 START note / count;
  * MODE and START are settings of the FM-1 (panel.c lights_word: saved once stopped) */
-static void rec_knobs(void)
+static void __attribute__((noinline)) rec_knobs(void)
 {
     static const uint8_t LENS[3] = {16u, 32u, 64u};
     int32_t s;
@@ -1190,7 +1224,8 @@ static void ui_input(void)
             if (!ui.home && cur_page()->scope == SC_STEP &&
                 !song.rec && !rec_wait && !ft_on) {
                 ui.tie_sess = (undo_sess += 4u) | 3u;
-                ui_message(b == B_OCTUP ? "HOLD 1 TIE 2 OCT 3 MOVE" : "HOLD 1 REST 2 OCT 3 MOVE");
+                ui.tie_start=ui.cursor;ui.tie_voice=0;
+                ui_message(b == B_OCTUP ? "HOLD 1 TIE 4 VOICE" : "HOLD 1 REST 2 OCT 3 MOVE");
                 break;
             }
             if ((fm1_in.buttons & both) == both)

@@ -52,6 +52,7 @@ static struct {
     uint8_t bank;                /* SEQ: 16-step bank (follows the cursor) */
     uint8_t cursor;              /* SEQ: step being edited (STEP page KNOB 1 moves it) */
     uint8_t entry_open;          /* SEQ: keys held since the first press of this entry */
+    uint8_t tie_start, tie_voice;/* native tie gesture: source step, 0 ALL / 1..4 voice */
     uint32_t tie_sess;           /* STEP: one undo snapshot per OCT tie/rest-paint gesture */
     uint8_t hot_col, hot_t;      /* column whose knob was just turned (drawn white) */
     uint8_t menu;                /* 0 off, 1 list, 2 about (HOME held) */
@@ -120,9 +121,12 @@ static void ui_say(const char *a, const char *b)
 }
 
 static void ui_message(const char *s) { ui_say(s, ""); }
+static void note_edit_error(int result)
+{ui_message(result==-2?"CHORD FULL":result==-3?"SELECT A NOTE":result==-4?"SET VOICE TO POLY":"NOTE AHEAD");}
 
 static void page_entered(void)
 {
+    ui.tie_voice=0;ui.tie_start=255;
     groove_preview.active = 0;
     const page_t *pg = cur_page();
     if (pg->scope == SC_STARTER && song.sel < NPART) sequence_screen_open();
@@ -197,25 +201,52 @@ static int step_on(const step_t *st) { return st->time == ST_NOTE && st->n; }
  * the turns on one step are one undo (ui_input.c). Returns the length it got */
 static uint32_t note_len(const track_t *t, uint32_t i)
 {
-    uint32_t len = (uint32_t)clamp(t->p[P_SLEN], 1, NSTEP), n = 1;
-    while (i + n < len && t->step[i + n].time == ST_TIE)
-        n++;
+    step_t s;note_effective(t,i,&s);uint32_t n=1;
+    for (uint32_t k=0;k<s.n;k++) {
+        uint32_t v=note_chain_len(t,i,s.note[k]);if(v>n)n=v;
+    }
     return n;
 }
-static uint32_t note_set_len(track_t *t, uint32_t i, uint32_t want)
+static uint32_t note_voice_len(const track_t *t,uint32_t i,uint32_t voice)
 {
-    uint32_t len = (uint32_t)clamp(t->p[P_SLEN], 1, NSTEP), n = note_len(t, i);
-    for (; n > want && n > 1u; n--) {
-        if (!t->step[i + n - 1u].n)                    /* (a TIE holding notes, from TIME or an older SLOOP, */
-            memset(&t->step[i + n - 1u], 0, sizeof(step_t));   /* keeps them, as TIME would) */
-        t->step[i + n - 1u].time = ST_REST;
-    }
-    for (; n < want && i + n < len && !t->step[i + n].n; n++) {
-        memset(&t->step[i + n], 0, sizeof(step_t));
-        t->step[i + n].time = ST_TIE;
-    }
-    return n;
+    step_t s;note_effective(t,i,&s);
+    return voice && voice<=s.n?note_chain_len(t,i,s.note[voice-1]):note_len(t,i);
 }
+static uint32_t note_edit_target(uint32_t *voice)
+{
+    uint32_t i=ui.tie_start<trk_len(TSEL)?ui.tie_start:ui.cursor;*voice=0;
+    if (ui.tie_voice && ui.tie_start<trk_len(TSEL)) {
+        step_t s;note_effective(TSEL,ui.tie_start,&s);
+        if (ui.tie_voice<=s.n) {
+            uint32_t pitch=s.note[ui.tie_voice-1];i=note_origin(TSEL,ui.tie_start,pitch);
+            note_effective(TSEL,i,&s);*voice=note_slot(&s,pitch)+1;
+        }
+    }
+    while (i && TSEL->step[i].time==ST_TIE) i--;
+    return i;
+}
+static uint32_t note_set_voice_len(track_t *t,uint32_t i,uint32_t voice,uint32_t want)
+{
+    step_t s;note_effective(t,i,&s);
+    uint32_t n=note_voice_len(t,i,voice);want=(uint32_t)clamp(want,1,trk_len(t)-i);
+    if (want>n) {
+        if (note_extend(t,i,i+want-1,voice,0)) return n;
+        note_extend(t,i,i+want-1,voice,1);
+    } else if (want<n) {
+        if (!voice && !note_pattern_linked(t)) {
+            for (uint32_t k=i+want;k<i+n;k++) {
+                if (!t->step[k].n) memset(&t->step[k],0,sizeof(step_t));
+                t->step[k].time=ST_REST;
+            }
+        } else for (uint32_t k=0;k<s.n;k++) if (!voice || k+1==voice) {
+            uint32_t end=note_chain_len(t,i,s.note[k]);
+            if (end>want) note_cut(t,i+want,end-want,s.note[k]);
+        }
+    }
+    return want;
+}
+static uint32_t note_set_len(track_t *t,uint32_t i,uint32_t want)
+{return note_set_voice_len(t,i,0,want);}
 /* a synth step's velocity as it plays (seq.c step_vel: ACC 127, else its VEL, 96 when 0, through its first note's level) */
 static uint32_t step_vel_shown(const step_t *st)
 {
@@ -279,6 +310,7 @@ static void cursor_set(int32_t c)
     ui.cursor = (uint8_t)((c % len + len) % len);
     ui.bank = (uint8_t)(ui.cursor / 16u);
     ui.entry_open = 0;
+    if (!(fm1_in.buttons&(1u<<panel.btn[B_OCTUP]))) {ui.tie_voice=0;ui.tie_start=255;}
 }
 
 static void cursor_fix(void)                           /* LEN got shorter: onto the last step */
@@ -490,20 +522,25 @@ static void set_engine_of(track_t *t, uint32_t ei)
 
 static const uint8_t TRACK_FX[] = {P_DIST,P_CHOR,P_DLY,P_REV,P_ITYPE,P_IA,P_IB,P_IC,P_IMIX,
                                  P_SLCR,P_SLPAT,P_SLRATE,P_SLDEPTH,P_TFLT};
+/* Track playing preferences survive browsing, but are not part of FX RESET. */
+static const uint8_t TRACK_PLAY[] = {P_VOICE,P_GLIDE,P_GLMODE,P_PRIO,P_ALLOC};
+#define TRACK_BROWSE_COUNT (NELEM(TRACK_FX) + NELEM(TRACK_PLAY))
 static void track_fx_values(track_t *t, int16_t *v, uint32_t restore)
 {
     if (!restore) locks_restore(t);
-    for (uint32_t i=0;i<NELEM(TRACK_FX);i++)
-        if (restore) t->p[TRACK_FX[i]]=v[i]; else v[i]=t->p[TRACK_FX[i]];
+    for (uint32_t i=0;i<TRACK_BROWSE_COUNT;i++) {
+        uint32_t id=i<NELEM(TRACK_FX)?TRACK_FX[i]:TRACK_PLAY[i-NELEM(TRACK_FX)];
+        if (restore) t->p[id]=v[i]; else v[i]=t->p[id];
+    }
 }
 static void apply_preset(uint32_t pi)
 {
-    int16_t fx[NELEM(TRACK_FX)];track_fx_values(TSEL,fx,0);
+    int16_t fx[TRACK_BROWSE_COUNT];track_fx_values(TSEL,fx,0);
     apply_preset_to(TSEL,pi);track_fx_values(TSEL,fx,1);
 }
 static void set_engine(uint32_t ei)
 {
-    int16_t fx[NELEM(TRACK_FX)];track_fx_values(TSEL,fx,0);
+    int16_t fx[TRACK_BROWSE_COUNT];track_fx_values(TSEL,fx,0);
     set_engine_of(TSEL,ei);track_fx_values(TSEL,fx,1);
 }
 static void track_fx_reset(void)
@@ -535,7 +572,9 @@ static void select_engine(uint32_t e)
  * engine's preset table may change order; tests/ui_pages_test.c checks every preset is here once */
 enum { BK_BASS, BK_KEYS, BK_ORGAN, BK_PAD, BK_LEAD, BK_PLUCK, BK_STAB, BK_FX };
 static const char *const BANK_KIND[] = {"BASS", "KEYS", "ORGN", "PAD", "LEAD", "PLCK", "STAB", "FX"};
-static const struct { uint8_t kind, e; const char *name; } BANK[] = {
+_Static_assert(NENGINES<=16,"preset browser engine index fits four bits");
+/* Both indices fit a nibble; no alignment padding in this cold ROM lookup. */
+static const struct __attribute__((packed)) { uint8_t kind:4, e:4; const char *name; } BANK[] = {
     {BK_BASS, 0, "808 BOOM"}, {BK_BASS, 0, "808 DIRTY"}, {BK_BASS, 0, "808 SLIDE"}, {BK_BASS, 0, "SUB BASS"},
     {BK_BASS, 0, "PLUGG BASS"}, {BK_BASS, 0, "REESE"}, {BK_BASS, 0, "WOBBLE"}, {BK_BASS, 0, "ACID 303"},
     {BK_BASS, 1, "FM BASS"}, {BK_BASS, 2, "CZ BASS"}, {BK_BASS, 6, "FAT BASS"}, {BK_BASS, 0, "FUNK BASS"},
@@ -633,7 +672,7 @@ static const char *preset_kind(uint32_t n) { return n < NBANK ? BANK_KIND[BANK[n
 static int preset_go_to(track_t *t, uint32_t n)
 {
     uint32_t k, total, e;
-    int16_t fx[NELEM(TRACK_FX)];int result=0;
+    int16_t fx[TRACK_BROWSE_COUNT];int result=0;
     if (is_drum(t))
         return 1;
     if (!bank_ready)
@@ -716,6 +755,7 @@ static void track_select(uint32_t i)
     sequence_screen_close();
     if (cur_page()->scope == SC_STARTER) go_home();
     song.sel = (uint8_t)i;
+    ui.tie_start=255;ui.tie_voice=0;
     rec_follow(i);                                   /* LIVE: recording follows the selected track */
     ui.entry_open = 0;
     ui.cursor = 0;

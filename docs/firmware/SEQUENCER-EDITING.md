@@ -1,5 +1,13 @@
 # Native recording snap and STEP editing
 
+For sustained notes across later attacks, use the
+[independent per-note tie controls](PER-NOTE-TIES-DESIGN.md). OCT+ + knob 4 selects
+ALL or one source pitch; OCT+ + knob 1 extends it while retaining other attacks.
+Released LEN and EDIT shorten/delete the chosen voice. Single-event move and
+pitch edits refuse patterns with independent ties; whole-pattern transposition
+remains available. The legacy whole-step controls below still apply to ordinary
+ties and rests.
+
 Recording snap and tie/rest painting shipped in 2.5 Merthsoft.6. The controls below
 reflect Merthsoft.7, which adds octave edits, moves event editing to knob 3 and allows
 forward moves into an event's own ties. No wire parameter IDs or project formats change.

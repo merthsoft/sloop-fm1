@@ -155,3 +155,36 @@ No DSP loop was moved out of line; annotations that saved nothing were removed.
 The final branded image is 581,420 bytes and static RAM is 82,100 bytes.
 Dual-core and overlapping low-memory relocation are deferred; see
 [PR adoption assessment](PR-111-ASSESSMENT.md).
+
+## Independent tie foundation (development)
+
+Per-note sustain adds no track/project storage. Keeping MIDI entry, physical step
+entry, groove drawing and column drawing out of line recovers 592 measured target
+bytes (224 + 16 + 32 + 320). Trials that grew code or saved nothing were reverted.
+The playback foundation's measured image was 581,464 bytes. Static RAM was
+82,100 bytes and pool RAM
+332,876 bytes. The target checks pass with 100 flash bytes free. Native editing and
+recording/import integration were still development work at that checkpoint.
+See [independent ties](PER-NOTE-TIES-DESIGN.md).
+
+## Native independent ties and preserved playing preferences
+
+The native editor and voice-mode preservation build measures 581,448 bytes, with
+116 flash bytes free. Static RAM is 82,116 bytes; pool RAM remains 332,876 bytes.
+Native controls use two UI bytes and existing undo/project storage, with no new
+per-track or pattern arrays.
+
+Exact icon-row sharing reduces the atlas from 3,096 to 1,755 data bytes (1,341
+saved), retaining all two-bit alpha levels. The renderer performs a row lookup
+when drawing UI icons, without an audio-path decoder or a decompression buffer.
+Generation falls back to the original layout if a new atlas has over 256 rows or
+would grow. PNG-oracle and C-renderer tests compare every icon, color and clipped
+position in both formats: 1,761,280 pixel comparisons each.
+
+Packed cold ROM lookups remove alignment padding from icon maps and the preset
+browser (whose two small indices share a byte). The compiler handles packed
+pointer accesses; these tables are neither persisted nor used in DSP loops.
+Additional measured UI outlining saves 560 bytes: layer knobs 64, parameter
+editing 224, piano roll 32, footer 16, tracks 192 and recording controls 32.
+Shared note-slot deletion avoids duplicate compaction code. Target checks pass
+without deleting presets, icons, visualizers or instrument functionality.

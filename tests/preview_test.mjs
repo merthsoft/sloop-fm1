@@ -162,4 +162,10 @@ for (let engine = 0; engine < 12; engine++) {
   assert.equal(m.state.sel, 0);
   m.stop(); console.log('inline edits: add/remove audible notes, independent tracks, and preserved drum lanes passed');
 }
+{
+  const m=device(),step={n:4,notes:[60,64,67,71],time:0,flags:0x3f,vel:90,lvl:57,rat:36};
+  await request(m,E.req.trackStep(0,0,step));
+  assert.equal(m.state.tracks[0].step[0].flags,0x3f,'step transport preserves all four incoming tie bits');
+  m.stop();
+}
 console.log('preview audio tests passed');

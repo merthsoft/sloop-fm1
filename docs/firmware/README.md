@@ -12,6 +12,7 @@ the website installer references the current MerthSloop package.
 - [LOFI chord arpeggios](LOFI-CHORD-ARP.md)
 - [Live track auto-wah and auto-pan](AUTO-WAH-DESIGN.md)
 - [Recording snap and STEP editing](SEQUENCER-EDITING.md)
+- [Independent per-note ties](PER-NOTE-TIES-DESIGN.md) — native editing and playback implemented; recording/import follow-on
 - [Persistent keyboard scale lights](KEYBOARD-SCALE-LIGHTS.md)
 - [Drum grooves](DRUM-GROOVES-DESIGN.md)
 - [Rhythm shaping](RHYTHM-SHAPING-DESIGN.md)

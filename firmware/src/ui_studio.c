@@ -332,7 +332,7 @@ static void pads_tick(void)                             /* once a frame: the hit
         }
 }
 
-static void groove_screen_draw(void)
+static void __attribute__((noinline)) groove_screen_draw(void)
 {
     static uint32_t head, cache;
     const drum_groove_t *p = &DRUM_GROOVES[groove_sel];

@@ -71,6 +71,21 @@ unusual. Use MAJ/MIN or another tonal scale for conventional progressions.
 See [musical starters](SEQUENCE-STARTERS-DESIGN.md), [drum grooves](DRUM-GROOVES-DESIGN.md)
 and [rhythm shaping](RHYTHM-SHAPING-DESIGN.md) for bank and replacement details.
 
+## Sustain individual notes through later attacks
+
+Select a source note/chord on STEP. Hold **OCT+** and turn **knob 4** to choose
+ALL or one source pitch; scrub **knob 1** forward to extend it. Other pitches can
+attack underneath the sustained voice. Set **EDIT → VOICE → knob 1 to POLY**.
+After releasing OCT+, **LEN** shortens the selected voice and **EDIT** deletes it
+and its continuations without removing the other voices. Undo restores the edit.
+
+<img src="../../assets/screens/merthsoft/guide/per-note-ties-voice.png" width="320" alt="Native STEP editor with an independently selected sustained voice">
+
+A full destination or a deliberate same-pitch attack stops extension safely.
+Single-event move/transpose is guarded for independently tied patterns; whole-pattern
+EDIT transpose remains available. Recording and phone/web duration authoring remain
+follow-on work. See [per-note ties](PER-NOTE-TIES-DESIGN.md) for details.
+
 ## Record and correct notes quickly
 
 For the whole synth pattern, hold **EDIT** and turn **knob 4** for octaves;
@@ -345,9 +360,10 @@ both layers are resolved, with shared whole-chord attacks when either changes.
 Preview plays the starter alone; EDIT undo/redo restores the complete change.
 The phone's existing Apply remains a replacement.
 
-Changing a track's instrument preserves its drive, chorus, delay/reverb sends,
+Changing a track's instrument preserves its voice mode (POLY/MONO/LEGATO/UNISON),
+glide amount/mode, note priority/allocation, drive, chorus, delay/reverb sends,
 insert, slicer and filter. On a normal FX-family page, press OCT− and OCT+ together
-to reset only these parameters on the selected track. Song loading still recalls
+to reset only effects on the selected track; playing preferences stay intact. Song loading still recalls
 the saved effects; INIT SOUND remains an explicit complete sound reset.
 
 ## Track auto-wah and auto-pan

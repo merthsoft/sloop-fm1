@@ -43,6 +43,11 @@ $CC -Ibuild/host/font-assets -Ifirmware/src -o "$OUT/font_render_test" tests/fon
 run "packed font: identical pixels, metrics, scaling and clipping" "$OUT/font_render_test"
 $CC -Ibuild/host/font-assets/legacy -Ibuild/host/font-assets -Ifirmware/src -o "$OUT/font_render_legacy_test" tests/font_render_test.c
 run "four-bit font renderer compatibility" "$OUT/font_render_legacy_test"
+python3 tests/icon_assets_test.py
+$CC -O2 -w -Ibuild/host/icon-assets -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/icon_render_test" tests/icon_render_test.c -lm
+run "lossless icon rows: source pixels, alpha and clipping" "$OUT/icon_render_test"
+$CC -O2 -w -Ibuild/host/icon-assets/legacy -Ibuild/host/icon-assets -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/icon_render_legacy_test" tests/icon_render_test.c -lm
+run "legacy icon renderer compatibility" "$OUT/icon_render_legacy_test"
 $CC -o "$OUT/rhythm_shapes_test" tests/rhythm_shapes_test.c
 run "rhythm shapes preserve hits, wrap rotation, syncopate and offset safely" "$OUT/rhythm_shapes_test"
 
@@ -63,6 +68,8 @@ $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/studio_drums_test" tests/studio_d
 run "drum lanes, kit audio, metronome, record arm, free take" "$OUT/studio_drums_test" "$OUT/drum-styles.wav"
 $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/seq2_test" tests/seq2_test.c -lm
 run "sequencer 2.0: no drift, ratchets, roll, erase / undo, ghost / hard, chords, mute / solo, nudge, locks" "$OUT/seq2_test"
+$CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/seq_note_ties_test" tests/seq_note_ties_test.c -lm
+run "independent note ties: overlapping gates, voice identity, MIDI, ratchets, loops and save/load" "$OUT/seq_note_ties_test"
 $CC -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/seq_arp_test" tests/seq_arp_test.c -lm
 run "sequencer-fed arpeggio: source ownership, microtiming, latch and generated MIDI cleanup" "$OUT/seq_arp_test"
 $CC -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/seq_arp_modes_test" tests/seq_arp_modes_test.c -lm
@@ -70,6 +77,8 @@ run "sequencer arpeggio: four-note chord plus fifteen ties, every runtime mode, 
 $CC -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/seq_arp_expression_test" tests/seq_arp_expression_test.c -lm
 run "arpeggio expression: source velocities, octave collisions, pulse, recording and preview takeover" "$OUT/seq_arp_expression_test"
 $CC -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/seq_navigation_test" tests/seq_navigation_test.c -lm
+$CC -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/note_ties_ui_test" tests/note_ties_ui_test.c -lm
+run "native per-note tie selection, overlap, shortening, deletion and undo" "$OUT/note_ties_ui_test"
 $CC -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/scale_lights_test" tests/scale_lights_test.c -lm
 run "persistent scale lights: physical gesture, pitch classes and settings" "$OUT/scale_lights_test"
 $CC -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/modulation_test" tests/modulation_test.c -lm
@@ -125,10 +134,11 @@ run "live UI: pages, layers (punch, steps, erase, roll, key, mix), holds, drums,
 # silently): the UI fuzz, the sequencer, the projects and a minute of random live use, with UBSan
 UBSAN="${CC_UB:-cc} -UNDEBUG -O1 -w -fsanitize=integer-divide-by-zero -fno-sanitize-recover=integer-divide-by-zero -Ibuild/gen -Ifirmware/src -Ifirmware/hal"
 if $UBSAN -o "$OUT/ui_pages_ub" tests/ui_pages_test.c -lm && $UBSAN -o "$OUT/seq2_ub" tests/seq2_test.c -lm &&
+    $UBSAN -o "$OUT/seq_note_ties_ub" tests/seq_note_ties_test.c -lm &&
     $UBSAN -o "$OUT/project_ub" tests/project_test.c -lm && $UBSAN -o "$OUT/soak_ub" tests/soak_test.c -lm; then
     mkdir -p "$OUT/ub"
     run "no divide by zero (UBSan): UI fuzz, sequencer, projects, a minute of live use" \
-        sh -c "'$OUT/ui_pages_ub' '$OUT/ub' >/dev/null && '$OUT/seq2_ub' >/dev/null && '$OUT/project_ub' >/dev/null && '$OUT/soak_ub' 1 >/dev/null && echo 'no divide by zero'"
+        sh -c "'$OUT/ui_pages_ub' '$OUT/ub' >/dev/null && '$OUT/seq2_ub' >/dev/null && '$OUT/seq_note_ties_ub' >/dev/null && '$OUT/project_ub' >/dev/null && '$OUT/soak_ub' 1 >/dev/null && echo 'no divide by zero'"
 else
     echo "UBSan build failed; not running stale test binaries"
     fail=1

@@ -1440,11 +1440,29 @@ nothing. EDIT + OCT− / OCT+ undoes/redoes a successful apply. Ties are combine
 when either layer changes, the combined chord attacks again. Listen previews only
 the starter. Android's existing musical-starter Apply remains a replacement.
 
-Instrument browsing preserves the selected track's drive, chorus, delay and reverb
+Instrument browsing preserves the selected track's POLY/MONO/LEGATO/UNISON mode,
+glide amount/mode, note priority/allocation, drive, chorus, delay and reverb
 sends, insert, slicer and filter. On a normal FX-family page, press both octave
 buttons together to reset those effects to their parameter defaults; individual
 OCT buttons on these pages do not transpose. This reset does not change the sound
 engine, sequence, key, or global effects. INIT SOUND resets the whole sound.
+
+### Independent note sustains
+
+Use **POLY** for guitar-like overlaps. In STEP, select the starting note/chord and
+hold **OCT+**. **Knob 4** chooses ALL or one source pitch; **knob 1** extends that
+selection through later attacks. C can keep ringing through E and G without
+restarting its envelope. Release OCT+ and turn **knob 3 (LEN)** to shorten the
+selection, or tap **EDIT** to remove it and its following continuations. Moving
+the cursor normally clears the voice selection. A full step or a deliberate new
+attack of the same pitch refuses the edit without overwriting notes. Undo/redo
+works for the complete gesture.
+
+Single-event pitch/octave edits and moves are guarded while a pattern contains
+independent ties. Use **held EDIT + knob 3/4** for whole-pattern semitone/octave
+transposition, or delete/re-enter and extend a voice. Whole-step ties still use
+the existing controls. Live recording and phone/web length editing have not yet
+been upgraded to create independent durations; use the native STEP controls.
 
 ### MerthSloop track auto-wah and auto-pan
 

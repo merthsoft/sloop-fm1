@@ -1,4 +1,4 @@
-# Current implementation status — October 12, 2026
+# Current implementation status
 
 This is the current status index. Component docs contain both implemented checkpoints and
 future design contracts; dated release/handoff/test results remain historical evidence.
@@ -56,15 +56,23 @@ Ordinary keyboard notes support octave handoff: overlap the newly lit key before
 releasing the original to sustain without reattack. Held pitches remain fully lit
 in their current-octave positions independently of NOTES display.
 
-**MerthSloop 2.6.0.14 is integrated and built.** Native ADD/REPLACE, transient-safe
+**MerthSloop 2.6.0.15 is integrated and built locally.** Native per-note tie
+extension/selection/shortening/deletion and complete undo preserve overlapping
+voices through later attacks. Whole-step ties remain compatible. Independent
+linked-voice moves and automatic recording/import of overlaps remain follow-on
+work; native move/pitch edits guard linked patterns and whole-track transpose
+remains available. Instrument browsing preserves voice/glide/priority/allocation
+as well as effects. See [native ties](../../docs/firmware/PER-NOTE-TIES-DESIGN.md).
+Native ADD/REPLACE, transient-safe
 Note Trails with high-contrast drums and gate-aware held-note strokes, and preserved track effects with both-OCT
 reset on normal FX pages are implemented. Upstream audio, inserts, sync,
 MIDI, texture, drum mutes and note-length features coexist with the fork libraries,
 rhythms, editing, scale lights and performance modulation. Upstream's 27 physical
 punch effects replace the previous black-key FX modifiers. The installer is
-`http://127.0.0.1:8819/webapp/installer/`.
+`http://127.0.0.1:8820/webapp/installer/`. The public GitHub Pages site updates on
+push to `merthsloop`; this local development batch is not yet pushed.
 
-Image 581,512 bytes (52 free); static RAM 82,100/98,304 (16,204 free);
+Image 581,448 bytes (116 free); static RAM 82,116/98,304 (16,188 free);
 pool 332,876/344,064 (11,188 free). Lossless factory
 sound sharing, text startup, spare driver-RAM scratch and guarded hot-helper
 inlining make the combined build fit. Functional/audio/companion checks pass;

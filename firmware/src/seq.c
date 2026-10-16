@@ -483,6 +483,7 @@ static uint32_t trk_grid(const track_t *t, uint32_t *into, uint32_t *len)
     return grid_at(div, swings(div) ? swing_units(t->p[P_SSWING] + song.g[G_SWING], div_units(div)) : 0u, into, len);
 }
 static uint32_t trk_len(const track_t *t) { return t->p[P_SLEN] > 0 ? (uint32_t)t->p[P_SLEN] : 1u; }
+#include "note_ties.c"
 
 /* ------------------------------------------------------------- undo --- */
 /* One step back (and forward again) for the pattern of one track: what it was before the last
@@ -564,6 +565,7 @@ static void step_add(track_t *t, uint32_t idx, uint32_t note, uint32_t vel, uint
         s->note[k] = (uint8_t)note;
     }
     s->lvl = (uint8_t)((s->lvl & ~(3u << (2u * k))) | (lvl & 3u) << (2u * k));
+    s->flags&=(uint8_t)~SF_TIE(k);                    /* recorded attack replaces an incoming continuation */
     s->rat = (uint8_t)((s->rat & ~(3u << (2u * k))) | (rat & 3u) << (2u * k));
     s->time = ST_NOTE;
     if (vel > s->vel)
@@ -1052,26 +1054,17 @@ static void erase_step(track_t *t, uint32_t idx)
             }
     } else {
         step_t *s = &t->step[idx];
-        uint32_t i, k = 0, lv = 0, rt = 0;
-        if (s->time != ST_NOTE)
-            return;
-        for (i = 0; i < s->n; i++)
-            if (!er_has(s->note[i])) {
-                lv |= ((s->lvl >> (2u * i)) & 3u) << (2u * k);
-                rt |= ((s->rat >> (2u * i)) & 3u) << (2u * k);
-                s->note[k++] = s->note[i];
-            }
-        if (k == s->n)
-            return;
-        er_flash = 1;
-        s->n = (uint8_t)k;
-        s->lvl = (uint8_t)lv;
-        s->rat = (uint8_t)rt;
-        if (!k) {
-            s->time = ST_REST;
-            s->flags = 0;
-            s->vel = 0;
+        uint32_t was=s->n;
+        if (s->time!=ST_NOTE) return;
+        for (uint32_t i=s->n;i--;) if (er_has(s->note[i])) {
+            uint32_t n=note_chain_len(t,idx,s->note[i]);
+            note_cut(t,idx+1,n-1,s->note[i]);
+            note_remove_slot(s,i);
         }
+        if (was==s->n) return;
+        er_flash=1;
+        if (!s->n) {s->flags=0;s->vel=0;}
+
     }
 }
 static void erase_now(track_t *t)             /* a key just went down */
@@ -2269,10 +2262,44 @@ static uint32_t step_vel(const step_t *s, uint32_t i)
 /* play one synth step: TIE extends, REST releases, NOTE (re)triggers; a SLIDE on the previous
  * step makes this one legato with a glide (acid style). skip: bit k = note k already sounds
  * from live recording (not triggered, not released here). len: the step's length (units). */
+/* Incoming ties in the next step protect only their matching sounding pitches.
+ * The existing hold byte has spare bits: no per-track gates or pattern RAM. */
+static uint32_t seq_tie_hold(const track_t *t)
+{
+    const step_t *next = &t->step[(t->seq_idx + 1u) % trk_len(t)];
+    uint32_t i, j, hold = 0;
+    for (i = 0; i < t->seq_n; i++)
+        for (j = 0; next->time == ST_NOTE && j < next->n && j < 4u; j++)
+            if ((next->flags & SF_TIE(j)) && t->seq_notes[i] == next->note[j])
+                hold |= SF_TIE(i);
+    return hold;
+}
+
+/* At the normal gate end, retain independent continuations and their velocity.
+ * A zero timer means this gate was consumed, not that a held note should stop. */
+static void seq_gate_release(track_t *t)
+{
+    uint32_t i, n = 0, hold = 0, k = trk_index(t);
+    for (i = 0; i < t->seq_n; i++) {
+        if (t->seq_hold & SF_TIE(i)) {
+            t->seq_notes[n] = t->seq_notes[i];
+            seq_direct_vel[k][n] = seq_direct_vel[k][i];
+            hold |= SF_TIE(n++);
+        } else {
+            trk_note_off(t, t->seq_notes[i]);
+            seq_out_off(t, t->seq_notes[i]);
+        }
+    }
+    t->seq_n = (uint8_t)n; t->seq_hold = (uint8_t)hold; t->seq_off = 0;
+    t->slide_glide = 0;
+}
+
 static void seq_step_velocity(track_t *t, const step_t *s, uint32_t slen, uint32_t skip, const uint8_t *velocity)
 {
     uint32_t i, j, gate = slen * (uint32_t)t->p[P_SGATE] / 128u;
-    uint32_t slide_in = t->seq_hold && t->seq_n;
+    uint32_t slide_in = (t->seq_hold & 1u) && t->seq_n && !(s->flags & SF_TIES);
+    uint32_t retained = 0;
+    uint8_t retained_vel[4];
     uint32_t next_tie = t->step[(t->seq_idx + 1u) % trk_len(t)].time == ST_TIE;
     if (seq_arp_route(t)) {
         uint32_t k = trk_index(t), first = !t->nheld && !seq_harmony[k].n;
@@ -2301,7 +2328,7 @@ static void seq_step_velocity(track_t *t, const step_t *s, uint32_t slen, uint32
     if (s->time == ST_TIE) {
         if (t->seq_n) {
             t->seq_off = gate + slen / 2u;
-            t->seq_hold = (s->flags & SF_SLIDE) != 0 || next_tie;   /* chains hold at any GATE / swing */
+            t->seq_hold = (uint8_t)(((s->flags & SF_SLIDE) != 0 || next_tie) ? 1u : seq_tie_hold(t));
         }
         return;
     }
@@ -2310,20 +2337,30 @@ static void seq_step_velocity(track_t *t, const step_t *s, uint32_t slen, uint32
         return;
     }
     if (s->rat) {                                   /* ratchets: each hit its share of the step */
-        uint32_t hits = 1u + ((s->rat >> 0) & 3u);
-        for (i = 1; i < s->n; i++)
-            if (1u + ((s->rat >> (2u * i)) & 3u) > hits)
+        uint32_t hits = 1u;
+        for (i = 0; i < s->n; i++)
+            if (!(s->flags & SF_TIE(i)) && 1u + ((s->rat >> (2u * i)) & 3u) > hits)
                 hits = 1u + ((s->rat >> (2u * i)) & 3u);
         gate /= hits;
     }
+    for (i = 0; i < s->n; i++)
+        if (roll_has(t, s->note[i])) skip |= 1u << i;
     t->slide_glide = (uint8_t)slide_in;
-    if (!slide_in)
-        seq_release(t);
+    if (!slide_in) {
+        if (s->flags & SF_TIES) {
+            for (i = 0; i < t->seq_n; i++) {
+                for (j = 0; j < s->n; j++)
+                    if (!(skip & (1u << j)) && (s->flags & SF_TIE(j)) && s->note[j] == t->seq_notes[i]) {
+                        retained |= 1u << j; retained_vel[j] = seq_direct_vel[trk_index(t)][i]; break;
+                    }
+                if (j == s->n) {
+                    trk_note_off(t, t->seq_notes[i]); seq_out_off(t, t->seq_notes[i]);
+                }
+            }
+        } else seq_release(t);
+    }
     for (i = 0; i < s->n; i++)
-        if (roll_has(t, s->note[i]))
-            skip |= 1u << i;                        /* (a roll plays it) */
-    for (i = 0; i < s->n; i++)
-        if (!((skip >> i) & 1u)) {
+        if (!(((skip | retained) >> i) & 1u)) {
             if (slide_in)
                 trk_note_on(t, s->note[i], (velocity ? velocity[i] : step_vel(s, i)));
             else                                    /* (STRUM: a chord's notes one after the other) */
@@ -2343,11 +2380,11 @@ static void seq_step_velocity(track_t *t, const step_t *s, uint32_t slen, uint32
     t->seq_n = 0;
     for (i = 0; i < s->n; i++)
         if (!((skip >> i) & 1u)) {
-            seq_direct_vel[trk_index(t)][t->seq_n] = (uint8_t)(velocity ? velocity[i] : step_vel(s, i));
+            seq_direct_vel[trk_index(t)][t->seq_n] = (retained & (1u << i)) ? retained_vel[i] : (uint8_t)(velocity ? velocity[i] : step_vel(s, i));
             t->seq_notes[t->seq_n++] = s->note[i];
         }
     t->seq_off = gate;
-    t->seq_hold = !s->rat && ((s->flags & SF_SLIDE) != 0 || next_tie);   /* next step a TIE: keep the notes to it */
+    t->seq_hold = (uint8_t)(!s->rat && ((s->flags & SF_SLIDE) != 0 || next_tie) ? 1u : seq_tie_hold(t));
 }
 
 static void seq_step(track_t *t, const step_t *s, uint32_t slen, uint32_t skip)
@@ -2394,7 +2431,7 @@ static void seq_ratchets(track_t *t, uint32_t into, uint32_t slen)
             return;
         for (i = 0; i < s->n; i++) {
             uint32_t hits = 1u + ((s->rat >> (2u * i)) & 3u), h;
-            if (hits == 1u || roll_has(t, s->note[i]))
+            if (hits == 1u || (s->flags & SF_TIE(i)) || roll_has(t, s->note[i]))
                 continue;
             h = into * hits / slen;
             if (h > t->rat_done[i] && h < hits) {
@@ -2433,9 +2470,9 @@ static void seq_tick(track_t *t, uint32_t adv)
 {
     uint32_t len = trk_len(t), into, slen, abs, idx, nabs, fire = 0;
     int32_t rel;
-    if (t->seq_n && !t->seq_hold) {
+    if (t->seq_n && !(t->seq_hold & 1u) && t->seq_off) {
         if (t->seq_off <= adv)
-            seq_release(t);
+            seq_gate_release(t);
         else
             t->seq_off -= adv;
     }
