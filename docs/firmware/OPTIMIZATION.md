@@ -1,6 +1,6 @@
 # Current effects build
 
-MerthSloop 2.7.1.33: **581,176 image bytes**, **388 free**, main static RAM
+MerthSloop 2.7.1.34: **581,208 image bytes**, **356 free**, main static RAM
 **85,656/98,304**, low RAM **22,772/29,496**, pool **332,876/344,064**.
 VINYL reuses its existing ring; stronger modulation and SPRING feedback each add
 one small smoothed/control value. DOUBLE TIME removes the former octave shifter.

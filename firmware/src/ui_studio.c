@@ -139,7 +139,8 @@ UI_SMALL static void studio_tracks_draw(void)
     }
     for(uint32_t r=0;r<NTRK;r++) sig=sig*31u+steps_hash(&trk[r])+trk[r].seq_idx*71u+
         trk[r].p[P_MUTE]*101u+trk_level(r)*17u;
-    sig+=song.playing+up_gen+TSEL->preset*131u+TSEL->eng_req*104729u+TSEL->user*65537u;
+    sig+=song.playing+up_gen+TSEL->preset*131u+TSEL->eng_req*104729u+TSEL->user*65537u+
+        (is_drum(TSEL)?drum_kit()*997u:0u);
     if(ui.force||sig!=body) {
         body=sig;cv_begin(240,124,C_BLACK);graph_home();cv_blit(0,74);
         cv_begin(240,38,C_BLACK);

@@ -130,6 +130,19 @@ int main(int argc,char **argv)
     set_engine_of(TSEL,0);apply_preset_to(TSEL,0);TSEL->engine=0;
     tracks();same_as_full(tracks,"HOME engine returns");
 
+    /* A stopped drum-kit change must update the actual sound label immediately,
+     * including external edits which do not force a full-screen redraw. */
+    uint32_t selected=song.sel;int16_t kit=TDRUM->p[P_E0];
+    song.sel=TRK_DRUM;tracks();
+    for(uint32_t k=0;k<DRUM_KITS;k++) {
+        TDRUM->p[P_E0]=(int16_t)k;tracks();
+        text_visible(DRUM_KIT_NAMES[k],C_WHITE,202,220);
+        text_visible("DRUMS",TE_COL[TRK_DRUM],202,220);
+        same_as_full(tracks,"HOME drum kit change");
+    }
+    ppm("neon-home-drums");
+    TDRUM->p[P_E0]=kit;song.sel=selected;tracks();
+
     /* Pulse invalidates HOME even if no sequencer step advances (long notes).
      * Only the sun changes; track lanes and footer retain identical pixels. */
     song.playing=1;clk_pos=0;tracks();

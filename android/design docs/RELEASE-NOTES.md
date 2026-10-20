@@ -1,3 +1,9 @@
+# MerthSloop firmware 2.7.1.34
+
+- HOME shows the selected drum kit name instead of the generic DRUM label.
+  Kit changes refresh the label immediately, including while stopped.
+- Renderer regression covers every kit and compares incremental/full redraw.
+
 # MerthSloop firmware 2.7.1.33
 
 - VINYL's maximum settings are now audibly stronger: slow wow/flutter, darker

@@ -473,7 +473,7 @@ UI_SMALL static void trk_short_name(uint32_t c, char *b)      /* the track's sou
     const track_t *t = &trk[c];
     const engine_t *e = ENGINES[t->eng_req % NENGINES];
     if (c == TRK_DRUM)
-        str_cpy(b, "DRUM", 13);
+        str_cpy(b, DRUM_KIT_NAMES[drum_kit()], 13);
     else if (user_of(t) < UP_SLOTS)
         up_name(user_of(t), b);
     else if (e->npresets)

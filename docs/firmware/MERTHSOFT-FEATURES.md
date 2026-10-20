@@ -22,7 +22,9 @@ ties, preview, merge and replacement behavior are retained.
 **PAGE HELP**, the fourth SCREEN item, opens a reference for the underlying page.
 Use PRESETS to select it and OCT+ to open; OCT− returns to the menu.
 SONG and record-ready/count-in use the same knob cards, palette, transport header
-and footer spacing. Disabled controls show muted dashes. Running free takes keep
+and footer spacing. HOME identifies the selected drum kit by name alongside
+the colored DRUMS label, just as synth tracks show their preset and engine.
+Disabled controls show muted dashes. Running free takes keep
 a large timer and the four-track overview. Existing recording/saving gestures
 are unchanged.
 PRESETS is the left control, ALGORITHM the right. HOME shows the engine name in
