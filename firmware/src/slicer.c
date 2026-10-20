@@ -59,6 +59,7 @@ typedef struct {
     uint8_t idx;                 /* step 0..15 */
     uint8_t bit;                 /* this step's pattern bit (latched at its start) */
     uint8_t rec_on;              /* recording this step */
+    uint8_t half_remainder;
 } sl_t;
 static sl_t sl[NTRK];
 static int32_t sl_dbuf[CTL];     /* the drum track's dry mono signal (slicer_drums) */
@@ -67,6 +68,7 @@ static void slicer_start(uint32_t pos)   /* seq_start: step 0 of every track, po
 {
     uint32_t k;
     for (k = 0; k < NTRK; k++) {
+        sl[k].half_remainder = 0;
         sl[k].idx = 15;
         sl[k].pos = pos;
         sl[k].len = 0;
@@ -97,7 +99,7 @@ static void sl_enter(const track_t *t, sl_t *s)
         s->rec_on = 1;
         s->half_n = 0;
     } else if (s->rec >= 2u * SL_RAMP) {            /* a repeat: the last live step, looped */
-        uint32_t l = s->base / (uint32_t)song.g[G_BPM];   /* (in samples) */
+        uint32_t l = musical_samples(s->base);   /* (in samples) */
         while (l > 2u * SL_LEN)
             l >>= 1;                                /* (a long step: a half, a quarter .. of it) */
         s->loop = l < 2u * s->rec ? l : 2u * s->rec;
@@ -161,11 +163,11 @@ static void slicer_track(const track_t *t, int32_t *b, uint32_t n)
         uint32_t m, left;
         while (s->pos >= s->len)
             sl_enter(t, s);
-        left = (s->len - s->pos + bpm - 1u) / bpm;  /* samples to the boundary */
+        left = musical_half == 1 ? ((s->len-s->pos)*2u-s->half_remainder+bpm-1u)/bpm : (s->len-s->pos+bpm*(musical_half == 2 ? 2u : 1u)-1u)/(bpm*(musical_half == 2 ? 2u : 1u));  /* samples to the boundary */
         m = left < n - i ? left : n - i;
         if (act)
             sl_seg(t, s, sl_buf[k], b + i, m, left);
-        s->pos += m * bpm;
+        s->pos += musical_units(m,&s->half_remainder);
         i += m;
     }
 }

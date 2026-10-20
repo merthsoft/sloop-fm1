@@ -19,69 +19,55 @@ UI_SMALL static void song_sane(void)                         /* a bad chain (bla
 UI_SMALL static void song_screen_draw(void)
 {
     song_sane();
-    uint32_t i, start = song_cursor > 3u ? song_cursor - 3u : 0u;
+    uint32_t i,start=song_cursor>3u?song_cursor-3u:0u;
     static uint32_t previous;
-    static const uint16_t SC[4] = {RGB(40, 124, 255), RGB(30, 204, 112), RGB(255, 198, 24), RGB(255, 98, 26)};
-    uint32_t sig = song_cursor + 17u * arrangement_enabled + 37u * song.playing +
-                   71u * arrangement_clock.index + 127u * arrangement_clock.bar +
-                   257u * arrangement.count + 509u * song.g[G_BPM];
-    char b[30];
-    for (i = 0; i < arrangement.count; i++)
-        sig = sig * 31u + arrangement.entry[i].scene + 7u * arrangement.entry[i].bars;
-    for (i = 0; i < ARR_SCENES; i++) sig = sig * 3u + (uint32_t)project_used(i);
-    if (!ui.force && !ui.msg_t && sig == previous) return;
-    previous = ui.msg_t ? ~sig : sig;               /* redraw after a message expires */
-    /* Draw one small band at a time: never exceed the 124-row canvas. */
-    cv_begin(240, 40, C_BLACK);
-    cv_text(4, 4, &FONT_L, "SONG", C_WHITE);
-    cv_text(76, 20, &FONT_S, arrangement_enabled ? "song mode" : "loop mode", arrangement_enabled ? SC[3] : TE_G3);
-    fmt_int(b, song.g[G_BPM]);
-    cv_text(236 - text_w(&FONT_S, b) - 28, 4, &FONT_S, b, C_WHITE);
-    cv_text(236 - 24, 4, &FONT_S, "bpm", TE_G3);
-    cv_text(236 - text_w(&FONT_S, song.playing ? "playing" : "stopped"), 20, &FONT_S,
-            song.playing ? "playing" : "stopped", song.playing ? SC[1] : TE_G3);
-    cv_rect(0, 39, 240, 1, TE_G1);
-    cv_blit(0, 0);
-    for (i = 0; i < 5u; i++) {
-        uint32_t pos = start + i;
-        cv_begin(240, 26, C_BLACK);
-        if (pos < arrangement.count) {
-            const arr_entry_t *e = &arrangement.entry[pos];
-            int selected = pos == song_cursor, used = project_used(e->scene);
-            uint16_t sc = SC[e->scene & 3u];
-            int32_t w;
-            fmt_int(b, (int32_t)pos + 1);
-            cv_text(4, 5, &FONT_S, b, selected ? C_WHITE : TE_G3);
-            cv_rect(30, 3, 22, 20, used ? sc : TE_G1);   /* the section tile */
-            b[0] = (char)('A' + e->scene); b[1] = 0;
-            cv_text(37, 5, &FONT_S, b, used ? C_BLACK : sc);
-            w = e->bars * 120 / 64 + 4;                 /* its length as a bar */
-            cv_rect(60, 9, w, 8, used ? (selected ? sc : TE_G2) : TE_G1);
-            fmt_int(b, e->bars);
-            str_cpy(b + str_len(b), e->bars == 1 ? " bar" : " bars", 8);
-            cv_text(60 + w + 6, 5, &FONT_S, used ? b : "empty", selected ? C_WHITE : TE_G3);
-            if (arrangement_clock.running && arrangement_clock.index == pos) {
-                cv_rect(60, 19, (int32_t)(arrangement_clock.bar + 1u) * w / (e->bars ? e->bars : 1), 2, C_WHITE);
-                cv_rect(226, 9, 9, 9, SC[1]);
-            }
-            if (selected) cv_rect(0, 1, 240, 1, TE_G2), cv_rect(0, 24, 240, 1, TE_G2);
-        }
-        cv_blit(0, 42 + 26u * i);
+    uint32_t sig=song_cursor+17u*arrangement_enabled+37u*song.playing+
+        71u*arrangement_clock.index+127u*arrangement_clock.bar+257u*arrangement.count;
+    char b[24];
+    draw_head();
+    for(i=0;i<arrangement.count;i++)
+        sig=sig*31u+arrangement.entry[i].scene+7u*arrangement.entry[i].bars;
+    for(i=0;i<ARR_SCENES;i++) sig=sig*3u+(uint32_t)project_used(i)+TE_COL[i];
+    if(!ui.force&&sig==previous) return;
+    previous=sig;
+    if(ui.force) draw_frame();
+    cv_begin(240,44,C_BLACK);
+    const arr_entry_t *entry=&arrangement.entry[song_cursor];
+    for(i=0;i<4;i++) {
+        static const char *const label[]={"ENTRY","SECT","BARS","LENGTH"};
+        uint32_t v=i==0?song_cursor+1u:i==1?entry->scene:i==2?entry->bars:arrangement.count;
+        int32_t ratio=i==0?(int32_t)v*1000/arrangement.count:i==1?(int32_t)v*1000/3:
+            i==2?(int32_t)v*1000/64:(int32_t)v*1000/ARR_STEPS;
+        if(i==1) {b[0]=(char)('A'+v);b[1]=0;} else fmt_int(b,(int32_t)v);
+        ui_card(2+(int32_t)i*60,0,label[i],b,ratio,TE_COL[i],0);
     }
-    cv_begin(240, 68, C_BLACK);
-    if (ui.msg_t) {
-        cv_rect(0, 4, 240, 30, C_WHITE);
-        cv_text((240 - text_w(&FONT_S, ui.msg)) / 2, 11, &FONT_S, ui.msg, C_BLACK);
-    } else {
-        static const char *const L[4] = {"entry", "section", "bars", "length"};
-        for (i = 0; i < 4u; i++) {
-            cv_rect((int32_t)i * 60 + 4, 6, 52, 3, SC[i]);
-            cv_text((int32_t)i * 60 + 30 - text_w(&FONT_S, L[i]) / 2, 12, &FONT_S, L[i], TE_G3);
-        }
+    cv_blit(0,26);
+    cv_begin(240,124,C_BLACK);
+    cv_text(4,0,&FONT_S,arrangement_enabled?"SONG ORDER":"LOOP / SONG ORDER",C_WHITE);
+    for(i=0;i<4;i++) {
+        uint32_t pos=start+i;
+        if(pos>=arrangement.count) continue;
+        const arr_entry_t *e=&arrangement.entry[pos];
+        uint32_t selected=pos==song_cursor,used=project_used(e->scene);
+        uint16_t sc=TE_COL[e->scene&3u];
+        int32_t y=22+(int32_t)i*24,w=e->bars*110/64+4;
+        cv_rect(2,y,236,23,selected?TE_G1:C_BLACK);
+        if(selected) cv_rect(2,y,2,23,C_WHITE);
+        fmt_int(b,(int32_t)pos+1);cv_text(8,y+3,&FONT_S,b,selected?C_WHITE:TE_G3);
+        cv_rect(30,y+2,22,19,used?sc:TE_G2);
+        b[0]=(char)('A'+e->scene);b[1]=0;
+        cv_text(37,y+3,&FONT_S,b,used?C_BLACK:sc);
+        cv_rect(60,y+9,w,6,used?TE_DIM[e->scene&3u]:TE_G2);
+        fmt_int(b,e->bars);str_cpy(b+str_len(b),e->bars==1?" BAR":" BARS",7);
+        cv_text(180,y+3,&FONT_S,used?b:"EMPTY",selected?C_WHITE:TE_G3);
+        if(arrangement_clock.running&&arrangement_clock.index==pos)
+            cv_rect(60,y+17,(int32_t)(arrangement_clock.bar+1u)*w/(e->bars?e->bars:1),2,sc);
     }
-    cv_text(4, 34, &FONT_S, "rec: store   save: chain", TE_G4);
-    cv_text(4, 50, &FONT_S, "oct-: loop/song  oct+ x2: load", TE_G3);
-    cv_blit(0, 172);
+    cv_blit(0,74);
+    cv_begin(240,38,C_BLACK);
+    cv_text(4,0,&FONT_S,"REC STORE / SAVE CHAIN",TE_G4);
+    cv_text(4,20,&FONT_S,"OCT- MODE / OCT+ X2 LOAD",TE_G3);
+    cv_blit(0,202);
 }
 
 UI_SMALL static void song_screen_input(uint32_t pressed, uint32_t home)

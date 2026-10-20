@@ -26,33 +26,6 @@ UI_SMALL static void te_disc(int32_t cx, int32_t cy, int32_t r, uint16_t c)     
             if (x * x + y * y <= r * r + r)
                 cv_pset(cx + x, cy + y, c);
 }
-/* a dial: a 270-degree ring (lit up to the value), a pointer; ratio 0..1000, -1 = a plain ring */
-UI_SMALL static void te_dial(int32_t cx, int32_t cy, int32_t r, int32_t ratio, uint16_t c, uint16_t dim)
-{
-    int32_t i, end = ratio < 0 ? 768 : ratio * 768 / 1000;
-    for (i = 0; i <= 768; i += 8) {
-        uint32_t a = (uint32_t)(384 + i) & 1023u;
-        int32_t co = SINE[(a + 256u) & 1023u], si = SINE[a], k;
-        uint16_t col = ratio < 0 || i <= end ? c : dim;
-        for (k = r - 2; k <= r; k++)
-            cv_pset(cx + ((co * k) >> 15), cy + ((si * k) >> 15), col);
-    }
-    if (ratio >= 0) {
-        uint32_t a = (uint32_t)(384 + end) & 1023u;
-        int32_t co = SINE[(a + 256u) & 1023u], si = SINE[a];
-        cv_line(cx, cy, cx + ((co * (r - 4)) >> 15), cy + ((si * (r - 4)) >> 15), C_WHITE);
-        te_disc(cx, cy, 2, C_WHITE);
-    }
-}
-UI_SMALL static void te_play_icon(int32_t x, int32_t y, int playing)
-{
-    int32_t i;
-    if (playing)
-        for (i = 0; i < 12; i++)
-            cv_rect(x + i, y + i / 2, 1, 14 - i, C_WHITE);   /* a triangle */
-    else
-        cv_rect(x, y + 1, 12, 12, TE_G3);
-}
 UI_SMALL static uint32_t studio_hash(uint32_t h, const char *p)
 { while (*p) h = h * 31u + (uint8_t)*p++; return h; }
 UI_SMALL static void te_lower(char *d, const char *s, uint32_t n)
@@ -69,11 +42,10 @@ UI_SMALL static void te_text_c(int32_t cx, int32_t y, const char *s, uint16_t c)
 
 /* the dial strip: KNOB 1..4, label + value under each (a dial with no label: an empty column); a
  * message replaces it */
-UI_SMALL static void te_dials(int32_t y0, const char *const lab[4], const char *const val[4], const int32_t ratio[4],
+UI_SMALL static void te_dials(const char *const lab[4], const char *const val[4], const int32_t ratio[4],
                      uint32_t sig, uint32_t *cache)
 {
     uint32_t k;
-    sig = studio_hash(sig, ui.msg_t ? ui.msg : "");
     for (k = 0; k < 4u; k++) {
         sig = studio_hash(sig * 7u + (uint32_t)ratio[k] + (ui.hot_t && ui.hot_col == k) * 5003u, lab[k]);
         sig = studio_hash(sig, val[k]);
@@ -81,25 +53,12 @@ UI_SMALL static void te_dials(int32_t y0, const char *const lab[4], const char *
     if (!ui.force && sig == *cache)
         return;
     *cache = sig;
-    cv_begin(240, ui.msg_t ? 240u - (uint32_t)y0 : 40u, C_BLACK);
-    if (ui.msg_t) {                                     /* a message: a white bar */
-        cv_rect(0, 10, 240, 32, C_WHITE);
-        cv_text((240 - text_w(&FONT_S, ui.msg)) / 2, 18, &FONT_S, ui.msg, C_BLACK);
-        cv_blit(0, (uint32_t)y0);
-        return;
-    }
-    for (k = 0; k < 4u; k++) {
-        int32_t cx = 30 + 60 * (int32_t)k;
-        if (!lab[k][0])
-            continue;
-        te_dial(cx, 12, 11, ratio[k], TE_COL[k], TE_DIM[k]);
-        te_text_c(cx, 24, lab[k], TE_G3);
-    }
-    cv_blit(0, (uint32_t)y0);
-    cv_begin(240, 16, C_BLACK);                         /* the values: white while turned */
+    cv_begin(240,44,C_BLACK);
     for (k = 0; k < 4u; k++)
-        te_text_c(30 + 60 * (int32_t)k, 0, val[k], ui.hot_t && ui.hot_col == k ? C_WHITE : TE_G4);
-    cv_blit(0, (uint32_t)y0 + 40u);
+        ui_card(2+60*(int32_t)k,0,lab[k],val[k],ratio[k],TE_COL[k],ui.hot_t&&ui.hot_col==k);
+    /* Four cards replace the old ring and value passes. */
+    cv_blit(0,26);
+
 }
 
 UI_SMALL static void studio_open(uint32_t scope)
@@ -138,56 +97,6 @@ UI_SMALL static void rec_toggle(void)
         rec_wait = 1;                   /* stopped: the first note starts it */
 }
 
-/* the loop position of track t: "bar.beat" in its pattern (1.1 .. ) */
-UI_SMALL static void loop_pos(const track_t *t, char *b)
-{
-    uint32_t len = (uint32_t)clamp(t->p[P_SLEN], 1, NSTEP), s = t->seq_idx % len, k;
-    fmt_int(b, (int32_t)(s / 16u + 1u));
-    k = str_len(b);
-    b[k] = '.';
-    b[k + 1] = (char)('1' + (s % 16u) / 4u);
-    b[k + 2] = 0;
-}
-
-/* the header of the live screens: BPM, transport, the loop position, the beat lights, REC */
-UI_SMALL static void te_header(const char *title, uint16_t tc, uint32_t *cache)
-{
-    char b[12];
-    uint32_t beat = clk_beat, k, playing = song.playing;
-    uint32_t sig = studio_hash((uint32_t)song.g[G_BPM] * 7u + playing * 3u + (song.rec != 0) * 1999u +
-                               (playing ? beat * 131u + TSEL->seq_idx * 7919u : 0u) + (uint32_t)song.g[G_CLOCK] * 77u +
-                               arrangement_enabled * 5u + (ui.bpm_t != 0) * 104729u + song.solo * 37u, title);
-    sig = sig * 31u + tc;
-    if (!ui.force && sig == *cache)
-        return;
-    *cache = sig;
-    cv_begin(240, 40, C_BLACK);
-    fmt_int(b, song.g[G_BPM]);
-    cv_text(4, 4, &FONT_L, b, ui.bpm_t ? C_WHITE : TE_G4);
-    cv_text(4 + text_w(&FONT_L, b) + 4, 20, &FONT_S, "bpm", TE_G3);
-    te_play_icon(104, 6, (int)playing);
-    if (playing) {                                     /* bar.beat in the selected track's loop */
-        loop_pos(TSEL, b);
-        cv_text(122, 5, &FONT_S, b, C_WHITE);
-    } else {
-        cv_text(122, 5, &FONT_S, arrangement_enabled ? "song" : "loop", TE_G3);
-    }
-    for (k = 0; k < 4u; k++)                           /* the four beats of the bar */
-        cv_rect(104 + (int32_t)k * 9, 26, 7, 7, playing && beat % 4u == k ? (k ? C_WHITE : TE_RED) : TE_G2);
-    if (song.rec) {
-        te_disc(224, 12, 8, TE_RED);
-        cv_text(176, 4, &FONT_S, "rec", TE_RED);
-        if (song.g[G_CLOCK] != 0)                       /* the click is on */
-            cv_text(168, 22, &FONT_S, "click", TE_G3);
-    } else {
-        cv_text(240 - text_w(&FONT_S, title) - 4, 5, &FONT_S, title, tc);
-        if (song.solo)
-            cv_text(236 - text_w(&FONT_S, "solo"), 22, &FONT_S, "solo", C_WHITE);
-    }
-    cv_rect(0, 39, 240, 1, TE_G1);
-    cv_blit(0, 0);
-}
-
 /* --------------------------------------------------------------- TRACKS --- */
 /* swing, MPC style: "62%" */
 UI_SMALL static void swing_str(char *b, int32_t v)            /* 0 straight .. 100 the most (params.c F_SWING) */
@@ -195,75 +104,20 @@ UI_SMALL static void swing_str(char *b, int32_t v)            /* 0 straight .. 1
     fmt_int(b, clamp(v, 0, 100));
 }
 
+/* A short stepped decay per quarter-note; stopped keeps the original scene.
+ * Use the musical clock, not wall time, so external sync and tempo changes follow. */
+UI_SMALL static uint32_t home_sun_light(void)
+{
+    return song.playing ? 16u-(clk_pos>>19) : 16u;
+}
+
 UI_SMALL static void studio_tracks_draw(void)
 {
-    static uint32_t head, rows[NTRK], footer;
-    uint32_t i, j;
-    te_header("tracks", TE_G3, &head);
-    for (i = 0; i < NTRK; i++) {
-        track_t *t = &trk[i];
-        char b[24], e[16];
-        uint32_t selected = song.sel == i, len = (uint32_t)clamp(t->p[P_SLEN], 1, 64);
-        uint32_t level = i == TRK_DRUM ? song.g[G_DRLVL] : t->p[P_LEVEL];
-        uint32_t silent = trk_silent(t) || !level, pos = t->seq_idx % len, rec = (song.rec >> i) & 1u;
-        uint32_t solo = (song.solo >> i) & 1u, bank = song.playing ? pos / 16u : 0u, h;
-        uint16_t col = TE_COL[i], dim = TE_DIM[i];
-        if (i == TRK_DRUM) {
-            str_cpy(b, DRUM_KIT_NAMES[drum_kit()], sizeof b);
-            te_lower(e, "drums", sizeof e);
-        } else {
-            trk_short_name(i, b);
-            te_lower(e, ENGINES[t->eng_req % NENGINES]->name, sizeof e);
-        }
-        b[13] = 0;
-        h = studio_hash(selected + level * 7u + silent * 997u + rec * 1999u + solo * 4999u + len * 37u +
-                        song.playing * 7u + pos * 71u + bank * 13u, b);
-        for (j = 0; j < len; j++) h = h * 31u + (uint32_t)trk_step_on(t, j);
-        if (!ui.force && h == rows[i]) continue;
-        rows[i] = h;
-        cv_begin(240, 36, C_BLACK);
-        cv_rect(2, 3, 26, 30, selected ? col : dim);   /* the track tile */
-        {
-            char n[2] = {(char)('1' + i), 0};
-            cv_text(11, 10, &FONT_S, n, selected ? C_BLACK : col);
-        }
-        cv_text(34, 1, &FONT_S, b, selected ? C_WHITE : TE_G4);
-        if (34 + text_w(&FONT_S, b) + 6 + text_w(&FONT_S, e) < 196)
-            cv_text(34 + text_w(&FONT_S, b) + 6, 1, &FONT_S, e, selected ? col : TE_G3);
-        if (rec) {
-            cv_rect(200, 2, 36, 15, TE_RED);
-            cv_text(206, 1, &FONT_S, "rec", C_WHITE);
-        } else if (solo) {
-            cv_rect(200, 2, 36, 15, C_WHITE);
-            cv_text(202, 1, &FONT_S, "solo", C_BLACK);
-        } else if (silent) {
-            cv_text(204, 1, &FONT_S, "mute", TE_G3);
-        }
-        for (j = 0; j < 16u; j++) {                    /* the 16 steps in view */
-            uint32_t p = bank * 16u + j, on = 0;
-            if (len <= 16u) {
-                if (p < len) on = trk_step_on(t, p) ? 2u : 1u;
-            } else {                                    /* > 16 and stopped: the whole pattern, folded */
-                uint32_t a = j * len / 16u, z = (j + 1u) * len / 16u, k;
-                if (song.playing) {
-                    if (p < len) on = trk_step_on(t, p) ? 2u : 1u;
-                } else {
-                    on = 1;
-                    for (k = a; k < z; k++) if (trk_step_on(t, k)) on = 2;
-                }
-            }
-            cv_rect(34 + (int32_t)j * 10, 21, 8, 9,
-                    !on ? C_BLACK : on == 2u ? (silent ? TE_G3 : selected ? col : dim) : TE_G1);
-            if (on == 2u && !selected && !silent)
-                cv_rect(34 + (int32_t)j * 10, 21, 8, 2, col);
-            if (song.playing && p == pos)
-                cv_rect(34 + (int32_t)j * 10, 31, 8, 2, C_WHITE);
-        }
-        cv_rect(198, 23, 38, 5, TE_G1);                /* the level */
-        if (!silent)
-            cv_rect(198, 23, (int32_t)level * 38 / 127, 5, selected ? col : TE_G3);
-        cv_blit(0, 40 + i * 36);
-    }
+    static uint32_t body,footer;
+    uint32_t sig=song.sel+song.solo*7u+song.rec*31u+home_sun_light()*7919u;
+    char name[16];
+    if(ui.force) draw_frame();
+    draw_head();
     {   /* KNOB 1 swing (the global groove), 2 level, 3 steps, 4 pan of the selected track */
         track_t *t = TSEL;
         static char v[4][8];
@@ -279,7 +133,21 @@ UI_SMALL static void studio_tracks_draw(void)
         ratio[1] = t->p[P_MUTE] ? 0 : (int32_t)lvl * 1000 / 127;
         ratio[2] = (t->p[P_SLEN] - 1) * 1000 / 63;
         ratio[3] = (t->p[P_PAN] + 64) * 1000 / 127;
-        te_dials(184, lab, val, ratio, song.sel, &footer);
+
+        te_dials(lab, val, ratio, song.sel, &footer);
+
+    }
+    for(uint32_t r=0;r<NTRK;r++) sig=sig*31u+steps_hash(&trk[r])+trk[r].seq_idx*71u+
+        trk[r].p[P_MUTE]*101u+trk_level(r)*17u;
+    sig+=song.playing+up_gen+TSEL->preset*131u+TSEL->eng_req*104729u+TSEL->user*65537u;
+    if(ui.force||sig!=body) {
+        body=sig;cv_begin(240,124,C_BLACK);graph_home();cv_blit(0,74);
+        cv_begin(240,38,C_BLACK);
+        trk_short_name(song.sel,name);
+        int32_t x=cv_text(4,0,&FONT_S,name,C_WHITE);
+        cv_text(x+8,0,&FONT_S,is_drum(TSEL)?"DRUMS":ENGINES[TSEL->eng_req%NENGINES]->name,TE_COL[song.sel]);
+        cv_text(4,20,&FONT_S,"PRESETS: SOUND / ALGO: TRACK",TE_G4);
+        cv_blit(0,202);
     }
 }
 
@@ -329,64 +197,60 @@ UI_SMALL static void pads_tick(void)                             /* once a frame
 
 UI_SMALL static void groove_screen_draw(void)
 {
-    static uint32_t head, cache;
-    const drum_groove_t *p = &DRUM_GROOVES[groove_sel];
-    uint32_t i, k, sig;
-    char b[16];
-    te_header(drum_page == 4 ? "rhythm" : "groove", TE_DRUM, &head);
-    sig = groove_sel + groove_cursor * 13u + groove_lane * 257u + groove_confirm * 8191u;
-    sig += groove_preview.active * 65537u;
-    sig += drum_page * 7919u + (uint32_t)(groove_shape.offset + 64) * 31u +
-           groove_shape.part * 71u + groove_shape.sync * 239u + (uint32_t)(groove_shape.feel + 32) * 101u;
-    sig = studio_hash(sig, ui.msg_t ? ui.msg : "");
-    if (!ui.force && sig == cache) return;
-    cache = sig;
-    cv_begin(240, 120, C_BLACK);
-    cv_text(4, 4, &FONT_S, p->name, C_WHITE);
-    fmt_int(b, p->len); str_cpy(b + str_len(b), " STEPS", sizeof b - str_len(b));
-    cv_text(4, 24, &FONT_S, b, TE_G4);
-    cv_text(144, 24, &FONT_S, N_SDIV[p->div], TE_G4);
-    for (k = 0; k < 5; k++) {
-        static const uint8_t lanes[5] = {0, 2, 3, 4, 5};
-        cv_text(4, 46 + (int32_t)k * 14, &FONT_S, LANE_SHORT[lanes[k]], TE_G3);
-        for (i = 0; i < 16 && (groove_cursor / 16u) * 16u + i < p->len; i++) {
-            uint32_t step = (groove_cursor / 16u) * 16u + i;
-            dstep_t s = drum_groove_shaped_step(groove_sel, step, &groove_shape);
-            cv_rect(52 + (int32_t)i * 11, 49 + (int32_t)k * 14, 9, 9,
-                    dstep_has(&s, lanes[k]) ? lvl_col(dstep_lvl(&s, lanes[k])) : TE_G1);
-            if (step == groove_cursor && lanes[k] == groove_lane)
-                cv_rect(52 + (int32_t)i * 11, 48 + (int32_t)k * 14, 9, 1, C_WHITE);
+    static uint32_t cache,cards;
+    const drum_groove_t *p=&DRUM_GROOVES[groove_sel];
+    const char *lab[4]={"GROOVE","STEP","SOUND","HEAR"};
+    char v[4][12],b[24];const char *val[4]={v[0],v[1],v[2],v[3]};
+    int32_t ratio[4]={-1,-1,-1,-1};uint32_t i,k,sig;
+    if(ui.force) draw_frame();draw_head();
+    fmt_int(v[0],groove_sel+1);fmt_int(v[1],groove_cursor+1);
+    str_cpy(v[2],LANE_SHORT[groove_lane],12);str_cpy(v[3],"TURN",12);
+    if(drum_page==4) {
+        lab[0]="TARGET";lab[1]="SHIFT";lab[2]="SYNCOP";lab[3]="FEEL";
+        str_cpy(v[0],groove_shape.part==RHYTHM_PART_ALL?"ALL":LANE_SHORT[groove_shape.part],12);
+        fmt_int(v[1],groove_shape.offset);fmt_int(v[2],groove_shape.sync);fmt_int(v[3],groove_shape.feel);
+    }
+
+    te_dials(lab,val,ratio,drum_page,&cards);
+    sig=groove_sel+groove_cursor*13u+groove_lane*257u+groove_confirm*8191u+groove_preview.active*65537u;
+    sig+=drum_page*7919u+(uint32_t)(groove_shape.offset+64)*31u+groove_shape.part*71u+
+        groove_shape.sync*239u+(uint32_t)(groove_shape.feel+32)*101u;
+    if(!ui.force&&sig==cache) return;
+    cache=sig;
+    cv_begin(240,124,C_BLACK);
+    cv_text(4,0,&FONT_S,p->name,C_WHITE);
+    fmt_int(b,p->len);str_cpy(b+str_len(b)," STEPS",sizeof b-str_len(b));
+    cv_text(4,18,&FONT_S,b,TE_G4);cv_text(96,18,&FONT_S,N_SDIV[p->div],TE_G4);
+    if(groove_preview.active) cv_text(164,18,&FONT_S,"PREVIEW",TE_DRUM);
+    for(k=0;k<5;k++) {
+        static const uint8_t lanes[5]={0,2,3,4,5};
+        cv_text(4,42+(int32_t)k*14,&FONT_S,LANE_SHORT[lanes[k]],TE_G4);
+        for(i=0;i<16&&(groove_cursor/16u)*16u+i<p->len;i++) {
+            uint32_t step=(groove_cursor/16u)*16u+i;
+            dstep_t st=drum_groove_shaped_step(groove_sel,step,&groove_shape);
+            cv_rect(52+(int32_t)i*11,45+(int32_t)k*14,9,9,
+                dstep_has(&st,lanes[k])?lvl_col(dstep_lvl(&st,lanes[k])):TE_G1);
+            if(step==groove_cursor&&lanes[k]==groove_lane)
+                cv_rect(52+(int32_t)i*11,44+(int32_t)k*14,9,1,C_WHITE);
         }
     }
-    cv_blit(0, 40);
-    cv_begin(240, 80, C_BLACK);
-    cv_text(4, 0, &FONT_S, groove_confirm ? "OCT+ AGAIN / HOLD" : "OCT+ APPLY OCT- LISTEN", C_WHITE);
-    cv_text(4, 20, &FONT_S, drum_page == 4 ? "1 TARGET  2 SHIFT" : "1 GROOVE  2 STEP", TE_G3);
-    cv_text(4, 40, &FONT_S, drum_page == 4 ? "3 SYNC  4 FEEL" : "3 SOUND  4 AUDITION", TE_G3);
-    fmt_int(b, groove_cursor + 1);
-    cv_text(4, 60, &FONT_S, b, TE_G4);
-    cv_text(52, 60, &FONT_S, LANE_SHORT[groove_lane], TE_G4);
-    if (groove_preview.active) cv_text(112, 60, &FONT_S, "PREVIEW", C_WHITE);
-    if (drum_page == 4) {
-        cv_rect(0, 56, 240, 24, C_BLACK);
-        cv_text(4, 60, &FONT_S, groove_shape.part == RHYTHM_PART_ALL ? "ALL" : LANE_SHORT[groove_shape.part], TE_G4);
-        fmt_int(b, groove_shape.offset); cv_text(58, 60, &FONT_S, b, TE_G4);
-        cv_text(102, 60, &FONT_S, groove_shape.sync == 2 ? "FULL" : groove_shape.sync ? "ALT" : "OFF", TE_G4);
-        fmt_int(b, groove_shape.feel); cv_text(182, 60, &FONT_S, b, TE_G4);
-    }
-    if (ui.msg_t) { cv_rect(0, 0, 240, 20, C_WHITE); cv_text(4, 2, &FONT_S, ui.msg, C_BLACK); }
-    cv_blit(0, 160);
+    cv_blit(0,74);cv_begin(240,38,C_BLACK);
+    cv_text(4,0,&FONT_S,drum_page==4?"RHYTHM / T4":"GROOVE / T4",C_WHITE);
+    cv_text(4,20,&FONT_S,groove_confirm?"OCT+ AGAIN / HOLD":groove_preview.active?
+        "OCT- STOP / OCT+ APPLY":"OCT- LISTEN / OCT+ APPLY",TE_G4);
+    cv_blit(0,202);
 }
 
 UI_SMALL static void drum_screen_draw(void)
 {
-    static uint32_t head, title_sig, body_sig, footer;
+    static uint32_t title_sig, body_sig, footer;
     uint32_t i, j, len = (uint32_t)clamp(TDRUM->p[P_SLEN], 1, 64), kit = drum_kit(), sig, bank;
+    char st[16];
     if (drum_page >= 3) { groove_screen_draw(); return; }
     if (drum_cursor >= len) drum_cursor = (uint8_t)(len - 1u);
     bank = drum_cursor / 16u;
     {
-        char st[16], nm[9];
+        char nm[9];
         const char *style = DRUM_KIT_STYLES[kit];
         if (kit >= DRUM_SYN) {                          /* SYN1..4: the name you gave it (editor DRUM SYNTH) */
             memcpy(nm, dsu_kit(kit - DRUM_SYN)->name, 8);
@@ -396,22 +260,22 @@ UI_SMALL static void drum_screen_draw(void)
         }
         te_lower(st, style, sizeof st);
         st[12] = 0;
-        te_header(st, TE_DRUM, &head);
+        draw_head();
     }
     sig = kit * 131u + drum_page * 7u + drum_lane * 977u + bank * 31u + len + (uint32_t)drum_tweaked() * 7919u;   /* title band */
     if (ui.force || sig != title_sig) {
         char b[8];
         title_sig = sig;
-        cv_begin(240, 44, C_BLACK);
-        cv_rect(2, 4, 34, 34, TE_DRUM);
-        fmt_int(b, (int32_t)kit + 1);
-        cv_text(19 - text_w(&FONT_S, b) / 2, 13, &FONT_S, b, C_BLACK);
-        cv_text(44, 6, &FONT_L, DRUM_KIT_NAMES[kit], C_WHITE);
-        cv_text(194, 1, &FONT_S, "grid", drum_page == 0 ? C_WHITE : TE_G3);
-        cv_text(194, 15, &FONT_S, "kit", drum_page == 1 ? C_WHITE : TE_G3);
-        cv_text(194, 29, &FONT_S, "sound", drum_page == 2 ? C_WHITE : TE_G3);
-        cv_rect(188, 5 + (int32_t)drum_page * 14, 3, 9, TE_DRUM);
-        cv_blit(0, 40);
+        cv_begin(240,24,C_BLACK);
+        fmt_int(b,(int32_t)kit+1);
+        cv_text(4,2,&FONT_S,b,TE_DRUM);
+        cv_text(36,2,&FONT_S,DRUM_KIT_NAMES[kit],C_WHITE);
+        cv_blit(0,74);
+        cv_begin(240,38,C_BLACK);
+        cv_text(4,0,&FONT_S,drum_page==0?"DRUM GRID":drum_page==1?"DRUM KIT":"DRUM SOUND",TE_DRUM);
+        cv_text(236-text_w(&FONT_S,st),0,&FONT_S,st,TE_G4);
+        cv_text(4,20,&FONT_S,"SELECT: PAGE / PRESETS: KIT",TE_G4);
+        cv_blit(0,202);
     }
     sig = drum_page + drum_lane * 7u + drum_cursor * 101u + song.playing * 71u + len * 3u;
     for (i = 0; i < DRUM_LANES; i++) sig = sig * 5u + (uint32_t)(drum_tune[i] + 8) * 9u + (uint32_t)(drum_dec[i] + 4);
@@ -463,7 +327,7 @@ UI_SMALL static void drum_screen_draw(void)
                 te_text_c(x + 28, y + 4, LANE_SHORT[i], pad_lit[i] ? C_BLACK : i == drum_lane ? C_WHITE : TE_G3);
             }
         }
-        cv_blit(0, 84);
+        cv_blit(0, 98);
     }
     {
         static char v[4][12];
@@ -482,7 +346,7 @@ UI_SMALL static void drum_screen_draw(void)
             ratio[2] = v[2][0] == 'o' ? 1000 : 0;
             ratio[3] = dstep_has(s, drum_lane) ? (int32_t)lvl_rank(dstep_lvl(s, drum_lane)) * 333 : 0;   /* ghost left ..
                                                                      * hard right (2.5: it followed the stored order) */
-            te_dials(184, LG, val, ratio, 1u, &footer);
+            te_dials( LG, val, ratio, 1u, &footer);
         } else if (drum_page == 2u) {                  /* SOUND (2.7): the sound, its TUNE and DECAY, the drums' level */
             str_cpy(v[0], LANE_SHORT[drum_lane], 8);
             fmt_int(v[1], drum_tune[drum_lane]);
@@ -494,7 +358,7 @@ UI_SMALL static void drum_screen_draw(void)
             ratio[1] = (drum_tune[drum_lane] - DRUM_TUNE_MIN) * 1000 / (DRUM_TUNE_MAX - DRUM_TUNE_MIN);
             ratio[2] = (drum_dec[drum_lane] - DRUM_DEC_MIN) * 1000 / (DRUM_DEC_MAX - DRUM_DEC_MIN);
             ratio[3] = song.g[G_DRLVL] * 1000 / 127;
-            te_dials(184, LS, val, ratio, 3u, &footer);
+            te_dials( LS, val, ratio, 3u, &footer);
         } else {
             fmt_int(v[0], (int32_t)kit + 1);
             fmt_int(v[1], song.g[G_DRLVL] * 100 / 127);
@@ -504,7 +368,7 @@ UI_SMALL static void drum_screen_draw(void)
             ratio[1] = song.g[G_DRLVL] * 1000 / 127;
             ratio[2] = song.g[G_DRREV] * 1000 / 127;
             ratio[3] = (TDRUM->p[P_PAN] + 64) * 1000 / 127;
-            te_dials(184, LK, val, ratio, 2u, &footer);
+            te_dials( LK, val, ratio, 2u, &footer);
         }
     }
 }
@@ -789,111 +653,78 @@ UI_SMALL static void rec_rows(uint32_t rt, uint32_t take, uint32_t y0, uint32_t 
  * stay in view; the REC LED blinks while armed, is lit during the take. */
 UI_SMALL static void rec_screen_draw(void)
 {
-    static uint32_t head, body, rows, foot, dials;
+    static uint32_t body,rows,foot,dials;
     static uint8_t layout;
-    uint32_t sig, take = ft_on, empty = take || project_empty(), rt = take ? ft_trk % NTRK : song.sel;
-    uint32_t blink = (fm1_ms / 250u) & 1u, secs = take ? ft_t * CTL / FS : 0u, bars = 0, bpm = 0;
-    uint32_t lay = take ? 1u : 2u, free = empty && !rec_tempo && !take, count = ci_on;
-    if (take)
-        bars = ft_fit(ft_t, &bpm);
-    if (!rec_shown || lay != layout) {
-        lcd_fill(0, 0, 240, 240, C_BLACK);
-        ui.force = 1;
-    }
-    rec_shown = 1;
-    layout = (uint8_t)lay;
-    te_header(take ? "free take" : count ? "count-in" : "rec ready", TE_RED, &head);
-    if (take) {                                         /* free take: the time, the loop it makes */
-        sig = 1000003u + rt * 7919u + blink * 31u + secs * 131u + bars * 17u + bpm * 3u;
-        if (ui.force || sig != body) {
-            char b[24];
-            uint32_t n = secs > 99u ? 99u : secs;
-            body = sig;
-            cv_begin(240, 106, C_BLACK);
-            te_disc(18, 30, 9, blink ? TE_RED : TE_DIM[3]);
-            if (n >= 10u)
-                te_digit(36, 4, 32, 56, 7, n / 10u, C_WHITE);
-            te_digit(76, 4, 32, 56, 7, n % 10u, C_WHITE);
-            cv_text(112, 44, &FONT_S, "s", TE_G3);
-            cv_rect(132, 6, 1, 54, TE_G1);
-            if (bars) {
-                fmt_int(b, (int32_t)bars);
-                cv_text(146, 4, &FONT_L, b, TE_COL[rt & 3u]);
-                cv_text(146 + text_w(&FONT_L, b) + 6, 18, &FONT_S, bars == 1u ? "bar" : "bars", TE_G3);
-                fmt_int(b, (int32_t)bpm);
-                cv_text(146, 42, &FONT_S, b, C_WHITE);
-                cv_text(146 + text_w(&FONT_S, b) + 4, 42, &FONT_S, "bpm", TE_G3);
-            } else {
-                cv_text(146, 4, &FONT_L, "-", TE_G3);
-            }
-            te_text_c(120, 80, "press rec on the 1", TE_RED);
-            cv_blit(0, 42);
+    uint32_t take=ft_on,empty=take||project_empty(),rt=take?ft_trk%NTRK:song.sel;
+    uint32_t blink=(fm1_ms/250u)&1u,secs=take?ft_t*CTL/FS:0u,bars=0,bpm=0;
+    uint32_t lay=take?1u:2u,free=empty&&!rec_tempo&&!take,count=ci_on;
+    if(take) bars=ft_fit(ft_t,&bpm);
+    if(!rec_shown||lay!=layout) {lcd_fill(0,0,240,240,C_BLACK);ui.force=1;}
+    rec_shown=1;layout=(uint8_t)lay;
+    if(ui.force) draw_frame();
+    draw_head();
+    if(take) {
+        uint32_t sig=1000003u+rt*7919u+blink*31u+secs*131u+bars*17u+bpm*3u;
+        if(ui.force||sig!=body) {
+            char b[24];uint32_t n=secs>99u?99u:secs;
+            body=sig;cv_begin(240,98,C_BLACK);
+            te_disc(18,30,9,blink?TE_RED:TE_DIM[3]);
+            if(n>=10u) te_digit(36,4,32,56,7,n/10u,C_WHITE);
+            te_digit(76,4,32,56,7,n%10u,C_WHITE);
+            cv_text(112,44,&FONT_S,"S",TE_G3);
+            cv_rect(132,6,1,54,TE_G2);
+            if(bars) {
+                fmt_int(b,(int32_t)bars);
+                cv_text(146,4,&FONT_L,b,TE_COL[rt]);
+                cv_text(146+text_w(&FONT_L,b)+6,18,&FONT_S,bars==1u?"BAR":"BARS",TE_G3);
+                fmt_int(b,(int32_t)bpm);
+                cv_text(146,42,&FONT_S,b,C_WHITE);
+                cv_text(146+text_w(&FONT_S,b)+4,42,&FONT_S,"BPM",TE_G3);
+            } else cv_text(146,4,&FONT_L,"-",TE_G3);
+            te_text_c(120,80,"PRESS REC ON THE 1",TE_RED);
+            cv_blit(0,26);
         }
-        rec_rows(rt, take, 148u, &rows);
-        if (ui.force || foot != 1u) {
-            foot = 1u;
-            cv_begin(240, 16, C_BLACK);
-            cv_text(4, 0, &FONT_S, "rec: close", TE_G3);
-            cv_text(236 - text_w(&FONT_S, "play: drop"), 0, &FONT_S, "play: drop", TE_G3);
-            cv_blit(0, 224);
-        }
-        return;
-    }
-    foot = 0;
-    /* armed / counting in: what happens next */
-    sig = 2000003u + empty * 7u + free * 11u + rec_count * 13u + count * 17u + ci_beat * 19u + blink * 31u +
-          rec_quant_off * 37u;
-    if (ui.force || sig != body) {
-        static const char *const L1[3] = {"play freely", "play a note", "press play"};
-        static const char *const L2[3] = {"then rec on the 1", "it starts the loop", "4 clicks, then rec"};
-        static const char *const L3[3] = {"the tempo follows you", "play: go  rec: cancel", "rec: cancel"};
-        uint32_t m = free ? 0u : rec_count ? 2u : 1u;
-        body = sig;
-        cv_begin(240, 64, C_BLACK);
-        if (count) {                                    /* the count-in: 4, 3, 2, 1 */
-            te_digit(96, 4, 30, 54, 6, 4u - (ci_beat > 3u ? 3u : ci_beat), C_WHITE);
-            te_disc(60, 31, 12, TE_RED);
-            cv_text(144, 14, &FONT_S, "count-in", TE_G4);
-            cv_text(144, 34, &FONT_S, "rec: cancel", TE_G3);
-        } else {
-            te_disc(28, 30, 18, blink ? TE_RED : TE_DIM[3]);
-            te_disc(28, 30, 7, C_BLACK);
-            cv_text(60, 6, &FONT_S, L1[m], C_WHITE);
-            cv_text(60, 24, &FONT_S, L2[m], TE_G4);
-            cv_text(60, 42, &FONT_S, L3[m], TE_G3);
-        }
-        cv_blit(0, 42);
-    }
-    rec_rows(rt, 0u, 106u, &rows);
-    {   /* the dials: how it records */
+        rec_rows(rt,take,124u,&rows);
+    } else {
+        static const char *const L1[]={"PLAY FREELY","PLAY A NOTE","PRESS PLAY"};
+        static const char *const L2[]={"THEN REC ON THE 1","IT STARTS THE LOOP","4 CLICKS, THEN REC"};
+        uint32_t m=free?0u:rec_count?2u:1u;
+        uint32_t sig=2000003u+empty*7u+free*11u+rec_count*13u+count*17u+ci_beat*19u+blink*31u;
         static char v[3][10];
-        static const char *const LAB_E[4] = {"mode", "length", "start", "quant"};
-        static const char *const LAB_F[4] = {"mode", "", "", "quant"};
-        static const char *const LAB_N[4] = {"", "length", "start", "quant"};
-        static const char *const LAB_0[4] = {"", "", "", ""};
-        const char *val[4] = {v[0], v[1], v[2], rec_quant_off ? "off" : "on"};   /* (2.7) QUANT */
-        int32_t ratio[4] = {0, 0, 0, 0};
-        uint32_t len = (uint32_t)clamp(TSEL->p[P_SLEN], 1, 64);
-        str_cpy(v[0], rec_tempo ? "tempo" : "free", sizeof v[0]);
-        if (len % 16u == 0u) {
-            fmt_int(v[1], (int32_t)(len / 16u));
-            str_cpy(v[1] + str_len(v[1]), len == 16u ? " bar" : " bars", 6);
-        } else {
-            fmt_int(v[1], (int32_t)len);
-            str_cpy(v[1] + str_len(v[1]), " st", 4);
+        static const char *const LAB_E[]={"MODE","LENGTH","START","QUANT"};
+        static const char *const LAB_F[]={"MODE","","","QUANT"};
+        static const char *const LAB_N[]={"","LENGTH","START","QUANT"};
+        const char *val[]={v[0],v[1],v[2],rec_quant_off?"OFF":"ON"};
+        int32_t ratio[4];uint32_t len=(uint32_t)clamp(TSEL->p[P_SLEN],1,64);
+        str_cpy(v[0],rec_tempo?"TEMPO":"FREE",sizeof v[0]);
+        fmt_int(v[1],(int32_t)(len%16u?len:len/16u));
+        str_cpy(v[1]+str_len(v[1]),len%16u?" ST":len==16?" BAR":" BARS",6);
+        str_cpy(v[2],rec_count?"COUNT":"NOTE",sizeof v[2]);
+        ratio[0]=rec_tempo?1000:0;ratio[1]=(int32_t)(len-1u)*1000/63;
+        ratio[2]=rec_count?1000:0;ratio[3]=rec_quant_off?0:1000;
+        const char *const *lab=!empty?LAB_N:free?LAB_F:LAB_E;
+        for(uint32_t k=0;k<4;k++) if(!lab[k][0]) val[k]="";
+        te_dials(lab,val,ratio,rt*7u+count*3u,&dials);
+        rec_rows(rt,0u,74u,&rows);
+        if(ui.force||sig!=body) {
+            body=sig;cv_begin(240,44,C_BLACK);
+            if(count) {
+                char b[4];fmt_int(b,4u-(ci_beat>3u?3u:ci_beat));
+                cv_text(8,12,&FONT_S,"COUNT IN",TE_RED);
+                cv_text(176,4,&FONT_L,b,C_WHITE);
+            } else {
+                cv_text(8,4,&FONT_S,L1[m],C_WHITE);
+                cv_text(8,24,&FONT_S,L2[m],TE_G4);
+            }
+            cv_blit(0,154);
         }
-        str_cpy(v[2], rec_count ? "count" : "note", sizeof v[2]);
-        ratio[0] = rec_tempo ? 1000 : 0;
-        ratio[1] = (int32_t)(len - 1u) * 1000 / 63;
-        ratio[2] = rec_count ? 1000 : 0;
-        ratio[3] = rec_quant_off ? 0 : 1000;
-        {
-            const char *const *lab = count ? LAB_0 : !empty ? LAB_N : free ? LAB_F : LAB_E;
-            uint32_t k;
-            for (k = 0; k < 4u; k++)
-                if (!lab[k][0])
-                    val[k] = "";                        /* (a dial not shown: no value either) */
-            te_dials(184, lab, val, ratio, rt * 7u + count * 3u, &dials);
-        }
+    }
+    uint32_t fs=lay+rt*7u+count*37u+free*13u;
+    if(ui.force||fs!=foot) {
+        foot=fs;cv_begin(240,38,C_BLACK);
+        cv_text(4,0,&FONT_S,take?"FREE TAKE":count?"COUNT IN":"REC READY",TE_RED);
+        char b[3]={'T',(char)('1'+rt),0};cv_text(220,0,&FONT_S,b,TE_COL[rt]);
+        cv_text(4,20,&FONT_S,take?"REC CLOSE / PLAY DROP":count?"REC: CANCEL":free?"TEMPO FOLLOWS YOU":"PLAY GO / REC CANCEL",TE_G4);
+        cv_blit(0,202);
     }
 }

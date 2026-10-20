@@ -81,6 +81,8 @@ static void live_mod_tick(const track_t *t)
                 m->phase = (position % div_units(div)) * reciprocal[div];
             } else {
                 uint32_t inc = (uint32_t)(((1ull << 32) * CTL) / BEAT_U) * (uint32_t)song.g[G_BPM];
+                if (musical_half == 1) inc >>= 1;
+                else if (musical_half == 2) inc <<= 1;
                 m->phase += div < NDIV_SHORT ? inc * DIV_DEN[div] : inc / DIV_BEATS[div - NDIV_SHORT];
             }
         } else m->phase += LFO_INC[m->rate];
@@ -139,7 +141,7 @@ static const uint16_t LSYNC_PULSES[11] = {0, 384, 192, 96, 48, 24, 12, 8, 6, 4, 
 static __attribute__((noinline)) uint32_t lfo_sync_inc(const int16_t *p)   /* (not inlined: its divides stay out of
                                                                            * the audio ISR's loop over the tracks) */
 {
-    uint32_t beat = (uint32_t)FS * 60u / (uint32_t)clamp(song.g[G_BPM], 20, 300), cyc, q, r;
+    uint32_t beat = musical_samples((uint32_t)FS * 60u), cyc, q, r;
     cyc = beat * LSYNC_PULSES[(uint32_t)p[P_LSYNC] % NELEM(LSYNC_PULSES)] / 24u;   /* (p: fx.c units_split asks too) */
     cyc = cyc ? cyc : 1u;
     q = 0xFFFFFFFFu / cyc;
@@ -488,19 +490,12 @@ static void mono_remove(track_t *t, uint32_t note)
  * by the UI with the IRQ off */
 static volatile uint32_t note_hits[NPART][4];
 static uint32_t vis_note_hits[NPART][4]; /* UI-owned attacks, including notes ending between frames. */
-/* the visualiser (ui_vis.c): the tracks a note started on (bit per track), each one's last note, a kick */
-static volatile uint8_t vis_hit, vis_kick_hit, vis_note[NTRK];
-
 static void trk_note_on(track_t *t, uint32_t note, uint32_t vel)
 {
     uint32_t any = 0, i, mode = (uint32_t)t->p[P_VOICE];
     if (trk_silent(t))
         return;                                         /* MUTE, or another track soloed */
-    vis_hit |= (uint8_t)(1u << ((uint32_t)(t - trk) & 3u));
-    vis_note[(uint32_t)(t - trk) & 3u] = (uint8_t)note;
     if (is_drum(t)) {                                   /* the drum track: GM drums (drums.c) */
-        if (note == 35u || note == 36u)
-            vis_kick_hit = 1;
         drum_on(note, vel);
         return;
     }
@@ -751,7 +746,7 @@ static __attribute__((noinline)) void esync_coef(const track_t *t)   /* (not inl
     const int16_t *p = t->p;
     uint32_t *ek = esync_k[(uint32_t)(t - trk) % NTRK];
     if (p[P_ESYNC]) {
-        uint32_t q = (uint32_t)FS * 60u / (uint32_t)clamp(song.g[G_BPM], 20, 300);   /* a beat (a quarter), samples */
+        uint32_t q = musical_samples((uint32_t)FS * 60u);   /* a beat (a quarter), samples */
         ek[0] = esync_one(q, p[P_ATK], 0);
         ek[1] = esync_one(q, p[P_DEC], 1);
         ek[2] = esync_one(q, p[P_REL], 2);

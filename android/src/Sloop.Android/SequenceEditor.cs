@@ -14,7 +14,6 @@ public sealed partial class MainActivity
         content.AddView(Label(editing.Status,14));
         ActionButton("Import MIDI file…",ImportMidiFile);
         if (track == 3) Section("sequence.grooves", "FM1 groove bank", AddDrumGrooveEditor);
-        if (track < 3) Section("sequence.starters", "FM1 musical starter library", AddMusicalStarterEditor);
         long sixteenth=Math.Max(1,pattern.TicksPerQuarter/4);
         int stepCount=checked((int)((pattern.Length.Value+sixteenth-1)/sixteenth));
         int barCount=(stepCount+15)/16;

@@ -7,12 +7,12 @@
  * OCT- closes (from ABOUT: back to the section). */
 /* ------------------------------------------------------------ menu --- */
 /* (2.7: USB SERIAL only in a build with the serial console, FELUCCA_CDC=1: the FM-1's build has none) */
-enum { MI_COLOR, MI_ZOOM, MI_ACCEL, MI_LIGHTS, MI_KEYS, MI_NOTES, MI_LOWCUT, MI_USB,
+enum { MI_COLOR, MI_ZOOM, MI_ACCEL, MI_HELP, MI_LIGHTS, MI_KEYS, MI_NOTES, MI_LOWCUT, MI_USB,
 #if FELUCCA_CDC
        MI_SERIAL,
 #endif
        MI_RATE, MI_MIDISCALE, MI_SWING, MI_CPU1, MI_PANEL, MI_LCLEAR, MI_ABOUT, MI_COUNT };
-static const char *const MI_NAME[MI_COUNT] = {"COLOR", "ZOOM", "KNOB ACCEL", "LIGHTS", "KEYS", "NOTES", "SPEAKER LOWCUT", "USB AUDIO",
+static const char *const MI_NAME[MI_COUNT] = {"COLOR", "ZOOM", "KNOB ACCEL", "PAGE HELP", "LIGHTS", "KEYS", "NOTES", "SPEAKER LOWCUT", "USB AUDIO",
 #if FELUCCA_CDC
                                               "USB SERIAL",
 #endif
@@ -31,6 +31,7 @@ UI_SMALL static int mi_cpu1_have(void)                      /* the second core i
 }
 static const char *const LIGHTS_NAME[LIGHTS_N] = {"OFF", "LOW", "MID", "HIGH"};   /* every button lit, the labels readable */
 static const char *const KEYS_NAME[KEYS_N] = {"OFF", "C KEYS", "WHITE KEYS", "ALL KEYS"};      /* keys lit too, at the LIGHTS level */
+static const char *const MS_TAB[MS_COUNT] = {"SCR", "LGT", "AUD", "MIDI", "TIME", "SYS"};
 #define MI_Y0 26                                   /* the first row, under the section tabs */
 #define MI_DY 50                                   /* a row: the label, the value in large type */
 
@@ -96,9 +97,46 @@ UI_SMALL static const char *mi_value(uint32_t i, uint16_t *c)
     }
 }
 
+/* Help uses the active page descriptors, not a second control state machine. */
+UI_SMALL static void draw_page_help(void)
+{
+    const page_t *pg=cur_page();
+    const char *labels[4];
+    for(uint32_t k=0;k<4;k++) {
+        int16_t *v;const param_desc_t *d=ui.home?home_param(k,&v):page_desc(pg,k,&v);
+        labels[k]=d?d->label:"--";
+        if(pg->fam==FAM_SCL&&pg->id[k]==P_AHOLD) labels[k]="LATCH";
+    }
+    if(pg->scope==SC_STEP) {
+        labels[0]="STEP";labels[1]="NOTE";labels[2]="LENGTH";labels[3]=ui.tie_voice?"VOICE":"FLAG";
+    } else if(pg->scope==SC_TRK) {
+        labels[0]="SWING";labels[1]="LEVEL";labels[2]="STEPS";labels[3]="PAN";
+    } else if(pg->scope==SC_SONG) {
+        labels[0]="ENTRY";labels[1]="SECT";labels[2]="BARS";labels[3]="LENGTH";
+    }
+    for(uint32_t pass=0;pass<2;pass++) {
+        cv_begin(240,120,C_BLACK);cv_oy=-(int32_t)pass*120;
+        cv_text(4,2,&FONT_S,"PAGE HELP",C_WHITE);
+        cv_text(4,22,&FONT_S,ui.home?"HOME":page_title(pg),TE_COL[song.sel]);
+        for(uint32_t k=0;k<4;k++) {
+            char n[4]={'K',(char)('1'+k),':',0};
+            cv_text(4,46+(int32_t)k*20,&FONT_S,n,TE_COL[k]);
+            cv_text(36,46+(int32_t)k*20,&FONT_S,labels[k],TE_G4);
+        }
+        cv_text(4,132,&FONT_S,"SELECT: PAGE",TE_G4);
+        cv_text(4,152,&FONT_S,"PRESETS",TE_G4);
+        cv_text(148,152,&FONT_S,"ALGORITHM",TE_G4);
+        cv_text(4,172,&FONT_S,"SOUND",TE_G4);
+        cv_text(148,172,&FONT_S,"TRACK",TE_G4);
+        cv_text(4,192,&FONT_S,page_hold_hint(pg),TE_G4);
+        cv_text(4,222,&FONT_S,"OCT-: BACK",C_WHITE);
+        cv_oy=0;cv_blit(0,pass*120);
+    }
+}
 UI_SMALL static void draw_menu(void)
 {
     uint32_t i, pass, sec = mi_sec(ui.menu_sel % MI_COUNT);
+    if(ui.menu==3) { if(ui.force) draw_page_help();return; }
     uint32_t sig = ui.menu * 7u + ui.menu_sel * 131u + settings.palette * 1009u + settings.lowcut * 7919u +
                    settings.zoom * 104729u + lights_lvl * 1299709u + lights_keys * 15485863u + ml_count() * 2654435u +
                    lights_notes * 32452843u + usb_full * 49979687u + usb_serial * 86028121u + usb_rate * 15486719u + theme_shown() * 32452867u + theme.crc + cpu1_off * 122949829u +
@@ -110,6 +148,8 @@ UI_SMALL static void draw_menu(void)
         lcd_fill(0, H_HEAD + 1 + 124 + 95, 240, 240 - (H_HEAD + 1 + 124 + 95), C_BLACK);
     cv_begin(240, H_HEAD, C_BLACK);
     cv_text(4, 1, &FONT_S, ui.menu == 2 ? "ABOUT" : "MENU", C_HI);
+    if (ui.menu == 2)
+        cv_text(236 - text_w(&FONT_S, FELUCCA_VERSION " MERTHSOFT"), 1, &FONT_S, FELUCCA_VERSION " MERTHSOFT", C_GRAY);
     if (ui.menu != 2) {                             /* the section and its number, as a page's "ENV DEST 2/2" */
         char t[16];
         str_cpy(t, MS_NAME[sec], sizeof t);
@@ -125,36 +165,37 @@ UI_SMALL static void draw_menu(void)
         cv_begin(240, pass ? 95u : 124u, C_BLACK);
         cv_oy = pass ? -124 : 0;
         if (ui.menu == 2) {
-            cv_text(4, 4, &FONT_L, MERTHSLOOP_NAME, C_WHITE);
-            cv_text(4, 36, &FONT_S, "BASED ON SLOOP / FELUCCA", C_AMB);
-            cv_text(4, 54, &FONT_S, FELUCCA_VERSION, C_HI);
-            cv_text(cv_text(4, 72, &FONT_S, "LEO KUROSHITA", C_HI) + 8, 72, &FONT_S, "@KUROGEDELIC", C_AMB);
-            cv_text(4, 88, &FONT_S, "H\xDCGELTON INSTRUMENTS", C_HI);   /* Latin-1 U-umlaut */
-            cv_text(4, 104, &FONT_S, "HUGELTON.COM", C_AMB);
+            /* A full 16-pixel line per credit; the version lives in the header. */
+            cv_text(4, 4, &FONT_S, MERTHSLOOP_NAME, C_WHITE);
+            cv_text(4, 24, &FONT_S, "BASED ON SLOOP / FELUCCA", C_AMB);
+            cv_text(cv_text(4, 40, &FONT_S, "LEO KUROSHITA", C_HI) + 8, 40, &FONT_S, "@KUROGEDELIC", C_AMB);
+            cv_text(4, 56, &FONT_S, "H\xDCGELTON INSTRUMENTS", C_HI);
+            cv_text(4, 72, &FONT_S, "HUGELTON.COM", C_AMB);
 #if FELUCCA_CPU1
             {
                 char sv[12];
-                cpu1_supplies(sv);                  /* (2.7) SYSVDD, VDC14 now: 1.38V 1.60V (fm1_sys.h) */
-                cv_text(236 - text_w(&FONT_S, sv), 104, &FONT_S, sv, C_GRAY);
+                cpu1_supplies(sv);
+                cv_text(236 - text_w(&FONT_S, sv), 72, &FONT_S, sv, C_GRAY);
             }
 #endif
-            cv_text(4, 119, &FONT_S, "GPL-3.0, NO WARRANTY", C_HI);
-#if FELUCCA_CPU1                                    /* (the host tests include this file without cpu1.c) */
-            cv_text(236 - text_w(&FONT_S, cpu1_label()), 119, &FONT_S, cpu1_label(), C_AMB);   /* 2 CORES / 1 CORE (cpu1.c) */
+            cv_text(4, 88, &FONT_S, "GPL-3.0, NO WARRANTY", C_HI);
+#if FELUCCA_CPU1
+            cv_text(236 - text_w(&FONT_S, cpu1_label()), 88, &FONT_S, cpu1_label(), C_AMB);
 #endif
-            cv_text(4, 132, &FONT_S, "GITHUB.COM/MERTHSOFT/SLOOP-FM1", C_AMB);   /* (the source of this firmware) */
-            cv_text(4, 146, &FONT_S, "FONT: TERMINUS (OFL)", C_DIM);
-            cv_text(4, 159, &FONT_S, "SAMPLES: VERSILIAN (CC0)", C_DIM);
-            cv_text(4, 172, &FONT_S, "+ SONIC PI (CC0)", C_DIM);
-            cv_text(4, 185, &FONT_S, "PHASE: CRISPYZEBRA (GPL)", C_DIM);
-            cv_text(4, 198, &FONT_S, "VOICE: REF. KLATTSCH (MIT)", C_DIM);
+            cv_text(4, 104, &FONT_S, "GITHUB.COM/MERTHSOFT/", C_AMB);
+            cv_text(4, 120, &FONT_S, "SLOOP-FM1", C_AMB);
+            cv_text(4, 136, &FONT_S, "FONT: TERMINUS (OFL)", TE_G4);
+            cv_text(4, 152, &FONT_S, "SAMPLES: VERSILIAN (CC0)", TE_G4);
+            cv_text(4, 168, &FONT_S, "+ SONIC PI (CC0)", TE_G4);
+            cv_text(4, 184, &FONT_S, "PHASE: CRISPYZEBRA (GPL)", TE_G4);
+            cv_text(4, 200, &FONT_S, "VOICE: REF. KLATTSCH (MIT)", TE_G4);
         } else {
             int32_t x = 4;
             for (i = 0; i < MS_COUNT; i++) {        /* the sections as tabs: this one lit */
-                int32_t w = text_w(&FONT_S, MS_NAME[i]);
+                int32_t w = text_w(&FONT_S, MS_TAB[i]);
                 if (i == sec)
                     cv_rect(x - 2, 3, w + 4, 18, C_LINE);
-                cv_text(x, 4, &FONT_S, MS_NAME[i], i == sec ? C_WHITE : C_DIM);
+                cv_text(x, 4, &FONT_S, MS_TAB[i], i == sec ? C_WHITE : C_DIM);
                 x += w + 10;
             }
             for (i = MS_FIRST[sec]; i < MS_FIRST[sec + 1u]; i++) {
@@ -167,7 +208,7 @@ UI_SMALL static void draw_menu(void)
                 cv_rect(4, y + 2, 4, MI_DY - 8, cur ? C_WHITE : TE_COL[r & 3u]);   /* the knob's colour */
                 xv = cv_text(14, y, &FONT_S, k, TE_COL[r & 3u]);
                 cv_text(xv + 6, y, &FONT_S, MI_NAME[i], cur ? C_WHITE : C_GRAY);
-                if (v[0] && text_w(&FONT_L, v) <= 222) {
+                if (v[0] && text_w(&FONT_L, v) <= (i == MI_COLOR ? 144 : 222)) {
                     xv = cv_text(14, y + 16, &FONT_L, v, cur && vc == C_HI ? C_WHITE : vc);
                 } else if (v[0]) {                      /* (too wide for the large type: WHITE KEYS) */
                     xv = cv_text(14, y + 24, &FONT_S, v, cur && vc == C_HI ? C_WHITE : vc);
@@ -177,7 +218,7 @@ UI_SMALL static void draw_menu(void)
                 if (i == MI_COLOR) {                    /* the palette's colours */
                     uint32_t q;
                     for (q = 0; q < 5u; q++)
-                        cv_rect(xv + 10 + (int32_t)q * 14, y + 28, 10, 10, pal[q]);
+                        cv_rect(166 + (int32_t)q * 14, y + 28, 10, 10, pal[q]);
                 }
                 if (i == MI_RATE && usb_rate != usb_rate_now())
                     cv_text(xv + 8, y + 30, &FONT_S, "RESTART", C_AMB);   /* (usb.c: at the next start) */
@@ -300,9 +341,10 @@ UI_SMALL static void mi_set(uint32_t i, int32_t s)
             ui.force = 1;
         }
         break;
+    case MI_HELP:
     case MI_ABOUT:
         if (!s) {
-            ui.menu = 2;
+            ui.menu = i==MI_HELP ? 3 : 2;
             ui.force = 1;
         }
         break;
@@ -318,7 +360,7 @@ UI_SMALL static void menu_input(uint32_t pressed)
     uint32_t k, ok = (pressed >> panel.btn[B_OCTUP]) & 1u, back = (pressed >> panel.btn[B_OCTDN]) & 1u;
     uint32_t sel = ui.menu_sel % MI_COUNT, sec = mi_sec(sel), n = MS_FIRST[sec + 1u] - MS_FIRST[sec];
     if (back) {
-        if (ui.menu == 2)
+        if (ui.menu >= 2)
             ui.menu = 1, ui.force = 1;
         else
             menu_close();

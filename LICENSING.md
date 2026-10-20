@@ -74,3 +74,11 @@ by those owners.
 ## Radio
 
 Felucca never enables the Bluetooth / Wi-Fi radio of the hardware.
+
+### Skiff SPRING adaptation
+
+`firmware/src/spring.c` adapts the SPRING algorithm from
+[illuminus5/skiff](https://github.com/illuminus5/skiff/blob/eda8de411e5b1314e6f5d4a7170ab9cd886f5845/firmware/src/fx.c),
+commit `eda8de411e5b1314e6f5d4a7170ab9cd886f5845`. Its retained source notice credits
+Leo Kuroshita (@kurogedelic), Hügelton Instruments (2026), GPL-3.0-only.
+Only DSP code is adapted; no Skiff sample, image or font assets are included.

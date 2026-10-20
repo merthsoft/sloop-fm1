@@ -1,3 +1,5 @@
+> Historical design: removed from production in MerthSloop 2.7.1.20. USB recording/MIDI and native musical starters remain.
+
 # Firmware musical starter protocol
 
 Command **89**, schema **1**, is additive to INFO protocol version **15**. Command 87 drum grooves and 88 USB playback retain their contracts. Frames use the existing FL SysEx envelope and seven-bit payload bytes. Clients must require protocol >=15 **and** validate command 89 capabilities; a version number alone is not discovery. Unsupported devices show an update message, with no fallback phone generator.

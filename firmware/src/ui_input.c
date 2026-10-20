@@ -41,7 +41,7 @@ UI_SMALL static uint32_t cur_btn(void)                      /* the button of the
 /* PLAY flashes on every beat, as heard (the sound leaves ~9 ms after it is rendered) */
 UI_SMALL static int play_led(void)
 {
-    uint32_t p = clk_pos, lat = HALF_FRAMES * 3u / 2u * (uint32_t)song.g[G_BPM];
+    uint32_t p = clk_pos, lat = musical_units(HALF_FRAMES * 3u / 2u, &(uint8_t){0});
     if (!song.playing)
         return 0;
     p = p >= lat ? p - lat : p + BEAT_U - lat;
@@ -108,7 +108,7 @@ UI_SMALL static uint32_t keys_lit(void)
     track_t *t = TSEL;
     switch (ui.layer) {
     case LY_FX:
-        return punch.req >= 0 ? 1u << punch_key_of_fx((uint32_t)punch.req) : 0u;
+        return punch_active_keys();
     case LY_STEP: {                                /* the steps that play; the playhead blinks */
         uint32_t len = trk_len(t);
         for (i = 0; i < 16u; i++) {

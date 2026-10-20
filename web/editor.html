@@ -4409,7 +4409,9 @@ const THEME = {
     ["AMBER", [[60, 26, 0], [110, 50, 0], [170, 82, 0], [225, 120, 8], [255, 166, 40]]],
     ["CYAN", [[0, 30, 50], [0, 62, 96], [16, 112, 160], [56, 172, 222], [140, 222, 255]]],
     ["RED", [[52, 8, 8], [100, 18, 14], [170, 36, 26], [226, 64, 48], [255, 112, 92]]],
-    ["MONO", [[40, 40, 40], [80, 80, 80], [130, 130, 130], [186, 186, 186], [226, 226, 226]]]],
+    ["MONO", [[40, 40, 40], [80, 80, 80], [130, 130, 130], [186, 186, 186], [226, 226, 226]]],
+    ["NEON", [[23, 18, 48], [56, 32, 92], [140, 126, 184], [224, 80, 218], [64, 224, 240]]]],
+  NEON_TRACKS: [[32, 220, 240], [240, 48, 192], [255, 192, 48], [160, 104, 248]],
   TRACKS: [[40, 124, 255], [30, 204, 112], [255, 198, 24], [255, 98, 26]],
   to565: ([r, g, b]) => ((r >> 3) << 11) | ((g >> 2) << 5) | (b >> 3),
   from565: (v) => [Math.round((((v >> 11) & 31) * 255) / 31), Math.round((((v >> 5) & 63) * 255) / 63), Math.round(((v & 31) * 255) / 31)],
@@ -4479,7 +4481,7 @@ const THEME = {
     if (!m) return null;
     try { return THEME.decode(b64dec(m[1])); } catch (e) { return null; }
   },
-  builtin: (i) => ({ name: THEME.BUILTIN[i][0], c: THEME.BUILTIN[i][1].map((x) => x.slice()), trk: THEME.TRACKS.map((x) => x.slice()), bg: [0, 0, 0], hi: [255, 255, 255] }),
+  builtin: (i) => ({ name: THEME.BUILTIN[i][0], c: THEME.BUILTIN[i][1].map((x) => x.slice()), trk: (THEME.BUILTIN[i][0] === "NEON" ? THEME.NEON_TRACKS : THEME.TRACKS).map((x) => x.slice()), bg: [0, 0, 0], hi: [255, 255, 255] }),
   /* five steps from one colour, as the FM-1's palettes go: dark to the colour, the last lighter toward white; on a light
      background (bg given) the other way: faint (light) to strong (dark) */
   ramp(rgb, bg) {

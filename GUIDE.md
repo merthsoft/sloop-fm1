@@ -658,6 +658,12 @@ The FM-1 holds **one song**: up to **16 steps** of **4 sections, A–D**. Each s
 
 ### Make it live, by playing
 
+**Durable saves:** stopped SAVE A–D writes flash immediately and also commits
+device settings such as the 1/8 swing grid. During playback, the snapshot says
+**QUEUED: STOP TO SAVE**. Stop and release sounding notes, then wait for
+**SECTIONS SAVED TO FLASH** before powering off. Explicit section saves also refresh the startup working loop, including track root/scale, so a restart does not restore an older key while the background autosave is waiting. Failed writes are retried.
+SONG-screen SAVE stores arrangement order; REC stores the selected section.
+
 1. Make a loop (the verse). **SAVE + key 5**: *save A*. Change the loop (the chorus) and save it into **B** (key 6), a bridge into **C** (key 7), an ending into **D** (key 8). Saving over a used section asks for the key again within 3 s.
 2. **Play the sections live: SAVE + key 1–4.** Playing: the section starts on the next bar, every track from its first step, always in time. Stopped: it becomes the loop at once.
 3. **Quick chain:** keep SAVE held and tap several section keys — *A B B C*, any order, repeats allowed, up to 8 — then let go. The first plays on the next bar, then each next one after the previous has played its **pattern length** (the longest track's), round and round. The title line reads *chain A B B C*; the section playing is lit, the next one framed. A single section tap, STOP, or PLAY in song mode ends the chain.
@@ -691,7 +697,7 @@ The song's settings can only be edited while it is stopped (*STOP FIRST*). An em
 | Screen | How to get there | What it shows · what the knobs do |
 | --- | --- | --- |
 | **TRACKS** | tap **HOME** | the performance view: tempo, swing, transport, bar.beat; each track with its sound, steps, playhead, mute / solo / rec badges and level. Dials: KNOB 1 **swing** (global) · KNOB 2 **level** (selected track; on a muted track: unmutes it) · KNOB 3 **steps** (its length) · KNOB 4 **pan** |
-| **Visualiser** | tap **HOME** on TRACKS | fourteen full-screen visualisers; see [The visualiser](#19-the-visualiser) |
+| **Visualiser** | tap **HOME** on TRACKS | seven full-screen visualisers; see [The visualiser](#19-the-visualiser) |
 | **Layer** | hold a layer button | 16 tiles (the white keys) and the four dials, in the layer's colour |
 | **DRUMS** (grid / kit / sound / groove / rhythm) | tap **EDIT** or **SEQ** on TRACKS with the drum track | see [The DRUMS screen](#the-drums-screen) |
 | **REC READY / FREE TAKE / COUNT-IN** | **REC** while stopped | the tracks, then **mode · length · start** on KNOB 1–3 (4-3-2-1 during a count-in); in a free take: the seconds and the loop it would make |
@@ -739,6 +745,7 @@ Tap a button to open its first page (or the last one you used); **tap it again**
 | | **PATTERN** | LEN 1–64 steps | DIV 1/4 … 2BAR | SWG track swing | GATE note length |
 | | **SONG** | the SONG screen | | | |
 | **GLO** | **GLOBAL** | BPM 40–240 | SWING (all tracks) | CLICK: OFF, REC, ON | TUNE ±50 cents |
+| **FX** | **VINYL** | WOW (slow pitch drift) | TONE (darkening) | CRACKLE | — |
 | | **MASTER** | DUST | DUCK | FILT (DJ filter) | ROLL (note-repeat rate) |
 | | **SYSTEM** | OUT (MIDI out): KEYS / SEQ (also on MIDI 2) | SYNC: INT, USB, TRS | IN: NOTES / CLOCK / CH 1–16 (also on MIDI 2) | CPU load, with or without USB connected |
 | | **DRUMS** | CH4: the drum track's MIDI channel (OFF, 1–16, default 10; the same setting as GLO → MIDI → CH4; 2.6: a setting of the FM-1) | LVL drum level | REV drum reverb | DLY drum delay (2.5): the drums into the tempo delay (FX → DLY sets its time, feedback and tone), saved with the project |
@@ -849,6 +856,21 @@ On FX + KNOB 1–3, or GLO → MASTER:
 
 ### Punch-in effects
 
+**HALF** now slows the running musical transport to 0.5x while preserving note
+pitch. Release resumes normal speed from the current position. Saved BPM stays
+unchanged; beat-synced controls follow the slower clock, while free-running voices,
+ordinary envelope times and effect tails remain real-time. HALF is available with
+internal clock only; external synchronization shows "HALF: INT only".
+
+Hold multiple keys to combine one existing punch effect with one LOW/HIGH/PHONE
+filter and GATE. HALF can accompany these. Within a conflicting family, the last
+pressed key wins; releasing it restores the previous held choice. Physical keys
+have priority over MIDI within each family. USB and TRS holds are independent.
+FREEZE stays exclusive with the filter/gate stages. Leaving the FX layer clears
+physical holds; STOP clears all holds. Remote control keeps its single-effect
+contract.
+
+
 **FX + white key**: the effect runs on the whole mix while the key is held and lets go cleanly when you release it. Loops and the gate are locked to the tempo and start on the grid. **Over MIDI (2.7):** set GLO → MIDI 3 → **FX CH**, and that channel's notes F3 … G5 play the same 27 effects (see [the MIDI settings](#all-the-midi-settings-glo--midi-midi-2-26-and-midi-3-27)).
 
 | Key | Effect | Key | Effect |
@@ -860,7 +882,7 @@ On FX + KNOB 1–3, or GLO → MASTER:
 | 5 · C4 | stutter (1/16 triplets) | 13 · D5 | alias (sample-rate drop) |
 | 6 · D4 | reverse | 14 · E5 | gate 1/16 |
 | 7 · E4 | tape stop | 15 · F5 | echo (dotted 1/8) |
-| 8 · F4 | half speed | 16 · G5 | tape wobble |
+| 8 · F4 | HALF: transport 0.5x, same pitch | 16 · G5 | tape wobble |
 
 **FX + black key** (2.6): eleven more, on the black keys from the lowest F# to the highest.
 
@@ -870,7 +892,7 @@ On FX + KNOB 1–3, or GLO → MASTER:
 | G#3 | **KILL MID**: the mids gone (~250 Hz – 2.5 kHz) | G#4 | **AUTO-PAN**: the mix in mono, left and right once a beat |
 | A#3 | **KILL HIGH**: the highs gone (above ~2.5 kHz) | A#4 | **FREEZE**: the mix poured into the reverb and held there for as long as you hold the key; let go and it dies away with the reverb's SIZE |
 | C#4 | **REWIND**: the record pulled back: it slows, stops and spins backwards faster and faster (about a third of a second of the past), then silence until you let go | C#5 | **LOOP 8T**: loop 1/8 triplet |
-| D#4 | **OCT UP**: the mix an octave up | D#5 | **MONO**: left and right in one |
+| D#4 | **DOUBLE TIME**: double the musical tempo while held (pitch unchanged) | D#5 | **VINYL**: momentary wow, tone and crackle |
 | | | F#5 | **FADE OUT**: the mix fades to nothing over two beats |
 
 The screen shows the 27 keys as a keyboard: the white keys in four rows of four, as on the other layers, the black keys above them, each between the two white keys it sits between on the FM-1 (the one after a row's last white key at the right end of that row). The effect held is lit white.
@@ -892,6 +914,12 @@ The texture is saved with the project, and each song section (A–D) has its own
 
 - **FILTER** (FX → FILTER, or **FX + KNOB 4** for the selected track): one knob, left a low-pass, right a high-pass, centre off. It stays when you change the sound, can be locked on a step, and is saved with the project.
 - **Sends** (FX page): DST drive, CHO chorus, DLY delay, REV reverb. The delay and the reverb / chorus settings are global (DLY and REV/CHO pages). The delay's TIME includes dotted 1/8 and 1/16.
+- **FX → REVERB → TYPE**: STEREO keeps the existing reverb (default); SPRING adds
+  a dispersive spring sound. SIZE/DAMP adjust either model. Model changes fade
+  the old tail out before clearing/reusing its buffers; no overlapping tails.
+  A model change requested during FREEZE waits until FREEZE releases. The model
+  is saved with projects and sections; older projects select STEREO.
+
 - **SLICER** (FX → SLICER): a tempo gate (GATE) or stutter (STUT), 16 patterns, 1/8 to 32T, with a depth.
 - **INSERT** (FX → INSERT and INSERT 2, 2.6, after Felucca 1.5): one effect on the track alone, right after its drive; the drum track has one too, on the whole kit and its sends. MIX sets dry / wet. A, B and C change with the type:
 
@@ -918,22 +946,15 @@ On the TRACKS screen, **tap HOME**: the whole screen becomes a visualiser of wha
 
 | # | Style | Shows |
 | --- | --- | --- |
-| 1 | **OSCILLOSCOPE** | the mix's wave, standing still |
-| 2 | **SPECTRUM** | 32 bands with falling caps |
-| 3 | **SPECTROGRAM** | the spectrum scrolling down, black → blue → green → yellow → white |
-| 4 | **LISSAJOUS** | the stereo image: the wider the cloud, the wider the sound |
-| 5 | **VU METERS** | tracks 1–4 in their colours and the mix, with peak holds |
-| 6 | **CIRCLE** | the wave round a ring that swells on every kick |
-| 7 | **ORBIT** | four planets turning in 1, 2, 4 and 8 beats round a sun that pulses with the mix |
-| 8 | **WIRES** | a string per track, set swinging by its notes |
-| 9 | **POLYRHYTHM** | four rings show each track's pattern length, active steps and independent playhead |
-| 10 | **NOTE TRAILS** | scrolling pitches for all three synths, including chords and releases, with drum lanes below |
-| 11 | **GROOVE** | eight steps per track: grid lines, swing, micro timing, hit levels and ratchet repeats |
-| 12 | **STEREO FIELD** | a stereo cloud, left/right balance marker and a width bar |
-| 13 | **SONG JOURNEY** | song order or quick chain, current entry and remaining bars |
-| 14 | **BEAT TERRAIN** | spectrum-driven wireframe hills, moving at the tempo |
+| 1 | **OSCILLOSCOPE** | the mix waveform, standing still |
+| 2 | **SPECTRUM** | 32 frequency bands with falling caps |
+| 3 | **SPECTROGRAM** | scrolling frequency history |
+| 4 | **VU METERS** | tracks 1–4 and master, with peak holds |
+| 5 | **NOTE TRAILS** | played and held synth pitches with high-contrast drum lanes; delay tails excluded |
+| 6 | **GROOVE** | grid, swing, microtiming, hit levels and ratchets |
+| 7 | **SONG JOURNEY** | song/quick-chain order, current section and remaining bars |
 
-The visualiser sees the mix **as if MASTER were all the way up**: with MASTER turned down, even to 0, it still moves at full size. Drawing runs in the UI loop using existing audio/transport snapshots, without adding per-sample rendering to the audio path. See the [14-style screenshot gallery](docs/firmware/VISUALIZERS.md).
+The visualiser sees the mix **as if MASTER were all the way up**: with MASTER turned down, even to 0, it still moves at full size. Drawing runs in the UI loop using existing audio/transport snapshots, without adding per-sample rendering to the audio path. See the [seven-style screenshot gallery](docs/firmware/VISUALIZERS.md).
 
 ---
 
@@ -1625,3 +1646,33 @@ Hold the combination and tap HOME to lock it; HOME, STOP/panic or track changes
 clear it. These live controls retain saved patch settings. See the
 [wah/pan controls](docs/firmware/AUTO-WAH-DESIGN.md) and
 [MerthSloop version policy](docs/BRANDING.md).
+
+### Persistent vinyl
+
+Open **FX → VINYL** for record colour on the full mix. **WOW** adds slow,
+stereo-linked slow wow plus flutter; **TONE** darkens the highs; **CRACKLE** adds
+pops and a little hiss. Start around WOW 15%, TONE 25%, CRACKLE 10% and adjust to
+taste. These controls remain active until changed; the VINYL punch-in applies a temporary preset and restores them on release. All three at zero
+bypasses the effect exactly. Settings are saved per project and song section.
+Noise fades out at STOP; wow and tone still affect live playing. The separate
+**GLO → TEXTURE → VINYL** is an additive background bed, so keep it off unless
+you want extra record noise.
+
+### Spring reflection timing
+
+On **FX → REVERB**, TYPE selects STEREO or SPRING. With SPRING selected,
+knob 2 **SIZE** sets the nominal decay target, knob 3 **DAMP** darkens the tail,
+and knob 4 **TIME** sets the spring round-trip spacing from 20 to 80 ms. Early
+pickups occur around one-half and three-quarters of that time, followed by the
+dispersive tail. This is reflection spacing, not a separate pre-delay. Feedback
+is compensated for TIME so SIZE's nominal decay target stays independent;
+actual tails also depend on damping, dispersion and the sound. FREEZE holds its
+current length until released. TIME is saved with the section/project and is
+inactive for STEREO reverb.
+
+The VINYL punch-in replaces the former MONO key (D#5). It uses a temporary
+WOW/TONE/CRACKLE preset without modifying the persistent FX → VINYL controls.
+Releasing it fades back to those controls. DOUBLE TIME replaces the former
+octave-shift key (D#4): the song runs at twice its stored BPM, preserving pitch,
+and releasing returns to normal or a still-held HALF gesture. Both rate gestures
+are inactive under external SYNC.

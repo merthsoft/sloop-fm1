@@ -8,6 +8,56 @@ the [Android overview](../../README.md#merthsloop-mobile-for-android) covers the
 **SEL** is the physical button between FX and ENV, historically labelled SCL in
 firmware. **SELECT** is the separate rotary encoder. They do different things.
 
+## NEON and the refreshed display
+
+Hold **HOME → SCREEN → COLOR** and choose **NEON**. New settings default to it;
+existing saved colors and editor-created themes remain available. Four knob cards
+follow the physical controls across ordinary editing, held-button maps, live
+modulation and native library screens. The overview shows four track lanes, with
+selected/muted tracks and sequencer position; the striped sun pulses gently
+with the transport beat while playing. Page footers identify track/global
+scope and the action available now. Existing shortcuts, scale-key LEDs, independent
+ties, preview, merge and replacement behavior are retained.
+
+**PAGE HELP**, the fourth SCREEN item, opens a reference for the underlying page.
+Use PRESETS to select it and OCT+ to open; OCT− returns to the menu.
+SONG and record-ready/count-in use the same knob cards, palette, transport header
+and footer spacing. Disabled controls show muted dashes. Running free takes keep
+a large timer and the four-track overview. Existing recording/saving gestures
+are unchanged.
+PRESETS is the left control, ALGORITHM the right. HOME shows the engine name in
+the selected track color beside the preset. LFO/ENV hold hints identify vibrato
+and tremolo instead of a generic actions label.
+
+Envelope and LFO diagrams, signed destination amounts, filter/delay guides, live
+vibrato/tremolo traces, stereo pan and the wah sweep guide replace ambiguous empty
+areas. The diagrams are setting/activity guides, not measured frequency responses.
+
+| Overview | Modulation | Native libraries |
+| --- | --- | --- |
+| ![NEON HOME](../assets/screens/merthsoft/neon/home.png) | ![NEON pan](../assets/screens/merthsoft/neon/pan.png) | ![NEON groove browser](../assets/screens/merthsoft/neon/groove.png) |
+
+The [design and implementation record](UI-REFRESH-DESIGN.md) contains more actual
+screens. Older detailed screenshots below may show the previous layout; controls
+are unchanged.
+
+## Saving sections safely
+
+Hold SAVE and use SAVE A–D (keys 5–8); confirm a used section with a second tap.
+When stopped, this now writes the section to flash before showing SAVED SECTION.
+It also refreshes the startup working-loop snapshot and commits device settings,
+including the 1/8 swing-grid preference. Track root/scale, levels, drum level and
+global swing belong to the saved section. Explicit SAVE does not wait for the
+background autosave interval before protecting the power-on state.
+
+While playing, it captures a snapshot without interrupting audio and says
+**QUEUED: STOP TO SAVE**. Stop playback, release sounding notes, and wait for
+**SECTIONS SAVED TO FLASH** before powering off. The queued section and startup
+snapshot flush as soon as playback stops and voices are quiet; routine settings
+writes retain their idle delay. Failed writes remain pending
+and retry; RAM-only storage is explicitly labeled. SONG-screen SAVE still saves
+the arrangement order; REC stores its selected section.
+
 ## Build a loop in a minute
 
 1. Select drums. Tap EDIT or SEQ to reach **GROOVE**, choose a beat, and press
@@ -19,7 +69,6 @@ firmware. **SELECT** is the separate rotary encoder. They do different things.
 4. On another synth, apply the same progression in **BASS** mode. Add a melody,
    choose sounds and develop the ordinary editable steps you have just created.
 
-| Drum grooves | Musical starters |
 | --- | --- |
 | <img src="../../assets/screens/merthsoft/guide/feature-groove-main.png" width="240" alt="FOUR FLOOR drum groove browser"> | <img src="../../assets/screens/merthsoft/guide/feature-starter-main.png" width="240" alt="POP FOUR progression in the native sequence browser"> |
 
@@ -260,7 +309,7 @@ on ordinary release. Details: [performance modulation](MODULATION-WHEEL.md).
 Hold **FX** and a keyboard key for one of **27 mix-wide punch effects**. The
 sixteen white keys retain their loops, stutter, reverse, tape stop, half speed,
 filters, phone, crush, alias, gate, echo and wobble. Eleven black keys add
-**KILL LOW/MID/HIGH, REWIND, OCT UP, FLANGER, AUTO-PAN, FREEZE, LOOP 8T, MONO
+**KILL LOW/MID/HIGH, REWIND, DOUBLE TIME, FLANGER, AUTO-PAN, FREEZE, LOOP 8T, VINYL
 and FADE OUT**. FX + held **OCT− / OCT+** adds reverb / echo throws. Release returns
 the normal mix; HOME can lock the FX control panel open, freeing the FX-button hand.
 These act on the mix, whereas LFO/ENV modulation acts on one synth.
@@ -291,9 +340,9 @@ project leaves saved flash slots intact.
 
 ## Visualizers, USB and the companion
 
-On TRACKS, tap HOME to open the visualizer and turn SELECT to choose among **14
-styles**. This fork adds **Polyrhythm, Note Trails, Groove, Stereo Field, Song
-Journey and Beat Terrain**. The [complete illustrated gallery](VISUALIZERS.md)
+On TRACKS, tap HOME to open the visualizer and turn SELECT to choose among **seven
+styles**: Oscilloscope, Spectrum, Spectrogram, VU Meters, Note Trails, Groove
+and Song Journey. The last three are fork additions. The [complete illustrated gallery](VISUALIZERS.md)
 describes all available styles. Performance layers and transport remain usable.
 
 Note Trails captures played/held notes rather than continuing released voices or
@@ -313,32 +362,23 @@ with arrangement, samples, sound banks and edited FM6 voices. Load retains a pho
 recovery song before replacement; device preferences and MIDI mappings stay.
 See [song library](<../../android/design docs/FM1-SONG-LIBRARY.md>).
 
-USB playback lets the phone's audio come through the FM-1 speaker/headphones with
-the instrument. Playback negotiates 44.1 kHz independently of upstream's 48 kHz
-capture; return gain/mute and diagnostics are exposed to the app.
+USB audio records the instrument into the phone/computer. App sample previews use
+phone audio; playback into the FM-1 speaker/headphones is unavailable.
 
 Companion protocol 15 provides hardware octave reporting, native pattern and FM6
 editing, sample backup/upload/readback, persistent FM6 base-voice bank saving,
-and canonical drum/musical library discovery. Upstream SYN-kit commands retain IDs 72–76;
-companion extensions use IDs 85–89. Atomic live hardware scene switching remains future work.
+and canonical drum-library discovery. Upstream SYN-kit commands retain IDs 72–76;
+remote performance uses 86 and the drum bank uses 87. Atomic live hardware scene switching remains future work.
 Original Android code is Unlicensed with retained dependency obligations; firmware
 remains GPL. See [current delivery status](<../../android/design docs/STATUS.md>).
 
 ### Find libraries and review prompt edits on the phone
 
-In Android **Sequence**, select a synth and expand **FM1 musical starter library**;
-select Drums to find **FM1 groove bank**. Connect the phone directly to the FM-1
+In Android **Sequence**, select Drums to find **FM1 groove bank**.
+Musical sequence starters remain available directly on the FM-1. Connect the phone directly to the FM-1
 and stop playback before browsing/applying. The banks come from firmware rather
 than duplicated app presets. Native listen/apply and replacement undo remain
 available on the instrument.
-
-| Musical starter entry | Drum groove entry |
-| --- | --- |
-| <img src="../../assets/screens/merthsoft/guide/android-starter-entry.png" width="280" alt="Phone Sequence with FM1 musical starter library expanded"> | <img src="../../assets/screens/merthsoft/guide/android-groove-entry.png" width="280" alt="Phone Sequence with FM1 groove bank expanded"> |
-
-These fresh phone captures show the entry points with FM-1 browsing disabled:
-the phone was connected to the PC for capture. They do not show an active
-hardware connection or pretend to demonstrate a successful hardware apply.
 
 Tap **Describe a sequence · offline recipes** to edit existing notes with a
 supported command. Choose the channel scope and optional note locks, then press

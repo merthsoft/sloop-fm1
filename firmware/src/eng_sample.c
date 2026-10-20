@@ -19,7 +19,6 @@ typedef struct {
     uint16_t z0, nz;
 } smp_set_t;
 #include "felucca_samples.h"
-#include "sample_rom.c"
 
 static const int16_t IMA_STEP[89] = {
     7, 8, 9, 10, 11, 12, 13, 14, 16, 17, 19, 21, 23, 25, 28, 31, 34, 37, 41, 45, 50, 55, 60, 66, 73, 80, 88, 97,
@@ -116,7 +115,7 @@ DSP_INLINE const smp_zone_t *smp_zone(uint32_t zi)
  * index, s[2] previous sample, s[3] current sample, s[4] zone, s[5] step Q16 */
 DSP_INLINE int32_t sample_next_inline(const smp_zone_t *z, voice_t *v, int loop)
 {
-    uint32_t pos = v->ph[0], b = smp_rom_byte(&v->sample_cache, z->off + (pos >> 1));
+    uint32_t pos = v->ph[0], b = SMP_DATA[z->off + (pos >> 1)];
     uint32_t code = (pos & 1u) ? (b >> 4) : (b & 15u);
     int32_t step = IMA_STEP[(uint32_t)v->s[1] <= 88u ? v->s[1] : 88], vd = step >> 3;
     if (code & 4u)

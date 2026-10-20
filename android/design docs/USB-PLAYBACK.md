@@ -1,3 +1,5 @@
+> Historical design: removed from production in MerthSloop 2.7.1.20. USB recording/MIDI and native musical starters remain.
+
 # Phone playback through the FM1
 
 Current delivery: [STATUS.md](STATUS.md). Build and test evidence: [VERIFICATION.md](VERIFICATION.md).

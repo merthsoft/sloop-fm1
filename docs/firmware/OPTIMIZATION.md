@@ -1,3 +1,73 @@
+# Current effects build
+
+MerthSloop 2.7.1.33: **581,176 image bytes**, **388 free**, main static RAM
+**85,656/98,304**, low RAM **22,772/29,496**, pool **332,876/344,064**.
+VINYL reuses its existing ring; stronger modulation and SPRING feedback each add
+one small smoothed/control value. DOUBLE TIME removes the former octave shifter.
+See [effects implementation](EFFECTS-IMPLEMENTATION.md) for integration and limits.
+Figures below retain earlier checkpoints as historical evidence.
+
+# Unreleased effects workbench
+
+HALF transport, limited punch combinations and optional SPRING plus persistent VINYL build to 580,428
+image bytes (1,136 free), with 85,624 bytes main static RAM. Audio pool remains
+332,876/344,064; low RAM remains 22,772. Target cost/inlining checks pass;
+physical audio timing is unmeasured. See [implementation and limits](EFFECTS-IMPLEMENTATION.md).
+The following figures describe the preceding packaged 2.7.1.30 build.
+
+# Current raw-sample build
+
+MerthSloop 2.7.1.30 retains direct factory ADPCM reads. There is no factory sample
+Huffman decoder, per-voice cache or block decompression in the render path.
+Phone/computer playback into the FM-1 and phone access to sequence starters are
+removed; upstream USB recording/MIDI and the native sequence browser remain.
+
+The image is **575,160 bytes**, leaving **6,404 bytes of flash**. Main static RAM
+is **81,592/98,304**, low RAM **22,772**, and audio pool **332,876/344,064**.
+
+Twenty immutable generated lookup/font/drum-metadata tables (20,122 bytes) are
+stored as 8,212 bytes plus decoder/descriptors. They expand once into ordinary
+RAM during cold startup, before audio interrupts or core 1 start. Prediction and
+LZ4 decoding are absent from playback. Output is compared byte-for-byte against
+the original generated tables; normal and startup-expanded audio renders match.
+Malformed compressed input is bounds-checked; boot enters ROM recovery on failure.
+This uses the existing LZ4 block compressor and keeps generated assets reproducible.
+
+The native UI refresh replaces the old vertical track renderer and ring dials.
+Including the beat pulse, seven-style visualizer selection, consistent SONG/REC layouts and
+section-save fixes, it saves **3,504 image bytes and 1,184 bytes of static RAM**
+against the preceding raw-sample build. There is no framebuffer or pool growth.
+Removing unused visualizers and animation state alone reclaimed 2,912 image
+bytes and 48 static RAM bytes; durable-save handling adds 232 image bytes.
+Card borders use two fills instead of five, preserving pixels with extra
+background overdraw only on card updates. Physical UI timing remains unmeasured;
+the user has reported the preceding layout looks good on hardware.
+
+The seven retained styles are Oscilloscope, Spectrum, Spectrogram, VU Meters,
+Note Trails, Groove and Song Journey. Their historical persisted IDs survive
+compact menu numbering; removed IDs fall back to Oscilloscope. The historical
+optimization evidence below describes earlier checkpoints, including code and
+styles that have since been removed.
+
+The engine-specific diagram prototype is withdrawn. Shared cards now serve
+ordinary editing, SONG and record-ready/count-in views; the legacy bottom-dial
+branch and duplicate large record header are removed. This consistency phase
+reclaims 1,944 image bytes over the static-analysis checkpoint, with unchanged
+RAM.
+
+The screen-by-screen polish plus live octave-down replacement add 160 image bytes
+over that shared-layout checkpoint, without static RAM or pool growth. Settings
+navigation, credits, long parameter values and modulation guide extrema now fit
+their native regions; see the [polish audit](UI-POLISH-AUDIT.md).
+
+The static-analysis cleanup removes a right-channel scope ring and write-only
+volatile animation flags left behind by the removed visualizers. Target savings:
+32 image bytes and 1,040 main static RAM bytes. The audio ISR's static loop cost
+falls from 268 to 256, with three loop call sites unchanged. This is a compiler
+cost estimate, not measured hardware cycles. All seven visualizer captures are
+byte-identical; all 182 audio goldens are unchanged. See the
+[static-analysis audit](STATIC-ANALYSIS.md) for scope and deferred candidates.
+
 # Integrated build measurements
 
 MerthSloop 2.7.1.19 fits upstream dual-core/features and the fork workflows in
@@ -242,3 +312,8 @@ complete image. No decoding occurs on ordinary drum hits. The full build with
 swing UI, preview, micro/gate/ratchet corrections measures 581,360 bytes (204 free),
 200 fewer than the custom-progression build; static RAM 82,116 and pool 332,876 are
 unchanged. The old groove definitions' frozen hash verifies every mask and length.
+
+Explicit section saves also refresh the existing startup object. This adds 144 image
+bytes without RAM/pool growth and preserves the upstream project/storage format.
+Queued section writes bypass routine settings idle delay once stopped and quiet;
+failed writes retain their retry delay.

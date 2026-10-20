@@ -670,10 +670,8 @@ UI_SMALL static int ed_backup(uint32_t cmd, const uint8_t *a, uint32_t na)   /* 
 #include "editor_fm6.c"                               /* v9: the FM6 patches (68..71) */
 #include "editor_performance.c"                       /* v12: host-owned fills and punch FX */
 #include "editor_drum_grooves.c"                      /* v12: shared ROM groove bank */
-#include "editor_usb_playback.c"                      /* v12: USB return gain/mute/diagnostics */
 #include "editor_dsyn.c"                              /* upstream SYN drum kits (72..76) */
 
-#include "editor_musical_starters.c"
 #include "editor_live.c"                              /* v12: the LIVE page (77) */
 
 UI_SMALL static void ed_handle(const uint8_t *f, uint32_t n)   /* f: the bytes between F0 and F7 */
@@ -684,11 +682,14 @@ UI_SMALL static void ed_handle(const uint8_t *f, uint32_t n)   /* f: the bytes b
     int16_t *vp;
     const param_desc_t *d;
     ed_begin(cmd);
+    if (cmd == 88u || cmd == 89u) { /* retired companion features: explicit unavailable reply */
+        ed_b(na ? a[0] : 127u); ed_b(2u); ed_send(); return;
+    }
     if (cmd == 86u) {
         ed_performance(a, na);
         return;
     }
-    if (ed_musical_starters_handle(cmd, a, na) || ed_drum_grooves_handle(cmd, a, na) || ed_usb_playback_handle(cmd, a, na)) {
+    if (ed_drum_grooves_handle(cmd, a, na)) {
         ed_send();
         return;
     }
@@ -1206,7 +1207,6 @@ static void ed_service(void)
     const uint8_t *p;
     uint32_t n;
     ed_performance_service();
-    ed_starter_service();
     ed_sync();                                             /* v2 pushes (while watched) */
     if (!ota_frame_get(&p, &n) || n < 4u || p[0] != ED_HDR0 || p[1] != ED_HDR1 || p[2] != ED_HDR2)
         return;

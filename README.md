@@ -58,6 +58,35 @@ Read the [illustrated MerthSloop feature guide](docs/firmware/MERTHSOFT-FEATURES
 MerthSloop builds on upstream SLOOP and Felucca. Firmware versions use upstream
 `major.minor.revision` followed by our independent build number; see [branding and version policy](docs/BRANDING.md).
 
+### A clearer instrument display
+
+The native interface has four knob cards, a four-track overview, clearer page and
+track/global labels, persistent action hints, and diagrams for envelopes,
+modulation, filters and delay. **NEON** adds cyan, magenta, amber and violet accents:
+hold **HOME → SCREEN → COLOR → NEON**. Existing saved palettes remain selected.
+**PAGE HELP** in SCREEN explains the current page. Our playing and editing
+shortcuts stay the same; native groove and sequence browsers show their controls
+and preview/apply state directly. HOME shows the engine beside the preset in
+the track color. The striped sun pulses gently with the beat while playback runs.
+
+| Four-track overview | Envelope editing | Envelope wah |
+| --- | --- | --- |
+| <img src="assets/screens/merthsoft/neon/home.png" width="240" alt="Actual NEON four-track overview"> | <img src="assets/screens/merthsoft/neon/envelope.png" width="240" alt="Actual envelope parameter cards and highlighted decay curve"> | <img src="assets/screens/merthsoft/neon/wah.png" width="240" alt="Actual track-local wah popup with sweep guide"> |
+
+SONG, record-ready and count-in share the same knob-card layout and palette.
+Running free takes keep a large timer, with matching header and footer spacing.
+
+| Song order | Recording | Count-in |
+| --- | --- | --- |
+| <img src="assets/screens/merthsoft/neon/song.png" width="240" alt="Song arrangement using shared knob cards and NEON section colors"> | <img src="assets/screens/merthsoft/neon/record.png" width="240" alt="Record-ready screen with shared cards"> | <img src="assets/screens/merthsoft/neon/count-in.png" width="240" alt="Count-in screen with recording controls and track overview"> |
+
+Settings include compact section tabs and contextual page help. Parameter summaries
+retain complete values, and About includes fork attribution and source/license credits.
+See the [UI refresh gallery and design](docs/firmware/UI-REFRESH-DESIGN.md) and
+[screen-by-screen polish audit](docs/firmware/UI-POLISH-AUDIT.md).
+These are actual firmware framebuffer captures; older screenshots elsewhere may
+show the previous presentation of the same controls.
+
 ### The one-minute workflow
 
 1. With playback stopped, select the **drum track**, open its **GROOVE** page, and choose a beat. **OCT−** auditions it without replacing your pattern; **OCT+** applies it. Hold OCT+ for 700 ms or press it twice to confirm replacing existing material.
@@ -121,15 +150,14 @@ These are the implemented MerthSloop additions; the upstream engine, preset and 
 - **Shared starter voice leading:** optional VLEAD uses the live chord inversion policy for generated CHORD/ARP NOTES sequences, anchored deterministically so Preview and Apply match. BASS stays on roots. This does not add semantic chord tracking or harmony-following tracks.
 - **Undo accidental song loads:** while stopped, **EDIT + OCT−** restores the project preceding the latest saved-slot load, section selection or working-project backup restore; **OCT+** redoes it. This history is held in RAM and subsequent sequence edits or recording supersede it.
 - **New project from SAVE:** the SAVE-held song menu includes **NEW**, with confirmation while stopped, so starting over does not require overwriting a saved slot.
-- **USB playback and return controls:** phone/app audio can play through the FM-1's speaker/headphones alongside the instrument. Negotiated gain/mute and return diagnostics are exposed to the companion; 44.1 kHz playback negotiates independently of upstream's 48 kHz capture.
 - **Remote performance controls:** the phone can trigger held/next-bar fills and the negotiated punch-effect bank. Leases, panel priority, STOP and disconnect cleanup prevent abandoned remote controls from sticking.
-- **Companion protocol and safe exchange:** hardware octave reporting, FM6/native-pattern editing, sample backup/upload/readback, persistent FM6 base-voice bank saving, and canonical drum/musical library discovery support the Android workstation below. INFO 15 keeps upstream SYN kit commands at 72–76 and LIVE at 77; companion extensions use 85–89. Android and the web editor negotiate the supported mapping. Atomic live hardware scene switching remains future work.
+- **Companion protocol and safe exchange:** hardware octave reporting, FM6/native-pattern editing, sample backup/upload/readback, persistent FM6 base-voice bank saving, and canonical drum-library discovery support the Android workstation below. INFO 15 keeps upstream SYN kit commands at 72–76 and LIVE at 77; remote performance uses 86 and the drum bank uses 87. Android and the web editor negotiate the supported mapping. Atomic live hardware scene switching remains future work.
 - **Compact firmware storage:** packed bold fonts and a lossless factory-drum dictionary leave more room for instruments and workflows. Factory drum sounds keep their exact parameters; only a new hit decodes its sound. Startup shows the firmware title instead of the bitmap splash.
 - **Track settings stay put:** changing instruments preserves POLY/MONO/LEGATO/UNISON, glide amount/mode, note priority/allocation, drive, chorus, delay/reverb sends, insert, slicer and track filter. On a normal FX page, press **OCT− and OCT+ together** to reset the selected track’s effects; playing preferences stay intact. Song loads still restore the saved song.
 - **Swing eighth-note grooves:** hold HOME → TIMING → SWING GRID → 1/8, then use SWING8 on TRACKS. HALF TIME hats and sequenced eighth-note arps can shuffle on a 1/16 pattern; STEP retains the existing swing mode. [Controls and screenshots](docs/firmware/SWING-GRID-DESIGN.md).
 - **Write your own progression:** choose CUSTOM in SEQUENCES, then turn SELECT to the CUSTOM page. Set 1–8 chord positions and their scale degrees, with adjustable duration. Use the same rhythm, voicing, preview and CHORD/BASS/ARP NOTES controls; applied notes save with the song.
 - **Layer starter sequences:** in SEQUENCES, turn **ALGORITHM** to **ADD** instead of REPLACE. Existing timing, locks and fill survive; duplicates are skipped and a fifth distinct note rejects the operation without changing the track. EDIT undo/redo covers the complete change.
-- **Six additional visualizers:** Polyrhythm, Note Trails, Groove, Stereo Field, Song Journey and Beat Terrain make track timing, pitches, stereo and arrangement visible. Note Trails captures brief attacks between frames, keeps overlapping track colors visible, and uses a high-contrast drum strip. Fourteen styles are available; see the [complete gallery](docs/firmware/VISUALIZERS.md) for screenshots and controls.
+- **Three additional visualizers:** Note Trails, Groove and Song Journey show pitches, timing and song order. Seven styles are available, including Oscilloscope, Spectrum, Spectrogram and VU Meters; see the [complete gallery](docs/firmware/VISUALIZERS.md).
 
 Note Trails shows played/held notes rather than released voices or delay tails, and displays
 the master punch GATE rhythm by cutting trails during its fully wet closed phase.
@@ -152,18 +180,13 @@ destination timing and dynamics, with a four-note limit and complete undo/redo.
 On **TRACKS**, tap **HOME** to open the visualizer; turn **SELECT** to change style.
 Tap HOME or a page button to leave. Playing, transport and held control layers still work.
 
-| Polyrhythm | Note Trails | Groove |
+| Note Trails | Groove | Song Journey |
 | --- | --- | --- |
-| <img src="assets/screens/merthsoft/visualizers/vis-09-POLYRHYTHM.png" width="240" alt="Four colored rings showing track steps and playheads"> | <img src="assets/screens/merthsoft/visualizers/vis-10-NOTE-TRAILS.png" width="240" alt="Scrolling colored synth pitches and drum lanes"> | <img src="assets/screens/merthsoft/visualizers/vis-11-GROOVE.png" width="240" alt="Four-track timing grid with swung and nudged attacks"> |
-| Pattern lengths, active steps and independent playheads. | Chords and note releases across three synths, with drums below. | Swing, microtiming, hit levels and ratchets around the step grid. |
-
-| Stereo Field | Song Journey | Beat Terrain |
-| --- | --- | --- |
-| <img src="assets/screens/merthsoft/visualizers/vis-12-STEREO-FIELD.png" width="240" alt="Stereo cloud with left-right balance and width indicators"> | <img src="assets/screens/merthsoft/visualizers/vis-13-SONG-JOURNEY.png" width="240" alt="Song section cards A through D and arrangement progress"> | <img src="assets/screens/merthsoft/visualizers/vis-14-BEAT-TERRAIN.png" width="240" alt="Colored spectrum-driven wireframe terrain"> |
-| Stereo spread and left/right balance. | Song or quick-chain order, current section and remaining bars; READY when idle. | Spectrum-driven hills moving with the beat. |
+| <img src="assets/screens/merthsoft/visualizers/vis-05-NOTE-TRAILS.png" width="240" alt="Scrolling synth pitches and drum lanes"> | <img src="assets/screens/merthsoft/visualizers/vis-06-GROOVE.png" width="240" alt="Swing and microtiming around the grid"> | <img src="assets/screens/merthsoft/visualizers/vis-07-SONG-JOURNEY.png" width="240" alt="Song sections and arrangement progress"> |
+| Played/held notes, with drums below. | Swing, nudges, hit levels and ratchets. | Song or quick-chain order and remaining bars. |
 
 *Framebuffer captures from the production UI/audio harness.*
-See the [complete 14-style gallery](docs/firmware/VISUALIZERS.md) for the retained upstream styles, controls and capture details.
+See the [complete seven-style gallery](docs/firmware/VISUALIZERS.md) for the retained upstream styles, controls and capture details.
 
 To install **this fork**, build its firmware and local browser installer with [`build-sloop.ps1`](build-sloop.ps1); see [building](#building-and-tests) for prerequisites. The upstream browser installer linked above installs upstream SLOOP. See the [guide](GUIDE.md), [musical starters](docs/firmware/SEQUENCE-STARTERS-DESIGN.md), [drum grooves](docs/firmware/DRUM-GROOVES-DESIGN.md) and [rhythm shaping](docs/firmware/RHYTHM-SHAPING-DESIGN.md) for the controls and limits.
 
@@ -202,7 +225,7 @@ The app has five workspaces:
 | Workspace | What you can do |
 | --- | --- |
 | **Perform** | Eight scale-degree chord pads including I ↑, a HiChord-style quality joystick, keyboard, scale grid, drums, ribbon and an XY MIDI CC macro. Play block chords, strums, arps or repeats; control key, scale, octave, voice leading and latch directly. Capture a performance into a loop. |
-| **Sequence** | Draw, select, move, resize and quantize notes in a touch piano roll with multi-note edits and undo. Exchange native FM-1 patterns, loop MIDI, browse drum grooves and musical starters, arrange scenes and add stepped CC automation. Generate, edit, save and exchange composition drafts. |
+| **Sequence** | Draw, select, move, resize and quantize notes in a touch piano roll with multi-note edits and undo. Exchange native FM-1 patterns, loop MIDI, browse drum grooves, arrange scenes and add stepped CC automation. Generate, edit, save and exchange composition drafts. |
 | **Sound** | Manually edit FM6 algorithms, operators and envelopes; copy/swap operators and exchange SysEx. Try offline sound recipes and reviewed prompt edits, audition a patch against the original, and save a base voice to the hardware bank with verified readback. |
 | **Sample** | Choose **Playable sound** for a meow, voice or single note, or **Chopped loop** for a song phrase. Record/import, drag Start and End, listen, choose 4/8/16 chops if wanted, then Send to FM1 and choose slot/synth. Preparation and fitting happen automatically, with backup and verified readback. Advanced editor retains detailed pitch/gain, transient/tap chopping and export. |
 | **Library** | **Save from FM1** keeps named hardware songs beyond A–D, including sections, song order, samples, sound banks and edited FM6 voices. **Load onto FM1** first saves a recovery song; import/export portable song archives. Also save phone sessions, performance presets and composition drafts, and browse/reuse samples across sessions. |
@@ -215,7 +238,7 @@ Prompts currently use **bounded offline procedural recipes and edit rules**. The
 
 *Fresh connected-phone captures. This proposal was discarded after capture.*
 In Sequence, **Describe a sequence · offline recipes** opens these controls.
-See the [phone library and prompt walkthrough](docs/firmware/MERTHSOFT-FEATURES.md#find-libraries-and-review-prompt-edits-on-the-phone) for fresh musical-starter and groove entry screenshots too.
+See the [phone library and prompt walkthrough](docs/firmware/MERTHSOFT-FEATURES.md#find-libraries-and-review-prompt-edits-on-the-phone) for groove entry and prompt screenshots too.
 
 Android is the current target. Windows/iOS, controller CC forwarding, time stretching, combined USR3+4 uploads and atomic live hardware scene switching remain future work. See the [current status](<android/design docs/STATUS.md>) for the full implemented/future split.
 
@@ -238,7 +261,10 @@ Android workflows remain available alongside them.
 
 ### Performance, sound and MIDI controls
 
-- **27 punch-in effects:** eleven more on the black keys (hold FX): KILL LOW / MID / HIGH, REWIND, OCT UP, FLANGER, AUTO-PAN, FREEZE, LOOP 8T, MONO, FADE OUT.
+- **Transport HALF:** momentary half tempo with unchanged note pitch and saved BPM (internal clock only).
+- **Punch combinations:** one existing effect plus LOW/HIGH/PHONE and GATE, with held-key fallback; HALF is independent.
+- **Optional SPRING reverb:** FX → REVERB → TYPE. The existing stereo reverb remains the default.
+- **27 punch-in effects:** eleven more on the black keys (hold FX): KILL LOW / MID / HIGH, REWIND, DOUBLE TIME, FLANGER, AUTO-PAN, FREEZE, LOOP 8T, VINYL, FADE OUT.
 - **From Felucca (Leo Kuroshita):** an **INSERT** effect on every track (SOFT, HARD, FOLD, FUZZ, CRUSH, PHASR, FLANG, CHOR, with dry / wet), **LFO 2** (tempo SYNC, TRIG NOTE / FREE, POL BI / UNI), **ENV SYNC** (attack, decay and release as note values), the **ANALOG filter** as LP, BP or HP, a note's **LEN** in steps and each step's **velocity**, **MIDI LEARN** (GLO + F#3), and the latched-arp fix (#191).
 - **TEXTURE:** a looping bed under the mix (vinyl, tape, rain, wind, radio, room tone or your own sample), breathing slowly with the tempo, without taking a track (GLO → TEXTURE).
 - **Live drum mutes:** EDIT + a black key, then the sounds' keys.
@@ -294,7 +320,7 @@ Every function button is a **layer**: hold it and the 16 white keys and the four
 
 | Hold | Keyboard controls | KNOB 1 · 2 · 3 · 4 |
 | --- | --- | --- |
-| **FX** — punch | 27 punch-in effects on the whole mix. White keys: loops 1/4–1/32, stutter, reverse, tape stop, half speed, filter sweeps, phone, bit crush, alias, gate, echo, tape wobble. Black keys: kill low / mid / high, rewind, octave up, flanger, auto-pan, freeze, loop 1/8T, mono, fade out | FILTER · DUST · DUCK · the track's filter |
+| **FX** — punch | 27 punch-in effects on the whole mix. White keys: loops 1/4–1/32, stutter, reverse, tape stop, half speed, filter sweeps, phone, bit crush, alias, gate, echo, tape wobble. Black keys: kill low / mid / high, rewind, octave down, flanger, auto-pan, freeze, loop 1/8T, mono, fade out | FILTER · DUST · DUCK · the track's filter |
 | **LFO / ENV** — modulation | playable keyboard, track-only vibrato / tremolo waveform panel | Hz · DEPTH · WAVE · SYNC |
 | **EDIT** — erase | erase a sound or a note as the loop plays (stopped: from the whole pattern); a black key: live drum mutes | SHIFT · LENGTH ×2 / ½ · TRANSPOSE · OCTAVE |
 | **ARP** — roll | note repeat on the grid, recorded as ratchets | RATE (1/8 … 1/64) |
@@ -331,6 +357,11 @@ Keys 1, 5, 9 and 13 glow dimly while a layer is held: the first key of each row 
 ### Songs
 
 Save up to four sections **A–D** (SAVE + keys 5–8), play them live on the next bar (SAVE + keys 1–4), and **record the song as you play it** (SAVE + key 14). Keep SAVE held and tap several sections for a **quick chain**. In song mode PLAY plays the whole chain. The SONG screen edits it by hand.
+
+Stopped section saves write flash immediately. A store made during playback says
+**QUEUED: STOP TO SAVE**: stop and release sounding notes, then wait for
+**SECTIONS SAVED TO FLASH** before powering off. Explicit saves also commit
+device settings, including the 1/8 swing grid.
 
 ### Effects and master
 
@@ -649,3 +680,7 @@ See [BUILDING.md](BUILDING.md). In short: the JieLi toolchain and three files of
 ## Licence
 
 Code: GPL-3.0-only (see [LICENSE](LICENSE), and [LICENSING.md](LICENSING.md) for the assets). No warranty. M-VAVE and FM-1 are trademarks of their owners; SLOOP is not affiliated with M-VAVE, teenage engineering, Elektron or Akai. Drum kit names describe styles, not products.
+
+Persistent vinyl: **FX → VINYL** adds independent WOW, TONE and CRACKLE controls, saved with projects and sections. All default to off. Hold FX and use VINYL for a temporary record-wear preset; releasing returns to those settings.
+
+**SPRING timing:** On FX → REVERB, select SPRING and use knob 4 **TIME** for reflection spacing (20–80 ms), independently of knob 2 **SIZE**’s nominal decay target. STEREO leaves TIME inactive.

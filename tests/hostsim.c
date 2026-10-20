@@ -76,8 +76,15 @@ static uint64_t now_ns(void)
     return (uint64_t)ts.tv_sec * 1000000000u + (uint64_t)ts.tv_nsec;
 }
 
+#if FELUCCA_BOOT_TABLES
+#define FELUCCA_BOOT_AUDIO_ONLY 1
+#include "boot_tables_init.h"
+#endif
 static void host_tracks_init(void)                /* as felucca_init: defaults, empty patterns */
 {
+#if FELUCCA_BOOT_TABLES
+    if (!boot_tables_init()) abort();
+#endif
     uint32_t i, k;
     for (i = 0; i < G_COUNT; i++)
         song.g[i] = GP[i].def;

@@ -1,3 +1,151 @@
+# MerthSloop firmware 2.7.1.33
+
+- VINYL's maximum settings are now audibly stronger: slow wow/flutter, darker
+  TONE and louder crackle, with exact zero bypass and smooth control transitions.
+- VINYL replaces MONO as a held punch-in; releasing restores persistent settings.
+  DOUBLE TIME replaces octave down and complements HALF without changing pitch
+  or stored BPM. External sync bypasses the two rate gestures.
+- SPRING REVERB knob 4 TIME adjusts reflection spacing independently from SIZE's
+  nominal decay target. Uses the existing buffer; FREEZE preserves its length.
+  Model/time metadata does not overwrite the drum-tuning checksum; default
+  projects retain canonical upstream byte identity.
+- Image 581,176 bytes, 388 free; main static RAM 85,656, low RAM/pool unchanged.
+  Audibility, stereo/release, full-mixer, timing, format and UI regressions pass.
+  Hardware listening and deadline measurements for this build remain pending.
+
+# MerthSloop firmware 2.7.1.30
+
+- Explicit section SAVE also updates the existing power-on working-loop object,
+  preventing an older root/scale from returning during background autosave's
+  20-second rate limit. The named section still holds the snapshot taken at SAVE;
+  a queued flush captures the then-current working loop for startup.
+- Queued section writes begin once stopped and voices are quiet, without the
+  routine settings input-idle delay. Failed startup writes keep the save pending
+  and cannot produce a successful-save confirmation.
+- Adds C# minor → G Phrygian cold-NOR/restart regressions for stopped/queued saves,
+  plus startup-write failure/retry checks. Assertions explicitly remain enabled
+  under optimized host compilers. The old behavior fails the new restart test.
+- Upstream FUN6 compatibility and project-format tests pass; storage object IDs
+  and serialized layout are unchanged. Image 575,160 bytes, 6,404 free, no RAM growth.
+
+# MerthSloop firmware 2.7.1.29
+
+- Polishes settings tabs, long custom-palette names/swatches, About credits and
+  complete engine summary values/units. Adds a gutter between header icon and
+  track number; About shows the version followed by MERTHSOFT.
+- Keeps destination bars within their guide at parameter extrema; abbreviates
+  the held-step ratchet card deliberately rather than clipping its word.
+- Replaces OCT UP with live OCT DOWN on the same punch-in key. Three-pitch DSP
+  tests verify octave-down output and exact dry recovery; all 27 effects pass.
+  Transport HALF and simultaneous effects are separate design work.
+- Image 575,016 bytes, 6,548 free; RAM, low RAM and pool unchanged. Complete-glyph,
+  sanitized UI/fuzz, audio golden, static-analysis and target checks pass.
+  No Android APK change or hardware timing claim is included.
+
+# MerthSloop firmware 2.7.1.28
+
+- Withdraws provisional FM6 diagrams; engine pages return to parameter summaries.
+- SONG uses shared knob cards, palette-aware section colors, standard header and
+  footer. Record-ready/count-in align with the same layout; free takes retain
+  their large timer. Disabled controls show muted dashes.
+- Consolidates the card primitive/strip, removing the legacy bottom-dial renderer
+  and duplicate record header. Help and footer share engine-page titles.
+- Generic destination/filter/delay guides start higher, leaving clear space
+  between the DLY caption and footer.
+- Image 574,856 bytes, 6,708 free; RAM 81,592, low RAM/pool unchanged. Consistency
+  changes recover 1,944 image bytes; recording/song interaction and sanitized
+  redraw/fuzz tests pass. Physical timing has not been measured.
+
+# MerthSloop firmware 2.7.1.27
+
+- Removes unused right-channel scope capture and volatile note/kick animation
+  telemetry from retired visualizers: 1,040 static RAM bytes and 32 image bytes
+  recovered. The seven retained captures and all 182 audio goldens are unchanged.
+- Fixes a flash-only size assertion in the RAM-only firmware configuration.
+- Moves the DLY guide up and reserves space for its complete bottom caption.
+- Adds a reproducible target-compiler static-analysis tool and detailed audit.
+- Image 576,800 bytes, 4,764 free; static RAM 81,592, low RAM/pool unchanged.
+  Target budgets/inlining and sanitized UI regressions pass. Hardware timing
+  was not measured. No new Android APK is included.
+
+# MerthSloop firmware 2.7.1.26
+
+- Held SAVE section stores write immediately when stopped. During playback they
+  say QUEUED: STOP TO SAVE, then confirm after a successful deferred flash write.
+- Explicit section/project saves commit device settings, including 1/8 swing
+  mode. Failed section/settings writes remain retryable rather than claiming a
+  successful durable save.
+- Real NOR-storage regression covers track/drum levels, global swing, cold reload,
+  queued snapshot isolation and write failures. Fixes the combined wah/pan LED
+  lookup found by the full UI sanitizer regression.
+- Image 576,832 bytes, 4,732 free; static RAM 82,632; pool unchanged.
+
+# MerthSloop firmware 2.7.1.25
+
+- Keeps exactly seven visualizers: Oscilloscope, Spectrum, Spectrogram, VU Meters,
+  Note Trails, Groove and Song Journey. Selector wraps 1/7 through 7/7.
+- Retained saved IDs remain stable; removed IDs fall back to Oscilloscope.
+- Removes unused renderers and animation state: 2,912 image bytes and 48 static
+  RAM bytes reclaimed. All seven render and settings/navigation regressions pass.
+
+# MerthSloop firmware 2.7.1.24
+
+- HOME's striped sun pulses gently with the transport beat while playing and
+  returns to its original brightness when stopped. No extra persistent RAM.
+- Beat-phase invalidation works with stationary playheads/long notes; tests
+  confirm track-lane/footer pixels remain unchanged by the sun animation.
+- Equivalent compact card borders and shorter hints offset most new code:
+  579,512 image bytes, 2,052 bytes free; four image bytes above the preceding
+  engine/help checkpoint. Target DSP budgets/inlining remain unchanged.
+- UBSan renderer and 20,000-frame UI regression pass. Physical redraw cost has
+  not been measured. No Android APK update is included.
+
+# MerthSloop firmware 2.7.1.23
+
+- FM6 OPS/PATCH show the active algorithm: six operators, modulation routes,
+  carriers and feedback. Patch and algorithm edits invalidate the diagram.
+- HOME includes the engine name beside the preset in the selected track color.
+- Help puts PRESETS left and ALGORITHM right; hold hints name the actual action,
+  including LFO vibrato and ENV tremolo.
+- Image 579,508 bytes; flash free 2,056. No static-RAM or audio-pool growth.
+  ANALOG engine diagrams are deferred to retain the flash reserve.
+- All 32 routing diagrams, dirty/full redraws and patch isolation pass under
+  UBSan; the 20,000-frame UI suite and 182 unchanged audio goldens pass.
+- Firmware-only update; no new Android APK or hardware timing measurement claimed.
+
+# MerthSloop firmware 2.7.1.22
+
+- Refines HOME's NEON scene with a larger round striped sunset, a warm-to-violet
+  gradient and wireframe mountains. Track lanes remain readable underneath.
+- Adds 192 image bytes, no additional RAM. Image 578,324 bytes; flash free 3,240.
+- Native redraw/palette/state tests pass; physical display timing remains pending.
+
+# MerthSloop firmware 2.7.1.21
+
+- Native UI overhaul: shared knob cards, NEON colors and four-track overview.
+- Refreshed held maps, drum/groove and progression browsing, and track-local
+  modulation displays; existing gestures and musical behavior are retained.
+- Parameter guides and SCREEN → PAGE HELP; existing palettes/custom themes remain.
+- 578,132 image bytes, 3,432 flash bytes free, main static RAM 82,680; no additional
+  framebuffer or audio-pool allocation. The raw factory sample path remains.
+- Real-renderer screen/video captures and host regressions pass. Hardware UI
+  latency and LCD contention are pending, not represented as tested.
+- No new Android APK is claimed for this firmware-only UI refresh.
+
+# MerthSloop 2.7.1.20
+
+- Restores direct factory sample reads, removing render-time decompression/caches.
+- Expands compact lookup tables only at cold startup, before audio starts.
+- Removes phone/computer USB audio playback into the FM-1, return controls and
+  phone access to musical sequence starters. USB recording/MIDI, native sequences
+  and phone access to drum grooves remain.
+- Firmware: 578,664 image bytes, 2,900 flash bytes free; main RAM 82,776;
+  low RAM 22,772; pool 332,876. Existing project and sample formats are unchanged.
+
+Earlier release checkpoints below retain their original historical evidence.
+
+---
+
 # Latest firmware — MerthSloop 2.7.1.19
 
 - Integrates upstream 2.7.1 with canonical song flags, arp IDs and settings. No

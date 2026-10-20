@@ -67,7 +67,7 @@ public sealed partial class MainActivity : Activity
             var index = i;
             var button = new Button(this) { Text = WorkstationState.TrackNames[i] };
             trackButtons.Add(button);
-            button.Click += (_, _) => { CancelMusicalStarterPreview();StopCompositionAudition();StopPerformance();state.SelectTrack(index); ShowWorkspace(); };
+            button.Click += (_, _) => { StopCompositionAudition();StopPerformance();state.SelectTrack(index); ShowWorkspace(); };
             tracks.AddView(button, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WrapContent, 1));
         }
         root.AddView(tracks);
@@ -83,7 +83,7 @@ public sealed partial class MainActivity : Activity
             tab.SetSingleLine(true);
             tab.SetPadding(Dp(2),Dp(4),Dp(2),Dp(4));
             tab.SetMinWidth(0);
-            tab.Click += (_, _) => { CancelMusicalStarterPreview();StopCompositionAudition();StopPerformance();state.Workspace = workspace; ShowWorkspace(); };
+            tab.Click += (_, _) => { StopCompositionAudition();StopPerformance();state.Workspace = workspace; ShowWorkspace(); };
             tabs.AddView(tab,new LinearLayout.LayoutParams(0,ViewGroup.LayoutParams.WrapContent,1));
         }
         root.AddView(tabs);
@@ -143,7 +143,7 @@ public sealed partial class MainActivity : Activity
 
     protected override void OnDestroy()
     {
-        CancelMusicalStarterPreview();
+
         StopCompositionAudition();
         DisposeScenes();
         DisposeMidiInput();
@@ -159,7 +159,7 @@ public sealed partial class MainActivity : Activity
 
     protected override void OnStop()
     {
-        CancelMusicalStarterPreview();
+
         CloseMidiInput();
         StopCompositionAudition();
         StopPerformance();
@@ -218,14 +218,12 @@ public sealed partial class MainActivity : Activity
         content.RemoveAllViews();
         try {
         if(perform){AddPerformEditor();return;}
-        
+
         if (state.Workspace == Workspace.Sound) {AddSoundEditor();return;}
         if (state.Workspace == Workspace.Sequence) {AddSequenceEditor();return;}
         if (state.Workspace == Workspace.Library) {AddLibraryEditor();return;}
         if (state.Workspace == Workspace.Sample) {
             AddSampleEditor();
-            if (connection.UsbPlaybackCapabilities.Supported)
-                Section("sample.usbreturn", "FM1 USB return", AddUsbPlaybackControls);
             return;
         }
         }

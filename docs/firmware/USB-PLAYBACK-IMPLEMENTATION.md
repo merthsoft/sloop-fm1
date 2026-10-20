@@ -1,3 +1,5 @@
+> Historical design: removed from production in MerthSloop 2.7.1.20. USB recording/MIDI and native musical starters remain.
+
 # FM1 USB playback implementation
 
 Implemented in `src/usb.c`, `src/audio.c`, and `hal/fm1_usb.h`. No hardware

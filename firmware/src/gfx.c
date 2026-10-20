@@ -50,6 +50,7 @@ static const palette_t PALETTES[] = {
     {"CYAN", {RGB(0, 30, 50), RGB(0, 62, 96), RGB(16, 112, 160), RGB(56, 172, 222), RGB(140, 222, 255)}},
     {"RED", {RGB(52, 8, 8), RGB(100, 18, 14), RGB(170, 36, 26), RGB(226, 64, 48), RGB(255, 112, 92)}},
     {"MONO", {RGB(40, 40, 40), RGB(80, 80, 80), RGB(130, 130, 130), RGB(186, 186, 186), RGB(226, 226, 226)}},
+    {"NEON", {RGB(23, 18, 48), RGB(56, 32, 92), RGB(140, 126, 184), RGB(224, 80, 218), RGB(64, 224, 240)}},
 };
 #define NPALETTES (sizeof(PALETTES) / sizeof(PALETTES[0]))
 static uint16_t pal[5];
@@ -167,16 +168,18 @@ static void palette_set(uint32_t i)              /* built-in palette i, or the t
 {
     uint32_t k;
     int cu = theme_shown();
+    static const uint16_t neon[4] = {RGB(32, 220, 240), RGB(240, 48, 192), RGB(255, 192, 48), RGB(160, 104, 248)};
     for (k = 0; k < 5u; k++)
         pal[k] = cu ? theme.c[k] : PALETTES[i % NPALETTES].c[k];
     pal_bg = cu ? theme.bg : 0u;
     pal_hi = cu ? theme.hi : 0xFFFFu;
     for (k = 0; k < 4u; k++)
         te_g[k] = te_gray(TE_G_DEF[k]);
+    if(!cu && i == NPALETTES-1u) { te_g[0]=RGB(12,14,28);te_g[1]=RGB(42,34,66); }
     for (k = 0; k < 4u; k++) {
-        TE_COL[k] = cu ? theme.trk[k] : TE_COL_DEF[k];
-        TE_MID[k] = cu ? rgb565_scale(theme.trk[k], 2u, 3u) : TE_MID_DEF[k];
-        TE_DIM[k] = cu ? rgb565_scale(theme.trk[k], 1u, 3u) : TE_DIM_DEF[k];
+        TE_COL[k] = cu ? theme.trk[k] : i == NPALETTES - 1u ? neon[k] : TE_COL_DEF[k];
+        TE_MID[k] = cu || i == NPALETTES - 1u ? rgb565_scale(TE_COL[k], 2u, 3u) : TE_MID_DEF[k];
+        TE_DIM[k] = cu || i == NPALETTES - 1u ? rgb565_scale(TE_COL[k], 1u, 3u) : TE_DIM_DEF[k];
     }
 }
 
@@ -304,6 +307,25 @@ static int32_t text_w(const felucca_font_t *f, const char *s)
     for (; *s; s++)
         w += f->adv[glyph(f, (uint8_t)*s)];
     return w;
+}
+
+/* Shared NEON card. No allocation, extra font or framebuffer. Widths are
+ * checked with real font metrics; full parameter details remain in the panel. */
+UI_SMALL static void ui_card(int32_t x, int32_t y, const char *label, const char *value,
+                            int32_t ratio, uint16_t color, int hot)
+{
+    char l[8], v[12];
+    const felucca_font_t *f = text_w(&FONT_L, value) <= 50 ? &FONT_L : &FONT_S;
+    str_cpy(l, label, sizeof l); str_cpy(v, value, sizeof v);
+    while (text_w(&FONT_S,l)>48) l[str_len(l)-1u]=0;
+    while (text_w(f,v)>48) v[str_len(v)-1u]=0;
+    cv_rect(x,y,56,44,hot?color:TE_G2);
+    cv_rect(x+1,y+1,54,42,TE_G1);
+    if (!label[0]) {cv_text(x+20,y+14,&FONT_S,"--",TE_G2);return;}
+    cv_text(x+4,y,&FONT_S,l,TE_G4);
+    cv_text(x+(56-text_w(f,v))/2,y+(f==&FONT_L?10:19),f,v,color);
+    if(ratio>=0) for(int32_t i=0;i<10;i++)
+        cv_rect(x+4+i*5,y+40,3,2,i*100<ratio?color:TE_G2);
 }
 
 /* one-shot: text in a box, cleared to black, blitted */

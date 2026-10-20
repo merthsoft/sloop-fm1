@@ -538,7 +538,7 @@ static uint32_t undo_erase_sess;
 static int8_t rec_m;                     /* (2.7) the last rec_target's note off the grid, as a nudge (rec_micro_set) */
 static uint32_t rec_target(const track_t *t, uint32_t *later)
 {
-    uint32_t into, slen, abs = trk_grid(t, &into, &slen), half = slen / 2u, lat = REC_LAT * (uint32_t)song.g[G_BPM];
+    uint32_t into, slen, abs = trk_grid(t, &into, &slen), half = slen / 2u, lat = musical_units(REC_LAT, &(uint8_t){0});
     int32_t off = (int32_t)into - (int32_t)lat, m;
     uint32_t snap = rec_snap[trk_index(t)], div = trk_div(t);
     rec_m = 0;
@@ -796,7 +796,7 @@ static void rec_release(track_t *t, uint32_t note)
     if (!t->rh_ties || trk_grid(t, &into, &slen) != t->rh_last_abs)
         return;
     half = slen / 2u;
-    lat = REC_LAT * (uint32_t)song.g[G_BPM];
+    lat = musical_units(REC_LAT, &(uint8_t){0});
     if (into <= half + (lat < half ? lat : half) && t->step[t->rh_last].time == ST_TIE)
         t->step[t->rh_last] = t->rh_bak;            /* released early in it: not held into this step */
 }
@@ -1983,9 +1983,8 @@ static void chord_revoice(uint32_t sel)
 
 /* 2.7: the punch-in FX over MIDI. On GLO > MIDI 3's FX CH, the notes F3 .. G5 (53 .. 79) are the FM-1's 27 keys with
  * FX held: a note on holds its effect (white keys 1..16, black keys 17..27), its note off lets it go. A key of the
- * FM-1's own (FX + key) takes over at once, and its release ends it; a note off then leaves it alone */
-static uint8_t mfx_key;                          /* the key the FX channel holds, + 1 (0: none) */
-static void midi_fx(uint32_t note, int on)
+ * Physical keys take priority by family; releasing one restores any other held source. */
+static void midi_fx_source(uint32_t note, int on, int source)
 {
     int32_t fx;
     uint32_t k;
@@ -1995,16 +1994,11 @@ static void midi_fx(uint32_t note, int on)
     fx = punch_fx_of_key(k);
     if (fx < 0 || fx >= (int32_t)PUNCH_NFX)
         return;
-    if (on) {
-        punch.req = (int8_t)fx;
-        punch.keybit = 0;                        /* (no FM-1 key holds it: a key's release does not end it) */
-        mfx_key = (uint8_t)(k + 1u);
-    } else if (mfx_key == k + 1u) {
-        mfx_key = 0;
-        if (!punch.keybit)                       /* (an FM-1 key took it over: its release ends it) */
-            punch.req = -1;
-    }
+    punch_hold(source,fx,on);
 }
+
+/* The existing editor LIVE command uses the USB hold source. */
+static void midi_fx(uint32_t note,int on) { midi_fx_source(note,on,1); }
 
 /* Plain physical keys sharing a pitch transfer the hold, not the attack. */
 static int key_note_owner(uint32_t part, uint32_t note, uint32_t except)
@@ -2027,8 +2021,7 @@ static void key_down(uint32_t k)
         int32_t fx = punch_fx_of_key(k);
         kb_kind[k] = KS_FX;
         if (fx >= 0 && fx < (int32_t)PUNCH_NFX) {
-            punch.req = (int8_t)fx;
-            punch.keybit = 1u << k;
+            punch_hold(0,fx,1);
         }
         return;
     }
@@ -2156,10 +2149,7 @@ static void key_up(uint32_t k)
     kb_kind[k] = KS_NONE;
     switch (kind) {
     case KS_FX:
-        if (punch.keybit == 1u << k) {                /* its key is up: the mix comes back */
-            punch.keybit = 0;
-            punch.req = -1;
-        }
+        punch_hold(0,punch_fx_of_key(k),0);
         return;
     case KS_UI:
         lk_push(kb_nt[k][0], k, 0);
@@ -2279,7 +2269,7 @@ static void groove_preview_block(uint32_t n)
           }
         }
     }
-    groove_preview.phase += n * (uint32_t)song.g[G_BPM];
+    groove_preview.phase += musical_advance;
 }
 
 static void keyboard_block(void)
@@ -2306,6 +2296,7 @@ static void keyboard_block(void)
         for (r = 0; r < NROLL; r++)
             if (roll[r].on && roll[r].key < 27u)        /* (2.7: not the LIVE page's, key 0x80 + note: its pad ends them) */
                 roll_end(r);
+    if (layer_now()!=LY_FX && punch.keybit) punch_source_clear(0);
     if (!ch)
         return;
     for (k = 0; k < 27u; k++) {
@@ -3256,7 +3247,8 @@ static void clkout_block(uint32_t n)
         midi_out_event(0x0Fu | 0xFCu << 8);           /* STOP */
     }
     mco_play = (uint8_t)(song.playing != 0);
-    mco_u += n * (uint32_t)song.g[G_BPM];
+    static uint8_t remainder;
+    mco_u += musical_units(n, &remainder);
     while (mco_u >= MCLK_PULSE_U) {
         mco_u -= MCLK_PULSE_U;
         midi_out_event(0x0Fu | 0xF8u << 8);           /* a pulse */
@@ -3270,6 +3262,7 @@ static void events_block(uint32_t n)
     static uint32_t mod_usb_resets;
     if (usb.detached || mod_usb_resets != usb.resets) {
         midi_scale_usb_reset();
+        punch_midi_clear();
         for (uint32_t part = 0; part < NPART; part++)
             if (mod_source[part] == 1u) mod_midi[part] = mod_source[part] = 0;
         mod_usb_resets = usb.resets;
@@ -3309,12 +3302,14 @@ static void events_block(uint32_t n)
             ft_bars = 0xFF;
         }
     }
+    musical_half = (uint8_t)(song.g[G_SYNC] ? 0 : punch_rate_requested());
+    musical_advance = musical_units(n, &musical_remainder);
     if (ci_on) {                                    /* the count-in: 4 beats at the tempo, then go */
         if (!rec_wait || song.playing) {
             ci_on = 0;                              /* (REC cancelled it, or it started some other way) */
         } else {
             uint32_t b;
-            ci_u += n * (uint32_t)song.g[G_BPM];
+            ci_u += musical_advance;
             b = ci_u / BEAT_U;
             if (b >= 4u) {
                 ci_on = 0;
@@ -3329,7 +3324,7 @@ static void events_block(uint32_t n)
     }
     if (rec_wait && song.playing)
         rec_begin();                                /* started some other way: record now */
-    adv = mclk_on() && song.playing ? mclk_adv(n) : n * (uint32_t)song.g[G_BPM];   /* (after a START) */
+    adv = mclk_on() && song.playing ? mclk_adv(n) : musical_advance;   /* (after a START) */
     groove_preview_block(n);
     clkout_block(n);
     ft_block();
@@ -3508,7 +3503,7 @@ static void events_block(uint32_t n)
         }
         if (song.g[G_FXCH] && ch == (uint32_t)song.g[G_FXCH] - 1u && song.g[G_ROUTE] != 1 &&
             (st == 0x90u || st == 0x80u)) {           /* 2.7: the punch-in FX's channel (GLO > MIDI 3), before IN = CH n */
-            midi_fx(d1, st == 0x90u && d2);
+            midi_fx_source(d1, st == 0x90u && d2, ((pkt >> 4) & 15u) ? 2 : 1);
             continue;
         }
         if (song.g[G_ROUTE] >= 2) {                   /* 2.6: IN = CH n: that channel only, on the selected

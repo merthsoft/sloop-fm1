@@ -5,6 +5,7 @@ Current native firmware features and their implementation contracts live here;
 the website installer references the current MerthSloop package.
 
 - [Illustrated guide to all MerthSloop firmware additions](MERTHSOFT-FEATURES.md)
+- [Native UI refresh, actual screen gallery and design](UI-REFRESH-DESIGN.md)
 - [Musical sequence starters](SEQUENCE-STARTERS-DESIGN.md)
 - [Custom progressions](CUSTOM-PROGRESSIONS-DESIGN.md)
 - [Phone musical starter protocol](MUSICAL-STARTER-PROTOCOL.md)
@@ -34,3 +35,9 @@ Use the [player guide](../../GUIDE.md) for controls and the
 - [PR 111 RAM and dual-core adoption assessment](PR-111-ASSESSMENT.md)
 
 - [Upstream 2.7.1 assessment and compatibility gates](UPSTREAM-2.7-INTEGRATION.md)
+
+- [Static-analysis audit](STATIC-ANALYSIS.md): unused paths, measured cleanup, optional-build checks and remaining candidates.
+
+- [Screen-by-screen UI polish audit](UI-POLISH-AUDIT.md) — findings, changes and verification.
+
+- [DOUBLE TIME transport and VINYL punch routing](DOUBLE-TIME-DESIGN.md).

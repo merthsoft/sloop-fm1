@@ -3,38 +3,37 @@
  * 2.6, the 11 black ones) and the whole mix goes through that effect while the key is held;
  * release it and the mix comes back. Beat-synced to the tempo; loops start on the grid of the
  * running transport. A mono ring of the mix (PUNCH_N samples, 0.74 s) feeds the loops, reverse,
- * tape stop, half speed, wobble, echo, rewind, octave up and the flanger; the filters, kills,
+ * tape stop, wobble, echo, rewind, the flanger; HALF and DOUBLE TIME change transport only; the filters, kills,
  * crush and gate run in stereo. FREEZE holds the reverb (fx.c). Every change crossfades over
  * 64 samples. Runs in the audio ISR (mix_block, fx.c). */
 #include "performance_remote.h"
 #define PUNCH_N 32768u                    /* power of two */
 /* the transport clock (core.h clk_pos) places the loops and the gate on the grid */
-static uint32_t clk_samples(void) { return clk_pos / (uint32_t)song.g[G_BPM]; }   /* samples into the beat */
+static uint32_t clk_samples(void) { return musical_samples(clk_pos); }   /* samples into the beat */
 #define PUNCH_NFX PERF_PUNCH_COUNT                     /* 16 on the white keys, 11 on the black keys (2.6) */
 enum { PX_LOOP4, PX_LOOP8, PX_LOOP16, PX_LOOP32, PX_STUT, PX_REV, PX_STOP, PX_HALF,
        PX_LPF, PX_HPF, PX_TEL, PX_CRUSH, PX_DOWN, PX_GATE, PX_ECHO, PX_WOBBLE,
        /* the black keys, F#3 .. F#5 */
-       PX_KLOW, PX_KMID, PX_KHIGH, PX_RWD, PX_OCT, PX_FLANGE, PX_PAN, PX_FREEZE, PX_LOOP8T, PX_MONO, PX_FADE };
+       PX_KLOW, PX_KMID, PX_KHIGH, PX_RWD, PX_DOUBLE, PX_FLANGE, PX_PAN, PX_FREEZE, PX_LOOP8T, PX_VINYL, PX_FADE };
 static const char *const PUNCH_NAME[PUNCH_NFX] = {
     "LOOP 4", "LOOP 8", "LOOP 16", "LOOP 32", "STUTTER", "REVERSE", "STOP", "HALF",
     "LOW", "HIGH", "PHONE", "CRUSH", "ALIAS", "GATE", "ECHO", "WOBBLE",
-    "KILL LOW", "KILL MID", "KILL HIGH", "REWIND", "OCT UP", "FLANGER", "AUTO-PAN", "FREEZE", "LOOP 8T", "MONO",
+    "KILL LOW", "KILL MID", "KILL HIGH", "REWIND", "DOUBLE TIME", "FLANGER", "AUTO-PAN", "FREEZE", "LOOP 8T", "VINYL",
     "FADE OUT"};
-#define PX_OCT_W 2048u                    /* OCT UP: the window of its two read taps (46 ms) */
 #define PX_FRZ_CAP 8192u                  /* FREEZE: samples of the mix poured into the held reverb (186 ms) */
 #define PX_RWD_ACC 17                     /* REWIND: speed change per sample (Q16): +1 to -3 in 0.35 s */
 #define PX_RWD_MAX (3 << 16)
 static int16_t punch_ring[PUNCH_N] __attribute__((section(".pool")));
 static struct {
-    volatile int8_t req;          /* effect asked for by the keys (-1 none), ISR keyboard_block */
+    volatile int8_t req;          /* selected main effect (-1 none), ISR keyboard_block */
     volatile uint8_t hold;        /* FX button held (UI main loop) */
-    uint32_t keybit;              /* the key that started it */
+    uint32_t keybit;              /* all physical effect keys held */
     int8_t cur;                   /* effect playing (fading out when req differs) */
     int32_t g;                    /* wet gain Q15 */
     uint32_t w;                   /* ring write index */
     uint32_t start, t, len;       /* loop / reverse: start index, samples since, length */
     uint32_t pre;                 /* loops: samples of dry still to go to the next division */
-    uint32_t k, sub;              /* position in the loop; HALF: odd / even sample */
+    uint32_t k;                   /* position in the loop */
     uint32_t dspd;                /* tape stop: speed step per sample */
     uint32_t gp;                  /* gate: samples into the 1/16 step */
     uint32_t rp;                  /* tape stop / wobble: read position Q16 */
@@ -50,10 +49,72 @@ static struct {
     int32_t fg;                   /* FREEZE: the held reverb's gain, Q10 */
 } punch = {.req = -1, .cur = -1, .fg = 8192};
 
-static int px_loop(int32_t fx) { return fx <= PX_STUT || fx == PX_LOOP8T; }   /* on the grid */
-static int px_replay(int32_t fx) { return fx <= PX_HALF || fx == PX_LOOP8T; } /* replays a span of the ring */
+/* Independent holds: a source release cannot cancel another source's key.
+ * Compact ranks (1..81) avoid timestamp wrap and retain last-press fallback. */
+static uint8_t punch_rank[3][PUNCH_NFX]; /* physical, USB MIDI, TRS MIDI */
+static int8_t punch_rate_req = -1;
+static uint8_t punch_local;
+static int8_t punch_filter_req = -1;
+static uint8_t punch_gate_req;
+static struct { int8_t cur; int32_t gain, cut, z[6]; } punch_filter = {.cur=-1};
+static struct { int32_t gain; uint32_t phase; } punch_gate;
+static int punch_family(int fx)
+{ return (fx == PX_HALF || fx == PX_DOUBLE) ? 3 : fx == PX_GATE ? 2 : fx >= PX_LPF && fx <= PX_TEL ? 1 : 0; }
+static uint32_t punch_key_of_fx(uint32_t fx);
+static void punch_resolve(void)
+{
+    int choice[4] = {-1,-1,-1,-1};
+    punch.keybit=0; punch_local=0;
+    for (int source=0;source<3;source++)for(int fx=0;fx<PUNCH_NFX;fx++) {
+        if(!punch_rank[source][fx])continue;
+        punch_local=1;if(!source)punch.keybit|=1u<<punch_key_of_fx(fx);
+    }
+    for (int family=0;family<4;family++) {
+        int rank=0;
+        for (int source=0;source<3;source++) {
+            for (int fx=0;fx<PUNCH_NFX;fx++)
+                if (punch_family(fx)==family && punch_rank[source][fx]>rank)
+                    rank=punch_rank[source][fx],choice[family]=fx;
+            if (!source && rank) break; /* physical wins; otherwise latest MIDI source */
+        }
+    }
+    punch.req=(int8_t)choice[0]; punch_filter_req=(int8_t)choice[1];
+    punch_gate_req=choice[2]>=0; punch_rate_req=(int8_t)choice[3];
+}
+static void punch_hold(int source,int fx,int on)
+{
+    if ((unsigned)source>2u || (unsigned)fx>=PUNCH_NFX) return;
+    uint8_t old=punch_rank[source][fx],max=0;
+    punch_rank[source][fx]=0;
+    for(int s=0;s<3;s++)for(int f=0;f<PUNCH_NFX;f++) {
+        uint8_t *rank=&punch_rank[s][f];
+        if(old && *rank>old)--*rank;
+        if(*rank>max)max=*rank;
+    }
+    if(on)punch_rank[source][fx]=(uint8_t)(max+1u);
+    punch_resolve();
+}
+static void punch_source_clear(int source)
+{
+    for(int fx=0;fx<PUNCH_NFX;fx++)
+        if(punch_rank[source][fx])punch_hold(source,fx,0);
+}
+static void punch_midi_clear(void) { punch_source_clear(1); }
+static uint32_t punch_active_keys(void)
+{
+    uint32_t keys=punch.req>=0?1u<<punch_key_of_fx((uint32_t)punch.req):0;
+    if(punch.req!=PX_FREEZE) {
+        if(punch_filter_req>=0)keys|=1u<<punch_key_of_fx((uint32_t)punch_filter_req);
+        if(punch_gate_req)keys|=1u<<punch_key_of_fx(PX_GATE);
+    }
+    if(punch_rate_req>=0 && !song.g[G_SYNC]) keys|=1u<<punch_key_of_fx((uint32_t)punch_rate_req);
+    return keys;
+}
 
-static uint32_t beat_samples(void) { return (uint32_t)FS * 60u / (uint32_t)song.g[G_BPM]; }
+static int px_loop(int32_t fx) { return fx <= PX_STUT || fx == PX_LOOP8T; }   /* on the grid */
+static int px_replay(int32_t fx) { return fx <= PX_STOP || fx == PX_LOOP8T; } /* replays a span of the ring */
+
+static uint32_t beat_samples(void) { return musical_samples((uint32_t)FS * 60u); }
 
 static int32_t ring_raw(uint32_t i) { return punch_ring[i & (PUNCH_N - 1u)]; }   /* the stored 16 bits (mix / 8) */
 static int32_t ring_at(uint32_t i) { return ring_raw(i) << 3; }
@@ -89,7 +150,6 @@ static void punch_start(int32_t fx)
     punch.rp = punch.w << 16;
     punch.spd = 65536u;
     punch.dspd = 65536u / len + 1u;
-    punch.sub = 0;
     punch.k = punch.t % len;
     punch.lfo = 0;
     punch.hn = 0;
@@ -124,17 +184,16 @@ static int32_t punch_ring_fx(int32_t fx)
         punch.lfo += 4u * (0xFFFFFFFFu / FS);           /* 4 Hz */
         return ring_q16((punch.w << 16) - ((uint32_t)d << 16));
     }
-    default:                                        /* loops, HALF */
+    default:                                        /* loops */
         y = ring_at(punch.start + k);
         break;
     }
-    if (fx != PX_HALF || (punch.sub ^= 1u) == 0u)       /* HALF: every other sample */
-        punch.k = k + 1u >= len ? 0u : k + 1u;
+    punch.k = k + 1u >= len ? 0u : k + 1u;
     /* declick at the seams */
     return k < 64u ? (y * (int32_t)k) >> 6 : len - k < 64u ? (y * (int32_t)(len - k)) >> 6 : y;
 }
 
-/* the loops, STUTTER, HALF and REVERSE replay ring samples [start, start + len) (REVERSE: up to start,
+/* the loops, STUTTER and REVERSE replay ring samples [start, start + len) (REVERSE: up to start,
  * backwards). The ring keeps recording the mix, and after PUNCH_N samples (0.74 s) the writer comes
  * round into that span: it skips those slots once the loop is captured, so a held loop plays for as
  * long as the key is held. The rest of the ring keeps recording (the next effect has its past). */
@@ -230,10 +289,11 @@ static void punch_freeze_feed(int32_t *rev, const int32_t *l, const int32_t *r, 
 }
 
 /* l, r: the mix before the master (fx.c mix_block), n samples, in place */
-static void punch_process(int32_t *l, int32_t *r, uint32_t n)
+static void punch_primary(int32_t *l, int32_t *r, uint32_t n)
 {
     uint32_t i;
-    int32_t want = punch.req >= 0 ? punch.req : perf_punch(fm1_ms);
+    int32_t want = punch.req >= 0 ? punch.req : punch_local ? -1 : perf_punch(fm1_ms);
+    if (want == PX_HALF || want == PX_DOUBLE || want == PX_VINYL) want = -1; /* Transport/upstream gestures never replay audio. */
     uint32_t beat, step, echo_d, binc, fdec;
     static int32_t kl[CTL], kr[CTL];                    /* (static: the ISR stack is small) */
     tsvf_t c1, c2;
@@ -357,14 +417,6 @@ static void punch_process(int32_t *l, int32_t *r, uint32_t n)
                 punch.v -= PX_RWD_ACC;
             break;
         }
-        case PX_OCT: {                                  /* two taps read at twice the speed, half a window apart */
-            uint32_t d1 = PX_OCT_W - punch.k, d2 = d1 > PX_OCT_W / 2u ? d1 - PX_OCT_W / 2u : d1 + PX_OCT_W / 2u;
-            int32_t g1 = (int32_t)(d1 <= PX_OCT_W / 2u ? d1 : PX_OCT_W - d1) << 5;   /* triangles: g1 + g2 = 1 */
-            int32_t g2 = 32768 - g1;
-            punch.k = punch.k + 1u >= PX_OCT_W ? 0u : punch.k + 1u;
-            wl = wr = (ring_raw(punch.w - d1) * g1 + ring_raw(punch.w - d2) * g2) >> 12;
-            break;
-        }
         case PX_FLANGE: {                               /* 0.6..6 ms, swept over a bar, left and right a quarter apart */
             uint32_t dl = (26u << 16) + (uint32_t)((sine_i(punch.lfo) + 32768) * 240),
                      dr = (26u << 16) + (uint32_t)((sine_i(punch.lfo + 0x40000000u) + 32768) * 240);
@@ -391,9 +443,6 @@ static void punch_process(int32_t *l, int32_t *r, uint32_t n)
             wr = y + ((((fr - y) >> 3) * (c >> 3)) >> 9);
             break;
         }
-        case PX_MONO:
-            wl = wr = m;
-            break;
         case PX_FADE: {
             int32_t v = (int32_t)(punch.fv >> 8), gq = (v * v) >> 15;   /* squared: the ear hears it even */
             punch.fv = punch.fv > fdec ? punch.fv - fdec : 0u;
@@ -438,6 +487,55 @@ static void punch_process(int32_t *l, int32_t *r, uint32_t n)
     }
 }
 
+/* Bounded first combination set: one existing effect -> LP/HP/PHONE -> GATE.
+ * Capture/write the shared dry ring exactly once, inside punch_primary. */
+static void punch_process(int32_t *l,int32_t *r,uint32_t n)
+{
+    punch_primary(l,r,n);
+    int filter=punch.req==PX_FREEZE||punch.cur==PX_FREEZE?-1:punch_filter_req;
+    int gate=punch.req!=PX_FREEZE&&punch.cur!=PX_FREEZE&&punch_gate_req;
+    if(punch_filter.cur<0 && filter>=0) {
+        punch_filter.cur=(int8_t)filter; punch_filter.cut=127<<8;
+        memset(punch_filter.z,0,sizeof punch_filter.z);
+    }
+    if(punch_filter.cur>=0) {
+        int fx=punch_filter.cur;
+        tsvf_t c1,c2;
+        if(fx==PX_LPF)punch_filter.cut=clamp(punch_filter.cut-96,34<<8,127<<8);
+        if(fx==PX_HPF)punch_filter.cut=clamp(punch_filter.cut-64,88<<8,127<<8);
+        tsvf_coef(&c1,fx==PX_LPF?punch_filter.cut:fx==PX_HPF?(127<<8)-punch_filter.cut+(40<<8):96<<8,90);
+        tsvf_coef(&c2,58<<8,40);
+        for(uint32_t i=0;i<n;i++) {
+            int32_t x=l[i],y=r[i],wl,wr,*z=punch_filter.z;
+            wl=tsvf_lp(&c1,x>>1,&z[0],&z[1])<<1;
+            wr=tsvf_lp(&c1,y>>1,&z[2],&z[3])<<1;
+            if(fx==PX_HPF)wl=x-wl,wr=y-wr;
+            if(fx==PX_TEL) {
+                int32_t b=(wl+wr)>>2;
+                b-=tsvf_lp(&c2,b,&z[4],&z[5]); wl=wr=softclip(b<<2)>>1;
+            }
+            punch_filter.gain=clamp(punch_filter.gain+(filter==fx?512:-512),0,32767);
+            l[i]=x+((((wl-x)>>3)*(punch_filter.gain>>3))>>9);
+            r[i]=y+((((wr-y)>>3)*(punch_filter.gain>>3))>>9);
+        }
+        if(!punch_filter.gain&&filter!=fx)punch_filter.cur=-1;
+    }
+    if(gate||punch_gate.gain) {
+        uint32_t step=beat_samples()/4u; if(!step)step=1;
+        if(song.playing)punch_gate.phase=clk_samples()%step;
+        for(uint32_t i=0;i<n;i++) {
+            uint32_t p=punch_gate.phase;
+            int32_t gg=p<step/2u?32767:0;
+            if(p<64u)gg=(int32_t)p*512;
+            else if(p>=step/2u&&p<step/2u+64u)gg=32767-(int32_t)(p-step/2u)*512;
+            punch_gate.phase=p+1u>=step?0u:p+1u;
+            punch_gate.gain=clamp(punch_gate.gain+(gate?512:-512),0,32767);
+            int32_t g=32767-mulq15(32767-gg,punch_gate.gain);
+            l[i]=mulq16(l[i],(uint32_t)g<<1); r[i]=mulq16(r[i],(uint32_t)g<<1);
+        }
+    }
+}
+
 /* a key (0..26, from F3) -> its white key index 0..15, -1 = a black key (the layers' steps use it too) */
 static int32_t punch_key(uint32_t k)
 {
@@ -466,4 +564,17 @@ static uint32_t punch_key_of_fx(uint32_t fx)          /* an effect -> its key (t
     return fx < 16u ? fx / 7u * 12u + K[fx % 7u] : PUNCH_BLACK[fx - 16u];
 }
 
-static void punch_clear(void) { punch.req = -1; punch.keybit = 0; }
+/* 0 normal, 1 half, 2 double: no new clock or persistent tempo state. */
+static int punch_rate_requested(void)
+{
+    int fx = punch_rate_req >= 0 ? punch_rate_req : punch.req >= 0 ? punch.req : punch_local ? -1 : perf_punch(fm1_ms);
+    return fx == PX_HALF ? 1 : fx == PX_DOUBLE ? 2 : 0;
+}
+static int punch_vinyl_requested(void)
+{ return (punch.req >= 0 ? punch.req : punch_local ? -1 : perf_punch(fm1_ms)) == PX_VINYL; }
+static int punch_half_requested(void) { return punch_rate_requested() == 1; }
+static void punch_clear(void)
+{
+    memset(punch_rank,0,sizeof punch_rank); punch_resolve();
+    musical_half=musical_remainder=0;
+}

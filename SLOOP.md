@@ -40,7 +40,7 @@ Projects, autosaves, presets and backups from 2.6 load as they are; the second c
 
 ### New in 2.6
 
-- **Eleven more punch-in effects, on the black keys.** Hold FX: KILL LOW / MID / HIGH (DJ-style band kills), REWIND, OCT UP, FLANGER, AUTO-PAN, FREEZE (the mix held in the reverb), LOOP 8T, MONO and FADE OUT, 27 in all; the screen shows them as a keyboard. Thanks to the viewer who suggested it!
+- **Eleven more punch-in effects, on the black keys.** Hold FX: KILL LOW / MID / HIGH (DJ-style band kills), REWIND, DOUBLE TIME, FLANGER, AUTO-PAN, FREEZE (the mix held in the reverb), LOOP 8T, VINYL and FADE OUT, 27 in all; the screen shows them as a keyboard. Thanks to the viewer who suggested it!
 - **A bolder screen.** The lettering is now Terminus Bold, all in capitals: easier to read at arm's length, the layout unchanged. Thanks to the viewer who asked!
 - **From Felucca 1.4 / 1.5 (Leo Kuroshita):**
   - **INSERT**, an effect on each track (the drum track too), right after its drive: SOFT, HARD, FOLD, FUZZ, CRUSH, PHASR, FLANG, CHOR, with a dry / wet MIX (FX → INSERT, INSERT 2). Its values can be locked on a step.
@@ -101,7 +101,7 @@ Projects, autosaves and backups from 2.4 load as they are. Going back to 2.4: a 
 - **CHORD+ (after HiChord and minichord).** In chord mode the black keys change the chord you play: major ↔ minor, 7th, sus4, 9th, inversion, even while it is held. **STRUM** plays a chord's notes one after the other, **VLEAD** voices each chord nearest the last. See [SEL — key and chords](#scl--key-and-chords).
 - **Your own drum kits, and a 4th sample slot.** A new slot, **USR4**, in flash nothing used before. The drum track's KIT goes on to **USR1–USR4** and **USR3+4**: a big kit of about 15 s over two slots, so USR1 and USR2 stay free for instruments. Build it in the editor's new **Drum kit** page (drop WAVs on 16 pads, pitch, gain and length each, choose where it goes) and send it. See [Your own drum kits](#your-own-drum-kits-kit-usr1usr4-usr34).
 - **A new web editor.** Rebuilt to look and feel like the FM-1: its black screen, the four track colours, its own pixel font; the pages of each button as rows of four coloured knobs, values you drag like a knob, the steps as the device's tiles. See [The web editor](#the-web-editor).
-- **The visualiser.** On the TRACKS screen, tap **HOME**: twenty-one full-screen visualisers of what plays (oscilloscope, spectrum, spectrogram, Lissajous, VU meters, circle, tape, LCD, bounce, orbit, wires and the SLOOP logo itself), **SELECT** to change. See [The visualiser](#the-visualiser).
+- **The visualiser.** On TRACKS, tap **HOME** for seven styles: Oscilloscope, Spectrum, Spectrogram, VU Meters, Note Trails, Groove and Song Journey. Turn **SELECT** to change. See [The visualiser](#the-visualiser).
 - **The menu in sections.** HOME held: SCREEN, LIGHTS, AUDIO, SYSTEM; **SELECT** turns the sections as it turns the pages, and KNOB 1, 2, 3 set the rows of the section directly, values in large type.
 - **Bigger values.** The pages without a graph (EDIT, VOICE, ENV DEST, LFO DEST, GLOBAL, MASTER, SYSTEM, FILTER…) use the empty middle of the screen: their four values in large type, placed as the knobs are (1 2 / 3 4), the one you turn in white (asked for by the community).
 - **SELECT turns the pages.** On a page (ENV, LFO, FX, EDIT, ARP, SEQ, SEL, GLO, SAVE), **SELECT** goes to the previous / next page of that group: no need to press LFO again to reach LFO DEST. On HOME, and while a layer is held, SELECT is still the tempo (asked for by the community).
@@ -384,7 +384,7 @@ The black keys (2.6), from the lowest F# to the highest:
 | G#3 | **KILL MID**: the mids gone (~250 Hz – 2.5 kHz) | G#4 | **AUTO-PAN**: the mix in mono, left and right once a beat |
 | A#3 | **KILL HIGH**: the highs gone (above ~2.5 kHz) | A#4 | **FREEZE**: the mix poured into the reverb and held there for as long as you hold the key; let go and it dies away with the reverb's SIZE |
 | C#4 | **REWIND**: the record pulled back: it slows, stops and spins backwards faster and faster (about a third of a second of the past), then silence until you let go | C#5 | **LOOP 8T**: loop 1/8 triplet |
-| D#4 | **OCT UP**: the mix an octave up | D#5 | **MONO**: left and right in one |
+| D#4 | **DOUBLE TIME**: double the musical tempo while held (pitch unchanged) | D#5 | **VINYL**: momentary wow, tone and crackle |
 | | | F#5 | **FADE OUT**: the mix fades to nothing over two beats |
 
 The screen shows the 27 keys as a keyboard: the white keys in four rows of four, as on the other layers, the black keys above them, each between the two white keys it sits between on the FM-1 (the one after a row's last white key at the right end of that row). The effect held is lit white.
@@ -579,24 +579,17 @@ USB AUDIO is a setting of the FM-1: it stays as you left it. MIDI, the web edito
 
 ## The visualiser
 
-On the TRACKS screen, tap **HOME**: the whole screen becomes a visualiser of what SLOOP plays. **SELECT** steps through fourteen styles (the name shows a second; the last one chosen is kept with the settings); **HOME** again, or any page button, closes it. The keys, PLAY, REC and the layers work as ever (a layer held shows its screen, then the visualiser comes back); KNOB 1–4 do nothing meanwhile, and the tempo is GLO + SELECT.
+On the TRACKS screen, tap **HOME**: the whole screen becomes a visualiser of what SLOOP plays. **SELECT** steps through seven styles (the name shows a second; the last one chosen is kept with the settings); **HOME** again, or any page button, closes it. The keys, PLAY, REC and the layers work as ever (a layer held shows its screen, then the visualiser comes back); KNOB 1–4 do nothing meanwhile, and the tempo is GLO + SELECT.
 
 | # | Style | What it shows |
 | --- | --- | --- |
-| 1 | **OSCILLOSCOPE** | the mix's wave, standing still |
-| 2 | **SPECTRUM** | 32 bands, lows to highs, with caps that fall |
-| 3 | **SPECTROGRAM** | the spectrum scrolling down, black → blue → green → yellow → white |
-| 4 | **LISSAJOUS** | the stereo image: the wider the cloud, the wider the sound |
-| 5 | **VU METERS** | tracks 1–4 in their colours and the mix, with peak holds |
-| 6 | **CIRCLE** | the wave round a ring that swells on every kick |
-| 7 | **ORBIT** | four planets turning in 1, 2, 4 and 8 beats, sized by their track, round a sun that pulses with the mix |
-| 8 | **WIRES** | a string per track, set swinging by its notes |
-| 9 | **POLYRHYTHM** | four rings show each track's pattern length, active steps and independent playhead |
-| 10 | **NOTE TRAILS** | scrolling pitches for all three synths, including chords and releases, with drum lanes below |
-| 11 | **GROOVE** | eight steps per track: grid lines, swing, micro timing, hit levels and ratchet repeats |
-| 12 | **STEREO FIELD** | a stereo cloud, left/right balance marker and a width bar |
-| 13 | **SONG JOURNEY** | song order or quick chain, current entry and remaining bars |
-| 14 | **BEAT TERRAIN** | spectrum-driven wireframe hills, moving at the tempo |
+| 1 | **OSCILLOSCOPE** | the mix waveform, standing still |
+| 2 | **SPECTRUM** | 32 frequency bands with falling caps |
+| 3 | **SPECTROGRAM** | scrolling frequency history |
+| 4 | **VU METERS** | tracks 1–4 and master, with peak holds |
+| 5 | **NOTE TRAILS** | played and held synth pitches with high-contrast drum lanes; delay tails excluded |
+| 6 | **GROOVE** | grid, swing, microtiming, hit levels and ratchets |
+| 7 | **SONG JOURNEY** | song/quick-chain order, current section and remaining bars |
 
 It sees the mix as if **MASTER** were all the way up, so the picture does not follow the volume knob: with MASTER turned down, even to 0, it moves as at full volume. It only reads what the audio already leaves for the screen (that mix, the tracks' levels and notes, the clock): it costs the sound nothing.
 

@@ -2,6 +2,7 @@
 #define main hostsim_main
 #include "hostsim.c"
 #undef main
+#undef NDEBUG
 #include <assert.h>
 #define PROJ_HOST 1
 static uint32_t trk_def_engine(uint32_t i) { static const uint8_t e[]={0,1,3};return i<3?e[i]:0; }

@@ -113,6 +113,9 @@ enum {                          /* global parameters */
                                  * 1..16; seq.c remote_cc, ui_input.c remote_poll; a setting of the FM-1) */
     G_CLKOUT,                   /* SLOOP 2.7, GLO > MIDI 3: CLK OUT, the MIDI clock (24 a beat) and START / STOP out on USB
                                  * while SYNC is INT (seq.c clkout_block; a setting of the FM-1, kept in DR MAP's byte) */
+    G_RMODEL,                  /* append-only: current stereo FDN (0), spring (1) */
+    G_VWOW, G_VTONE, G_VCRACKLE, /* persistent master vinyl, defaults bypassed */
+    G_RTIME,                   /* spring reflection spacing in milliseconds */
     G_COUNT
 };
 
@@ -122,8 +125,6 @@ enum { ARP_OFF, ARP_UP, ARP_DOWN, ARP_UPDOWN, ARP_RANDOM, ARP_ORDER,
        ARP_REPEAT, ARP_DOWNUP, ARP_UP8, ARP_OUTSIDE, ARP_INSIDE, ARP_PINKY,
        ARP_THUMB, ARP_WALK, ARP_CHORD, ARP_SHUFFLE, ARP_ROOTALT,
        ARP_UPDOWN_REPEAT, ARP_PULSE, ARP_COUNT };
-/* Private decoder cache, never part of songs or sample-slot formats. */
-typedef struct { uint32_t tag; uint8_t bytes[128]; } smp_cache_t;
 typedef struct {
     uint8_t note, vel, gate, active;
     uint8_t stage;               /* env: 0 off, 1 attack, 2 decay/sustain, 3 release, 4 fading out (given up) */
@@ -138,7 +139,6 @@ typedef struct {
     uint32_t ph[3];
     int32_t s[8];                /* engine state (filters, envs) */
     uint32_t age;
-    smp_cache_t sample_cache;
 } voice_t;
 
 typedef struct {                 /* per-voice control-rate modulation, computed in voice.c */
@@ -361,6 +361,20 @@ static song_t song;
 #endif
 #define BEAT_U ((uint32_t)FS * 60u)
 static volatile uint32_t clk_beat, clk_pos;
+/* One audio-block snapshot, shared read-only with core 1. No saved BPM mutation. */
+/* Legacy name: 0 normal, 1 half, 2 double. */
+static uint8_t musical_half, musical_remainder;
+static uint32_t musical_advance;
+DSP_INLINE uint32_t musical_units(uint32_t n, uint8_t *remainder)
+{
+    uint32_t u = n * (uint32_t)song.g[G_BPM];
+    if (musical_half != 1) return musical_half == 2 ? u * 2u : u;
+    u += *remainder;
+    *remainder = (uint8_t)(u & 1u);
+    return u >> 1;
+}
+DSP_INLINE uint32_t musical_samples(uint32_t units)
+{ return units * (musical_half == 1 ? 2u : 1u) / ((uint32_t)song.g[G_BPM] * (musical_half == 2 ? 2u : 1u)); }
 /* Recording preference only; no project/parameter format changes. Resets on boot. */
 enum { REC_SNAP_TRACK, REC_SNAP_EIGHTH, REC_SNAP_QUARTER, REC_SNAP_COUNT };
 static int16_t rec_snap[NTRK];
@@ -400,9 +414,9 @@ static uint32_t swing_preview_units(uint32_t div,int32_t amount,uint32_t step,in
     return n>0?(uint32_t)n:1u;
 }
 /* length of one step (N_SDIV order) in samples at the song tempo (rounded down) */
-static uint32_t div_samples(uint32_t div) { return div_units(div) / (uint32_t)song.g[G_BPM]; }
+static uint32_t div_samples(uint32_t div) { return musical_samples(div_units(div)); }
 /* length of the delay's TIME (N_DLY order) in samples at the song tempo (rounded down) */
-static uint32_t dly_samples(uint32_t d) { return dly_units(d) / (uint32_t)song.g[G_BPM]; }
+static uint32_t dly_samples(uint32_t d) { return musical_samples(dly_units(d)); }
 /* SLOOP 2.6, after Felucca 1.5.1: REV THROW / ECHO THROW (FX held + OCT- / OCT+, ui_input.c): while held, every
  * track's send to the reverb / the delay goes full, gliding in and out (~12 ms); ECHO THROW also takes the delay's FDBK
  * up to 70 % if it is lower. The song's values never change, nothing is saved or recorded. thr_req: bit 0 the reverb,

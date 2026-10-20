@@ -49,7 +49,7 @@ static int32_t fm1_adc_read(int c) { (void)c; return -1; }
 static struct { uint32_t magic, stage, page, home, ui_frames; } felucca_dbg;
 #define FELUCCA_ICONS 1
 #define SCOPE_N 512u
-static int16_t scope_buf[SCOPE_N], scope_bufr[SCOPE_N];
+static int16_t scope_buf[SCOPE_N];
 static uint32_t scope_w;
 #include "../firmware/src/panel.c"
 #include "../firmware/src/ui.c"
@@ -134,7 +134,6 @@ static void frame(void)
         uint32_t i;
         mix_block(o, CTL);
         for (i = 1; i < CTL; i += 2u) {             /* the scope, as audio.c fills it (the visualiser) */
-            scope_bufr[scope_w & (SCOPE_N - 1u)] = vis_tap[2u * i + 1u];
             scope_buf[scope_w++ & (SCOPE_N - 1u)] = vis_tap[2u * i];
         }
     }
@@ -249,15 +248,15 @@ int main(int argc, char **argv)
                       "settings: side record restores fork visualizer and scale/swing flags without changing upstream channel fields");
             }
             memset(&record, 0xff, sizeof record); lights_from_word(9u << 17); side_take(&record);
-            check(vis_style == 6u && !lights_scale && !midi_scale && !swing_eighth,
-                  "upstream-only side record keeps ORBIT canonical ID and defaults fork-only flags off");
-            lights_scale = midi_scale = swing_eighth = 1; vis_style = 9;
+            check(vis_style == VIS_SCOPE && !lights_scale && !midi_scale && !swing_eighth,
+                  "upstream-only side record drops removed ORBIT ID and defaults fork-only flags off");
+            lights_scale = midi_scale = swing_eighth = 1; vis_style = VIS_TRAILS;
             { uint32_t word = lights_word();
               settings_restore_word(word);
-              check(vis_style == 9 && lights_scale && midi_scale && swing_eighth,
+              check(vis_style == VIS_TRAILS && lights_scale && midi_scale && swing_eighth,
                     "song-order settings restore retains fork-only visualizer and scale/swing preferences");
-              settings_restore_word((word & ~(15u << 17)) | (3u << 17));
-              check(vis_style == 3 && lights_scale && midi_scale && swing_eighth,
+              settings_restore_word((word & ~(15u << 17)) | (4u << 17));
+              check(vis_style == VIS_METERS && lights_scale && midi_scale && swing_eighth,
                     "explicit upstream visualizer restore wins while device-local fork preferences remain");
             }
             vis_style = old_vis; lights_scale = old_ls; midi_scale = old_ms; lights_min = old_in; swing_eighth = 0;
@@ -925,13 +924,13 @@ int main(int argc, char **argv)
             check(ok, "theme (2.7): checked (CRC, the strongest step and the accent standing out from the background, a "
                       "printable name); a first-beta THM1 taken with an accent");
             ui.menu = 1; ui.menu_sel = MI_COLOR; ui.force = 1; frame();
-            settings.palette = 4; theme_on = 0; palette_set(4);
-            encs[panel.enc[EN_K1]] = 1; frame();      /* no theme: MONO -> GREEN, as ever */
+            settings.palette = NPALETTES-1u; theme_on = 0; palette_set(settings.palette);
+            encs[panel.enc[EN_K1]] = 1; frame();      /* no theme: last built-in wraps to GREEN */
             ok = settings.palette == 0u && !theme_on;
-            settings.palette = 4; palette_set(4);
+            settings.palette = NPALETTES-1u; palette_set(settings.palette);
             theme = th; theme_valid = 1;
-            encs[panel.enc[EN_K1]] = 1; frame();      /* MONO -> SUNSET */
-            ok &= theme_on && settings.palette == 4u && pal[0] == th.c[0] && pal[4] == th.c[4] && C_BLACK == th.bg &&
+            encs[panel.enc[EN_K1]] = 1; frame();      /* last built-in -> SUNSET */
+            ok &= theme_on && settings.palette == NPALETTES-1u && pal[0] == th.c[0] && pal[4] == th.c[4] && C_BLACK == th.bg &&
                   TE_COL[0] == th.trk[0] && TE_COL[3] == th.trk[3] && TE_MID[1] == rgb565_scale(th.trk[1], 2, 3) &&
                   (lights_word() >> 30 & 1u) && !strcmp(mi_value(MI_COLOR, &(uint16_t){0}), "SUNSET") && C_WHITE == th.hi;
             ui.force = 1; frame(); ppm("menu-theme");
@@ -966,7 +965,7 @@ int main(int argc, char **argv)
             ok &= pal[4] == PALETTES[settings.palette].c[4] && strcmp(mi_value(MI_COLOR, &(uint16_t){0}), "SUNSET");
             theme_on = 0; settings.palette = pal0; palette_set(pal0);
             ui.menu_sel = MI_USB; ui.force = 1; frame();      /* (back to AUDIO) */
-            check(ok, "MENU > COLOR (2.7): your theme after MONO, by its name; its colours, background and the tracks'; bit 30");
+            check(ok, "MENU > COLOR (2.7): your theme after the built-ins, by its name; its colours, background and the tracks'; bit 30");
         }
         {   /* 2.7: the page counter counts the pages SELECT walks (SEQ: STEP 1/2, PATTERN 2/2; SONG not counted) */
             uint32_t n, k1, n1, k2, n2, k3 = 0, n3 = 0, menu0 = ui.menu, sel0 = ui.menu_sel;
@@ -1250,11 +1249,29 @@ int main(int argc, char **argv)
             for (y = Y_GRAPH + 30; y < Y_GRAPH + 90; y++)
                 for (x = 40; x < 200; x++)
                     lit += screen[y * 240u + x] != 0;
-            check(lit > 300u, "FILTER page: the graph strip shows it");
+            check(lit > 100u && cur_page()->graph==GR_FILTER, "FILTER page: the cutoff guide is visible");
         }
         TSEL->p[P_TFLT] = 0;
         SEL(9);
-        check(!strcmp(PT(), "REV/CHO"), "SELECT on FX: on to the last page, REV/CHO");
+        check(!strcmp(PT(), "VINYL"), "SELECT on FX: on to the last page, VINYL");
+        for(uint32_t k=0;k<3;k++){encs[panel.enc[EN_K1+k]]=200;frames(2);}
+        check(song.g[G_VWOW]==127 && song.g[G_VTONE]==127 && song.g[G_VCRACKLE]==127,
+              "VINYL controls reach the actual master-bus parameters");
+        song.g[G_VWOW]=song.g[G_VTONE]=song.g[G_VCRACKLE]=0;
+        SEL(-1);
+        check(!strcmp(PT(), "REVERB"), "REVERB precedes VINYL");
+        for (uint32_t turn=0;turn<8u;turn++) { encs[panel.enc[EN_K1]]=1;frames(8); }
+        check(song.g[G_RMODEL]==1 && GP[G_RMODEL].max==1,
+              "REVERB TYPE stops at SPRING, never selects a null third model");
+        int old_size=song.g[G_RSIZE];encs[panel.enc[EN_K4]]=5;frames(2);
+        check(song.g[G_RTIME]>50 && song.g[G_RTIME]<=80 && song.g[G_RSIZE]==old_size,
+              "SPRING knob4 changes reflection TIME without changing SIZE");
+        ui.force=1;frame();ppm("page-spring-time");
+        for (uint32_t turn=0;turn<8u;turn++) { encs[panel.enc[EN_K1]]=-1;frames(8); }
+        check(song.g[G_RMODEL]==0, "REVERB TYPE stops at STEREO going backwards");
+        int old_time=song.g[G_RTIME];encs[panel.enc[EN_K4]]=5;frames(2);
+        check(song.g[G_RTIME]==old_time,"STEREO reverb leaves the spring-only TIME knob inactive");
+
         tap(B_EDIT); SEL(-9);
         check(!strcmp(PT(), "EDIT 1"), "SELECT on EDIT: back to the first page");
         SEL(9);
@@ -1456,7 +1473,7 @@ int main(int argc, char **argv)
             for (x = 0; nm[x]; x++) if (nm[x] == ' ') nm[x] = '-';
             ppm(nm);
             snprintf(nm, sizeof nm, "visualiser %2u %-12s draws (%u px lit)", st + 1u, VIS_NAME[st], lit);
-            check(lit > (st == 3u ? 400u : 1500u) && vis_style == st, nm);   /* (Lissajous: points) */
+            check(lit > 1500u && vis_style == st, nm);
             encs[panel.enc[EN_SELECT]] = 1; frame();
         }
         {   /* MASTER at 0: silence out, the picture as if MASTER were all the way up */
@@ -1470,19 +1487,32 @@ int main(int argc, char **argv)
             check(op < 64u && pk > 2000u && lit > 1500u, "visualiser: MASTER at 0: no sound, the picture as at full volume");
             song.master_q12 = m0; frames(4);
         }
-        check(vis_style == 0u, "visualiser: SELECT goes round (14 -> 1)");
+        check(vis_style == 0u, "visualiser: SELECT goes round (7 -> 1)");
         encs[panel.enc[EN_SELECT]] = -1; frames(2);
-        check(vis_style == VIS_N - 1u && (lights_word() >> 17 & 15u) == 0u, "visualiser: BEAT TERRAIN uses the side record, canonical word falls back to scope");
+        check(vis_style == VIS_N - 1u && (lights_word() >> 17 & 15u) == 0u, "visualiser: SONG JOURNEY uses the side record, canonical word falls back to scope");
         { side_rec_t record; side_fill(&record); lights_from_word(lights_word()); side_take(&record); }
         check(vis_style == VIS_N - 1u, "visualiser: the style read back");
         for (st = 0; st < VIS_N; st++) {
             vis_style = (uint8_t)st; side_rec_t record; side_fill(&record); lights_from_word(lights_word()); side_take(&record);
             check(vis_style == st, "visualiser: every style round trips through settings");
         }
-        { static const uint8_t removed[] = {6,7,8,11,12,13,14,15};
+        { static const uint8_t removed[] = {3,5,6,7,8,9,10,11,12,13,14,15};
           for (st = 0; st < sizeof removed; st++) {
             lights_from_word((uint32_t)removed[st] << 17);
             check(vis_style == 0u, "visualiser: removed style falls back to oscilloscope");
+          }
+        }
+        { /* Side records keep historical fork IDs, independent of menu positions. */
+          static const uint8_t saved[]={0,1,2,4,9,10,12};
+          static const uint8_t removed[]={3,5,6,7,8,11,13,14,255};
+          for(st=0;st<VIS_N;st++) {
+            fork_settings_from_word((uint32_t)saved[st]<<8);
+            check(vis_style==st && (fork_settings_word()>>8)==saved[st],
+                  "visualiser: historical retained ID survives compact menu ordering");
+          }
+          for(st=0;st<sizeof removed;st++) {
+            fork_settings_from_word((uint32_t)removed[st]<<8);
+            check(vis_style==VIS_SCOPE,"visualiser: removed fork ID falls back to scope");
           }
         }
         { /* Shared storage must not interpret waveform bytes as old trail notes. */
@@ -1490,29 +1520,23 @@ int main(int argc, char **argv)
           song.playing = 0;
           vis_style = 0; vis_update();
           memset(&vis_frame, 0xff, sizeof vis_frame);
-          vis_style = 9; vis_update();
+          vis_style = VIS_TRAILS; vis_update();
           check(vis_notes[0][0][0] == 0u, "visualiser: entering trails clears waveform history");
           memset(&vis_frame, 0xff, sizeof vis_frame);
-          for (x = 0; x < SCOPE_N; x++) { scope_buf[x] = 1000; scope_bufr[x] = -1000; }
-          vis_style = 3; vis_update();
-          check(vis_re[0] == 1000 && vis_im[0] == -1000 &&
-                vis_re[VIS_FFT - 1u] == 1000 && vis_im[VIS_FFT - 1u] == -1000,
-                "visualiser: Lissajous snapshots survive writes to shared history");
-          check(vis_lj[(vs.lj_n + 1u) % 3u][0][0] == 0 &&
-                vis_lj[(vs.lj_n + 2u) % 3u][255][1] == 0,
-                "visualiser: entering Lissajous clears other styles' history");
-          vis_update();
-          check(vis_lj[(vs.lj_n + 2u) % 3u][255][1] != 0,
-                "visualiser: Lissajous retains its previous frame");
-          vis_style = 9; vis_update();
-          check(vis_notes[0][0][0] == 0u, "visualiser: trails clear Lissajous history");
-          memset(scope_buf, 0, sizeof scope_buf); memset(scope_bufr, 0, sizeof scope_bufr);
+          for (x = 0; x < SCOPE_N; x++) { scope_buf[x] = 1000; }
+          vis_style = VIS_SCOPE; vis_update();
+          check(vis_l[0] == 1000 &&
+                vis_l[VIS_FFT - 1u] == 1000,
+                "visualiser: scope refreshes the full shared waveform snapshot");
+          vis_style = VIS_TRAILS; vis_update();
+          check(vis_notes[0][0][0] == 0u, "visualiser: trails clear waveform history");
+          memset(scope_buf, 0, sizeof scope_buf);
           vis_style = 0; vis_update();
-          check(vis_l[0] == 0 && vis_r[0] == 0, "visualiser: returning to scope refreshes shared storage");
+          check(vis_l[0] == 0, "visualiser: returning to scope refreshes shared storage");
           song.playing = oldplay;
         }
-        { side_rec_t record; vis_style = 9; side_fill(&record); lights_from_word(0); side_take(&record); }
-        check(vis_style == 9u && !strcmp(VIS_NAME[9], "NOTE TRAILS"), "visualiser: side record keeps NOTE TRAILS");
+        { side_rec_t record; vis_style = VIS_TRAILS; side_fill(&record); lights_from_word(0); side_take(&record); }
+        check(vis_style == VIS_TRAILS && !strcmp(VIS_NAME[VIS_TRAILS], "NOTE TRAILS"), "visualiser: side record keeps NOTE TRAILS");
         { int16_t bpm = song.g[G_BPM], lv = trk[0].p[P_LEVEL];
           encs[panel.enc[EN_K2]] = 5; frame();
           check(trk[0].p[P_LEVEL] == lv && song.g[G_BPM] == bpm, "visualiser: KNOB 2 (the hidden TRACKS screen) edits nothing, SELECT is not the tempo"); }

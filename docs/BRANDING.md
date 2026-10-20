@@ -5,7 +5,7 @@ is **MerthSloop Mobile**. Upstream SLOOP and Felucca attribution and licensing r
 Historical release notes and archived designs retain their original names/numbers.
 
 Firmware versions are `<SLOOP major.minor.revision>.<fork build>`. The current version
-is **2.6.0.14**. When upstream uses `2.6`, the missing revision is `0`. The final
+is **2.7.1.33**. When upstream uses `2.6`, the missing revision is `0`. The final
 build number increases independently and never resets when adopting upstream releases:
 for example, adopting SLOOP 2.7 at this build would yield `2.7.0.14`.
 
@@ -22,7 +22,7 @@ Web/README use `assets/logo/merthsloop-logo.svg`.
 
 | Startup | About |
 | --- | --- |
-| <img src="../assets/screens/merthsoft/guide/merthsloop-startup.png" width="240" alt="MerthSloop text startup and version"> | <img src="../assets/screens/merthsoft/guide/merthsloop-about.png" width="240" alt="MerthSloop About with SLOOP/Felucca attribution and source URL"> |
+| <img src="../assets/screens/merthsoft/neon/startup.png" width="240" alt="MerthSloop text startup and version"> | <img src="../assets/screens/merthsoft/neon/about.png" width="240" alt="MerthSloop About with SLOOP/Felucca attribution and source URL"> |
 
 *Fresh production firmware UI harness renders.*
 

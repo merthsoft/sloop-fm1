@@ -20,7 +20,7 @@
  * The keys' part runs in the audio ISR (seq.c layer_now: no lag, no lost press); the SEQ, SEL and
  * GLO keys come to the UI through seq.c lk_q. HOLD: REC held clears the track, SAVE held saves the
  * project (a ring fills; let go before and nothing happens). */
-static const uint8_t LAYER_BTN[LY_COUNT] = {NB, B_FX, B_EDIT, B_ARP, B_SEQ, B_SCL, B_GLO, B_SAVE, B_LFO, B_ENV, NB, NB};
+static const uint8_t LAYER_BTN[LY_COUNT] = {NB, B_FX, B_EDIT, B_ARP, B_SEQ, B_SCL, B_GLO, B_SAVE, B_LFO, B_ENV, B_ENV, B_LFO};
 static const char *const LAYER_NAME[LY_COUNT] = {"", "punch", "erase", "roll", "steps", "key", "mix", "song", "vibrato", "tremolo", "auto wah", "auto pan"};
 static void section_store(uint32_t s);                  /* project.c */
 static void section_load(uint32_t s);
@@ -425,7 +425,6 @@ UI_SMALL static void layer_key(uint32_t layer, uint32_t k, uint32_t down)
             } else {
                 sec_armed = 0;
                 section_store(s);
-                ui_say("SAVED ", b);
             }
         } else if (w == 8) {                            /* NEW: stopped, two presses; saved slots stay intact */
             if (song.playing || arrangement_clock.running || srec) {
@@ -689,7 +688,7 @@ UI_SMALL static void tiles_draw(const tile_t *tl, uint32_t *cache)
                 }
             }
         }
-        cv_blit(0, 40 + r * 36);
+        cv_blit(0, 74 + r * 36);
     }
 }
 
@@ -726,7 +725,7 @@ UI_SMALL static void punch_tiles_draw(const tile_t *tl, uint32_t *cache)
             cv_rect(x + 1, 1, PT_BW - 2, 15, t->bg);
             te_text_c(x + PT_BW / 2, 1, t->lab, t->fg);
         }
-        cv_blit(0, 40 + r * 36);
+        cv_blit(0, 74 + r * 36);
     }
 }
 
@@ -737,16 +736,15 @@ UI_SMALL static void layer_title(const char *name, const char *sub, uint16_t col
     if (!ui.force && sig == *cache)
         return;
     *cache = sig;
-    cv_begin(240, 40, C_BLACK);
-    cv_text(4, 2, &FONT_L, name, col);
-    cv_text(4 + text_w(&FONT_L, name) + 10, 18, &FONT_S, ui.msg_t ? ui.msg : sub, ui.msg_t ? C_WHITE : TE_G3);
-    if (locked) {                                         /* locked open (HOME): any button lets it go */
-        int32_t w = (int32_t)text_w(&FONT_S, "LOCK") + 8;
-        cv_rect(236 - w, 4, w, 15, C_WHITE);
-        cv_text(240 - w, 4, &FONT_S, "LOCK", C_BLACK);
-    }
-    cv_rect(0, 38, 240, 1, TE_G1);
-    cv_blit(0, 0);
+    cv_begin(240,20,C_BLACK);
+    cv_text(4,0,&FONT_S,name,col);
+    char track[3]={'T',(char)('1'+song.sel),0};
+    cv_text(168,0,&FONT_S,track,col);
+    if(locked) cv_text(200,0,&FONT_S,"LOCK",C_WHITE);
+    cv_blit(0,0);
+    cv_begin(240,22,C_BLACK);
+    cv_text(4,2,&FONT_S,ui.msg_t?ui.msg:sub,ui.msg_t?C_WHITE:TE_G4);
+    cv_blit(0,218);
 }
 
 UI_SMALL static const char *lock_label(const track_t *t, uint32_t id)   /* the lock parameter's name, lower case */
@@ -792,51 +790,50 @@ UI_SMALL static void live_mod_draw(const track_t *t, uint32_t layer, uint16_t co
     int trem = layer == LY_TREM;
     live_mod_t plot = *m;
     if (layer == LY_WAH) plot.wave = 1;
-    char text[24], name[4];
-    cv_begin(240, 124, C_BLACK);
-    if (is_drum(t)) {
-        te_text_c(120, 48, "synths only", TE_G3);
-    } else {
-        if (layer == LY_WAH && m->sync == WAH_ENV) {
-            cv_rect(12, 48, 216, 20, TE_G1);
-            cv_rect(12, 48, m->value * 216 / 32768, 20, col);
+    char text[24];
+    static uint32_t stamp=~0u;
+    uint32_t now=fm1_ms/50u*8u+layer-LY_VIB;
+    if(!ui.force&&stamp==now) return;
+    stamp=now;
+    cv_begin(240,114,C_BLACK);
+    if(is_drum(t)) te_text_c(120,48,"SYNTHS ONLY",TE_G3);
+    else {
+        if(layer==LY_WAH) {
+            cv_text(8,0,&FONT_S,"SWEEP / GUIDE",TE_G3);
+            int32_t base=clamp(((int32_t)m->wave)*4+16,16,192);
+            int32_t end=clamp(base+m->depth,base,224);
+            cv_rect(base,38,end-base+1,24,TE_G1);
+            cv_line(base,34,base,68,col);cv_line(end,34,end,68,col);
+            int32_t at=base+(end-base)*clamp(m->sync==WAH_ENV?m->value:(m->value+32768)/2,0,32767)/32767;
+            cv_line(8,78,at,25,col);cv_line(at,25,232,78,col);
+            cv_line(at,20,at,84,C_WHITE);
+            cv_text(8,94,&FONT_S,m->sync==WAH_ENV?"ENVELOPE FOLLOWER":"LFO SWEEP",TE_G4);
+        } else if(layer==LY_PAN) {
+            cv_text(8,0,&FONT_S,"STEREO POSITION",TE_G3);
+            cv_line(16,62,224,62,TE_G2);
+            cv_text(12,82,&FONT_S,"L",TE_G4);cv_text(116,82,&FONT_S,"C",TE_G4);cv_text(220,82,&FONT_S,"R",TE_G4);
+            cv_rect(120+live_pan(t)*100/64-3,48,7,28,col);
         } else {
-        cv_line(12, trem ? 20 : 62, 228, trem ? 20 : 62, TE_G2);
-        int32_t py = live_mod_plot_y(&plot, 0, trem);
-        for (uint32_t x = 1; x <= 216; x++) {
-            int32_t y = live_mod_plot_y(&plot, (x % 216u) * (UINT32_MAX / 216u), trem);
-            cv_line(11 + x, py, 12 + x, y, col);
-            py = y;
+            cv_line(12,trem?20:62,228,trem?20:62,TE_G2);
+            int32_t py=live_mod_plot_y(&plot,0,trem);
+            for(uint32_t x=1;x<=216;x++) {
+                int32_t y=live_mod_plot_y(&plot,(x%216u)*(UINT32_MAX/216u),trem);
+                cv_line(11+x,py,12+x,y,col);py=y;
+            }
+            int32_t x=12+(m->phase>>24)*216/256;
+            cv_rect(x-2,live_mod_plot_y(&plot,m->phase,trem)-2,5,5,C_WHITE);
+            fmt_int(text,trem?live_tremolo(t)*100/32767:m->value*m->depth*50/(32768*127));
+            str_cpy(text+str_len(text),trem?"% LEVEL":" CENTS",12);
+            te_text_c(120,0,text,C_WHITE);
         }
-        int32_t x = 12 + (m->phase >> 24) * 216 / 256;
-        cv_line(x, 18, x, 106, TE_G2);
-        cv_rect(x - 2, live_mod_plot_y(&plot, m->phase, trem) - 2, 5, 5, C_WHITE);
-        }
-        if (layer == LY_WAH) {
-            fmt_int(text, clamp((int32_t)m->wave - 64 + (m->value * m->depth >> 16), -64, -20));
-            str_cpy(text + str_len(text), " center", 8);
-        } else if (layer == LY_PAN) {
-            fmt_int(text, live_pan(t)); str_cpy(text + str_len(text), " pan", 5);
-        } else if (trem) {
-            fmt_int(text, live_tremolo(t) * 100 / 32767);
-            str_cpy(text + str_len(text), "% level", 12);
-        } else {
-            int32_t cents = m->on && m->part == (uint32_t)(t - trk) ?
-                m->value * m->depth * 50 / (32768 * 127) : 0;
-            fmt_int(text, cents);
-            str_cpy(text + str_len(text), " cents", 8);
-        }
-        te_text_c(120, 0, text, C_WHITE);
     }
-    cv_blit(0, 40);
-    cv_begin(240, 20, C_BLACK);
-    uint32_t mask = scale_mask(t), n = 0;
-    /* Compact key guide, with no suggestion that it remaps physical keys. */
-    if (!is_drum(t)) for (uint32_t p = 0; p < 12; p++) if (mask & (1u << p)) {
-        scale_pitch_name(name, t, ((uint32_t)t->p[P_ROOT] + p) % 12u);
-        cv_text(4 + n++ * (232 / __builtin_popcount(mask)), 2, &FONT_S, name, TE_G3);
-    }
-    cv_blit(0, 164);
+    cv_blit(0,84);
+    cv_begin(240,38,C_BLACK);
+    cv_text(4,0,&FONT_S,LAYER_NAME[layer],col);
+    cv_text(140,0,&FONT_S,ly_lock==layer?"LOCKED":"HELD",C_WHITE);
+    cv_text(4,20,&FONT_S,layer<=LY_TREM?"OCT+: COPY TO TRACK LFO":"HOME LOCK / RELEASE BACK",col);
+    cv_blit(0,202);
+
 }
 /* A separate cold draw boundary reduces measured target flash. */
 UI_SMALL static void layer_screen_draw(void)
@@ -877,7 +874,7 @@ UI_SMALL static void layer_screen_draw(void)
             str_cpy(sub + str_len(sub), " ", 2);
             te_lower(sub + str_len(sub), N_SCALE[clamp(t->p[P_SCALE],0,NSCALES-1)], 8);
         }
-        lab[0] = m->sync ? "free Hz" : "rate Hz"; lab[1] = "depth %"; lab[2] = "wave"; lab[3] = "sync";
+        lab[0] = m->sync ? "FREEHZ" : "RATEHZ"; lab[1] = "depth %"; lab[2] = "wave"; lab[3] = "sync";
         const char *unit;
         param_format(&TP[P_LRATE], m->rate, v[0], &unit);
         if (layer == LY_WAH && m->sync == WAH_ENV) fmt_int(v[0], m->rate);
@@ -888,7 +885,7 @@ UI_SMALL static void layer_screen_draw(void)
             lab[0] = m->sync == WAH_ENV ? "sens" : lab[0]; lab[2] = "center"; lab[3] = "source";
             fmt_int(v[2], (int32_t)m->wave - 64); val[2] = v[2];
         }
-        val[3] = m->sync == WAH_ENV ? "envelope" : m->sync ? N_SDIV[(m->sync - 1u) % NDIV_STEP] : "off";
+        val[3] = m->sync == WAH_ENV ? "ENV" : m->sync ? N_SDIV[(m->sync - 1u) % NDIV_STEP] : "off";
         ratio[0] = m->rate * 1000 / 127; ratio[1] = m->depth * 1000 / 127;
         ratio[2] = m->wave * 1000 / (layer == LY_WAH ? 44 : 3);
         ratio[3] = m->sync * 1000 / (layer == LY_WAH ? WAH_ENV : NDIV_STEP);
@@ -896,14 +893,14 @@ UI_SMALL static void layer_screen_draw(void)
     }
     case LY_FX:                                         /* the 27 punch-in effects: 16 white keys, 11 black */
         col = TE_DRUM;
-        str_cpy(sub, thr_req == 3u ? "rev + echo throw" : thr_req == 2u ? "echo throw" : thr_req ? "rev throw" : "hold + key",
+        str_cpy(sub, punch_rate_requested() && song.g[G_SYNC] ? "RATE: INT only" : musical_half == 2 ? "DOUBLE TIME" : musical_half == 1 ? "HALF" : thr_req == 3u ? "rev + echo throw" : thr_req == 2u ? "echo throw" : thr_req ? "rev throw" : "hold + key",
                 sizeof sub);
         for (i = 0; i < PUNCH_NFX; i++) {
             static const char *const PSHORT[PUNCH_NFX] = {"loop 4", "loop 8", "loop16", "loop32", "stutt", "rev", "stop",
                                                           "half", "low", "high", "phone", "crush", "alias", "gate", "echo",
-                                                          "wobble", "k low", "k mid", "k high", "rewind", "oct up", "flange",
-                                                          "pan", "freeze", "loop8t", "mono", "fade"};
-            int on = punch.req == (int8_t)i, black = i >= 16u;
+                                                          "wobble", "k low", "k mid", "k high", "rewind", "double", "flange",
+                                                          "pan", "freeze", "loop8t", "vinyl", "fade"};
+            int on = !!(punch_active_keys() & (1u << punch_key_of_fx(i))), black = i >= 16u;
             str_cpy(tl[i].lab, PSHORT[i], 8);
             tl[i].bg = on ? C_WHITE : black ? C_BLACK : TE_G1;
             tl[i].fg = on ? C_BLACK : black ? TE_G3 : TE_G4;
@@ -1042,7 +1039,7 @@ UI_SMALL static void layer_screen_draw(void)
             for (w = 0; w < 16u && !((ui.step_held >> w) & 1u); w++)
                 ;
             idx = (page * 16u + w) % NSTEP;
-            lab[1] = is_drum(t) ? "level" : "vel", lab[2] = "ratchet", lab[3] = "nudge";
+            lab[1] = is_drum(t) ? "level" : "vel", lab[2] = "ratch", lab[3] = "nudge";
             str_cpy(v[1], "-  +", 8);
             if (!is_drum(t)) {                          /* (2.6) the first held step's velocity */
                 const step_t *st = &t->step[idx];
@@ -1231,17 +1228,22 @@ UI_SMALL static void layer_screen_draw(void)
         break;
     }
     layer_sub_shown = sub;
-    layer_title(LAYER_NAME[layer % LY_COUNT], sub, col, &head);
-    if (layer >= LY_VIB) live_mod_draw(t, layer, col);
+    if(layer>=LY_VIB) {
+        if(ui.force) draw_frame();
+        draw_head();
+        cv_begin(240,4,C_BLACK);cv_blit(0,20);
+    } else layer_title(LAYER_NAME[layer % LY_COUNT], sub, col, &head);
+    if (layer >= LY_VIB) {
+        te_dials(lab,val,ratio,layer*7919u,&foot);
+        live_mod_draw(t,layer,col);
+        return;
+    }
     else if (layer == LY_FX)
         punch_tiles_draw(tl, &tiles);
     else
         tiles_draw(tl, &tiles);
     {   /* (a message shows in the title: the dials stay) */
-        uint8_t m = ui.msg_t;
-        ui.msg_t = 0;
-        te_dials(184, lab, val, ratio, layer * 7919u, &foot);
-        ui.msg_t = m;
+        te_dials(lab, val, ratio, layer * 7919u, &foot);
     }
 }
 

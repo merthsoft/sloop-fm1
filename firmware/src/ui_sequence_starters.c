@@ -34,46 +34,48 @@ UI_SMALL static void sequence_screen_open(void)
 /* Keep these cold screens out of the main UI handlers (measured target size). */
 UI_SMALL static void sequence_screen_draw(void)
 {
-    static uint32_t head;
-    const char *name=sequence_sel==NSEQUENCE_STARTERS?"CUSTOM":SEQUENCE_STARTERS[sequence_sel].name;
-    char b[16]; uint32_t k;
-    te_header(sequence_page == 3 ? "CUSTOM" : sequence_page == 2 ? "seq pitch" : sequence_page ? "seq rhythm" : "SEQUENCES",TE_COL[song.sel % NPART],&head);
-    cv_begin(240,120,C_BLACK);
-    cv_text(4,4,&FONT_S,name,C_WHITE);
-    cv_text(4,24,&FONT_S,"RHY",TE_G4);
-    cv_text(32,24,&FONT_S,SEQUENCE_RHYTHMS[sequence_rhythm].name,C_WHITE);
-    cv_text(164,24,&FONT_S,sequence_add ? "ADD" : "REPLACE",TE_G3);
-    for (k=0;k<(sequence_sel==NSEQUENCE_STARTERS?sequence_custom_count:4u);k++) {
+    static uint32_t cards;
+    const char *lab[4]={"START","ROOT","SCALE","MODE"};
+    char v[4][12];const char *val[4]={v[0],v[1],v[2],v[3]};
+    int32_t ratio[4]={-1,-1,-1,-1};
+    char b[32];uint32_t k;
+    if(ui.force) draw_frame();
+    draw_head();
+    fmt_int(v[0],sequence_sel+1);str_cpy(v[1],N_NOTE[sequence_root],12);
+    str_cpy(v[2],N_SCALE[sequence_scale],12);str_cpy(v[3],sequence_mode==STARTER_ARP?"ARP":STARTER_MODE_NAMES[sequence_mode],12);
+    if(sequence_page==1) {
+        lab[0]="ROTATE";lab[1]="OFFSET";lab[2]="SYNCOP";lab[3]="FEEL";
+        fmt_int(v[0],sequence_shape.rotate);fmt_int(v[1],sequence_shape.offset);
+        fmt_int(v[2],sequence_shape.sync);fmt_int(v[3],sequence_shape.feel);
+    } else if(sequence_page==2) {
+        lab[0]="OCTAVE";lab[3]="VLEAD";
+        fmt_int(v[0],sequence_octave+4);str_cpy(v[3],sequence_vlead?"ON":"OFF",12);
+    } else if(sequence_page==3) {
+        lab[0]="COUNT";lab[1]="SLOT";lab[2]="DEGREE";lab[3]="SPAN";
+        fmt_int(v[0],sequence_custom_count);fmt_int(v[1],sequence_custom_slot+1);
+        fmt_int(v[2],sequence_custom_degree[sequence_custom_slot]+1);fmt_int(v[3],sequence_custom_span);
+    }
+
+    te_dials(lab,val,ratio,sequence_page+song.sel*13u,&cards);
+    cv_begin(240,124,C_BLACK);
+    cv_text(4,0,&FONT_S,sequence_sel==NSEQUENCE_STARTERS?"CUSTOM":SEQUENCE_STARTERS[sequence_sel].name,C_WHITE);
+    for(k=0;k<(sequence_sel==NSEQUENCE_STARTERS?sequence_custom_count:4u);k++) {
         fmt_int(b,sequence_degree(sequence_sel,k)+1);
-        int32_t x=12+28*(int32_t)k;
-        cv_text(x,48,&FONT_L,b,TE_COL[song.sel % NPART]);
-        if(sequence_page==3 && k==sequence_custom_slot) cv_rect(x,78,12,2,C_WHITE);
+        int32_t x=8+28*(int32_t)k;
+        cv_rect(x,26,24,28,TE_G1);cv_text(x+4,23,&FONT_L,b,TE_COL[song.sel]);
+        if(sequence_page==3&&k==sequence_custom_slot) cv_rect(x,55,24,2,C_WHITE);
     }
-    cv_text(4,92,&FONT_S,N_NOTE[sequence_root],C_WHITE);
-    cv_text(40,92,&FONT_S,N_SCALE[sequence_scale],C_WHITE);
-    cv_text(112,92,&FONT_S,STARTER_MODE_NAMES[sequence_mode],C_WHITE);
-    cv_blit(0,40);
-    cv_begin(240,80,C_BLACK);
-    cv_text(4,0,&FONT_S,sequence_confirm ? "OCT+ AGAIN / HOLD" : "OCT+ APPLY OCT- LISTEN",C_WHITE);
-    cv_text(4,20,&FONT_S,sequence_page == 3 ? "1 COUNT   2 SLOT" : sequence_page == 2 ? "1 OCTAVE  2 ROOT" : sequence_page ? "1 ROTATE  2 OFFSET" : "1 STARTER 2 ROOT",TE_G3);
-    cv_text(4,40,&FONT_S,sequence_page == 3 ? "3 DEGREE  4 SPAN" : sequence_page == 2 ? "3 SCALE   4 VLEAD" : sequence_page == 1 ? "3 SYNCOPATE 4 FEEL" : "3 SCALE   4 MODE",TE_G3);
-    if (sequence_page == 3) {
-        fmt_int(b,sequence_span(NSEQUENCE_STARTERS));cv_text(4,60,&FONT_S,b,C_WHITE);
-        cv_text(32,60,&FONT_S,"STEPS",TE_G3);
-    } else if (sequence_page == 1) {
-        fmt_int(b,sequence_shape.rotate); cv_text(4,60,&FONT_S,b,TE_G4);
-        fmt_int(b,sequence_shape.offset); cv_text(52,60,&FONT_S,b,TE_G4);
-        fmt_int(b,sequence_shape.sync); cv_text(100,60,&FONT_S,b,TE_G4);
-        fmt_int(b,sequence_shape.feel); cv_text(148,60,&FONT_S,b,TE_G4);
-    } else {
-        fmt_int(b,sequence_octave + 4); cv_text(4,60,&FONT_S,"OCT",TE_G4);
-        cv_text(36,60,&FONT_S,b,C_WHITE);
-        cv_text(60,60,&FONT_S,sequence_page == 2 ?
-            (sequence_vlead?"VLEAD ON":"VLEAD OFF") : "TURN SELECT",TE_G3);
-    }
-    if (sequence_preview.active) cv_text(188,60,&FONT_S,"PLAY",C_WHITE);
-    if (ui.msg_t) { cv_rect(0,0,240,20,C_WHITE); cv_text(4,2,&FONT_S,ui.msg,C_BLACK); }
-    cv_blit(0,160);
+    cv_text(4,62,&FONT_S,sequence_add?"ALGO: MERGE":"ALGO: REPLACE",TE_G4);
+    cv_text(4,82,&FONT_S,"RHY:",TE_G4);
+    cv_text(40,82,&FONT_S,SEQUENCE_RHYTHMS[sequence_rhythm].name,C_WHITE);
+    cv_text(4,102,&FONT_S,sequence_preview.active?"PREVIEW PLAYING":"PRESETS: RHYTHM",TE_COL[song.sel]);
+    cv_blit(0,74);
+    cv_begin(240,38,C_BLACK);
+    str_cpy(b,sequence_page==3?"CUSTOM ":"SEQUENCES ",sizeof b);
+    fmt_int(b+str_len(b),sequence_page+1);str_cpy(b+str_len(b),"/4",4);
+    cv_text(4,0,&FONT_S,b,C_WHITE);
+    cv_text(4,20,&FONT_S,sequence_confirm?"OCT+ AGAIN / HOLD":sequence_preview.active?"OCT- STOP / OCT+ APPLY":"OCT- LISTEN / OCT+ APPLY",TE_G4);
+    cv_blit(0,202);
 }
 UI_SMALL static void sequence_screen_input(uint32_t pressed,uint32_t home)
 {

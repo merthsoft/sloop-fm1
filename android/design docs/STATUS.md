@@ -1,3 +1,22 @@
+# Current firmware: MerthSloop 2.7.1.33
+
+Direct sample reads replace runtime sample decompression. USB recording and MIDI
+remain; phone/computer audio playback into the FM-1 is removed. The app no longer
+shows USB-return controls or the musical-starter browser. Native firmware
+sequences and the app's drum-groove bank remain. Protocol 15 keeps commands 86/87;
+88/89 return unavailable for older clients. Song/preset/sample formats are unchanged.
+
+The firmware UI refresh adds the NEON palette, shared knob cards, native library
+layouts, parameter guides and page help. This does not require an Android update;
+Android-specific removals above remain in the current app source. See the
+[native UI design/gallery](../../docs/firmware/UI-REFRESH-DESIGN.md). Physical UI
+latency is pending FM1 availability; the emulator tests and audio goldens pass.
+
+See [current firmware measurements](../../docs/firmware/OPTIMIZATION.md). Earlier
+checkpoints below are historical and include features subsequently retired.
+
+---
+
 # Upstream integration checkpoint
 
 Current firmware is MerthSloop 2.7.1.19. Upstream's canonical song/continuation,

@@ -114,7 +114,6 @@ static void sframe(void)                              /* frame(), the output che
             if (v > peak) peak = v;
         }
         for (i = 1; i < CTL; i += 2u) {
-            scope_bufr[scope_w & (SCOPE_N - 1u)] = vis_tap[2u * i + 1u];
             scope_buf[scope_w++ & (SCOPE_N - 1u)] = vis_tap[2u * i];
         }
         {
@@ -334,7 +333,7 @@ static double bench_draw(int vis, uint32_t style, uint32_t n)
         for (q = 0; q < 22u; q++) {
             uint32_t j;
             mix_block(o, CTL);
-            for (j = 1; j < CTL; j += 2u) { scope_bufr[scope_w & (SCOPE_N - 1u)] = vis_tap[2u * j + 1u]; scope_buf[scope_w++ & (SCOPE_N - 1u)] = vis_tap[2u * j]; }
+            for (j = 1; j < CTL; j += 2u) { scope_buf[scope_w++ & (SCOPE_N - 1u)] = vis_tap[2u * j]; }
         }
         ui_input(); ui_leds();
         t0 = st_ns(); ui_draw(); t += st_ns() - t0;

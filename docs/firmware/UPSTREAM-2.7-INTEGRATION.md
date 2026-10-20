@@ -1,3 +1,15 @@
+# Current follow-up
+
+MerthSloop 2.7.1.22 keeps the upstream integration but replaces runtime sample
+packing with raw reads and cold-start lookup-table expansion. USB playback into
+the FM-1 and phone musical-starter access were removed by user request. USB
+recording, MIDI, native starters and the phone drum bank remain. See
+[measurements](OPTIMIZATION.md) and the [native UI refresh](UI-REFRESH-DESIGN.md).
+The core refresh changes presentation, not the upstream project/audio contracts.
+The integration checkpoint below is historical.
+
+---
+
 # Upstream 2.7.1 integration
 
 ## Integrated result

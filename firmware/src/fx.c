@@ -14,15 +14,22 @@ static const uint16_t REV_LINE[4] = {1559, 1931, 2389, 2791};   /* 35..63 ms, co
 static const uint16_t REV_AP[2] = {556, 441};
 static int16_t rev_line[1559 + 1931 + 2389 + 2791 + REV_MOD + 2] __attribute__((section(".lowram")));   /* (the pool is
                                                                       * full; .lowram: the SRAM below the RAM region, app.ld) */
-static int16_t rev_ap[556 + 441] __attribute__((section(".pool")));
+static union {
+    int16_t ap[556 + 441];
+    int32_t spring[4 * 11];
+} rev_storage __attribute__((section(".pool")));
+#define rev_ap rev_storage.ap
 static struct {
     uint32_t dly_w, cho_w, cho_ph, rev_ph;
+    uint32_t dly_time, dly_next, dly_fade;
     int32_t dly_lp;
     uint16_t line_i[4], ap_i[2];
     int32_t line_lp[4];
 } fx;
 static volatile uint8_t rev_frz;         /* punch-in FREEZE (punch.c): the reverb holds, no loss, no damping */
 static int32_t rev_l[CTL], rev_r[CTL];   /* the reverb's own return of this block (FREEZE plays it) */
+
+#include "spring.c"
 
 /* DIST: low cut -> drive (1x..8x, exponential) -> asymmetric soft clip
  * (a little bias = even harmonics) -> tone low-pass that closes with drive ->
@@ -224,6 +231,9 @@ static void fx_buses(const int32_t *cho_in, const int32_t *dly_in, const int32_t
         ma = (REV_MOD << 8) + ((m0 * REV_MOD) >> 7), mb = (REV_MOD << 8) + ((m1 * REV_MOD) >> 7);
         dca = (ca1 - ca0) >> CTL_LOG2, dcb = (cb1 - cb0) >> CTL_LOG2;
     }
+    reverb_begin();
+    if (!fx.dly_time) fx.dly_time = fx.dly_next = dl;
+    if (!fx.dly_fade && dl != fx.dly_time) { fx.dly_next = dl; fx.dly_fade = 64; }
     for (i = 0; i < n; i++) {
         int32_t yl, yr, x, a, o0, o1, o2, o3;
         /* chorus: two modulated short delays, 5..15 ms, the LFO half a turn apart: left and right move apart */
@@ -238,7 +248,12 @@ static void fx_buses(const int32_t *cho_in, const int32_t *dly_in, const int32_t
         }
         fx.cho_w++;
         /* delay with a low-passed feedback (in the middle) */
-        x = dly_buf[(fx.dly_w - dl) & (DLY_LEN - 1u)];
+        x = dly_buf[(fx.dly_w - fx.dly_time) & (DLY_LEN - 1u)];
+        if (fx.dly_fade) {
+            int32_t next = dly_buf[(fx.dly_w - fx.dly_next) & (DLY_LEN - 1u)];
+            x += ((next - x) * (int32_t)(64u - fx.dly_fade)) >> 6;
+            if (!--fx.dly_fade) fx.dly_time = fx.dly_next;
+        }
         fx.dly_lp += mulq15(x - fx.dly_lp, col);
         dly_buf[fx.dly_w & (DLY_LEN - 1u)] =
             (int16_t)clamp((dly_in[i] >> 1) + mulq15(fx.dly_lp, fb), -32768, 32767);
@@ -246,6 +261,9 @@ static void fx_buses(const int32_t *cho_in, const int32_t *dly_in, const int32_t
         x = mulq15(x << 1, dmix);
         yl += x;
         yr += x;
+        if(reverb_model.cur) {
+            spring_sample(rev_in[i],&o0,&o1);o2=o3=0;
+        } else {
         /* reverb: two diffusers, then the four lines */
         a = mulq15(rev_in[i], 13000);
         {
@@ -295,10 +313,12 @@ static void fx_buses(const int32_t *cho_in, const int32_t *dly_in, const int32_t
             if (++fx.line_i[2] >= REV_LINE[2]) fx.line_i[2] = 0;
             if (++fx.line_i[3] >= REV_LINE[3]) fx.line_i[3] = 0;
         }
-        wet_l[i] = yl + o0 + o2;
-        wet_r[i] = yr + o1 - o3;
-        rev_l[i] = o0 + o2;
-        rev_r[i] = o1 - o3;
+        }
+        int32_t rl=o0+o2,rr=o1-o3;
+        int32_t target=rev_frz || reverb_model.cur==((uint32_t)song.g[G_RMODEL]&1u)?32768:0;
+        reverb_model.gain=clamp(reverb_model.gain+(target?512:-512),0,32768);
+        if(reverb_model.gain!=32768) {rl=mulq16(rl,(uint32_t)reverb_model.gain<<1);rr=mulq16(rr,(uint32_t)reverb_model.gain<<1);}
+        rev_l[i]=rl;rev_r[i]=rr;wet_l[i]=yl+rl;wet_r[i]=yr+rr;
     }
 }
 
@@ -798,6 +818,8 @@ static void dust_process(int32_t *l, int32_t *r, uint32_t n)
     }
 }
 
+#include "vinyl.c"
+
 static void djf_process(int32_t *l, int32_t *r, uint32_t n)
 {
     tsvf_t c;
@@ -976,8 +998,7 @@ static void texture_reset(uint32_t src)
 /* USR k: the next sample of its first zone, looped (sample_next's decoder, its own state) */
 DSP_INLINE int32_t tx_usr_next(const smp_zone_t *z)
 {
-    static smp_cache_t texture_cache;
-    uint32_t pos = tx.upos, b = smp_rom_byte(&texture_cache, z->off + (pos >> 1));
+    uint32_t pos = tx.upos, b = SMP_DATA[z->off + (pos >> 1)];
     uint32_t code = (pos & 1u) ? (b >> 4) : (b & 15u);
     int32_t step = IMA_STEP[(uint32_t)tx.ui <= 88u ? tx.ui : 88], vd = step >> 3;
     if (code & 4u) vd += step;
@@ -1145,7 +1166,7 @@ static void texture_mix(int32_t *l, int32_t *r, uint32_t n)
         return;
     g0 = tx.g;                                          /* fades over ~0.1 s (238 a block), as DUST's bed */
     g1 = tx.g = clamp(tx.g + (on ? 238 : -238), 0, 32767);
-    bar = (uint32_t)FS * 240u / (uint32_t)clamp(song.g[G_BPM], 20, 300);   /* a bar of 4/4, samples */
+    bar = musical_samples((uint32_t)FS * 240u);   /* a bar of 4/4, samples */
     tx.ph += (uint32_t)((0xFFFFFFFFu / (bar * BARS[clamp(song.g[G_TXRATE], 0, 4)])) * n);
     lfo = sine_i(tx.ph - 0x40000000u);                  /* (from its top: a start at full) */
     depth = clamp(song.g[G_TXMOVE], 0, 127) * 258;
@@ -1188,7 +1209,7 @@ static void mix_block(int32_t *out, uint32_t n)
         thr_dly = (q & 2u) ? (thr_dly + 1928 > 32767 ? 32767 : thr_dly + 1928) : (thr_dly > 1928 ? thr_dly - 1928 : 0);
     }
     events_block(n);
-    duck_block(n * (uint32_t)song.g[G_BPM]);
+    duck_block(musical_advance);
     c1 = cpu1_on() ? units_split() : 0;                 /* core 1's units this block */
     if (c1) {
         for (i = 0; i < n; i++)
@@ -1224,6 +1245,7 @@ static void mix_block(int32_t *out, uint32_t n)
         mix_r[i] += wet_r[i];
     }
     dust_process(mix_l, mix_r, n);
+    vinyl_process(mix_l, mix_r, n);
     punch_process(mix_l, mix_r, n);
     djf_process(mix_l, mix_r, n);
     m1 = (int32_t)song.master_q12;

@@ -94,22 +94,28 @@ static uint8_t usb_serial;                      /* menu USB SERIAL: 1 = the seri
 static uint8_t usb_rate;                        /* menu USB RATE (2.7 beta): 0 AUTO, 1 44.1, 2 48 kHz (usb.c usb_rate_mode, at the next start) */
 static uint8_t cpu1_off;                        /* menu 2ND CORE: 1 = OFF, every render unit on core 0 (cpu1.h cpu1_units);
                                                  * 2.7: ON by default (bit 26 set = OFF); core 1 starts at power-on only when ON */
-static uint8_t vis_style;                       /* the visualiser's style, 0..11 (ui_vis.c) */
+static uint8_t vis_style;                       /* compact visualizer index (ui_vis.c) */
 static uint8_t knob_accel_off;                  /* menu KNOB ACCEL (2.7): 1 = OFF, one value a detent however fast (ui_input.c accel) */
-#define VIS_STYLE_COUNT 14u
-/* Retained upstream styles keep their canonical IDs; fork-only styles live in the side record. */
-static uint8_t vis_upstream_id(void) { return vis_style < 6u ? vis_style : vis_style == 6u ? 9u : vis_style == 7u ? 10u : 0u; }
+enum { VIS_SCOPE, VIS_SPECTRUM, VIS_SPECTROGRAM, VIS_METERS, VIS_TRAILS, VIS_GROOVE, VIS_JOURNEY, VIS_STYLE_COUNT };
+/* Stable fork-side IDs survive pruning/reordering; removed IDs fall back to scope. */
+static const uint8_t VIS_SAVE_ID[VIS_STYLE_COUNT]={0,1,2,4,9,10,12};
+UI_SMALL static uint8_t vis_from_saved(uint32_t id)
+{
+    for(uint32_t i=0;i<VIS_STYLE_COUNT;i++) if(VIS_SAVE_ID[i]==id) return (uint8_t)i;
+    return VIS_SCOPE;
+}
+static uint8_t vis_upstream_id(void) { return vis_style<=VIS_METERS?VIS_SAVE_ID[vis_style]:0u; }
 UI_SMALL static uint32_t fork_settings_word(void)
 {
     return (uint32_t)(lights_scale != 0u) | (uint32_t)(midi_scale != 0u) << 1 |
-           (uint32_t)(swing_eighth != 0u) << 2 | (uint32_t)(vis_style % VIS_STYLE_COUNT) << 8;
+           (uint32_t)(swing_eighth != 0u) << 2 | (uint32_t)VIS_SAVE_ID[vis_style % VIS_STYLE_COUNT] << 8;
 }
 UI_SMALL static void fork_settings_from_word(uint32_t w)
 {
     lights_scale = w & 1u;
     midi_scale = (w >> 1) & 1u;
     swing_eighth = (w >> 2) & 1u;
-    vis_style = (uint8_t)(((w >> 8) & 255u) < VIS_STYLE_COUNT ? (w >> 8) & 255u : 0u);
+    vis_style = vis_from_saved((w >> 8) & 255u);
 }
 UI_SMALL static uint32_t lights_word(void)
 {
@@ -140,7 +146,7 @@ UI_SMALL static void lights_from_word(uint32_t w)
         lights_min = (uint8_t)(((w >> 21) & 31u) + 1u);
     usb_serial = (uint8_t)((w >> 16) & 1u);
     { uint32_t v = (w >> 17) & 15u;
-      vis_style = (uint8_t)(v < 6u ? v : v == 9u ? 6u : v == 10u ? 7u : 0u); }
+      vis_style = v<=4u?vis_from_saved(v):VIS_SCOPE; }
     cpu1_off = (uint8_t)((w >> 26) & 1u);       /* menu 2ND CORE (ui_menu.c); 2.7: bit 26 set = OFF, so any older settings
                                                  * word (2.6 and before: 0) reads as ON, the two-core SLOOP (an early 2.7 beta
                                                  * set it for ON: that FM-1 reads OFF once) */
@@ -159,7 +165,7 @@ UI_SMALL static void settings_restore_word(uint32_t w)
     uint32_t previous = lights_word(), forked = fork_settings_word();
     lights_from_word(w);
     if ((w ^ previous) & (15u << 17))
-        forked = (forked & 7u) | (uint32_t)vis_style << 8;
+        forked = (forked & 7u) | (uint32_t)VIS_SAVE_ID[vis_style] << 8;
     fork_settings_from_word(forked);
 }
 static uint8_t settings_later;                 /* changed while playing: saved once stopped (project.c) */
@@ -168,7 +174,7 @@ UI_SMALL static void settings_init(void)
 {
     if (settings.magic != SETTINGS_MAGIC || settings.palette >= NPALETTES) {
         settings.magic = SETTINGS_MAGIC;
-        settings.palette = 4;                  /* MONO (default) */
+        settings.palette = NPALETTES - 1u;       /* NEON; existing saved palettes keep their IDs */
         settings.lowcut = 0;
         settings.zoom = 0;                     /* large readout of the touched value: off */
     }

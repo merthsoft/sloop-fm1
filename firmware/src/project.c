@@ -39,7 +39,7 @@
 #define PROJ_NG 32u                            /* the globals of formats 4 and 5 (G_COUNT until 2.4). SLOOP 2.5's
                                                 * G_DRDLY rides in the byte after sel (0 in older projects: off),
                                                 * so the format and its size do not change */
-_Static_assert(G_DRDLY == PROJ_NG && G_TXSRC == PROJ_NG + 5u && G_COUNT == G_CLKOUT + 1u,
+_Static_assert(G_DRDLY == PROJ_NG && G_TXSRC == PROJ_NG + 5u && G_RMODEL == G_CLKOUT + 1u && G_VWOW == G_RMODEL + 1u && G_RTIME == G_VCRACKLE + 1u && G_COUNT == G_RTIME + 1u,
                "the globals a project holds, then G_DRDLY (then 2.6's GLO > MIDI: settings of the FM-1)");
 #define PROJ_NC6 ((uint32_t)P_ITYPE)           /* format 6: the parameters kept in 16 bits, P_LEVEL .. P_VLEAD (as 5), */
 #define PROJ_NX6 ((uint32_t)(P_E0 - P_ITYPE))  /* the 2.6 ones in a byte (0..127), then P_E0 .. P_E7 */
@@ -468,6 +468,14 @@ UI_SMALL static void proj_capture(project_t *p)        /* what is playing now, a
     p->sel = song.sel;
     p->drdly = (uint8_t)song.g[G_DRDLY];
     proj_tx_put(p);
+    if (song.g[G_RMODEL] || song.g[G_RTIME] != 50)
+        p->g[G_LOAD] = (int16_t)(0x5500u | (song.g[G_RTIME] & 127) << 1 | (song.g[G_RMODEL] & 1));
+    /* NAME and SET are UI actions, not project values. Two tags distinguish old files;
+     * keep the on-disk format unchanged, including song section storage. */
+    if (song.g[G_VWOW] || song.g[G_VTONE] || song.g[G_VCRACKLE]) {
+        p->g[G_NAME] = (int16_t)(0x8000u | (song.g[G_VWOW] & 127) | (song.g[G_VTONE] & 127) << 7);
+        p->g[G_ENGGO] = (int16_t)(0x5600u | (song.g[G_VCRACKLE] & 127));
+    }
     for (i = 0; i < NTRK; i++) {
         uint32_t k;
         for (k = 0; k < P_COUNT; k++)
@@ -500,6 +508,16 @@ static void proj_apply(const project_t *p, int all)
                                                                  * its slot and G_INFO's hold the TEXTURE) */
             song.g[i] = (int16_t)clamp(p->g[i], GP[i].min, GP[i].max);
     song.g[G_DRDLY] = (int16_t)clamp(p->drdly, GP[G_DRDLY].min, GP[G_DRDLY].max);   /* (a load and a section, as REV) */
+    uint32_t rev = (uint16_t)p->g[G_LOAD], timed = (rev & 0xFF00u) == 0x5500u;
+    song.g[G_RTIME] = timed ? clamp((rev >> 1) & 127,20,80) : 50;
+    song.g[G_RMODEL] = timed || (rev & 0xFFFEu) == 0x5350u ? rev & 1 : 0;
+    {
+        uint32_t present = ((uint16_t)p->g[G_NAME] & 0xC000u) == 0x8000u &&
+                           ((uint16_t)p->g[G_ENGGO] & 0xFF80u) == 0x5600u;
+        song.g[G_VWOW] = present ? p->g[G_NAME] & 127 : 0;
+        song.g[G_VTONE] = present ? ((uint16_t)p->g[G_NAME] >> 7) & 127 : 0;
+        song.g[G_VCRACKLE] = present ? p->g[G_ENGGO] & 127 : 0;
+    }
     proj_tx_get(p);                                     /* GLO > TEXTURE (2.6): a load and a section */
     drum_tw_get(p);                                     /* (2.7) the drum sounds' TUNE and DECAY: a load and a section */
     for (k = 0; k < NTRK; k++) {
@@ -617,26 +635,11 @@ UI_SMALL static void proj_fetch(uint32_t slot)
 #include "fm6_bank.c"                           /* the FM6 patch bank (eng_fm6.c PTCH B1..B27): staged in proj_tmp */
 #endif
 
-static const char *const SEC_NAME[4] = {"A", "B", "C", "D"};   /* (2.7: the slots named as the song's sections) */
-UI_SMALL static void project_save(uint32_t slot)
-{
-    project_t *p = &proj_slot[slot & 3u];
-#if FELUCCA_ARRANGER
-    if (song.playing || transport_req) { ui_message("STOP BEFORE SAVE"); return; }
-#endif
-    proj_capture(p);
-#if FELUCCA_FLASH
-    if (flash_ok) {
-        if (st_save(OBJ_PROJECT0 + (slot & 3u), p, sizeof *p))
-            ui_message("SAVE ERROR");
-        else
-            ui_say("SAVED SECTION ", SEC_NAME[slot & 3u]);
-        return;
-    }
-#endif
-    ui_message("SAVED (RAM)");
-}
-
+static const char *const SEC_NAME[4] = {"A", "B", "C", "D"};
+/* Shared with explicit SAVE: a saved section must also be the startup state. */
+static project_t autosave_buf __attribute__((section(".pool")));
+static uint32_t autosave_hash, autosave_ms, autosave_checked;
+#include "project_save.c"
 /* SAVE > PROJECT > ERASE (SLOOP 2.6, after a YouTube comment): the slot (section A..D) empty again. In flash as the
  * editor's restore leaves an empty slot (project_restore): an object of no bytes, which proj_fetch (older SLOOP too)
  * reads as no project. The song's steps that played that section are taken out (the default song if none is left),
@@ -715,8 +718,6 @@ UI_SMALL static void project_load(uint32_t slot)
  * ~50 ms: never while something plays); loaded at power-on (autosave_resume) */
 #define AUTOSAVE_IDLE 2500u                    /* ms without input */
 #define AUTOSAVE_GAP 20000u                    /* ms between two saves at least */
-static project_t autosave_buf __attribute__((section(".pool")));
-static uint32_t autosave_hash, autosave_ms, autosave_checked;
 
 UI_SMALL static int project_undo_swap(int redo)
 {
@@ -797,7 +798,10 @@ typedef struct {
     uint32_t lights;                               /* SLOOP 2.3: the backlight (panel.c lights_word); appended,
                                                     * so 2.2 still reads its part (st_load cuts at its size) */
 } persist_t;
-_Static_assert(sizeof(side_rec_t) == 88u && sizeof(side_rec_t) <= ST_SIDE_MAX, "the side record: theme, favourites");
+_Static_assert(sizeof(side_rec_t) == 88u, "the side record: theme, favourites");
+#if FELUCCA_FLASH
+_Static_assert(sizeof(side_rec_t) <= ST_SIDE_MAX, "the side record fits flash storage");
+#endif
 _Static_assert(__builtin_offsetof(side_rec_t, fork_magic) == 80u, "upstream side-record prefix remains byte-compatible");
 static side_rec_t side_out;
 #define PERSIST_SIZE_V22 __builtin_offsetof(persist_t, lights)   /* the settings as 2.2 wrote them (no lights) */
@@ -1035,6 +1039,7 @@ UI_SMALL static void settings_save(void)
     persist_t p;
     if (!flash_ok)
         return;
+    settings_later = 0;
     persist_fill(&p);
     {
         uint8_t mp[MIDI_PART];
@@ -1044,6 +1049,8 @@ UI_SMALL static void settings_save(void)
     }
     if (settings_write(&p) == 0)
         persist_saved = p;
+    else
+        settings_later = 1;                           /* retry a failed settings write */
 #endif
 }
 
@@ -1154,15 +1161,6 @@ UI_SMALL static void arrangement_save(void)
 /* ---- live sections (SAVE + key, ui_layers.c). A section is a project slot (A..D = 1..4): stored into RAM
  * at once (playing too), written to flash once the transport is stopped and nothing sounds (an erase
  * stops the audio for ~50 ms); a song recorded with SONG REC is saved the same way. */
-UI_SMALL static void section_store(uint32_t s)
-{
-    s &= 3u;
-    fm1_irq_off();                                      /* (the audio ISR may be applying a section) */
-    proj_capture(&proj_slot[s]);
-    live_sec = (int8_t)s;
-    fm1_irq_on();
-    sec_dirty |= (uint8_t)(1u << s);
-}
 UI_SMALL static void section_load(uint32_t s)                    /* stopped: the section is the loop now */
 {
     s &= 3u;
@@ -1170,23 +1168,6 @@ UI_SMALL static void section_load(uint32_t s)                    /* stopped: the
     project_undo_mark();
     project_apply(&proj_slot[s]);
     live_sec = (int8_t)s;
-}
-UI_SMALL static void sections_write(void)                        /* the dirty sections and song into flash */
-{
-    uint32_t i;
-#if FELUCCA_FLASH
-    if (flash_ok)
-        for (i = 0; i < 4u; i++)
-            if (((sec_dirty >> i) & 1u) && st_save(OBJ_PROJECT0 + i, &proj_slot[i], sizeof proj_slot[i]) == 0)
-                sec_dirty &= (uint8_t)~(1u << i);       /* (a failed write stays dirty: tried again later) */
-    if (!flash_ok)
-#endif
-        sec_dirty = 0;
-    (void)i;
-    if (song_dirty || fav_dirty) {                      /* (2.7: the favourites too) */
-        song_dirty = 0;
-        settings_save();
-    }
 }
 /* before an intentional reset (an update, UPDATE MODE, UBOOT from the host): the audio is stopped, so
  * whatever is only in RAM goes to flash now: the live sections, the song, the working project */
@@ -1240,13 +1221,23 @@ UI_SMALL static void sections_flush(void)                        /* main loop */
         settings_later = 0;
         song_dirty = 1;                                 /* (settings_save when quiet, with the song) */
     }
-    if ((!sec_dirty && !song_dirty) || song.playing || transport_req || !audio_quiet() || fm1_ms - ui_input_ms < 1500u ||
-        fm1_ms - tried < 5000u)
+    if ((!sec_dirty && !song_dirty) || song.playing || transport_req || !audio_quiet() ||
+        (!sec_dirty && fm1_ms - ui_input_ms < 1500u) || (tried && fm1_ms - tried < 5000u))
         return;
-    tried = fm1_ms;                                     /* (a failed write: again in 5 s, not every frame) */
+    uint32_t pending=sec_dirty;
     sections_write();
-    if (sec_dirty)
+    if (sec_dirty || settings_later) {
+        tried = fm1_ms | 1u;                         /* only failures wait before retry */
         ui_message("SAVE ERROR: RETRYING");
+    } else {
+        tried = 0;
+        if(pending)
+#if FELUCCA_FLASH
+        ui_message(flash_ok?"SECTIONS SAVED TO FLASH":"SECTIONS IN RAM ONLY");
+#else
+        ui_message("SECTIONS IN RAM ONLY");
+#endif
+    }
 }
 #endif
 #endif /* PROJ_HOST */

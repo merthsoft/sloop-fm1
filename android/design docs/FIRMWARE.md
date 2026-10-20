@@ -1,3 +1,5 @@
+Current production restores raw sample reads and removes USB audio playback into the FM-1 and phone musical-starter access. The corresponding old implementation checkpoint below is historical.
+
 # Firmware companion extensions
 
 Current delivery: [STATUS.md](STATUS.md). Build and test evidence: [VERIFICATION.md](VERIFICATION.md).
@@ -9,9 +11,9 @@ HOME, then release. Keyboard and knobs remain usable; HOME or a function button
 unlocks. STOP/panic, menus and track changes clear the lock. Runtime only, with no
 new static RAM or wire/project format. See the [illustrated firmware guide](../../docs/firmware/MERTHSOFT-FEATURES.md).
 
-Production firmware is **MerthSloop 2.7.1.19**, with INFO protocol **15**, three synth tracks and
+Production firmware is **MerthSloop 2.7.1.20**, with INFO protocol **15**, three synth tracks and
 one drum track. Protocol 9 FM6/native-pattern exchange, sample-slot backup/upload, USB audio
-playback and MIDI note performance are integrated. Protocol 10 command 43 reports the
+recording and MIDI note performance are integrated. Protocol 10 command 43 reports the
 physical octave offset; Android follows it without firmware transposing ordinary external MIDI.
 Hold an already sounding physical chord, then hold ARP or SEL (SLOOP: SCL) for 700 ms to toggle chord latch once without releasing or retriggering notes. This works with ARP either off or on. Releasing keys after enabling latch sustains the chord or keeps its arpeggio running. Disabling latch keeps physically held notes sounding until key release. New key presses, layer knobs, HOME, another layer, track changes or releasing the chord cancel the shortcut; without a held chord, layer behavior is unchanged.
 
@@ -25,7 +27,7 @@ Latest target sizes and memory headroom are recorded in [release notes](RELEASE-
 Target instruction budgets pass; physical audio deadline and dual-core timing validation remain pending.
 User hardware acceptance is recorded in STATUS, independently of measured deadline evidence.
 
-Firmware accepts its upstream standard MIDI CC map for track parameters. Android XY macros emit standard MIDI CC; unsupported controllers and pitch bend remain outside this slice. INFO 15 uses upstream SYN kits (72–76) and LIVE (77). Fork extensions are scene staging (85, disabled in production), remote performance (86), drum grooves (87), USB return controls (88), and leased musical starter discovery/audition/application (89). Android gates these extensions on INFO 15. Arpeggios now preserve source velocity across audio, generated MIDI and recording.
+Firmware accepts its upstream standard MIDI CC map for track parameters. Android XY macros emit standard MIDI CC; unsupported controllers and pitch bend remain outside this slice. INFO 15 uses upstream SYN kits (72–76) and LIVE (77). Fork extensions are scene staging (85, disabled in production), remote performance (86) and drum grooves (87). Commands 88/89 are retired and reply unavailable. Android gates these extensions on INFO 15. Arpeggios now preserve source velocity across audio, generated MIDI and recording.
 
 Merthsoft.8 adds a persistent scale-note LED guide: physical SEL + OCT+ toggles it
 without changing octave or latch. Merthsoft.9 aligns it and the held SEL display with

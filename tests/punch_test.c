@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
-/* PUNCH-IN FX (punch.c): each of the 27 effects changes the mix while held, stays bounded,
+/* PUNCH-IN FX (punch.c): 24 audio effects change the mix; HALF/DOUBLE control transport and VINYL routes upstream, stays bounded,
  * and the mix is exactly the dry one again once its key is up (after the 64-sample fade).
  * The FX-held keyboard picks effects with every key (white 1-16, black 17-27) and never plays or
  * records a note. The black keys' effects (2.6) each do what their name says (punch_new_fx).
@@ -129,17 +129,14 @@ static void punch_new_fx(void)
     assert(fabs(kill_ratio(PX_KMID, 50) - 1) < 0.12 && fabs(kill_ratio(PX_KMID, 10000) - 1) < 0.12);
     printf("kills: low 60 Hz %.3f, high 9 kHz %.3f, mid 900 Hz %.3f (1 kHz through KILL LOW %.2f)\n",
            kill_ratio(PX_KLOW, 60), kill_ratio(PX_KHIGH, 9000), kill_ratio(PX_KMID, 900), kill_ratio(PX_KLOW, 1000));
-    /* OCT UP: 220 Hz in, 440 Hz out */
-    sweep_hz = 220;
-    run_fx(PX_OCT, g_sine, FS * 2u, FS / 2u, FS * 3u / 2u, 0);
-    a = tone_pow(ol, FS * 3u / 5u, FS * 7u / 5u, 440), b2 = tone_pow(ol, FS * 3u / 5u, FS * 7u / 5u, 220);
-    printf("oct up: 440 Hz / 220 Hz power %.1f, level %.2f\n", a / b2, rms(ol, FS * 3u / 5u, FS * 7u / 5u) / rms(ol, 0, FS / 2u));
-    assert(a > 30 * b2 && fabs(rms(ol, FS * 3u / 5u, FS * 7u / 5u) / rms(ol, 0, FS / 2u) - 1) < 0.25);
-    /* MONO: a left-only tone comes out on both sides */
-    sweep_hz = 440;
-    run_fx(PX_MONO, g_left, FS, FS / 4u, FS * 3u / 4u, 0);
-    for (t = FS / 4u + 128u; t < FS * 3u / 4u; t++) assert(abs(ol[t] - or_[t]) <= 64);   /* (the wet gain tops at 4095 / 4096) */
-    assert(rms(or_, FS / 4u + 128u, FS * 3u / 4u) > 0.4 * rms(ol, 0, FS / 4u));
+    /* DOUBLE TIME is transparent to audio; timing is tested in effects_plan_test. */
+    assert(!strcmp(PUNCH_NAME[PX_DOUBLE], "DOUBLE TIME") && punch_fx_of_key(10) == PX_DOUBLE);
+    /* VINYL is applied before punch_process by the full mixer. */
+    assert(!strcmp(PUNCH_NAME[PX_VINYL], "VINYL") && punch_fx_of_key(22) == PX_VINYL);
+    punch_hold(0,PX_VINYL,1); assert(punch_vinyl_requested());
+    punch_hold(0,PX_REV,1); assert(!punch_vinyl_requested());
+    punch_hold(0,PX_REV,0); assert(punch_vinyl_requested());
+    punch_clear(); assert(!punch_vinyl_requested());
     /* AUTO-PAN: once a beat the mix goes left, then right */
     run_fx(PX_PAN, g_sine, FS * 2u, FS / 2u, FS * 3u / 2u, 0);
     {
@@ -214,7 +211,7 @@ static void punch_new_fx(void)
             punch.req = PX_KLOW;
             punch_process(L, R, CTL);
         }
-        punch.req = PX_MONO;
+        punch.req = PX_VINYL;
         for (bk = 0; bk < 2u; bk++) {
             for (k = 0; k < CTL; k++) L[k] = R[k] = (int32_t)(150000.0 * sin(2 * M_PI * 80 * (bk * CTL + k) / FS));
             punch_process(L, R, CTL);
@@ -225,13 +222,13 @@ static void punch_new_fx(void)
             punch_process(L, R, CTL);
             for (k = 0; k < CTL; k++) mx = abs(L[k]) > mx ? abs(L[k]) : mx;
         }
-        printf("quick switch KILL LOW -> MONO -> KILL MID over silence: peak %d\n", mx);
+        printf("quick switch KILL LOW -> VINYL -> KILL MID over silence: peak %d\n", mx);
         assert(mx == 0);
         punch.req = -1;
         for (bk = 0; bk < 4u; bk++) punch_process(L, R, CTL);
     }
     song.playing = 0;
-    printf("black keys: KILL LOW / MID / HIGH, REWIND, OCT UP, FLANGER, AUTO-PAN, FREEZE, LOOP 8T, MONO, FADE OUT do what they say PASS\n");
+    printf("black keys: KILL LOW / MID / HIGH, REWIND, DOUBLE TIME, FLANGER, AUTO-PAN, FREEZE, LOOP 8T, VINYL, FADE OUT do what they say PASS\n");
 }
 
 int main(int argc, char **argv)
@@ -260,9 +257,9 @@ int main(int argc, char **argv)
                     diff += (uint64_t)(l[i] > l0[i] ? l[i] - l0[i] : l0[i] - l[i]);
             }
         }
-        if (diff <= 2000u * (off - on))
+        if (fx != PX_HALF && fx != PX_DOUBLE && fx != PX_VINYL && diff <= 2000u * (off - on))
             printf("fx %u (%s): diff %llu\n", fx, PUNCH_NAME[fx], (unsigned long long)diff);
-        assert(diff > 2000u * (off - on));            /* it did something */
+        assert((fx == PX_HALF || fx == PX_DOUBLE || fx == PX_VINYL) ? diff == 0 : diff > 2000u * (off - on));            /* it did something */
         assert(punch.cur == -1);
         song.playing = 0;
     }
@@ -279,7 +276,7 @@ int main(int argc, char **argv)
             int32_t w = punch_fx_of_key(k);
             fm1_in.notes = 1u << k;
             events_block(CTL);
-            assert(w >= 0 && w < (int32_t)PUNCH_NFX && punch.req == w);
+            assert(w >= 0 && w < (int32_t)PUNCH_NFX && (punch_active_keys() & (1u << k)));
             assert(punch_key_of_fx((uint32_t)w) == k);   /* (the key that lights) */
             assert(punch_key(k) < 0 ? w >= 16 : w == punch_key(k));
             seen |= 1u << w;

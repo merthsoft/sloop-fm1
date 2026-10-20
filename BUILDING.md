@@ -145,3 +145,27 @@ use `build/host/preview_native.exe` and binary stdin/stdout.
 
 Installing firmware is at your own risk. If an install fails and the FM-1 no longer
 starts, recovery needs [FM-1-transporter](https://github.com/kurogedelic/FM-1-transporter).
+
+## Generated lookup tables and native UI checks
+
+The normal firmware build generates and packs immutable lookup/font metadata
+using `tools/pack_boot_tables.py`. These tables expand once before audio starts;
+factory sample playback uses direct raw ADPCM reads. Do not bypass the normal
+post-generation step when compiling the hardware target. The independent byte
+oracle and malformed-input checks are in `tests/boot_tables_test.c`.
+
+Browser-preview generation uses `build/preview/gen`, independently of target
+headers in `build/gen`, so building the preview cannot replace the target's
+startup-expanded assets. Native UI captures in `tests/ui_refresh_test.c` use the
+real strip renderer. The regular test runner includes its dirty/full redraw,
+palette, drum-cell, modulation-isolation and help checks, as well as the existing
+20,000-frame UI exercise. Emulator captures do not measure physical LCD latency.
+
+### Firmware static analysis
+
+After generating/building the target headers, run
+`JIELI_TOOLCHAIN=/path/to/toolchain python3 tools/analyze_firmware.py` in the
+Linux toolchain environment. It checks production and optional configurations,
+validates its analyzer with a known-defect control, and writes diagnostics under
+`build/static-audit/current`. Unused-function warnings need manual triage; see
+[the audit](docs/firmware/STATIC-ANALYSIS.md).

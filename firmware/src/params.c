@@ -156,6 +156,7 @@ static void preset_extras(int16_t *p, const preset_t *pr)
 }
 
 
+static const char *const N_RMODEL[] = {"STEREO", "SPRING"};
 static const param_desc_t GP[G_COUNT] = {
     [G_BPM] = PD("BPM", F_BPM, 40, 240, 90),
     [G_SWING] = PD("SWING", F_SWING, 0, 100, 0),
@@ -165,6 +166,11 @@ static const param_desc_t GP[G_COUNT] = {
     [G_DFDBK] = PD("FDBK", F_PCT, 0, 120, 60),
     [G_DCOLOR] = PD("COLR", F_PCT, 0, 127, 70),
     [G_DMIX] = PD("MIX", F_PCT, 0, 127, 90),
+    [G_VWOW] = PD("WOW", F_PCT, 0, 127, 0),
+    [G_VTONE] = PD("TONE", F_PCT, 0, 127, 0),
+    [G_VCRACKLE] = PD("CRACKLE", F_PCT, 0, 127, 0),
+    [G_RTIME] = {"TIME", F_INT, 20, 80, 50, 0, "MS"},
+    [G_RMODEL] = PE("TYPE", N_RMODEL, 0),
     [G_RSIZE] = PD("SIZE", F_PCT, 0, 127, 90),
     [G_RDAMP] = PD("DAMP", F_PCT, 0, 127, 60),
     [G_CRATE] = PD("CRT", F_LFOHZ, 0, 127, 40),
@@ -389,7 +395,7 @@ enum { SC_TRACK, SC_GLOBAL, SC_ENGINE, SC_STEP, SC_TRK, SC_SONG, SC_DRUM, SC_STA
 static const char *const N_REC_SNAP[] = {"TRACK", "1/8", "1/4"};
 static const param_desc_t REC_SNAP_DESC = PE("SNAP", N_REC_SNAP, 0);
 enum { GR_NONE, GR_ADSR, GR_LFO, GR_STEPS, GR_ARP, GR_SCALE, GR_FX, GR_ROLL, GR_BROWSE, GR_SLOTS, GR_USER, GR_TRK,
-       GR_SLCR, GR_INS };
+       GR_SLCR, GR_INS, GR_DEST, GR_FILTER, GR_DELAY };
 
 typedef struct {
     const char *title;
@@ -399,18 +405,20 @@ typedef struct {
 
 static const page_t PAGES[] = {
     {"ENV", FAM_ENV, SC_TRACK, GR_ADSR, {P_ATK, P_DEC, P_SUS, P_REL}},
-    {"ENV DEST", FAM_ENV, SC_TRACK, GR_NONE, {P_ED_FLT, P_ED_PIT, P_ED_SHP, P_ESYNC}},   /* (P_ED_FX: the level trim, no
+    {"ENV DEST", FAM_ENV, SC_TRACK, GR_DEST, {P_ED_FLT, P_ED_PIT, P_ED_SHP, P_ESYNC}},   /* (P_ED_FX: the level trim, no
                                                                        * page); 2.6: ESYNC, ENV's times as note values */
     {"LFO", FAM_LFO, SC_TRACK, GR_LFO, {P_LRATE, P_LWAVE, P_LPHASE, P_LFADE}},
     {"LFO 2", FAM_LFO, SC_TRACK, GR_LFO, {P_LSYNC, P_LTRIG, P_LPOL, 0xFF}},   /* 2.6 (Felucca 1.4): SYNC TRIG POL */
-    {"LFO DEST", FAM_LFO, SC_TRACK, GR_NONE, {P_LD_PIT, P_LD_FLT, P_LD_SHP, P_LD_AMP}},
+    {"LFO DEST", FAM_LFO, SC_TRACK, GR_DEST, {P_LD_PIT, P_LD_FLT, P_LD_SHP, P_LD_AMP}},
     {"FX", FAM_FX, SC_TRACK, GR_FX, {P_DIST, P_CHOR, P_DLY, P_REV}},
-    {"FILTER", FAM_FX, SC_TRACK, GR_NONE, {P_TFLT, 0xFF, 0xFF, 0xFF}},   /* the track's filter (drum track too) */
+    {"FILTER", FAM_FX, SC_TRACK, GR_FILTER, {P_TFLT, 0xFF, 0xFF, 0xFF}},   /* the track's filter (drum track too) */
     {"SLICER", FAM_FX, SC_TRACK, GR_SLCR, {P_SLCR, P_SLPAT, P_SLRATE, P_SLDEPTH}},   /* drum track too */
     {"INSERT", FAM_FX, SC_TRACK, GR_INS, {P_ITYPE, P_IA, P_IB, P_IC}},   /* 2.6 (Felucca 1.5): the track's INSERT (fx.c), */
     {"INSERT 2", FAM_FX, SC_TRACK, GR_INS, {P_IMIX, 0xFF, 0xFF, 0xFF}},  /* .. its dry / wet; the drum track too */
-    {"DLY", FAM_FX, SC_GLOBAL, GR_NONE, {G_DTIME, G_DFDBK, G_DCOLOR, G_DMIX}},
+    {"DLY", FAM_FX, SC_GLOBAL, GR_DELAY, {G_DTIME, G_DFDBK, G_DCOLOR, G_DMIX}},
     {"REV/CHO", FAM_FX, SC_GLOBAL, GR_NONE, {G_RSIZE, G_RDAMP, G_CRATE, G_CDEPTH}},
+    {"REVERB", FAM_FX, SC_GLOBAL, GR_NONE, {G_RMODEL, G_RSIZE, G_RDAMP, G_RTIME}},
+    {"VINYL", FAM_FX, SC_GLOBAL, GR_NONE, {G_VWOW, G_VTONE, G_VCRACKLE, 0xFF}},
     {"SEL", FAM_SCL, SC_TRACK, GR_SCALE, {P_ROOT, P_SCALE, P_QUANT, P_CHORD}},
     {"SEL 2", FAM_SCL, SC_TRACK, GR_SCALE, {P_TRANS, P_STRUM, P_VLEAD, P_AHOLD}},   /* HOLD also latches keyboard chords */
     {"EDIT 1", FAM_EDIT, SC_ENGINE, GR_NONE, {P_E0, P_E1, P_E2, P_E3}},
@@ -467,6 +475,7 @@ static int page_shown(const page_t *pg)
 static const param_desc_t *page_desc(const page_t *pg, uint32_t slot, int16_t **valp)
 {
     uint32_t id = pg->id[slot];
+    if (pg->scope == SC_GLOBAL && id == G_RTIME && !song.g[G_RMODEL]) { *valp=0;return 0; }
     if (id == 0xFFu || (is_drum(TSEL) && (!page_for_drum(pg) || (pg->scope == SC_GLOBAL && id == G_INITSND)))) {
         *valp = 0;
         return 0;

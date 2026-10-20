@@ -118,8 +118,6 @@ public sealed partial class Fm1Connection
         }
         if (epoch == current && !simulated)
             await RefreshPerformanceChannelsAsync(editor,info,current.Token);
-        if (epoch == current && !simulated)
-            await NegotiateUsbPlaybackAsync(editor, info, current);
         if (epoch == current)
             Publish(new($"{(simulated ? "SIMULATED FM1" : "MIDI connected")} · {info.Firmware} · audio not configured",
                 false, info, descriptor, Array.AsReadOnly(levels), simulated));
@@ -161,7 +159,6 @@ public sealed partial class Fm1Connection
     public void Disconnect()
     {
         _ = CloseHardwarePerformanceAsync();
-        ResetUsbPlayback();
         ReleasePerformance();
         StopPlaying();
         soundFingerprints.Clear();

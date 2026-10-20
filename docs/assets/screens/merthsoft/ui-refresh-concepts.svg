@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="840" height="380" viewBox="0 0 840 380">
+ <title>MerthSloop proposed UI: envelope, sequence library and live wah</title>
+ <desc>Concept art, not firmware screenshots. Three 240 by 240 screen layouts using shared knob cards and contextual panels.</desc>
+ <style>
+  text{font-family:monospace;fill:#edf3fa;font-size:10px} .small{font-size:8px;fill:#a9bac9}.value{font-size:17px;font-weight:bold}.title{font-size:12px;font-weight:bold}.muted{fill:#a9bac9}.cyan{fill:#61e2d3}.orange{fill:#ffbd74}.card{fill:#151e29;stroke:#314154}.line{stroke:#61e2d3;stroke-width:2;fill:none}.grid{stroke:#273442;fill:none}
+ </style>
+ <rect width="840" height="380" fill="#10151e"/>
+ <text x="28" y="30" font-size="18" font-weight="bold">MerthSloop · UI refresh</text>
+ <text x="28" y="49" class="muted">SCREEN CONCEPTS / NOT FIRMWARE CAPTURES / FONT IS ILLUSTRATIVE</text>
+ <g transform="translate(28 74)">
+  <rect width="240" height="240" rx="3" fill="#000" stroke="#40516a"/>
+  <text x="6" y="14">▶ 112 BPM</text><text x="172" y="14" class="cyan">T2</text><text x="204" y="14" class="small">USB</text>
+  <rect class="card" x="3" y="26" width="54" height="44"/><rect class="card" x="63" y="26" width="54" height="44" stroke-width="2" style="stroke:#61e2d3"/><rect class="card" x="123" y="26" width="54" height="44"/><rect class="card" x="183" y="26" width="54" height="44"/>
+  <text class="small" x="8" y="38">ATTACK</text><text class="small" x="68" y="38">DECAY</text><text class="small" x="128" y="38">SUSTAIN</text><text class="small" x="188" y="38">RELEASE</text>
+  <text class="value" x="8" y="59">12</text><text class="value cyan" x="68" y="59">240</text><text class="value" x="128" y="59">70%</text><text class="value" x="188" y="59">420</text>
+  <path class="grid" d="M12 182H228 M12 84V182 M12 133H228"/>
+  <path d="M12 182L43 89L102 117" fill="none" stroke="#eef4fc" stroke-width="2"/>
+  <path d="M43 89L102 117" fill="none" stroke="#61e2d3" stroke-width="4"/>
+  <path d="M102 117H163L222 182" fill="none" stroke="#eef4fc" stroke-width="2"/>
+  <circle cx="43" cy="89" r="4" fill="#61e2d3"/><circle cx="102" cy="117" r="4" fill="#61e2d3"/>
+  <text x="72" y="103" class="small">DECAY</text><text x="12" y="195" class="small">TIME →</text>
+  <text x="6" y="215" class="title">ENV 1/2 · T2</text><text x="6" y="232" class="small">TIMES IN ms · SUSTAIN IN %</text>
+ </g>
+ <g transform="translate(300 74)">
+  <rect width="240" height="240" rx="3" fill="#000" stroke="#40516a"/>
+  <text x="6" y="14">▶ 112 BPM</text><text x="172" y="14" class="orange">T1</text><text x="204" y="14" class="small">USB</text>
+  <rect class="card" x="3" y="26" width="54" height="44"/><rect class="card" x="63" y="26" width="54" height="44"/><rect class="card" x="123" y="26" width="54" height="44"/><rect class="card" x="183" y="26" width="54" height="44"/>
+  <text class="small" x="8" y="38">PRESET</text><text class="small" x="68" y="38">ROOT</text><text class="small" x="128" y="38">SCALE</text><text class="small" x="188" y="38">MODE</text>
+  <text class="value" x="8" y="59">03</text><text class="value" x="68" y="59">E</text><text class="value" x="128" y="59">MIN</text><text class="value" x="188" y="59">BASS</text>
+  <text x="10" y="94" class="title">POP FOUR</text><text x="10" y="111" class="small">03/24 STARTERS</text>
+  <rect x="10" y="121" width="220" height="27" rx="2" fill="#282017"/>
+  <text x="19" y="139" class="orange" font-size="13">i → VI → III → VII</text>
+  <path class="grid" d="M12 184H228 M12 156V184 M66 156V184 M120 156V184 M174 156V184 M228 156V184"/>
+  <path stroke="#ffbd74" stroke-width="4" d="M16 177H37 M43 177H59 M70 165H92 M100 165H113 M124 171H145 M153 171H167 M178 160H199 M207 160H224"/>
+  <text x="10" y="197" class="small orange">● PREVIEW PLAYING</text>
+  <text x="6" y="215" class="title">SEQUENCES · T1</text><text x="6" y="232" class="small">OCT− STOP · OCT+ APPLY</text>
+ </g>
+ <g transform="translate(572 74)">
+  <rect width="240" height="240" rx="3" fill="#000" stroke="#40516a"/>
+  <text x="6" y="14">▶ 112 BPM</text><text x="172" y="14" class="cyan">T2</text><text x="204" y="14" class="small">USB</text>
+  <rect class="card" x="3" y="26" width="54" height="44"/><rect class="card" x="63" y="26" width="54" height="44"/><rect class="card" x="123" y="26" width="54" height="44"/><rect class="card" x="183" y="26" width="54" height="44"/>
+  <text class="small" x="8" y="38">BASE</text><text class="small" x="68" y="38">DEPTH</text><text class="small" x="128" y="38">RES</text><text class="small" x="188" y="38">MODE</text>
+  <text class="value" x="8" y="59">32</text><text class="value" x="68" y="59">85</text><text class="value" x="128" y="59">70</text><text class="value" x="188" y="59">ENV</text>
+  <text x="10" y="93" class="title cyan">AUTO WAH · T2</text><text x="10" y="109" class="small">SWEEP RANGE · GUIDE</text>
+  <path class="grid" d="M15 168H225 M30 127V175 M211 127V175"/>
+  <rect x="31" y="144" width="179" height="19" fill="#16372f"/>
+  <path d="M31 145V163 M211 145V163" stroke="#61e2d3" stroke-width="3"/>
+  <text x="15" y="185" class="small">DARK</text><text x="180" y="185" class="small">BRIGHT</text>
+  <text x="10" y="197" class="small">TRACK FILTER · NOT MASTER FX</text>
+  <text x="6" y="215" class="title">WAH · HELD</text><text x="6" y="232" class="small">RELEASE TO RETURN</text>
+ </g>
+ <text x="28" y="342" class="muted">Shared layout. Useful graphics. Clear track and workflow state.</text>
+ <text x="28" y="362" class="small">Library/modulation card labels are illustrative; implementation must use the current input mappings.</text>
+</svg>

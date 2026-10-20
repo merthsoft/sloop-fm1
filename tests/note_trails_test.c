@@ -5,7 +5,7 @@ int main(int argc, char **argv)
 {
     panel=PANEL_DEFAULT;host_tracks_init();palette_set(4);
     outdir=argc>1?argv[1]:"build/host";
-    vis_style=9;vis_update();
+    vis_style = VIS_TRAILS;vis_update();
     for(uint32_t t=0;t<NPART;t++) {
         trk[t].p[P_MUTE]=0;song.solo=0;
         for(uint32_t n=0;n<128;n++) { trk_note_on(&trk[t],n,100);trk_note_off(&trk[t],n); }

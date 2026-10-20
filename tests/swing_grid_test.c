@@ -138,7 +138,7 @@ static void display_and_settings(void)
         assert(cv_px[65*240+x]==swap16(mix565(TE_DIM[3],TE_COL[3],200)));
     }
     cv_oy=0;ui.menu=0;swing_eighth=1;song.g[G_SWING]=100;
-    vis_style=10;vis_name_t=30;vis_on=1;ui.msg_t=0;ui.force=1;vis_draw();ppm("swing-halftime-eighth");
+    vis_style = VIS_GROOVE;vis_name_t=30;vis_on=1;ui.msg_t=0;ui.force=1;vis_draw();ppm("swing-halftime-eighth");
     vis_on=0;swing_eighth=0;song.g[G_SWING]=0;
     puts("swing controls: physical menu knob, old settings default, flag round-trip, home amount and HALF TIME visualizer PASS");
 }

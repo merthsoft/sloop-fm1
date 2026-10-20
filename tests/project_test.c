@@ -548,6 +548,8 @@ int main(void)
     bad += check("save original slot B to NOR", st_save(OBJ_PROJECT0 + 1, &q, sizeof q) == 0);
     host_preset(&trk[0], 1, 2);
     host_preset(&trk[1], 0, 3);
+    trk[0].p[P_LEVEL]=31;trk[1].p[P_LEVEL]=96;trk[2].p[P_LEVEL]=17;
+    song.g[G_DRLVL]=55;song.g[G_SWING]=83;
     trk[0].p[P_VOICE] = V_POLY;
     trk[0].p[P_ROOT] = 4;
     trk[0].p[P_SCALE] = 2;
@@ -569,6 +571,9 @@ int main(void)
         proj_apply(&proj_slot[1], 1);
         proj_capture(&q2);
         bad += check("B reload restores instruments, voice/key settings and notes", !memcmp(&q2, &q, sizeof q));
+        bad += check("track levels, drum level and global swing survive overwrite plus cold reload",
+            trk[0].p[P_LEVEL]==31 && trk[1].p[P_LEVEL]==96 && trk[2].p[P_LEVEL]==17 &&
+            song.g[G_DRLVL]==55 && song.g[G_SWING]==83);
         bad += check("applied vibrato/tremolo rate, sync, wave and destinations survive cold project reload",
             trk[0].p[P_LRATE] == 91 && trk[0].p[P_LWAVE] == 2 && trk[0].p[P_LSYNC] == 7 &&
             trk[0].p[P_LTRIG] == 1 && trk[0].p[P_LD_PIT] == 3 && trk[0].p[P_LD_AMP] == 127);
@@ -577,6 +582,27 @@ int main(void)
     q2 = q;
     bad += check("2.6 SAVE > PROJECT > ERASE: an object of no bytes is no project (an empty slot, older SLOOP too)",
                  !proj_import(&q2, &q, 0));
+    song.g[G_BPM]=121;musical_half=1;proj_capture(&q2);
+    bad += check("HALF never saves its effective tempo",q2.g[G_BPM]==121);musical_half=0;
+    song.g[G_RMODEL]=1; proj_capture(&q2); song.g[G_RMODEL]=0; proj_apply(&q2,1);
+    bad += check("SPRING project model round trip",song.g[G_RMODEL]==1);
+    song.g[G_RMODEL]=0; proj_apply(&q2,0);
+    bad += check("SPRING section model round trip",song.g[G_RMODEL]==1);
+    q2.g[G_LOAD]=0; proj_apply(&q2,1);
+    bad += check("legacy projects retain default stereo reverb",song.g[G_RMODEL]==0);
+    song.g[G_RTIME]=73;proj_capture(&q2);song.g[G_RTIME]=20;proj_apply(&q2,1);
+    bad += check("SPRING reflection timing project round trip",song.g[G_RTIME]==73);
+    song.g[G_RTIME]=20;proj_apply(&q2,0);
+    bad += check("SPRING reflection timing section round trip",song.g[G_RTIME]==73);
+    q2.g[G_LOAD]=0;proj_apply(&q2,1);
+    bad += check("legacy projects default spring reflection spacing",song.g[G_RTIME]==50);
+    song.g[G_VWOW]=37;song.g[G_VTONE]=89;song.g[G_VCRACKLE]=127;proj_capture(&q2);
+    song.g[G_VWOW]=song.g[G_VTONE]=song.g[G_VCRACKLE]=0;proj_apply(&q2,1);
+    bad += check("VINYL project round trip",song.g[G_VWOW]==37&&song.g[G_VTONE]==89&&song.g[G_VCRACKLE]==127);
+    song.g[G_VWOW]=0;proj_apply(&q2,0);
+    bad += check("VINYL section round trip",song.g[G_VWOW]==37);
+    q2.g[G_NAME]=q2.g[G_ENGGO]=0;proj_apply(&q2,1);
+    bad += check("legacy projects bypass VINYL",!song.g[G_VWOW]&&!song.g[G_VTONE]&&!song.g[G_VCRACKLE]);
     printf("%s\n", bad ? "PROJECT FORMAT TEST FAILED" : "project format test passed");
     return bad != 0;
 }

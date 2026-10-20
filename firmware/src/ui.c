@@ -94,6 +94,11 @@ static struct {
 
 UI_SMALL static const page_t *cur_page(void) { return &PAGES[ui.page]; }
 static int32_t accel(uint32_t role, int32_t s, int32_t range);   /* ui_input.c */
+static void draw_head(void);
+static void draw_frame(void);
+static void graph_home(void);
+static uint32_t steps_hash(const track_t *t);
+static uint32_t trk_level(uint32_t c);
 static void layer_screen_draw(void);                            /* ui_layers.c */
 static void hold_screen_draw(void);
 static uint8_t layer_shown;

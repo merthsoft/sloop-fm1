@@ -14,8 +14,8 @@ import os
 import shlex
 
 ROOT = Path(__file__).resolve().parents[1]
-GEN = ROOT / 'build/gen'
 OUT = ROOT / 'build/preview'
+GEN = OUT / 'gen'  # preview generation must not overwrite the target's packed boot tables
 
 
 def main():
@@ -42,7 +42,7 @@ def main():
         options = ['--no-entry', '-sSTANDALONE_WASM=1', '-sFILESYSTEM=0', '-sINITIAL_MEMORY=16777216',
                    '-sSTACK_SIZE=131072', '-sEXPORTED_FUNCTIONS=' + str(['_preview_' + n for n in exports])]
     subprocess.run([*compiler, 'firmware/host/preview.c', '-O2', '-fwrapv', '-fno-strict-aliasing',
-                    '-Wno-unused-function', '-Wno-int-to-pointer-cast', '-Ibuild/gen', '-Ifirmware/src',
+                    '-Wno-unused-function', '-Wno-int-to-pointer-cast', '-I' + str(GEN), '-Ifirmware/src',
                     *options, '-o', 'build/preview/sloop-preview.wasm'], cwd=ROOT, check=True)
     if custom or not emcc:
         mem.unlink()

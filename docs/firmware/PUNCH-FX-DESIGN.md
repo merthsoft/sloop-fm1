@@ -1,19 +1,21 @@
 # Punch-in effects and historical black-key controls
 
-## Current merged behavior
+## Current behavior
 
-Upstream’s 27 punch effects replace the fork’s black-key modifiers by user choice.
-The sixteen white-key IDs retain their original mapping; eleven black keys select
-KILL LOW/MID/HIGH, REWIND, OCT UP, FLANGER, AUTO-PAN, FREEZE, LOOP 8T, MONO and
-FADE OUT. FX + OCT− / OCT+ are momentary reverb / echo throws. HOME locks the FX
-panel open, not a selected effect: effect keys remain momentary. There is no local
-black-key modifier latch, rate multiplier, intensity toggle or retrigger control.
+The original 27 key IDs remain. OCT DOWN replaces OCT UP. HALF now controls
+0.5x musical transport, preserving pitch and saved BPM, and is disabled with
+external clock. It is separate from the audio playback ring.
 
-Remote performance retains its established sixteen-effect contract and leases;
-physical effects have priority, and STOP/disconnect/expiry clean up remote ownership.
-Merged UI tests cover white and black effect selection, key LEDs, panel lock,
-release and 20,000-frame fuzzing. Target memory fitting and release validation remain
-pending; the historical verification below describes the previous implementation.
+One main effect, one LOW/HIGH/PHONE stage and GATE can run together. Last press
+wins within each family, with fallback on release. Physical, USB MIDI and TRS
+MIDI own their holds independently; physical holds win within a family. FREEZE
+remains exclusive with downstream filter/gate stages. Remote performance keeps
+its single-effect protocol and lease behavior. FX + OCT-/OCT+ throws remain.
+
+See [implementation and validation](EFFECTS-IMPLEMENTATION.md) and the
+[playing guide](../../GUIDE.md#punch-in-effects). Historical modifier controls
+below are inactive. Hardware listening and physical deadline measurements remain
+separate from host regressions and target static checks.
 
 ## Superseded modifier design (historical)
 

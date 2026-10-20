@@ -97,9 +97,6 @@ $CC -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/edit_tools_test" t
 run "EDIT tools: scale guides, whole-pattern octaves, gesture readouts and undo" "$OUT/edit_tools_test"
 
 $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/drumkit_test" tests/drumkit_test.c -lm
-python3 tests/sample_rom_oracle.py
-$CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/sample_rom_test" tests/sample_rom_test.c -lm
-run "lossless factory ROM: every byte, independent caches and random reads" "$OUT/sample_rom_test" build/sample-rom-oracle.bin
 run "synthesised drum kits: every kit x sound bounded, audible, finite, levels, cost" "$OUT/drumkit_test" "$OUT/drum-kits.wav" "$OUT/drum-kits.txt"
 $CC -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/userkit_test" tests/userkit_test.c -lm
 run "user drum kits (KIT USR1..USR3): a user slot's sounds on the drum lanes" "$OUT/userkit_test"
@@ -107,6 +104,14 @@ $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/dsyn_test" tests/dsyn_test.c -lm
 run "SYN1..SYN4 drum kits and the editor's DRUM SYNTH commands (v10)" "$OUT/dsyn_test"
 $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/font_test" tests/font_test.c
 run "the screen font at 1 bit a pixel: every glyph, the same pixels as 2.5" "$OUT/font_test"
+$CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/effects_plan_test" tests/effects_plan_test.c -lm
+run "HALF transport, effect combinations and optional SPRING" "$OUT/effects_plan_test"
+$CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/spring_time_test" tests/spring_time_test.c -lm
+run "SPRING independent reflection timing and FREEZE" "$OUT/spring_time_test"
+$CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/vinyl_test" tests/vinyl_test.c -lm
+run "persistent VINYL DSP and bypass" "$OUT/vinyl_test"
+$CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/effects_cpu_test" tests/effects_cpu_test.c -lm
+run "effects host profile and two-core identity" "$OUT/effects_cpu_test"
 $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/punch_test" tests/punch_test.c -lm
 run "punch-in FX: 27 effects (11 on the black keys), bounded, dry after release, FX-held keys" "$OUT/punch_test" "$OUT/punch-fx.wav"
 $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/fx251_test" tests/fx251_test.c -lm
@@ -128,13 +133,13 @@ $CC -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/track_fx_ui_test" 
 run "track FX: preserve across instruments, explicit reset and track isolation" "$OUT/track_fx_ui_test"
 $CC -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/editor_drum_grooves_test" tests/editor_drum_grooves_test.c -lm
 run "phone drum grooves: capabilities, malformed requests, confirmation and undo" "$OUT/editor_drum_grooves_test"
-$CC -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/editor_musical_starters_test" tests/editor_musical_starters_test.c -lm
-run "phone musical starters: discovery, leased audition, takeover, apply and undo" "$OUT/editor_musical_starters_test"
 $CC -O2 -Wall -Wextra -o "$OUT/harmony_owners_test" tests/harmony_owners_test.c firmware/src/harmony_owners.c
 run "inactive harmony foundation: shared-owner note transitions" "$OUT/harmony_owners_test"
 
 $CC -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/ui_pages_test" tests/ui_pages_test.c -lm
 run "live UI: pages, layers (punch, steps, erase, roll, key, mix), holds, drums, REC, fuzz" "$OUT/ui_pages_test" "$OUT"
+$CC -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/ui_refresh_test" tests/ui_refresh_test.c -lm
+run "NEON UI: incremental/full redraw, palettes, drum cells, popup state, help" "$OUT/ui_refresh_test" "$OUT"
 # no divide by 0 (the FM-1 runs with the div0 trap off, hal/fm1_irq.h: a real one would give a wrong value
 # silently): the UI fuzz, the sequencer, the projects and a minute of random live use, with UBSan
 UBSAN="${CC_UB:-cc} -UNDEBUG -O1 -w -fsanitize=integer-divide-by-zero -fno-sanitize-recover=integer-divide-by-zero -Ibuild/gen -Ifirmware/src -Ifirmware/hal"
@@ -201,7 +206,6 @@ run "USB RATE 44.1: the descriptors of a build without 48 kHz (SLOOP 2.4), byte 
     sh -c "[ \"\$(UAC_DUMP=1 '$OUT/uac_test_441' | tail -n 2)\" = \"\$(UAC_DUMP=1 '$OUT/uac_test_no48' | tail -n 2)\" ] && echo same"
 uac_in_app() { ${CC%% *} -E -Ibuild/gen -Ifirmware/hal -Ifirmware/src firmware/src/felucca.c 2>/dev/null | grep -q uac_service; }
 run "USB audio input: built into the firmware (FELUCCA_UAC set before usb.c)" uac_in_app
-run "USB playback: adaptive duplex, mixer, reset and loader variants" env CC="$CC" sh tests/run_usb_playback.sh
 run "scene transaction staging, faults and OTA USB compatibility" env CC="$CC" sh tests/run_scene_transaction.sh
 
 $CC -o "$OUT/ota_test" tests/ota_test.c
@@ -220,6 +224,8 @@ mkdir -p build/tracks_demo
 run "TRACKS: 4-track pattern, live recording (lengths, swing), voice budget, engine switch, cost" env TRACKS=build/tracks_demo "$OUT/hostsim" 0 0 1 "$OUT/tracks.wav"
 $CC -w -Ibuild/gen -Ifirmware/src -o "$OUT/project_test" tests/project_test.c -lm
 run "project formats (FUN4 / FUN3 / FUN2 / FUN1 -> FUN5), capture / apply, autosave" "$OUT/project_test"
+$CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/section_save_test" tests/section_save_test.c -lm
+run "section saves: stopped flash durability, deferred live queue and retries" "$OUT/section_save_test"
 $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/upstream_project_test" tests/upstream_project_test.c -lm
 run "upstream FUN6 compatibility: independent upstream-produced file roundtrip" "$OUT/upstream_project_test"
 $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/slicer_test" tests/slicer_test.c -lm
@@ -241,6 +247,9 @@ run "regression: target cost of the render loops" python3 tests/target_budget.py
 # FORMANT, FM6 or PHYS parts, S&H LFOs, mutes, the drums through the SLICER and the FILTER, the metronome: every
 # split of the units against none) under every mode of the host double of core 1, and under ThreadSanitizer
 run "the render split over the two cores: every mode of the second core's host double (tests/cpu1_modes.sh)" sh tests/cpu1_modes.sh
+
+$CC -O1 -w -Ibuild/gen -Ifirmware/src -o "$OUT/boot_tables_test" tests/boot_tables_test.c
+run "startup tables: original bytes and decoder bounds" "$OUT/boot_tables_test" build/gen/boot_tables_oracle.bin
 
 run "target DSP: preserve per-sample helper inlining" python3 tests/target_inlining_test.py build/felucca.dis
 
