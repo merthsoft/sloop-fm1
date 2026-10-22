@@ -15,9 +15,9 @@ static result_t render(int mode,int cores) {
             trk[k].p[P_AMODE]=0;trk[k].p[P_SUS]=127;trk[k].p[P_REV]=127;
             for(int j=0;j<(k==2?2:3);j++)trk_note_on(&trk[k],48+j*7+k,100);
         }
-        song.g[G_RMODEL]=mode&1;
-        if(mode&4)song.g[G_VWOW]=song.g[G_VTONE]=song.g[G_VCRACKLE]=127;
-        if(mode&2) {punch_hold(2,PX_REV,1);punch_hold(2,PX_DOUBLE,1);punch_hold(2,PX_TEL,1);punch_hold(2,PX_GATE,1);}
+        song.g[G_RMODEL]=mode<8?(mode&1):mode-6;
+        if(mode<8&&(mode&4))song.g[G_VWOW]=song.g[G_VTONE]=song.g[G_VCRACKLE]=127;
+        if(mode<8&&(mode&2)) {punch_hold(2,PX_REV,1);punch_hold(2,PX_DOUBLE,1);punch_hold(2,PX_TEL,1);punch_hold(2,PX_GATE,1);}
         result_t result={0xcbf29ce484222325ull,0};int32_t out[2*CTL];
         for(int b=0;b<5000;b++) {
             if(!(b%680))trk_note_on(TDRUM,36,110);
@@ -30,7 +30,7 @@ static result_t render(int mode,int cores) {
 }
 int main(void) {
     double base=0;
-    for(int mode=0;mode<8;mode++) {
+    for(int mode=0;mode<11;mode++) {
         result_t one=render(mode,1),two=render(mode,2);assert(one.hash==two.hash);
         double ns=(double)one.ns/(4096u*CTL);if(!mode)base=ns;
         printf("effects profile %d: %.1f ns/frame, %.3fx baseline; two-core output identical %016llx\n",mode,ns,ns/base,(unsigned long long)one.hash);

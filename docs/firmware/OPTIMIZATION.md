@@ -1,10 +1,87 @@
+# Packaged cleanup build
+
+MerthSloop 2.7.1.41: **580,060/584,336 application bytes**, **4,276 free**.
+Main static RAM is **89,080/98,304**, low RAM **28,280/29,496**, pool
+**332,876/344,064**. The four-byte difference from the frozen redundancy
+comparison below comes with the new version/build, not a lost optimization.
+
+# Working-source redundancy cleanup
+
+An isolated target build reproduces the served 580,312-byte baseline, then
+measures **580,056 bytes** after sharing panel/MIDI entry setup and HOME/parameter
+card rendering: **256 bytes saved**, **4,280 free**, RAM unchanged. All 116 UI
+captures are byte-identical; actual UI fuzz, entry/delay tests and target DSP
+checks pass. The helpers are now included in the separate release above;
+the earlier package figures below retain their original measured baselines.
+See [redundancy audit](REDUNDANCY-AUDIT.md) and
+[upstream candidates](UPSTREAM-OPTIMIZATION-CANDIDATES.md).
+
+# Current adjustable-delay and preset-storage build
+
+MerthSloop 2.7.1.40: **580,312 image bytes**, **4,024 free** in a
+584,336-byte slot; main static RAM **89,080/98,304**, low RAM
+**28,280/29,496**, pool **332,876/344,064**. DRIVE/TONE and BITS/RATE
+controls are integrated; master LOFI starts at OFF.
+
+The controlled factory-preset experiment saves **2,580 bytes net**, restoring
+153 unchanged records into 5,508 bytes of spare low RAM once before audio starts.
+Another **2,772 bytes of capacity** comes from trailing space inside the same
+0x4000..0x93000 update region, with SDK payload-length checks. These are distinct
+gains, not two code-size savings. No audio buffer, sample decoder or playback
+access changes. Actual restored preset comparisons and 182 audio goldens pass;
+target placement, inlining and DSP budgets pass. Hardware startup duration and
+SPL boot of the expanded directory remain unverified. See the
+[ranked architectural investigation](ARCHITECTURAL-HEADROOM.md).
+
+Earlier checkpoints below retain their own baselines and capacities.
+
+# Current delay build
+
+MerthSloop 2.7.1.39: **580,984 image bytes**, **580 free**; main static RAM
+**89,080/98,304**, low RAM **22,772/29,496**, pool **332,876/344,064**.
+Adds compact delay characters, complete native controls/storage, the zoom hint
+and LOFI OFF default. Compared with the prior production build, image grows
+276 bytes and main static RAM grows 16. All existing audio ring sizes remain
+unchanged. Settled DIGI skips coloration arithmetic; active TAPE/CRUSH have
+additional per-sample work. Target DSP budgets pass; physical timing is unmeasured.
+
+# Current piano-roll display build
+
+MerthSloop 2.7.1.38: **580,708 image bytes**, **856 free**; main static RAM
+**89,064/98,304**, low RAM **22,772/29,496**, pool **332,876/344,064**.
+Includes the piano-roll grid and LOFI OFF. Sharing clamp only within the UI
+reduces duplicated code without changing the inline DSP helpers. Final image
+placement/no-call checks and target DSP budgets pass. Earlier snapshots below
+retain their own measured sizes; do not add deltas from different snapshots.
+
+# Current integrated editor build
+
+MerthSloop 2.7.1.37: **581,140 image bytes**, **424 free**, main static RAM
+**89,064/98,304**, low RAM **22,772/29,496**, pool **332,876/344,064**.
+The complete piano editor adds 7,768 bytes in its controlled comparison.
+Compact descriptors and startup-only numeric/FIR/FM6 table packing recover
+4,448 bytes against the audit snapshot. No sample-loop decoder is introduced;
+factory samples retain direct reads. Restored bytes and coefficients match their
+raw oracles; 182 audio renders are unchanged. Target DSP budgets and image
+placement checks pass. Startup duration/watchdog margin needs hardware validation.
+See [space audit](PIANO-ROLL-SPACE-AUDIT.md), [editor measurement](PIANO-ROLL-SIZE.md)
+and [compiler experiments](COMPILER-FLAGS-AUDIT.md). Toolchain/LTO experiments
+remain separate from this build, which uses the existing compiler and flags.
+
+The checkpoints below are historical measurements.
+
 # Current effects build
 
-MerthSloop 2.7.1.34: **581,208 image bytes**, **356 free**, main static RAM
-**85,656/98,304**, low RAM **22,772/29,496**, pool **332,876/344,064**.
+MerthSloop 2.7.1.36: **580,304 image bytes**, **1,260 free**, main static RAM
+**85,688/98,304**, low RAM **22,772/29,496**, pool **332,876/344,064**.
 VINYL reuses its existing ring; stronger modulation and SPRING feedback each add
 one small smoothed/control value. DOUBLE TIME removes the former octave shifter.
-See [effects implementation](EFFECTS-IMPLEMENTATION.md) for integration and limits.
+The reverb type table shares one FDN implementation; its build measured 1,096
+bytes smaller than 2.7.1.34 despite the added types. The subsequent selective
+upstream fixes add 192 image bytes and 32 main static RAM bytes. Existing
+sample decoding, engines and boot presentation remain intact; no new audio buffer
+is allocated. See [reverb expansion](REVERB-EXPANSION.md) and
+[effects implementation](EFFECTS-IMPLEMENTATION.md) for integration and limits.
 Figures below retain earlier checkpoints as historical evidence.
 
 # Unreleased effects workbench

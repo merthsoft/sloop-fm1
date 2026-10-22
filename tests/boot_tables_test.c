@@ -20,6 +20,8 @@ typedef struct {               /* proportional, see tools/gen_font.py */
 #define DS_LANES 16
  typedef struct {const char *name,*style;uint8_t crush,base[DS_LANES],level[DS_LANES];} ds_factory_kit_t;
 #include "felucca_drumkits.h"
+#include "uac_fir.h"
+#include "felucca_fm6.h"
 #include "boot_tables_init.h"
 int main(int argc,char **argv)
 {
@@ -32,9 +34,18 @@ int main(int argc,char **argv)
         for(unsigned j=0;j<t->count*t->unit;j++) {int b=fgetc(f);assert(b!=EOF && (uint8_t)b==p[j]);total++;}
     }
     assert(fgetc(f)==EOF);fclose(f);
+    FILE *fir=fopen("build/gen/uac_fir_oracle.bin","rb");assert(fir);
+    const uint8_t *fir_bytes=(const uint8_t *)UAC_FIR;
+    for(unsigned i=0;i<sizeof UAC_FIR;i++){int b=fgetc(fir);assert(b!=EOF && (uint8_t)b==fir_bytes[i]);}
+    assert(fgetc(fir)==EOF);fclose(fir);
     uint8_t out[4]={0,0,0xaa,0xbb},bad_offset[]={0,0,0},too_long[]={0x50,1,2,3,4,5};
     boot_table_t bad={out,bad_offset,3,1,1,0,1};assert(!boot_table_unpack(&bad));
     bad.src=too_long;bad.packed=6;assert(!boot_table_unpack(&bad));assert(out[2]==0xaa && out[3]==0xbb);
+    uint8_t bitstream[5]={0};
+    boot_table_t bits_bad={out,bitstream,5,1,1,0,1,32};assert(!boot_table_unpack(&bits_bad));
+    bits_bad.bits=2;bits_bad.packed=4;assert(!boot_table_unpack(&bits_bad));
+    bits_bad.packed=5;bits_bad.count=8;assert(!boot_table_unpack(&bits_bad));
+    assert(out[2]==0xaa && out[3]==0xbb);
     printf("boot tables: %u restored bytes match the original tables; malformed input bounds PASS\n",total);
     return 0;
 }

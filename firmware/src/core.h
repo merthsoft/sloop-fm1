@@ -6,6 +6,9 @@
  * pattern and the pattern parameters of its track_t). The parts share one budget of
  * NVOICE sounding voices (voice.c). */
 #include <stdint.h>
+#if FELUCCA_BOOT_PRESETS
+#include "boot_presets_sizes.h"
+#endif
 /* Keep tiny per-sample DSP helpers inlined when the rest of the image uses -Oz. */
 #define DSP_INLINE static inline __attribute__((always_inline))
 #define NVOICE 8                 /* voices per part, and the budget shared by all parts */
@@ -46,7 +49,9 @@ enum {
 typedef struct {
     const char *label;
     uint8_t fmt;
-    int16_t min, max, def;
+    int8_t min;
+    uint8_t max;
+    int8_t def; /* Descriptor bounds/defaults fit bytes; values remain int16_t in tracks. */
     const char *const *names;   /* F_ENUM */
     const char *unit;           /* F_INT / F_ENUM optional unit */
 } param_desc_t;
@@ -113,11 +118,16 @@ enum {                          /* global parameters */
                                  * 1..16; seq.c remote_cc, ui_input.c remote_poll; a setting of the FM-1) */
     G_CLKOUT,                   /* SLOOP 2.7, GLO > MIDI 3: CLK OUT, the MIDI clock (24 a beat) and START / STOP out on USB
                                  * while SYNC is INT (seq.c clkout_block; a setting of the FM-1, kept in DR MAP's byte) */
-    G_RMODEL,                  /* append-only: current stereo FDN (0), spring (1) */
+    G_RMODEL,                  /* append-only: stereo, spring, room, plate, hall */
     G_VWOW, G_VTONE, G_VCRACKLE, /* persistent master vinyl, defaults bypassed */
     G_RTIME,                   /* spring reflection spacing in milliseconds */
+    G_LTYPE,                   /* master LOFI character; absent settings default to OFF */
+    G_DTYPE,                   /* delay character; old projects default to DIGITAL */
+    G_DDRIVE, G_DBITS, G_DHOLD, /* delay character controls */
     G_COUNT
 };
+/* UI order is OFF first; stored/DSP character IDs remain VINYL/TAPE/VHS/CD/OFF. */
+static inline uint32_t lofi_mode(uint32_t type) { return type ? type-1u : 4u; }
 
 /* ----------------------------------------------------------- voices --- */
 /* Stored mode values are append-only: existing projects keep their direction. */
@@ -422,6 +432,14 @@ static uint32_t dly_samples(uint32_t d) { return musical_samples(dly_units(d)); 
  * up to 70 % if it is lower. The song's values never change, nothing is saved or recorded. thr_req: bit 0 the reverb,
  * bit 1 the echo (the UI); thr_rev, thr_dly: the glide now, Q15 (fx.c mix_block, a block at a time) */
 static volatile uint8_t thr_req;
+/* Runtime MIDI expression: 127 minus CC11. Zero initialization is full gain;
+ * deliberately absent from track/project records. GM expression is squared. */
+static volatile uint8_t ex_off[NTRK];
+static inline int32_t expr_gain(int32_t lvl, uint32_t k)
+{
+    uint32_t e = 127u - ex_off[k % NTRK];
+    return e >= 127u ? lvl : (int32_t)(((uint32_t)lvl * ((e * e * 16384u + 8064u) / 16129u)) >> 14);
+}
 static volatile uint8_t thr_ed;          /* (2.7) the editor's LIVE page: its own THROWs (editor_live.c), with thr_req's */
 /* (2.7) the editor's LIVE page: the master level from there (0: the MASTER knob; 1..127: its level + 1). The knob takes
  * it back when it is turned (main.c); ed_master_k: the knob's reading when the page set it (0xFFFF: not read yet) */

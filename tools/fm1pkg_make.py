@@ -21,7 +21,9 @@ import os
 import struct
 from pathlib import Path
 
-APP_SLOT = 0x8DFBC
+# Word-aligned capacity inside 0x4000..0x93000 after the app directory and
+# SDK cfg_tool/EQ payloads. flash_image checks actual SDK lengths below.
+APP_SLOT = 0x8EA90
 FLASH_SIZE = 0x93000
 KEY = 0x980F
 # flash header: JieLi SDK defaults (burner_size 544, VID "0.01", flash_size 0xFF000,
@@ -102,6 +104,9 @@ def flash_image(app, key):
     spl = sdk_file("uboot.boot")                         # SDK SPL, BANKCB-encoded as in the SDK
     cfg_tool = sdk_file("cfg_tool.bin")
     eq = sdk_file("cfg/eq_cfg_hw.bin")
+    capacity = (FLASH_SIZE - 0x4000 - 0x120 - len(cfg_tool) - 0x40 - len(eq)) & ~3
+    if APP_SLOT > capacity:
+        raise SystemExit(f"SDK config payloads leave {capacity} B, below app slot {APP_SLOT} B")
     isd = key_blob(key) + b"[FELUCCA]\r\n"
     f = bytearray(b"\xFF" * FLASH_SIZE)
     # ---- head

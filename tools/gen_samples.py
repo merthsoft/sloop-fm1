@@ -378,6 +378,9 @@ class Builder:
             L.append('    {"NONE", 0, 1},')
         L.append("};")
         L.append(f"#define SMP_NSETS {max(1, len(sets))}")
+        L.append("#if FELUCCA_BOOT_PRESETS")
+        L.append('static preset_t SMP_PRESET_TABLE[BP_N_SMP_PRESET_TABLE] __attribute__((section(".lowram")));')
+        L.append("#else")
         L.append("static const preset_t SMP_PRESET_TABLE[] = {")
         named = sets or [("NONE", 0, 0)]
 
@@ -399,6 +402,7 @@ class Builder:
             if i is not None:
                 L.append(preset(i, self.kinds.get(setname, "wave"), *rest))
         L.append("};")
+        L.append("#endif")
         names = ", ".join(f'"{n}"' for n, _, _ in named)
         L.append("#define SMP_SET_NAMES_INIT " + names)
         L.append("static const char *const SMP_SET_NAMES[] = {" + names + "};")

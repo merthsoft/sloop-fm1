@@ -596,13 +596,38 @@ int main(void)
     bad += check("SPRING reflection timing section round trip",song.g[G_RTIME]==73);
     q2.g[G_LOAD]=0;proj_apply(&q2,1);
     bad += check("legacy projects default spring reflection spacing",song.g[G_RTIME]==50);
+    for(int model=0;model<=4;model++) {
+        song.g[G_RMODEL]=model;song.g[G_RTIME]=73;proj_capture(&q2);
+        project_t imported_reverb;
+        bad += check("reverb metadata survives checked file import",proj_import(&imported_reverb,&q2,sizeof q2)&&!memcmp(&imported_reverb,&q2,sizeof q2));
+        song.g[G_RMODEL]=0;song.g[G_RTIME]=20;proj_apply(&q2,1);
+        bad += check("reverb types and TIME survive project load",song.g[G_RMODEL]==model&&song.g[G_RTIME]==73);
+        song.g[G_RMODEL]=0;proj_apply(&q2,0);
+        bad += check("reverb types survive section adoption",song.g[G_RMODEL]==model);
+    }
+    q2.g[G_LOAD]=0x5500u|(61u<<1)|1u;proj_apply(&q2,1);
+    bad += check("old timed spring tag still loads",song.g[G_RMODEL]==1&&song.g[G_RTIME]==61);
+    q2.g[G_LOAD]=0x5351u;proj_apply(&q2,1);
+    bad += check("old model-only spring tag still loads",song.g[G_RMODEL]==1&&song.g[G_RTIME]==50);
+    q2.g[G_LOAD]=0x5800u|(50u<<3)|7u;proj_apply(&q2,1);
+    bad += check("unknown tagged model falls back to stereo",song.g[G_RMODEL]==0);
     song.g[G_VWOW]=37;song.g[G_VTONE]=89;song.g[G_VCRACKLE]=127;proj_capture(&q2);
     song.g[G_VWOW]=song.g[G_VTONE]=song.g[G_VCRACKLE]=0;proj_apply(&q2,1);
     bad += check("VINYL project round trip",song.g[G_VWOW]==37&&song.g[G_VTONE]==89&&song.g[G_VCRACKLE]==127);
     song.g[G_VWOW]=0;proj_apply(&q2,0);
     bad += check("VINYL section round trip",song.g[G_VWOW]==37);
+    for(uint32_t mode=0;mode<5;mode++) {
+        song.g[G_LTYPE]=mode;proj_capture(&q2);song.g[G_LTYPE]=4-mode;proj_apply(&q2,1);
+        bad += check("LOFI character project round trip",song.g[G_LTYPE]==mode&&song.g[G_VWOW]==37&&song.g[G_VCRACKLE]==127);
+        song.g[G_LTYPE]=4-mode;proj_apply(&q2,0);
+        bad += check("LOFI character section round trip",song.g[G_LTYPE]==mode);
+    }
+    q2.g[G_ENGGO]=(int16_t)(0x5A00u|(3u<<7)|127u);proj_apply(&q2,1);
+    bad += check("earlier four-character tag retains CD",song.g[G_LTYPE]==4);
+    q2.g[G_ENGGO]=(int16_t)(0x5600u|127u);song.g[G_LTYPE]=3;proj_apply(&q2,1);
+    bad += check("old VINYL tag retains amounts and selects VINYL",song.g[G_LTYPE]==1&&song.g[G_VWOW]==37&&song.g[G_VTONE]==89&&song.g[G_VCRACKLE]==127);
     q2.g[G_NAME]=q2.g[G_ENGGO]=0;proj_apply(&q2,1);
-    bad += check("legacy projects bypass VINYL",!song.g[G_VWOW]&&!song.g[G_VTONE]&&!song.g[G_VCRACKLE]);
+    bad += check("legacy projects bypass VINYL",song.g[G_LTYPE]==0&&!song.g[G_VWOW]&&!song.g[G_VTONE]&&!song.g[G_VCRACKLE]);
     printf("%s\n", bad ? "PROJECT FORMAT TEST FAILED" : "project format test passed");
     return bad != 0;
 }

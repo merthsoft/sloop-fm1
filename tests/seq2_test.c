@@ -59,7 +59,7 @@ static void reset(uint32_t bpm)
     for (i = 0; i < NTRK; i++)
         steps_clear(&trk[i]);
     memset(&drums, 0, sizeof drums);
-    drums.set = -2;
+    drum_factory_set = -2;
     nhits = 0;
     blk = 0;
     song.g[G_BPM] = (int16_t)bpm;
@@ -615,6 +615,74 @@ static void t_mclk(void)
     run_block();
     song.g[G_SYNC] = 0;
     mi_r = mi_w;
+}
+
+/* (2.7.2) a master at a steady 140 whose pulses come a few ms early or late (a computer, USB): BPM shows 140, not
+ * 139 / 140 / 141 by turns; a master at 139.5 shows one value; a tempo ramp and a jump are still followed */
+static void mclk_jrun(double *t, uint32_t *np, double bpm, double until, uint32_t *seen, uint32_t *changes)
+{
+    static uint32_t rng = 12345u;
+    double per = 60000.0 / bpm / 24.0;
+    int32_t last = song.g[G_BPM];
+    while (*t < until) {
+        for (;;) {                                   /* pulse n at n * per, +-2.5 ms (not adding up) */
+            double at;
+            rng = rng * 1103515245u + 12345u;
+            at = (double)*np * per + ((double)((rng >> 16) % 51u) - 25.0) / 10.0;
+            if (at > *t)
+                break;
+            mclk_push(0xF80Fu);
+            (*np)++;
+        }
+        fm1_ms = (uint32_t)*t;
+        run_block();
+        if (seen && song.g[G_BPM] >= 100 && song.g[G_BPM] < 200)
+            seen[song.g[G_BPM] - 100] = 1;
+        if (changes && song.g[G_BPM] != last)
+            (*changes)++;
+        last = song.g[G_BPM];
+        *t += (double)CTL * 1000.0 / FS;
+    }
+}
+static void t_mclk_jitter(void)
+{
+    double t = 0;
+    uint32_t np = 0, seen[100], k, n, ch = 0;
+    reset(90);
+    mi_r = mi_w;
+    song.g[G_SYNC] = 1;
+    mclk_jrun(&t, &np, 140.0, 2000.0, 0, 0);          /* settle (the first beats) */
+    memset(seen, 0, sizeof seen);
+    mclk_jrun(&t, &np, 140.0, 62000.0, seen, &ch);    /* a minute at 140 */
+    for (n = 0, k = 0; k < 100u; k++)
+        n += seen[k];
+    printf("seq2:   140 +-2.5 ms: %u value(s), %u change(s), BPM %d\n", n, ch, song.g[G_BPM]);
+    check(n == 1u && seen[40] && ch == 0u, "MIDI clock (2.7.2): a steady 140 with jittery pulses shows 140, steady");
+    {   /* the master at 139.5 (between two): one value for a minute */
+        double t0 = t;
+        np = (uint32_t)(t / (60000.0 / 139.5 / 24.0)) + 1u;
+        mclk_jrun(&t, &np, 139.5, t0 + 3000.0, 0, 0);
+        ch = 0;
+        mclk_jrun(&t, &np, 139.5, t + 60000.0, 0, &ch);
+        check(ch == 0u && (song.g[G_BPM] == 139 || song.g[G_BPM] == 140),
+              "MIDI clock (2.7.2): a master at 139.5 shows one value, steady");
+    }
+    {   /* a ramp 140 -> 146 over 16 beats, then a jump to 100: followed */
+        double bpm = 140.0;
+        np = (uint32_t)(t / (60000.0 / bpm / 24.0)) + 1u;
+        for (k = 0; k < 16u; k++, bpm += 6.0 / 16.0) {
+            np = (uint32_t)(t / (60000.0 / bpm / 24.0)) + 1u;
+            mclk_jrun(&t, &np, bpm, t + 60000.0 / bpm, 0, 0);
+        }
+        mclk_jrun(&t, &np, 146.0, t + 3000.0, 0, 0);
+        check(song.g[G_BPM] >= 145 && song.g[G_BPM] <= 146, "MIDI clock (2.7.2): a ramp to 146 is followed");
+        np = (uint32_t)(t / (60000.0 / 100.0 / 24.0)) + 1u;
+        mclk_jrun(&t, &np, 100.0, t + 1500.0, 0, 0);
+        check(song.g[G_BPM] == 100, "MIDI clock (2.7.2): a jump to 100 is taken within two beats");
+    }
+    song.g[G_SYNC] = 0;
+    mi_r = mi_w;
+    fm1_ms = (uint32_t)t + 1000u;                     /* (the master gone) */
 }
 
 /* the REC screen's MODE and START (SLOOP 2.3): an empty project records at the tempo set (TEMPO) or
@@ -2187,6 +2255,7 @@ int main(void)
     t_chain();
     t_recmode();
     t_mclk();
+    t_mclk_jitter();
     t_fixes24();
     t_longdiv();
     t_midiout();

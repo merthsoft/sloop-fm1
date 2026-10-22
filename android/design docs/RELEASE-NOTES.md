@@ -1,3 +1,96 @@
+# MerthSloop firmware 2.7.1.41
+
+- Shared physical/MIDI step-entry setup and HOME/parameter-card drawing. The
+  controlled comparison saves 256 bytes, with unchanged RAM and 116 identical
+  framebuffer captures. UI fuzz and entry transaction tests pass.
+- Final target image 580,060/584,336 bytes (4,276 free); main static RAM
+  89,080/98,304, low RAM 28,280/29,496, pool 332,876/344,064.
+- Documentation includes the measured main comparison, duplicated-code audit
+  and an upstream optimization shortlist. Hardware boot remains unverified
+  for the earlier preset/capacity changes.
+
+# MerthSloop firmware 2.7.1.40
+
+- LOFI order is OFF/VINYL/TAPE/VHS/CD; OFF is first and default. Explicit old
+  saved character tags retain their meaning.
+- DLY TYPE: DIGI TIME/FDBK/MIX, TAPE DRIVE/TONE/MIX, CRUSH BITS/RATE/MIX.
+  Original DLY keeps shared timing, feedback, colour and mix. Inactive character
+  parameters save with projects/sections; phone/web archives retain the tags.
+- Startup-only factory preset packing saves 2,580 bytes in its controlled
+  comparison, using 5,508 bytes spare low RAM. No playback decoding.
+- Uses another 2,772 bytes of existing update-region capacity. Target image
+  580,312/584,336 bytes (4,024 free); main RAM 89,080/98,304,
+  low RAM 28,280/29,496, pool 332,876/344,064.
+- 153 preset records match, 182 golden renders remain unchanged, 29 native/WASM
+  profiles pass. Target DSP, persistence and UI checks pass. Hardware startup
+  timing and SPL boot of the expanded directory still need checking.
+
+# MerthSloop firmware 2.7.1.39
+
+- STEP/NOTES footer: PRESETS: ZOOM / OCT: TOOLS.
+- DLY TYPE adds DIGI/TAPE/CRUSH, with TYPE/TIME/FDBK/MIX controls. Original DLY
+  retains COLR. Characters save with projects/sections and leave dry audio alone.
+- LOFI defaults to OFF, including untagged older saves; explicit saved choices
+  still load. OFF retains its amounts and momentary VINYL punch still works.
+- Exhaustive tap bounds, maximum-feedback live changes, native UI/storage,
+  canonical upstream project, 25 phone archive checks and 25 native/WASM profiles
+  pass. Original DIGITAL render bytes and all 182 golden audio renders match.
+- Image 580,984 bytes, flash free 580; main static RAM 89,080/98,304.
+
+# MerthSloop firmware 2.7.1.38
+
+- STEP and NOTES now have a chromatic piano-roll grid: black-key shading, C-octave
+  labels, beat/bar guides, selected-chain outline and full-height playhead.
+  Wide pitch ranges follow the selected note. The graph stays below the cards.
+- Turn PRESETS left to zoom in and right to zoom out, through 8/16/32/64 steps.
+  Existing note editing and independent sustains remain intact.
+- LOFI TYPE adds OFF, smoothly bypassing while retaining the three stored amounts.
+  OFF round-trips in projects/sections; older LOFI tags still load. Momentary
+  VINYL punch still works over OFF and returns to dry on release.
+- A shared UI-only clamp reduces duplicate code; DSP helpers remain inline.
+  Target image is 580,708 bytes, leaving 856; main static RAM remains 89,064/98,304.
+
+# MerthSloop firmware 2.7.1.37
+
+- Native STEP zoom, NOTES pitch/length/strength editing, NOTE ACTIONS and drum
+  HIT ACTIONS preserve independent note chains, other voices and shared step data.
+- Drum FX page 1 exposes level, pan, delay and reverb sends; page 2 exposes the
+  working filter. INSERT 2 now exposes blend, type and two parameters.
+- Master LOFI offers VINYL, TAPE, VHS and CD characters; mode and amounts save
+  with sections/projects. VINYL punch remains temporary and restores settings.
+- MIDI expression attenuates synths and drums without altering saved levels.
+  Source/channel-isolated bank selection supports factory and real user presets;
+  adopting a project clears stale queued program changes.
+- Compact descriptors and startup-only table/FIR/FM6 packing retain exact audio
+  data. Image: 581,140 bytes; flash free: 424; main static RAM: 89,064/98,304.
+- Eleven focused editor/UI/MIDI suites, restored-table and FIR byte oracles,
+  USB resampling, synth drums, target budgets and 182 unchanged audio renders pass.
+  Hardware startup timing and live interaction remain user validation.
+- Wet-color delay/reverb foundations are tested but not connected to audio buses;
+  expanded delay models remain next work.
+
+# MerthSloop firmware 2.7.1.36
+
+- Selectively adopts upstream 2.8's early OCT− rescue-key power fix, fast-encoder
+  transition handling, macOS USB-audio collection order and descriptor version,
+  plus averaged/hysteretic external MIDI-clock tempo estimation.
+- The installer finds generically named Windows update loaders by handshake,
+  prioritizes matching port pairs and allows longer re-enumeration. Existing
+  MerthSloop packaging, foreign-loader checks and return-to-stock remain.
+- Retains the new reverb types, NEON UI and all MerthSloop editing/performance
+  features. This is a selective backport, not a complete SLOOP 2.8 merge.
+
+# MerthSloop firmware 2.7.1.35
+
+- SPRING now uses two unequal dispersive paths with separate pickups for a wider
+  stereo tail; TIME remains independent of nominal decay.
+- ROOM, PLATE and HALL add three contrasting spaces to the original STEREO.
+  They reuse existing delay/AP storage. TIME is active only on SPRING.
+- New model metadata retains the project size, default upstream byte identity,
+  old spring tags, section recall and deferred FREEZE switching.
+- Measured impulse/stereo/decay, overload, switching, persistence and UI tests
+  cover every type. Host listening examples are under build/reverb-lab.
+
 # MerthSloop firmware 2.7.1.34
 
 - HOME shows the selected drum kit name instead of the generic DRUM label.

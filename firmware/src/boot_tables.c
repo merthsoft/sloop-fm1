@@ -4,7 +4,7 @@ typedef struct {
     void *dst;
     const uint8_t *src;
     uint16_t packed, count;
-    uint8_t unit, order, width;
+    uint8_t unit, order, width, bits; /* bits: direct packed residuals, 0 = LZ4 */
 } boot_table_t;
 static uint32_t boot_load(const uint8_t *p,uint32_t unit)
 {
@@ -23,6 +23,18 @@ static int boot_table_unpack(const boot_table_t *t)
     uint32_t prefix=t->order*t->unit;
     if(t->order>4u || t->count<t->order || (t->unit!=1u && t->unit!=2u && t->unit!=4u) ||
        (t->width!=1u && t->width!=t->unit)) return 0;
+    if(t->bits) {
+        uint32_t n=t->count-t->order,bit=0;
+        if(t->bits>31u || (uint32_t)t->packed!=prefix+4u+(n*t->bits+7u)/8u) return 0;
+        for(uint32_t i=0;i<prefix;i++)out[i]=*src++;
+        uint32_t base=boot_load(src,4);src+=4;
+        for(uint32_t i=t->order;i<t->count;i++) {
+            uint32_t v=0;
+            for(uint32_t b=0;b<t->bits;b++,bit++)v|=(uint32_t)((src[bit>>3]>>(bit&7u))&1u)<<b;
+            boot_store(out+i*t->unit,t->unit,base+v);
+        }
+        goto integrate;
+    }
     uint32_t expected=prefix+(t->count-t->order)*t->width,at=0;
     while(src<end) {
         uint32_t token=*src++,n=token>>4,b;
@@ -47,6 +59,7 @@ static int boot_table_unpack(const boot_table_t *t)
         if(t->width==1u && t->unit>1u)v=(uint32_t)(int32_t)(int8_t)v;
         boot_store(out+i*t->unit,t->unit,v);
     }
+integrate:
     for(uint32_t i=t->order;i<t->count && t->order;i++) {
         uint32_t v=boot_load(out+i*t->unit,t->unit);
         uint32_t a=boot_load(out+(i-1u)*t->unit,t->unit);

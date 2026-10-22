@@ -247,6 +247,7 @@ UI_SMALL static void drum_screen_draw(void)
     static uint32_t title_sig, body_sig, footer;
     uint32_t i, j, len = (uint32_t)clamp(TDRUM->p[P_SLEN], 1, 64), kit = drum_kit(), sig, bank;
     char st[16];
+    if(drum_page==5) {actions_draw();return;}
     if (drum_page >= 3) { groove_screen_draw(); return; }
     if (drum_cursor >= len) drum_cursor = (uint8_t)(len - 1u);
     bank = drum_cursor / 16u;
@@ -442,7 +443,8 @@ UI_SMALL static void drum_screen_input(uint32_t pressed, uint32_t home, uint32_t
             else transport_req = song.playing ? 2 : 1;
         } else if (b == B_SEQ || b == B_EDIT) {
             groove_preview.active = 0;
-            drum_page = (uint8_t)((drum_page + 1u) % 5u);
+            drum_page = (uint8_t)((drum_page + 1u) % 6u);
+            if(drum_page==5){groove_preview.active=0;actions_open(1,drum_lane,drum_cursor);return;}
             groove_confirm = 0;
             ui.msg_t = 0;
             ui.force = 1;
@@ -484,7 +486,8 @@ UI_SMALL static void drum_screen_input(uint32_t pressed, uint32_t home, uint32_t
     }
     if ((s = panel_enc(EN_SELECT))) {   /* SELECT: GRID / KIT / GROOVE */
         groove_preview.active = 0;
-        drum_page = (uint8_t)clamp((int32_t)drum_page + s, 0, 4);
+        drum_page = (uint8_t)clamp((int32_t)drum_page + clamp(s,-5,5), 0, 5);
+        if(drum_page==5){groove_preview.active=0;actions_open(1,drum_lane,drum_cursor);return;}
         groove_confirm = 0;
         ui.msg_t = 0;
         ui.force = 1;

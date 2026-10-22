@@ -30,7 +30,6 @@ static uint32_t drum_kit(void) { return (uint32_t)clamp(TDRUM->p[P_E0], 0, DRUM_
 static struct {
     voice_t v[NDRUM];
     uint32_t age;
-    int16_t set;                 /* SMP_SETS index of "PERC" (GM map), -1 = none */
     int32_t tail;                /* declick: the last output of cut voices, decaying */
     int32_t peak;                /* largest |output| since the UI last looked (TRACKS meter) */
     uint8_t kit[NDRUM];
@@ -45,7 +44,9 @@ static struct {
     int32_t a0, a1;              /* the drum track's mute / solo attenuation over this block (fx.c), Q15, 0 = heard */
     int32_t glv, ggl, ggr;       /* (2.7) LEVEL and PAN as last mixed: a change glides (~3 ms, fx.c mix_glide) */
     uint8_t gon;
-} drums = {.set = -2};
+} drums;
+/* The cache sentinel must not put every drum voice in flash-backed .data. */
+static int16_t drum_factory_set = -2; /* SMP_SETS PERC index; -2 unknown, -1 absent */
 
 static int32_t ds_buf[CTL];
 
@@ -61,13 +62,13 @@ static int32_t mix_glide(int32_t from, int32_t to)
 static int32_t drum_set(void)
 {
     uint32_t i;
-    if (drums.set == -2) {
-        drums.set = -1;
+    if (drum_factory_set == -2) {
+        drum_factory_set = -1;
         for (i = 0; i < SMP_NSETS; i++)
             if (str_eq(SMP_SETS[i].name, "PERC"))
-                drums.set = (int16_t)i;
+                drum_factory_set = (int16_t)i;
     }
-    return drums.set;
+    return drum_factory_set;
 }
 
 /* ------------------------------------------------------------ lanes --- */
@@ -365,7 +366,7 @@ static void drum_on(uint32_t note, uint32_t vel)
 static inline void drums_mix(int32_t *ml, int32_t *mr, int32_t *rev, int32_t *dly, int32_t *mono, uint32_t n)
 {
     uint32_t k, i;
-    int32_t lvl = song.g[G_DRLVL] * 200, send = send_thr(song.g[G_DRREV] * 258, thr_rev),
+    int32_t lvl = expr_gain(song.g[G_DRLVL] * 200, TRK_DRUM), send = send_thr(song.g[G_DRREV] * 258, thr_rev),
             dsend = send_thr(song.g[G_DRDLY] * 258, thr_dly), pk = drums.peak;   /* (2.6: the THROWs) */
     int32_t pan = trk[TRK_DRUM].p[P_PAN], gl = 4096 - (pan > 0 ? pan * 64 : 0), gr = 4096 + (pan < 0 ? pan * 64 : 0);
     if (!drums.gon)                                 /* (2.7) LEVEL and PAN glide, block by block (mix_glide) */

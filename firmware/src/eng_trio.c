@@ -356,6 +356,9 @@ static void trio_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const 
     v->s[5] = drift;
 }
 
+#if FELUCCA_BOOT_PRESETS
+static preset_t TRIO_PRESETS[BP_N_TRIO_PRESETS] __attribute__((section(".lowram")));
+#else
 static const preset_t TRIO_PRESETS[] = {
     /* name, {WAVE, INT2, INT3, DTN, MODE, CUT, RES, PW}, {A D S R}, fenv, mono. INT2 / INT3: one-finger chords */
     {"FAT BASS", {0, 0, -12, 9, 0, 72, 45, 64}, {0, 64, 80, 25}, 40, 1, FX(22, 0, 0, 6), XP(P_TRANS + 1, -24)},
@@ -376,6 +379,7 @@ static const preset_t TRIO_PRESETS[] = {
     {"POWER STAB", {0, 7, 12, 8, 0, 85, 25, 64}, {0, 70, 50, 36}, 30, 0, FX(16, 10, 20, 25)},
     {"PULSE PAD", {1, 0, 12, 20, 0, 70, 10, 30}, {60, 90, 115, 85}, 0, 0, FX(0, 50, 20, 60), XP(P_LD_SHP + 1, 25, P_LRATE + 1, 30)},
 };
+#endif
 
 static const engine_t ENG_TRIO = {
     "TRIO", {"OSC", "TONE"},

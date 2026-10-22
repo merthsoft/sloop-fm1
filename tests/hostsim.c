@@ -80,10 +80,17 @@ static uint64_t now_ns(void)
 #define FELUCCA_BOOT_AUDIO_ONLY 1
 #include "boot_tables_init.h"
 #endif
+#if FELUCCA_BOOT_PRESETS
+#include "boot_presets.h"
+static uint8_t preset_boot_scratch[3816]; /* Host-only counterpart of proj_tmp. */
+#endif
 static void host_tracks_init(void)                /* as felucca_init: defaults, empty patterns */
 {
 #if FELUCCA_BOOT_TABLES
     if (!boot_tables_init()) abort();
+#endif
+#if FELUCCA_BOOT_PRESETS
+    if (!boot_presets_init(preset_boot_scratch,sizeof preset_boot_scratch)) abort();
 #endif
     uint32_t i, k;
     for (i = 0; i < G_COUNT; i++)

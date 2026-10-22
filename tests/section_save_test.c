@@ -42,12 +42,14 @@ static void cold_load_d(void) {
     assert(trk[0].p[P_LEVEL]==31 && trk[1].p[P_LEVEL]==96 && trk[2].p[P_LEVEL]==17);
     assert(song.g[G_DRLVL]==55 && song.g[G_SWING]==83);
     assert(trk[0].p[P_ROOT]==7 && trk[0].p[P_SCALE]==8);
+    assert(song.g[G_RMODEL]==4 && song.g[G_RTIME]==73);
 }
 static void cold_resume(void) {
     host_tracks_init();memset(proj_slot,0,sizeof proj_slot);
     assert(st_load(OBJ_AUTOSAVE,&loaded,sizeof loaded)==sizeof loaded);
     assert(proj_ok(&loaded));proj_apply(&loaded,1);
     assert(trk[0].p[P_ROOT]==7 && trk[0].p[P_SCALE]==8);
+    assert(song.g[G_RMODEL]==4 && song.g[G_RTIME]==73);
     assert(autosave_hash==loaded.sum);
 }
 static void setup(void) {
@@ -58,6 +60,7 @@ static void setup(void) {
     proj_capture(&loaded);assert(!st_save(OBJ_AUTOSAVE,&loaded,sizeof loaded));
     autosave_hash=loaded.sum;
     trk[0].p[P_ROOT]=7;trk[0].p[P_SCALE]=8; /* G Phrygian */
+    song.g[G_RMODEL]=4;song.g[G_RTIME]=73;
     song.g[G_DRLVL]=55;song.g[G_SWING]=83;preference=1;persisted_preference=0;
 }
 int main(void) {

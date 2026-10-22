@@ -175,6 +175,24 @@ UI_SMALL static int up_parse(const uint8_t *a, uint32_t na, up_rec_t *r, uint32_
     return 0;
 }
 
+/* MIDI PC addresses the base factory/user list, never favourites. Bank 8
+ * addresses physical user slots; empty slots must not fall through or wrap. */
+UI_SMALL static int32_t up_pc_index(uint32_t bank, uint32_t program, uint32_t factories)
+{
+    uint32_t k, used = 0;
+    if (bank > 127u || program > 127u)
+        return -1;
+    if (bank == 8u) {
+        if (program >= UP_SLOTS || !up_used(program))
+            return -1;
+        for (k = 0; k < program; k++) used += up_used(k) != 0;
+        return (int32_t)(factories + used);
+    }
+    for (k = 0; k < UP_SLOTS; k++) used += up_used(k) != 0;
+    k = bank * 128u + program;
+    return k < factories + used ? (int32_t)k : -1;
+}
+
 #ifndef UP_HOST
 UI_SMALL static const param_desc_t *up_desc(uint32_t e, uint32_t i)
 {

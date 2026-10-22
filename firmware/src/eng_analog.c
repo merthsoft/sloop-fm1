@@ -122,6 +122,9 @@ static void analog_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, cons
         analog_body(t, v, out, n, m, 0);
 }
 
+#if FELUCCA_BOOT_PRESETS
+static preset_t ANALOG_PRESETS[BP_N_ANALOG_PRESETS] __attribute__((section(".lowram")));
+#else
 static const preset_t ANALOG_PRESETS[] = {
     /* SLOOP hip-hop / drum & bass bank. {WAVE, DTN, MIX, NOIS, CUT, RES, DRV, KTR}, {A D S R}, fenv, mono */
     /* 808s: a sine that decays (SUS 0) with a little pitch drop (ENV -> PITCH) and slides (GLIDE, legato) */
@@ -157,6 +160,7 @@ static const preset_t ANALOG_PRESETS[] = {
     {"SAW BASS", {0, 6, 64, 0, 52, 30, 40, 64}, {0, 60, 60, 20}, 30, 1, FX(8, 0, 0, 4), XP(P_TRANS + 1, -24)},
     {"SINE PAD", {3, 10, 64, 4, 90, 0, 0, 32}, {80, 90, 118, 90}, 0, 0, FX(0, 60, 20, 65)},
 };
+#endif
 
 static const engine_t ENG_ANALOG = {
     "ANALOG", {"OSC", "FLT"},

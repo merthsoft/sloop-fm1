@@ -23,15 +23,40 @@ async function request(m, [cmd, a]) {
   const inp = [...m.access.inputs.values()][0], out = [...m.access.outputs.values()][0];
   return new Promise((resolve) => { inp.onmidimessage = ({data}) => resolve(E.unframe(data)); out.send(E.frame(cmd, a)); });
 }
-for (let engine = 0; engine < 12; engine++) {
+for (let probe = 0; probe < 29; probe++) {
+  const engine = probe < 12 ? probe : 0, reverb = probe >=12 && probe<17 ? probe-12 : null;
+  const lofi = probe>=17 && probe<22 ? probe-17 : null;
+  const delay = probe>=22 ? (probe<25?probe-22:probe<27?1:2) : null;
   const m = device();
   await request(m, E.req.set(1, 20, engine));
   await request(m, E.req.preset(engine, 0));
   const state = E.previewSnapshot(m.state);
   state.tracks[0].p[17] = 0; // direct note, no arp in this comparison
+  if (reverb !== null) {
+    // Fork globals append after the upstream 49-value prefix; default TIME is 50.
+    while (state.g.length < 54) state.g.push(0);
+    state.g[49]=reverb; state.g[53]=50;
+    state.tracks[0].p[34]=state.tracks[0].p[35]=0;
+    state.tracks[0].p[36]=127;
+  }
+  if (lofi !== null) {
+    while(state.g.length<55)state.g.push(0);
+    state.g[50]=127;state.g[51]=100;state.g[52]=80;state.g[54]=(lofi+1)%5;
+    state.tracks[0].p[34]=state.tracks[0].p[35]=state.tracks[0].p[36]=0;
+  }
+  if (delay !== null) {
+    while(state.g.length<59)state.g.push(0);
+    state.g[4]=1;state.g[5]=100;state.g[6]=100;state.g[7]=127;state.g[54]=0;state.g[55]=delay;
+    state.g[56]=127;state.g[57]=8;state.g[58]=2;
+    if(probe===25)state.g[56]=0;
+    if(probe===26)state.g[56]=80;
+    if(probe===27){state.g[57]=4;state.g[58]=0;}
+    if(probe===28){state.g[57]=16;state.g[58]=4;}
+    state.tracks[0].p[34]=state.tracks[0].p[36]=0;state.tracks[0].p[35]=127;
+  }
   const dsp = new FirmwareAudio(module); dsp.sync(state);
-  const t = state.tracks[0], frames = 8192;
-  const cfg = Int32Array.from([engine, t.preset, 60, frames, ...t.p, ...state.g]);
+  const t = state.tracks[0], frames = reverb === null && lofi === null && delay === null ? 8192 : 44160;
+  const cfg = Int32Array.from([engine, t.preset, 60, frames, state.g.length, ...t.p, ...state.g]);
   const raw = execFileSync(process.platform === 'win32' ? 'build/host/preview_native.exe' : 'build/host/preview_native', { input: Buffer.concat([Buffer.from(cfg.buffer), Buffer.from(t.fm6)]) });
   const native = new Float32Array(raw.buffer.slice(raw.byteOffset, raw.byteOffset + raw.byteLength));
   dsp.w.preview_note(0, 60, 1);
@@ -44,7 +69,7 @@ for (let engine = 0; engine < 12; engine++) {
   for (let i = 0; i < frames; i++) delta = Math.max(delta, Math.abs(left[i] - native[i*2]), Math.abs(right[i] - native[i*2+1]));
 
   assert(delta <= 1/32768, `engine ${engine}: native/WASM delta ${delta}`);
-  console.log(`engine ${engine}: native/WASM match (${delta})`);
+  console.log(`engine ${engine}${reverb===null?'':`, reverb ${reverb}`}${lofi===null?'':`, LOFI ${lofi}`}${delay===null?'':`, DELAY ${delay}`}: native/WASM match (${delta})`);
   m.stop();
 }
 {

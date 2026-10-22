@@ -223,6 +223,9 @@ static void phys_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const 
 
 /* MODAL partials by STRC: 34 harmonic, 70 1 : 2.83 : 5.48 : 8.90 (a free bar, a chime: 1 : 2.76 : 5.40 : 8.93),
  * 98 1 : 3.57 : 7.65, 116 1 : 4.0 : 9.0 (a tuned bar: 1 : 4 : 10) */
+#if FELUCCA_BOOT_PRESETS
+static preset_t PHYS_PRESETS[BP_N_PHYS_PRESETS] __attribute__((section(".lowram")));
+#else
 static const preset_t PHYS_PRESETS[] = {
     /* name, {MODEL, STRC, BRIT, DAMP, POS, ACC, BOW, EXC}, {A D S R}, fenv, mono */
     {"BELL TREE", {PM_MODAL, 70, 100, 106, 12, 100, 0, 6}, {0, 100, 127, 96}, 0, 0, FX(0, 20, 30, 60)},
@@ -259,6 +262,7 @@ static const preset_t PHYS_PRESETS[] = {
     {"CONGA", {PM_MEMB, 90, 60, 50, 40, 100, 8, 40}, {0, 100, 127, 40}, 0, 0, FX(0, 0, 10, 25)},
     {"TIMPANI", {PM_MEMB, 10, 50, 100, 20, 110, 6, 10}, {0, 100, 127, 90}, 0, 0, FX(0, 0, 0, 50), XP(P_TRANS + 1, -12)},
 };
+#endif
 
 static const engine_t ENG_PHYS = {
     .name = "PHYS",

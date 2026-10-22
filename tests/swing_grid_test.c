@@ -66,7 +66,7 @@ static uint32_t render(uint32_t g,uint32_t mode,uint32_t amount,uint32_t auditio
 {
     seq_stop();host_tracks_init();
     for(uint32_t t=0;t<NTRK;t++)steps_clear(&trk[t]);
-    memset(&drums,0,sizeof drums);drums.set=-2;
+    memset(&drums,0,sizeof drums);drum_factory_set=-2;
     song.g[G_BPM]=120;song.g[G_CLOCK]=0;song.g[G_SWING]=amount;swing_eighth=mode;
     song.sel=TRK_DRUM;song.rec=transport_req=rec_wait=ft_on=0;
     fm1_in.notes=fm1_in.buttons=0;panic_req=0;

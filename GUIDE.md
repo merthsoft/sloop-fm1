@@ -156,7 +156,7 @@ The layers are **FX** (punch-in effects), **EDIT** (erase), **ARP** (note repeat
 | **SEL** | SEL pages (SEL, SEL 2) | key / chord layer |
 | **EDIT** | EDIT pages (EDIT 1, EDIT 2, VOICE, VOICE 2) · on TRACKS with the drum track: the **DRUMS** screen · on DRUMS: grid → kit → groove · on the STEP page: clear the step | erase layer |
 | **ARP** | ARP pages (ARP, ARP 2) | note-repeat layer |
-| **SEQ** | SEQ pages (STEP, PATTERN, RECORD, SEQUENCES, SONG) · on TRACKS with the drum track: the **DRUMS** screen · on DRUMS: grid → kit → sound → groove → rhythm | step layer |
+| **SEQ** | SEQ pages (STEP, NOTES, NOTE ACTIONS, PATTERN, RECORD, SEQUENCES, SONG) · on TRACKS with the drum track: the **DRUMS** screen · on DRUMS: grid → kit → sound → groove → rhythm | step layer |
 | **GLO** | GLO pages (GLOBAL, MASTER, SYSTEM, DRUMS) | mix layer |
 | **OCT− / OCT+** | synth track: octave down / up (−3 … +3) · both together: octave 0 | drum track: **ghost** (OCT−) / **hard** (OCT+) hits while held |
 | **ALGORITHM** | select track 1–4, on every screen (inside a layer it waits; not during a free take, on the SONG screen or in the menu) | — |
@@ -730,6 +730,7 @@ Tap a button to open its first page (or the last one you used); **tap it again**
 | | **INSERT 2** (2.6) | MIX: dry / wet | — | — | — |
 | | **DLY** (global) | TIME: 1/4, 1/8, 1/16, 1/32, 8T, 16T, 1/8D, 1/16D, 1/4D (2.6; at 60 BPM and below it stops at 1.49 s) | FDBK feedback | COLR colour (tone of the repeats) | MIX |
 | | **REV/CHO** (global) | SIZE reverb size | DAMP reverb damping | CRT chorus rate | CDP chorus depth |
+| | **REVERB** (global) | TYPE: STEREO / SPRING / ROOM / PLATE / HALL | SIZE decay | DAMP darker tail | TIME: SPRING reflection spacing, 20–80 ms; inactive on other types |
 | **SEL** | **SEL** | ROOT (the track's key) | SEL: the track's scale (SEL + KNOB 2 sets all three) | QNT keys: OFF, SNAP, WHITE | CHORD: OFF, TRIAD, 7TH, 9TH, SUS4, POWER, SUS2, ADD9, 6TH, SHELL, OCTAVE, MAJOR, MINOR, DOM7, MAJ7, MIN7, DIM, AUG, HALFDIM, DIM7 |
 | | **SEL 2** | TRN transpose ±24 | STRUM ±60 ms | VLEAD: OFF / ON | LATCH: OFF / ON |
 | **EDIT** | **EDIT 1** | engine parameter 1 | 2 | 3 | 4 (see [the engines](#the-twelve-engines)) |
@@ -839,6 +840,11 @@ Edit full patches in the web editor's **FM6** panel (Sound page, on an FM6 track
 
 ## 18. Effects: master, punch-in, per track
 
+On the drum track, the first FX page is **LEVEL / PAN / DLY / REV**. DLY and REV are the drum bus's delay/reverb send percentages; synth sends remain independent. The second page edits the drum filter. **INSERT 2** has MIX / TYPE / the insert's first two sound controls, on both drums and synths.
+
+**FX → LOFI:** knob 1 selects VINYL, TAPE, VHS or CD. Knobs 2–4 are WOW/DARK/DAMAGE, FLUTTR/DARK/DRIVE, WARBLE/DARK/DAMAGE, or RATE/LATCH/MIX respectively. All three amounts zero bypass processing; mode alone does not activate it. CD repeats very short fragments from the existing buffer, rather than phrase-length skips. These settings save with sections/projects. Held VINYL temporarily uses its own vinyl settings and restores the saved character after release.
+
+
 ### Signal path
 
 Each synth track: engine → **drive** (DST) → **INSERT** (2.6) → **SLICER** → **FILTER** (the track's own) → level (and DUCK) → pan and **sends** to the stereo chorus, the tempo delay and the reverb. The drum track has its own INSERT (2.6), slicer, filter, level, pan, reverb send and (2.5) delay send. Then the whole mix, with the effect returns (and, 2.6, the **TEXTURE** bed): **DUST** → **punch-in effects** → **FILT** (the DJ filter) → **MASTER** volume → limiter (2.6: it looks one block, 0.7 ms, ahead: a loud hit is already turned down when it comes, never pushed into the output's soft clipper).
@@ -853,6 +859,18 @@ On FX + KNOB 1–3, or GLO → MASTER:
 | **DUCK** 0–100 % | every kick pumps the synth tracks down and back over an 1/8 note: the sidechain sound, in time at any tempo |
 | **FILT** | a DJ filter: left of centre a low-pass closing, right a high-pass opening, centre OFF; it glides (no zipper noise) |
 | **ROLL** | the note-repeat rate of ARP + key |
+
+### Reverb spaces
+
+On **FX → REVERB**, try **ROOM** for short reflections, **PLATE** for a bright,
+dense tail, or **HALL** for a larger space. **STEREO** retains the original sound.
+**SPRING** has two unequal dispersive paths for a wider, textured spring tail.
+Knob 2 SIZE controls decay and knob 3 DAMP removes high-frequency energy.
+Only SPRING uses knob 4 TIME, independently setting reflection spacing.
+Use each track's REV send to choose how much goes into the shared space.
+Types save with projects and sections. Switching fades/clears the old tail;
+FREEZE postpones the change until released. ROOM/PLATE/HALL are algorithmic
+voicings, not measured models of specific rooms or hardware.
 
 ### Punch-in effects
 
@@ -1042,6 +1060,11 @@ IN and OUT are also on GLO → SYSTEM, next to SYNC (the clock), where they were
 
 - **MIDI out:** each track on its channel (CH1–CH4). With **SEQ**, set a DAW track to record the FM-1's MIDI and you get the pattern as notes, or let SLOOP drive another synth. Every note is ended, STOP ends whatever was still on, and notes that came in are never sent back (no MIDI loop).
 - **Clock in:** START plays from the top, CONTINUE carries on, STOP stops; the tempo follows the master pulse by pulse (24 a beat), so SLOOP cannot drift. When the clock stops for half a second, PLAY on the FM-1 plays at its own tempo again. A MIDI START during the REC count-in starts and records at once.
+
+The displayed external BPM and tempo-dependent effects use an average of up to
+eight beats with a small hysteresis, avoiding jitter between neighboring BPM
+values. A change of at least five BPM resets the average promptly. Phase still
+follows the actual clock pulses; this smoothing does not quantize incoming notes.
 - Switching IN, or a channel, releases any note still held: nothing is left hanging.
 - **Bluetooth MIDI** is not supported: SLOOP never switches the radio on.
 
@@ -1647,10 +1670,10 @@ clear it. These live controls retain saved patch settings. See the
 [wah/pan controls](docs/firmware/AUTO-WAH-DESIGN.md) and
 [MerthSloop version policy](docs/BRANDING.md).
 
-### Persistent vinyl
+### Master LOFI characters
 
-Open **FX → VINYL** for record colour on the full mix. **WOW** adds slow,
-stereo-linked slow wow plus flutter; **TONE** darkens the highs; **CRACKLE** adds
+Open **FX → LOFI** and choose VINYL for record colour on the full mix. TYPE defaults to **OFF**. **WOW** adds slow,
+stereo-linked slow wow plus flutter; **DARK** darkens the highs; **DAMAGE** adds
 pops and a little hiss. Start around WOW 15%, TONE 25%, CRACKLE 10% and adjust to
 taste. These controls remain active until changed; the VINYL punch-in applies a temporary preset and restores them on release. All three at zero
 bypasses the effect exactly. Settings are saved per project and song section.
@@ -1660,7 +1683,7 @@ you want extra record noise.
 
 ### Spring reflection timing
 
-On **FX → REVERB**, TYPE selects STEREO or SPRING. With SPRING selected,
+On **FX → REVERB**, TYPE selects STEREO, SPRING, ROOM, PLATE or HALL. With SPRING selected,
 knob 2 **SIZE** sets the nominal decay target, knob 3 **DAMP** darkens the tail,
 and knob 4 **TIME** sets the spring round-trip spacing from 20 to 80 ms. Early
 pickups occur around one-half and three-quarters of that time, followed by the
@@ -1671,8 +1694,46 @@ current length until released. TIME is saved with the section/project and is
 inactive for STEREO reverb.
 
 The VINYL punch-in replaces the former MONO key (D#5). It uses a temporary
-WOW/TONE/CRACKLE preset without modifying the persistent FX → VINYL controls.
+WOW/TONE/CRACKLE preset without modifying the persistent FX → LOFI controls.
 Releasing it fades back to those controls. DOUBLE TIME replaces the former
 octave-shift key (D#4): the song runs at twice its stored BPM, preserving pitch,
 and releasing returns to normal or a still-held HALF gesture. Both rate gestures
 are inactive under external SYNC.
+
+### Native NOTES and action sheets
+
+SEQ cycles STEP → NOTES → NOTE ACTIONS → PATTERN → RECORD → SEQUENCES → SONG. On STEP/NOTES, PRESETS selects 8/16/32/64 visible steps: turn left to zoom in, right to zoom out. The footer shows PRESETS: ZOOM / OCT: TOOLS. NOTES knobs are EVENT / PITCH / LEN / FORCE: EVENT visits individual attacks within chords and empty steps; PITCH moves the selected sustained chain, LEN changes its duration, FORCE changes its GHOST/SOFT/NORM/HARD level. Step accent remains shared. EDIT taps erase only the selected chain; EDIT+OCT−/OCT+ undo/redo. Existing OCT-held brushes remain STEP tools on both roll pages.
+
+NOTE ACTIONS uses knob 1 to select a row and knob 2 to adjust its value/destination. Shared slide/nudge/fill/accent rows say STEP and update with knob 2. Move/copy destinations are staged; OCT+ applies once and OCT− returns to NOTES. Move/copy reject full/colliding destinations, pattern-end overflow and source step locks. Moving within the note's own sustain is allowed. Shared timing/fill/locks stay with their steps. These operations require stopped transport, preserve other voices and support undo.
+
+Drums add HIT ACTIONS after RHYTHM, retaining the selected lane and step. Ratchet is per hit; nudge and fill are shared per step. Move/copy/delete preserve the other lanes; occupied same-lane destinations refuse the change. OCT− returns to GRID. Function layers retain priority; action-sheet physical keys are silent, and PLAY/REC leave the sheet normally.
+
+LOFI TYPE starts at and defaults to **OFF**: it fades to dry without changing the three stored
+amounts. Selecting a character restores those amounts; VINYL punch remains
+momentary over OFF and returns to dry on release. OFF is saved with the project
+and section. Its inactive controls show the retained WOW/DARK/DAMAGE amounts.
+
+### Delay characters
+
+Press FX, then turn SELECT to **DLY TYPE** (page 7). Knob 1 chooses **DIGI**,
+**TAPE** or **CRUSH**. Knobs 2/3/4 follow the type:
+
+| TYPE | Knob 2 | Knob 3 | Knob 4 |
+| --- | --- | --- | --- |
+| DIGI | TIME | FDBK | MIX |
+| TAPE | DRIVE | TONE | MIX |
+| CRUSH | BITS | RATE | MIX |
+
+DIGI retains the original sound. TAPE DRIVE sets soft saturation; zero removes
+it, and TONE darkens the feedback. CRUSH BITS selects 4–16 bits and RATE selects
+about 2.8/5.5/11/22/44 kHz. Higher settings are cleaner; 16 bits and 44 kHz
+leave the tap unchanged. The preceding **DLY** page keeps TIME/FDBK/COLR/MIX
+for every type. All character settings are retained when switching types. These are shared global settings; each track's DLY send controls how
+much of that instrument enters the delay. Dry sound is unchanged.
+
+Try TIME 1/8, FDBK around 60–80%, MIX around 70%, and a clearly audible track
+send. Switch TYPE while playing to hear the difference. Type changes fade
+smoothly through the original delay. The type saves with the project/section;
+older untagged saves use DIGI. TAPE currently adds saturation, not wow/flutter.
+
+![Tape delay controls](assets/screens/merthsoft/neon/delay-tape.png)

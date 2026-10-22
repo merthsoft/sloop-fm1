@@ -87,10 +87,35 @@ See the [UI refresh gallery and design](docs/firmware/UI-REFRESH-DESIGN.md) and
 These are actual firmware framebuffer captures; older screenshots elsewhere may
 show the previous presentation of the same controls.
 
+### Native note editing and LOFI characters
+
+**SEQ → NOTES** selects one note within a chord and edits its pitch, sustain and strength. PRESETS zooms STEP/NOTES to 8, 16, 32 or 64 steps. **NOTE ACTIONS** adds selected-note move/copy/delete plus explicitly shared step timing, slide, accent and fill controls. The drum grid adds **HIT ACTIONS** for individual hit editing. Existing OCT-held tie/rest, octave and move brushes remain available.
+
+**FX → LOFI** selects OFF, Vinyl, Tape, VHS or CD, with three controls tailored to the character. Vinyl has stronger irregular wow and sparse clicks/pops; Tape adds flutter, darkening and drive; VHS adds warble and damage; CD uses short captured-fragment stutters. CD is a microstutter character, not a phrase-length delay. Settings save with projects and sections; all three amounts at zero bypass the effect. The VINYL punch remains temporary and returns to the saved character on release.
+LOFI TYPE starts at and defaults to **OFF**: it fades to dry without changing the three stored
+amounts. Selecting a character restores those amounts; VINYL punch remains
+momentary over OFF and returns to dry on release. OFF is saved with the project
+and section. Its inactive controls show the retained WOW/DARK/DAMAGE amounts.
+
+
+On the drum track, **FX page 1** provides LEVEL / PAN / DELAY / REVERB, and page 2 provides its filter. INSERT 2 groups MIX, TYPE and the first two insert controls. MIDI CC11 expression and CC0 bank selection extend external-controller support without replacing saved track levels.
+
+| Selected-note editor | Note actions | LOFI characters |
+| --- | --- | --- |
+| <img src="assets/screens/merthsoft/neon/notes.png" width="240" alt="Native NOTES editor selecting one sustained chord member"> | <img src="assets/screens/merthsoft/neon/note-actions.png" width="240" alt="Native note action sheet with a staged destination"> | <img src="assets/screens/merthsoft/neon/lofi-vinyl.png" width="240" alt="LOFI character selector and Vinyl controls"> |
+
+### Delay characters
+
+**FX → DLY TYPE** adds **DIGI**, **TAPE** and **CRUSH**. DIGI is the original digital delay; TAPE softly compresses each repeat, and CRUSH adds a grainy, reduced-resolution echo. Knob 1 selects TYPE. DIGI offers **TIME / FDBK / MIX**; TAPE offers **DRIVE / TONE / MIX**; CRUSH offers **BITS / RATE / MIX**. RATE runs from about 2.8 to 44 kHz; higher settings are cleaner. The preceding DLY page keeps **TIME / FDBK / COLR / MIX** for every type. This is a global delay shared by track sends; the dry instruments stay unchanged. The type saves with projects and sections.
+
+<img src="assets/screens/merthsoft/neon/delay-tape.png" width="240" alt="Tape delay type and its timing, feedback and mix controls">
+
+STEP and NOTES show **PRESETS: ZOOM / OCT: TOOLS** in their footer. Turn PRESETS left to zoom in or right to zoom out.
+
 ### The one-minute workflow
 
 1. With playback stopped, select the **drum track**, open its **GROOVE** page, and choose a beat. **OCT−** auditions it without replacing your pattern; **OCT+** applies it. Hold OCT+ for 700 ms or press it twice to confirm replacing existing material.
-2. Select a **synth track**, then tap **SEQ** through STEP → PATTERN → RECORD → **SEQUENCES**. Choose **POP FOUR**, your root and scale, and **ARP NOTES** for an editable I–V–vi–IV arpeggio. Listen, then apply.
+2. Select a **synth track**, then tap **SEQ** through STEP → NOTES → NOTE ACTIONS → PATTERN → RECORD → **SEQUENCES**. Choose **POP FOUR**, your root and scale, and **ARP NOTES** for an editable I–V–vi–IV arpeggio. Listen, then apply.
 3. Select another synth and apply the same starter in **BASS** mode. The browser remembers your key, scale, octave and other choices across tracks until power-off. You now have drums, harmony and bass ready to develop with your own melody, sound design and performance.
 
 The libraries are starting points: applying creates ordinary editable sequencer steps. Your selected sounds and tempo stay intact. Preview first, and use **EDIT + OCT−** to undo a replacement.
@@ -263,7 +288,8 @@ Android workflows remain available alongside them.
 
 - **Transport HALF:** momentary half tempo with unchanged note pitch and saved BPM (internal clock only).
 - **Punch combinations:** one existing effect plus LOW/HIGH/PHONE and GATE, with held-key fallback; HALF is independent.
-- **Optional SPRING reverb:** FX → REVERB → TYPE. The existing stereo reverb remains the default.
+- **Five reverb types:** FX → REVERB → TYPE selects the original STEREO, a wider dual-path SPRING, tight ROOM, dense bright PLATE, or spacious HALL. They share the existing reverb memory; each track keeps its own send.
+- **Upstream reliability fixes:** early OCT− USB rescue, better Windows update-loader discovery, macOS USB-audio compatibility, faster encoder tracking and steadier external-clock tempo estimation are retained alongside the custom UI and editing tools.
 - **27 punch-in effects:** eleven more on the black keys (hold FX): KILL LOW / MID / HIGH, REWIND, DOUBLE TIME, FLANGER, AUTO-PAN, FREEZE, LOOP 8T, VINYL, FADE OUT.
 - **From Felucca (Leo Kuroshita):** an **INSERT** effect on every track (SOFT, HARD, FOLD, FUZZ, CRUSH, PHASR, FLANG, CHOR, with dry / wet), **LFO 2** (tempo SYNC, TRIG NOTE / FREE, POL BI / UNI), **ENV SYNC** (attack, decay and release as note values), the **ANALOG filter** as LP, BP or HP, a note's **LEN** in steps and each step's **velocity**, **MIDI LEARN** (GLO + F#3), and the latched-arp fix (#191).
 - **TEXTURE:** a looping bed under the mix (vinyl, tape, rain, wind, radio, room tone or your own sample), breathing slowly with the tempo, without taking a track (GLO → TEXTURE).
@@ -681,6 +707,6 @@ See [BUILDING.md](BUILDING.md). In short: the JieLi toolchain and three files of
 
 Code: GPL-3.0-only (see [LICENSE](LICENSE), and [LICENSING.md](LICENSING.md) for the assets). No warranty. M-VAVE and FM-1 are trademarks of their owners; SLOOP is not affiliated with M-VAVE, teenage engineering, Elektron or Akai. Drum kit names describe styles, not products.
 
-Persistent vinyl: **FX → VINYL** adds independent WOW, TONE and CRACKLE controls, saved with projects and sections. All default to off. Hold FX and use VINYL for a temporary record-wear preset; releasing returns to those settings.
+Master LOFI controls and the held VINYL punch are described in the MerthSloop additions above.
 
-**SPRING timing:** On FX → REVERB, select SPRING and use knob 4 **TIME** for reflection spacing (20–80 ms), independently of knob 2 **SIZE**’s nominal decay target. STEREO leaves TIME inactive.
+**Reverb controls:** On FX → REVERB, knob 1 selects TYPE, knob 2 SIZE controls decay, and knob 3 DAMP darkens the tail. SPRING adds knob 4 **TIME** for reflection spacing (20–80 ms), independently of SIZE’s nominal decay target. Other types leave TIME inactive. SPRING uses two unequal dispersive paths for stereo width; ROOM, PLATE and HALL tune the existing feedback network for contrasting spaces. Types save with projects and sections; FREEZE defers type changes until released.

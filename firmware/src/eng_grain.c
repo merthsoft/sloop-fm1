@@ -419,6 +419,9 @@ static void grain_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const
     v->s[2] = y;
 }
 
+#if FELUCCA_BOOT_PRESETS
+static preset_t GRAIN_PRESETS[BP_N_GRAIN_PRESETS] __attribute__((section(".lowram")));
+#else
 static const preset_t GRAIN_PRESETS[] = {
     /* name, {SRC, POS, SIZE, DENS, PTCH, SPRD, RAND, TONE}, {A D S R}, fenv, mono.
      * SRC: the SAMPLE sets (0 PIANO, 2 VIBES, 5 FLUTE...: tools/gen_samples.py CC0_SETS) */
@@ -432,6 +435,7 @@ static const preset_t GRAIN_PRESETS[] = {
     {"PNO FREEZE", {0, 40, 127, 127, 0, 5, 0, 100}, {80, 100, 127, 100}, 0, 0, FX(0, 30, 20, 75)},
     {"HORN CLOUD", {3, 30, 100, 90, 0, 30, 15, 90}, {70, 100, 120, 95}, 0, 0, FX(0, 40, 20, 70)},
 };
+#endif
 
 static const engine_t ENG_GRAIN = {
     "GRAIN", {"GRAN", "SPRY"},

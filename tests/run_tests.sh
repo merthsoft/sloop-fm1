@@ -108,8 +108,20 @@ $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/effects_plan_test" tests/effects_
 run "HALF transport, effect combinations and optional SPRING" "$OUT/effects_plan_test"
 $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/spring_time_test" tests/spring_time_test.c -lm
 run "SPRING independent reflection timing and FREEZE" "$OUT/spring_time_test"
+$CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/reverb_types_test" tests/reverb_types_test.c -lm
+run "reverb types: measured tails, stereo, damping, overload and FREEZE lifecycle" "$OUT/reverb_types_test"
 $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/vinyl_test" tests/vinyl_test.c -lm
 run "persistent VINYL DSP and bypass" "$OUT/vinyl_test"
+$CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/lofi_character_test" tests/lofi_character_test.c -lm
+run "LOFI master: character changes, stereo, overload, silence and captured fragments" "$OUT/lofi_character_test"
+$CC -UNDEBUG -O2 -Wall -Wextra -o "$OUT/wet_color_test" tests/wet_color_test.c -lm
+run "wet coloration foundation: exact bypass, stereo, transitions, tape and crush" "$OUT/wet_color_test"
+$CC -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/preset_browser_map_test" tests/preset_browser_map_test.c -lm
+run "preset ROM indices: canonical names, browser positions and favourite keys" "$OUT/preset_browser_map_test"
+$CC -DMIDI_REQUIRE_DRUM_HOOK=1 -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/midi_expression_bank_test" tests/midi_expression_bank_test.c -lm
+run "MIDI expression: synth/drum audio, bank mapping and load reset" "$OUT/midi_expression_bank_test"
+$CC -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/midi_bank_ui_test" tests/midi_bank_ui_test.c -lm
+run "MIDI Program Change: production factory/user loading and preference preservation" "$OUT/midi_bank_ui_test"
 $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/effects_cpu_test" tests/effects_cpu_test.c -lm
 run "effects host profile and two-core identity" "$OUT/effects_cpu_test"
 $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/punch_test" tests/punch_test.c -lm
@@ -138,6 +150,20 @@ run "inactive harmony foundation: shared-owner note transitions" "$OUT/harmony_o
 
 $CC -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/ui_pages_test" tests/ui_pages_test.c -lm
 run "live UI: pages, layers (punch, steps, erase, roll, key, mix), holds, drums, REC, fuzz" "$OUT/ui_pages_test" "$OUT"
+$CC -UNDEBUG -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/piano_roll_test" tests/piano_roll_test.c -lm
+run "piano roll: zoom, clipped sustains, held tools, redraw parity and immutable music" "$OUT/piano_roll_test" "$OUT"
+$CC -UNDEBUG -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/piano_note_selection_test" tests/piano_note_selection_test.c -lm
+run "piano selection foundation: stable attacks, reverse navigation and independent ties" "$OUT/piano_note_selection_test"
+$CC -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/piano_notes_review_test" tests/piano_notes_review_test.c -lm
+run "NOTES review: undo, redraw, held tools, epoch invalidation and encoder bounds" "$OUT/piano_notes_review_test"
+$CC -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/piano_actions_ui_test" tests/piano_actions_ui_test.c -lm
+run "note/hit sheets: staged edits, ownership, undo, exits and renderer parity" "$OUT/piano_actions_ui_test"
+$CC -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/note_chain_actions_test" tests/note_chain_actions_test.c -lm
+run "chain actions: atomic pitch/move/copy, overlap, metadata and balanced MIDI" "$OUT/note_chain_actions_test"
+$CC -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/drum_hit_actions_test" tests/drum_hit_actions_test.c -lm
+run "hit actions: lane isolation, dynamics, metadata and atomic refusals" "$OUT/drum_hit_actions_test"
+$CC -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/drum_fx_ui_test" tests/drum_fx_ui_test.c -lm
+run "drum FX: real sends, level/pan, filter and populated insert blend page" "$OUT/drum_fx_ui_test" "$OUT"
 $CC -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/ui_refresh_test" tests/ui_refresh_test.c -lm
 run "NEON UI: incremental/full redraw, palettes, drum cells, popup state, help" "$OUT/ui_refresh_test" "$OUT"
 # no divide by 0 (the FM-1 runs with the div0 trap off, hal/fm1_irq.h: a real one would give a wrong value
@@ -210,11 +236,23 @@ run "scene transaction staging, faults and OTA USB compatibility" env CC="$CC" s
 
 $CC -o "$OUT/ota_test" tests/ota_test.c
 run "M-UPGRADE entry" "$OUT/ota_test" build/felucca.fwsc
+run "package capacity and SDK boundary guard" python3 tests/package_capacity_test.py
 
 head -c 200000 build/felucca.bin > "$OUT/old_app.bin"
 python3 tools/fm1pkg_make.py "$OUT/old_app.bin" build/loader/ota.bin "$OUT/old.fwsc" >/dev/null
 $CC -o "$OUT/ldr_test" tests/ldr_test.c
 run "update loader: other app -> this build" "$OUT/ldr_test" "$OUT/old.fwsc" build/felucca.fwsc
+
+$CC -UNDEBUG -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal tests/delay_storage_test.c -o "$OUT/delay_storage_test" -lm
+run "delay characters: project/section storage, old defaults and marker coexistence" "$OUT/delay_storage_test"
+$CC -UNDEBUG -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal tests/delay_ui_test.c -o "$OUT/delay_ui_test" -lm
+run "delay characters: native page and controls; LOFI OFF default" "$OUT/delay_ui_test" "$OUT"
+$CC -UNDEBUG -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal tests/ui_shared_paths_test.c -o "$OUT/ui_shared_paths_test" -lm
+run "shared UI paths: HOME isolation and physical/MIDI chord entry" "$OUT/ui_shared_paths_test"
+$CC -UNDEBUG -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal tests/delay_character_test.c -o "$OUT/delay_character_test" -lm
+for mode in 0 1 2; do
+    run "delay character $mode: exhaustive tap bounds and live feedback/time/mode stress" "$OUT/delay_character_test" "$mode" "$OUT/delay-$mode.wav"
+done
 
 $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/hostsim" tests/hostsim.c -lm
 $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/scale_test" tests/scale_test.c -lm
@@ -250,6 +288,12 @@ run "the render split over the two cores: every mode of the second core's host d
 
 $CC -O1 -w -Ibuild/gen -Ifirmware/src -o "$OUT/boot_tables_test" tests/boot_tables_test.c
 run "startup tables: original bytes and decoder bounds" "$OUT/boot_tables_test" build/gen/boot_tables_oracle.bin
+$CC -UNDEBUG -O2 -w -Ibuild/gen -Ifirmware/src tests/boot_presets_test.c -o "$OUT/presets_raw" -lm
+run "factory preset oracle: original C definitions" "$OUT/presets_raw" "$OUT/presets-raw.bin"
+$CC -UNDEBUG -O2 -w -DFELUCCA_BOOT_TABLES=1 -DFELUCCA_BOOT_PRESETS=1 -Ibuild/gen -Ifirmware/src tests/boot_presets_test.c -o "$OUT/presets_boot" -lm
+run "factory presets: actual startup restore and scratch bounds" "$OUT/presets_boot" "$OUT/presets-boot.bin"
+run "factory presets: original and restored names/fields byte-identical" cmp "$OUT/presets-raw.bin" "$OUT/presets-boot.bin"
+
 
 run "target DSP: preserve per-sample helper inlining" python3 tests/target_inlining_test.py build/felucca.dis
 

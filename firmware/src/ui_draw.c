@@ -244,55 +244,69 @@ UI_SMALL static void graph_steps(const track_t *t, uint16_t c)
             cv_rect(x - 1, y + 16, 3, 3, C_WHITE);
     }
 }
-/* STEP page: the cursor's 16-step bank as a little piano roll */
+/* STEP/NOTES viewport, keeping independent chains joined through mixed attacks. */
 UI_SMALL static void graph_roll(const track_t *t, uint16_t c)
 {
-    uint32_t i, j, len = (uint32_t)t->p[P_SLEN], base = ui.bank * 16u;
-    int32_t lo = 127, hi = 0;
-    for (i = 0; i < len; i++) {
-        const step_t *st = &t->step[i];
-        if (!step_on(st)) continue; /* REST/TIE payload may be stale. */
-        for (j = 0; j < st->n; j++) {
-            if (st->note[j] < lo) lo = st->note[j];
-            if (st->note[j] > hi) hi = st->note[j];
+    uint32_t i,j,len=trk_len(t),span=roll_span(),base=ui.cursor/span*span;
+    int32_t lo=127,hi=0,x0=22,w=216,top=20,bot=118,rh;
+    piano_selection_t selected=roll_selection();
+    int slot=notes_page()?piano_selection_slot(t,selected):-1;
+    int32_t focus=slot>=0?selected.pitch:last_note;
+    for(i=0;i<len;i++) {
+        const step_t *st=&t->step[i];
+        if(!step_on(st))continue;
+        for(j=0;j<st->n;j++){if(st->note[j]<lo)lo=st->note[j];if(st->note[j]>hi)hi=st->note[j];}
+    }
+    if(lo>hi)lo=hi=focus;
+    if(hi-lo<11){lo=clamp((lo+hi)/2-6,0,115);hi=lo+11;}
+    if(hi-lo>17){lo=clamp(focus-8,lo,hi-17);hi=lo+17;}
+    lo=clamp(lo-1,0,127);hi=clamp(hi+1,0,127);rh=(bot-top)/(hi-lo+1);
+    char label[16];
+    fmt_int(label,(int32_t)base+1);str_cpy(label+str_len(label),"-",2);
+    fmt_int(label+str_len(label),(int32_t)(base+span<len?base+span:len));
+    cv_text(2,0,&FONT_S,label,C_GRAY);
+    str_cpy(label,"ZOOM ",sizeof label);fmt_int(label+5,(int32_t)(8u<<(ui.roll_zoom+1)));
+    cv_text(238-text_w(&FONT_S,label),0,&FONT_S,label,C_DIM);
+    for(int32_t pitch=lo;pitch<=hi;pitch++) {
+        int32_t y=bot-(pitch-lo+1)*rh;
+        if((0x54au>>(pitch%12))&1u)cv_rect(x0,y,w,rh,TE_G1);
+        if(!(pitch%12)) {
+            note_name(label,pitch);cv_text(0,y+rh/2-6,&FONT_S,label,C_GRAY);
+            cv_rect(x0,y+rh-1,w,1,C_DIM);
         }
     }
-    if (lo > hi) {
-        lo = 48;
-        hi = 72;
+    for(i=0;i<=span;i++) {
+        int32_t x=x0+(int32_t)i*w/(int32_t)span;
+        if(!(i%4u))cv_rect(x,top,1,bot-top,i%16u?C_DIM:C_GRAY);
+        else if(span<=32u)cv_rect(x,bot+1,1,2,C_DIM);
     }
-    if (hi - lo < 12)
-        hi = lo + 12;
-    for (i = 0; i < 16u; i++) {
-        uint32_t si = base + i;
-        step_t effective;
-        note_effective(t,si,&effective);
-        const step_t *st = &effective;
-        int32_t x = (int32_t)i * 15, yb = 86;
-        if (si >= len)
-            break;
-        if (si == ui.cursor)
-            cv_rect(x + 5, 92, 3, 3, C_WHITE);
-        if (song.playing && si == t->seq_idx)
-            cv_rect(x + 1, 97, 12, 1, C_WHITE);
-        if (!st->n) {
-            cv_rect(x + 6, yb, 2, 1, C_DIM);
-            continue;
-        }
-        for (j = 0; j < st->n; j++) {
-            int32_t y = 80 - (st->note[j] - lo) * 74 / (hi - lo);
-            /* Connect to the preceding attack, including across mixed NOTE cells.
-             * Resolve legacy TIEs before drawing so every held voice survives banks. */
-            uint32_t tied = st->flags & SF_TIE(j);
-            int32_t left = tied ? (i ? x - 3 : 0) : x + 2;
-            cv_rect(left, y, tied ? (i ? 18 : 15) : 10, 3,
-                    (st->flags & SF_ACCENT) ? C_WHITE : c);
-        }
-        if (t->step[si].time == ST_NOTE && (st->flags & SF_SLIDE)) {
-            int32_t y = 80 - (st->note[0] - lo) * 74 / (hi - lo);
-            cv_line(x + 11, y, x + 17, y + 2, c);
+    for(i=0;i<span && base+i<len;i++) {
+        step_t effective;note_effective(t,base+i,&effective);
+        int32_t x=x0+(int32_t)i*w/(int32_t)span,next=x0+(int32_t)(i+1)*w/(int32_t)span;
+        for(j=0;j<effective.n;j++) {
+            int32_t pitch=effective.note[j];if(pitch<lo||pitch>hi)continue;
+            int32_t y=bot-(pitch-lo+1)*rh+1;
+            uint32_t tied=effective.flags&SF_TIE(j),force=(effective.lvl>>(2*j))&3u;
+            int32_t left=tied?(i?x-1:x0):x+1;
+            cv_rect(left,y,next-left-1>0?next-left-1:1,rh-1,
+                    effective.flags&SF_ACCENT?C_WHITE:force==LV_GHOST?TE_DIM[song.sel&3u]:c);
+            if(j==0u && t->step[base+i].time==ST_NOTE && (effective.flags&SF_SLIDE))
+                cv_line(next-2,y,next+1,y+2,c);
         }
     }
+    if(slot>=0 && selected.pitch>=lo && selected.pitch<=hi) {
+        uint32_t end=selected.step+note_chain_len(t,selected.step,selected.pitch);
+        int32_t xa=x0+((int32_t)selected.step-(int32_t)base)*w/(int32_t)span;
+        int32_t xb=x0+((int32_t)end-(int32_t)base)*w/(int32_t)span-1;
+        xa=clamp(xa,x0,x0+w-1);xb=clamp(xb,xa,x0+w-1);
+        int32_t y=bot-((int32_t)selected.pitch-lo+1)*rh;
+        cv_rect(xa,y,xb-xa+1,1,C_WHITE);cv_rect(xa,y+rh,xb-xa+1,1,C_WHITE);
+        cv_rect(xa,y,1,rh+1,C_WHITE);cv_rect(xb,y,1,rh+1,C_WHITE);
+    }
+    int32_t cx=x0+((int32_t)ui.cursor-(int32_t)base)*w/(int32_t)span;
+    cv_rect(cx,bot+2,2,2,C_WHITE);
+    if(song.playing && t->seq_idx>=base && t->seq_idx<base+span)
+        cv_rect(x0+((int32_t)t->seq_idx-(int32_t)base)*w/(int32_t)span,top,1,bot-top,C_HI);
 }
 UI_SMALL static void graph_scale(const track_t *t, uint16_t c)
 {
@@ -311,7 +325,9 @@ UI_SMALL static void graph_fx(const track_t *t, uint16_t c)
 {
     uint32_t i;
     for (i = 0; i < 4u; i++) {
-        int32_t h = t->p[P_DIST + i] * 80 / 127, x = (int32_t)i * 60 + 28;
+        int32_t value=t->p[P_DIST+i];
+        if(is_drum(t))value=i==0?song.g[G_DRLVL]:i==1?t->p[P_PAN]+64:i==2?song.g[G_DRDLY]:song.g[G_DRREV];
+        int32_t h = value * 80 / 127, x = (int32_t)i * 60 + 28;
         cv_rect(x, 10, 1, 80, C_LINE);
         cv_rect(x, 90 - h, 1, h, c);
         cv_rect(x - 3, 90 - h, 7, 1, c);
@@ -391,8 +407,12 @@ UI_SMALL static uint32_t graph_signature(void)
             h ^= (uint32_t)project_used(i) << (20u + i);
     if (pg->graph == GR_STEPS || pg->graph == GR_ROLL) {
         uint32_t ph = song.playing ? t->seq_idx : 0xFFFFu;
-        if (pg->graph == GR_ROLL && ph / 16u != ui.bank)
-            ph = 0xFFFFu;                            /* the roll shows the cursor's bank only */
+        if (pg->graph == GR_ROLL) {
+            uint32_t span=roll_span();
+            if (ph/span!=ui.cursor/span) ph=0xFFFFu;
+            h ^= ((uint32_t)ui.roll_zoom+1u)*104729u;
+            h ^= (uint32_t)roll_selection().pitch*2654435761u;
+        }
         h ^= steps_hash(t) + ph * 31u + ui.cursor * 7919u;
     }
     return h;
@@ -632,6 +652,7 @@ UI_SMALL static void draw_graph(void)
             graph_steps(t, c);
             break;
         case GR_ROLL:
+            cv_oy=0;
             graph_roll(t, c);
             break;
         case GR_SCALE:
@@ -664,7 +685,7 @@ UI_SMALL static void draw_graph(void)
         }
     }
     top = ui.home || (!drum_note && (pg->graph == GR_BROWSE || pg->graph == GR_SLOTS || pg->graph == GR_USER ||
-                                     big_page(pg) || pg->graph==GR_DEST || pg->graph==GR_FILTER || pg->graph==GR_DELAY));   /* these draw from the top */
+                                     big_page(pg) || pg->graph==GR_ROLL || pg->graph==GR_DEST || pg->graph==GR_FILTER || pg->graph==GR_DELAY));   /* these draw from the top */
     cv_oy = 0;
     if (ui.hot_t && settings.zoom && pg->graph != GR_ROLL && !(top && big_page(pg) && !drum_note)) {   /* (the big values show it already) */                 /* focus (menu ZOOM): the touched value, large and white */
         int32_t x;
@@ -704,7 +725,7 @@ UI_SMALL static const char *page_hold_hint(const page_t *pg)
         "HOLD FX: PUNCH", "HOLD SEL: KEY/LATCH", "HOLD EDIT: ERASE",
         "HOLD GLO: MIX/FILL", "HOLD SAVE: SONG/NEW", "HOLD ARP: ROLL/LATCH",
         "HOLD SEQ: STEP KEYS", "PRESETS: SOUND / ALGO: TRACK"};
-    return pg->scope==SC_STEP?"OCT HOLD: TOOLS":hints[pg->fam];
+    return pg->scope==SC_STEP?"PRESETS: ZOOM / OCT: TOOLS":hints[pg->fam];
 }
 UI_SMALL static const char *page_title(const page_t *pg)
 {
@@ -738,6 +759,38 @@ UI_SMALL static void draw_foot(void)
     cv_text(4,20,&FONT_S,hint,TE_G4);
     cv_blit(0,Y_FOOT);
 }
+/* Share ordinary cards while keeping special-page overrides off HOME. */
+UI_SMALL static void draw_parameter_column(uint32_t c,const param_desc_t *d,int32_t value,int home)
+{
+    char val[12];const char *unit;
+    if (!home && cur_page()->id[c] == G_INFO && cur_page()->scope == SC_GLOBAL) {
+        fmt_int(val, (int32_t)(song.cpu_q8 * 100u / 256u));
+        unit = "%";
+    } else {
+        param_format(d, value, val, &unit);
+        /* Generic enum formatting retains five-character legacy displays;
+         * these six-letter type names fit the current cards in full. */
+        if (d == &GP[G_RMODEL])
+            str_cpy(val,N_RMODEL[clamp(value,0,4)],sizeof val);
+    }
+    if (!home && cur_page()->scope == SC_RECORD && c == 0u && value) {
+        uint32_t snap_units = div_units(value == REC_SNAP_EIGHTH ? 1u : 0u);
+        uint32_t track_units = div_units(trk_div(TSEL));
+        if (snap_units < track_units || snap_units % track_units) unit = "DIV LIMIT";
+    }
+    const char *label = d->label;
+    if(!home && is_drum(TSEL) && cur_page()->graph==GR_FX && !c)label="LEVEL";
+    if(!home && cur_page()->scope==SC_GLOBAL && cur_page()->id[0]==G_DTYPE && song.g[G_DTYPE]==1 && c==2)label="TONE";
+    if (!home && cur_page()->scope==SC_GLOBAL && cur_page()->id[0]==G_LTYPE && c) {
+        static const char *const labels[4][3] = {
+            {"WOW","DARK","DAMAGE"}, {"FLUTTR","DARK","DRIVE"},
+            {"WARBLE","DARK","DAMAGE"}, {"RATE","LATCH","MIX"}
+        };
+        label=labels[song.g[G_LTYPE]?song.g[G_LTYPE]-1:0][c-1];
+    }
+    draw_column(c, !home && cur_page()->fam == FAM_SCL && cur_page()->id[c] == P_AHOLD ? "LATCH" : label, val, unit, VAL(c), !home && d->fmt == F_ENUM && d->max < 2 ? -1 : RATIO(d, value),
+                param_icon(d, value));
+}
 UI_SMALL static void draw_columns(void)
 {
     uint32_t c;
@@ -747,8 +800,7 @@ UI_SMALL static void draw_columns(void)
         for (c = 0; c < 4u; c++) {
             int16_t *vp;
             const param_desc_t *d = home_param(c, &vp);
-            param_format(d, *vp, val, &unit);
-            draw_column(c, d->label, val, unit, VAL(c), RATIO(d, *vp), param_icon(d, *vp));
+            draw_parameter_column(c,d,*vp,1);
         }
         return;
     }
@@ -797,6 +849,20 @@ UI_SMALL static void draw_columns(void)
         draw_column(1, "LOAD", "--", "", used ? C_HI : C_DIM, -1, ICON_AUTO);
         draw_column(2, "ERASE", "--", "", used ? C_HI : C_DIM, -1, ICON_AUTO);
         draw_column(3, "SAVE", "--", "", C_HI, -1, ICON_AUTO);
+        return;
+    }
+    if (notes_page() && !(fm1_in.buttons&((1u<<panel.btn[B_OCTUP])|(1u<<panel.btn[B_OCTDN])))) {
+        piano_selection_t selected=roll_selection();
+        int slot=piano_selection_slot(TSEL,selected);
+        char step[8],unit[8],pitch[8]="--",length[8]="--";
+        static const char *const levels[]={"NORM","GHOST","SOFT","HARD"};
+        fmt_int(step,(int32_t)ui.cursor+1);str_cpy(unit,"/",sizeof unit);fmt_int(unit+1,trk_len(TSEL));
+        if(slot>=0) {scale_note_name(pitch,TSEL,selected.pitch);fmt_int(length,note_chain_len(TSEL,selected.step,selected.pitch));}
+        draw_column(0,"EVENT",step,unit,VAL(0u),-1,ICON_AUTO);
+        draw_column(1,"PITCH",pitch,"",slot>=0?VAL(1u):C_DIM,-1,ICON_AUTO);
+        draw_column(2,"LEN",length,"STEP",slot>=0?VAL(2u):C_DIM,-1,ICON_AUTO);
+        draw_column(3,"FORCE",slot>=0?levels[(TSEL->step[ui.cursor].lvl>>(2u*slot))&3u]:"--",
+                    TSEL->step[ui.cursor].flags&SF_ACCENT?"STEP ACC":"",slot>=0?VAL(3u):C_DIM,-1,ICON_AUTO);
         return;
     }
     if (cur_page()->scope == SC_STEP) {
@@ -860,19 +926,7 @@ UI_SMALL static void draw_columns(void)
             draw_column(c, "", "", "", C_HI, -1, ICON_AUTO);
             continue;
         }
-        if (cur_page()->id[c] == G_INFO && cur_page()->scope == SC_GLOBAL) {
-            fmt_int(val, (int32_t)(song.cpu_q8 * 100u / 256u));
-            unit = "%";
-        } else {
-            param_format(d, *vp, val, &unit);
-        }
-        if (cur_page()->scope == SC_RECORD && c == 0u && *vp) {
-            uint32_t snap_units = div_units(*vp == REC_SNAP_EIGHTH ? 1u : 0u);
-            uint32_t track_units = div_units(trk_div(TSEL));
-            if (snap_units < track_units || snap_units % track_units) unit = "DIV LIMIT";
-        }
-        draw_column(c, cur_page()->fam == FAM_SCL && cur_page()->id[c] == P_AHOLD ? "LATCH" : d->label, val, unit, VAL(c), d->fmt == F_ENUM && d->max < 2 ? -1 : RATIO(d, *vp),
-                    param_icon(d, *vp));
+        draw_parameter_column(c,d,*vp,0);
     }
 }
 
@@ -984,6 +1038,7 @@ UI_SMALL static void ui_draw(void)
         lcd_fill(0, 0, 240, 240, C_BLACK);
         ui.force = 1;
     }
+    if(actions_on()) {actions_draw();ui_timers();ui.force=0;return;}
     if (!ui.home && cur_page()->scope == SC_TRK) {
         studio_tracks_draw();
         ui_timers();

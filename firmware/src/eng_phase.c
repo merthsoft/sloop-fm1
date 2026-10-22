@@ -169,6 +169,9 @@ static void phase_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const
     v->s[1] = tg1;
 }
 
+#if FELUCCA_BOOT_PRESETS
+static preset_t PHASE_PRESETS[BP_N_PHASE_PRESETS] __attribute__((section(".lowram")));
+#else
 static const preset_t PHASE_PRESETS[] = {
     /* name, {WAVE, WAVE2, DCW, ENV, DTN, LINE, SUB, -}, {A D S R}, fenv, mono */
     {"CZ BASS", {5, 0, 36, 70, 0, 0, 72, 0}, {0, 64, 64, 22}, 0, 1, FX(5, 0, 0, 4), XP(P_GLIDE + 1, 36, P_TRANS + 1, -24)},
@@ -181,6 +184,7 @@ static const preset_t PHASE_PRESETS[] = {
     {"CZ PAD", {1, 4, 45, 30, 14, 0, 0, 0}, {70, 90, 115, 85}, 0, 0, FX(0, 50, 20, 60)},
     {"CZ RESO", {6, 0, 80, 90, 0, 0, 0, 0}, {0, 70, 60, 40}, 0, 0, FX(0, 10, 25, 30)},
 };
+#endif
 
 static const engine_t ENG_PHASE = {
     "PHASE", {"PHS", "LINE"},

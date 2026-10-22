@@ -210,6 +210,9 @@ static void formant_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, con
     v->s[6] = lp;
 }
 
+#if FELUCCA_BOOT_PRESETS
+static preset_t FORMANT_PRESETS[BP_N_FORMANT_PRESETS] __attribute__((section(".lowram")));
+#else
 static const preset_t FORMANT_PRESETS[] = {
     /* VOWEL VOWL2 TALK SHIFT | BUZZ BREATH Q RAND ; vowels A E I O U over 0..127 */
     {"CHOIR AAH", {0, 0, 0, 0, 40, 22, 60, 0}, {85, 90, 115, 95}, 0, 0, FX(0, 60, 10, 70)},
@@ -223,6 +226,7 @@ static const preset_t FORMANT_PRESETS[] = {
     {"ROBOT", {40, 40, 0, 0, 127, 0, 110, 0}, {0, 60, 110, 20}, 0, 1, FX(10, 0, 20, 15), XP(P_GLIDE + 1, 20)},
     {"VOX PAD", {20, 100, 110, 0, 50, 30, 60, 10}, {80, 90, 118, 90}, 0, 0, FX(0, 60, 15, 70)},
 };
+#endif
 
 static const engine_t ENG_FORMANT = {
     "VOICE", {"VOWL", "TONE"},

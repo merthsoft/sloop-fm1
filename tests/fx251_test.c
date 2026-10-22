@@ -276,7 +276,7 @@ static void t_mutes(void)
     uint32_t i, on, off, sn;
     setup();
     memset(&drums, 0, sizeof drums);
-    drums.set = -2;
+    drum_factory_set = -2;
     for (i = 0; i < 16u; i++) {
         dstep_set(&TDRUM->dstep[i], 0, LV_NORM, i == 4u ? 1u : 0u);   /* the kick on every step, a ratchet on 5 */
         dstep_set(&TDRUM->dstep[i], 2, LV_NORM, 0);                   /* the snare too */
@@ -710,10 +710,13 @@ static void t_midi_fx(void)
           "MIDI FX CH (2.7): its notes hold the punch-in effects as FX + the FM-1's keys (white 1..16, black 17..27)");
     note_in(4, 79, 100);                                /* G5: the last white key, effect 15 */
     r1 = punch.req;
-    punch.keybit = 1u << 3;                             /* an FM-1 key took it over (FX + key) */
+    uint32_t fx_button=ly_bit[LY_FX];ly_bit[LY_FX]=1u<<31;
+    fm1_in.buttons=ly_bit[LY_FX];fm1_in.notes=1u<<26;   /* FX + G5 also holds WOBBLE */
+    render(2);
     note_in(4, 79, 0);
     r2 = punch.req;
-    punch.keybit = 0, punch.req = -1;
+    fm1_in.notes=fm1_in.buttons=0;render(2);             /* release the physical owner too */
+    ly_bit[LY_FX]=fx_button;
     song.g[G_ROUTE] = 1;                                /* IN = CLOCK: no notes, no effects */
     note_in(4, 53, 100);
     r3 = punch.req;

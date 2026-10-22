@@ -71,15 +71,21 @@ static void song_restore(void) {}
 static uint32_t sec_stores, sec_loads;
 static void section_store(uint32_t s) { sec_stores++; live_sec = (int8_t)s; }
 static void section_load(uint32_t s) { sec_loads++; live_sec = (int8_t)s; }
+#ifndef UI_REAL_UPRESET
 static int up_used(uint32_t k) { return k < 2; }
 static int up_load(uint32_t k) { (void)k; return 0; }
 static int up_load_to(track_t *t, uint32_t k) { (void)t; (void)k; return 0; }
 static uint32_t up_count(void) { return 2; }
 static uint32_t up_nth(uint32_t n) { return n; }
 static uint32_t up_rank(uint32_t s) { return s; }
+static int32_t up_pc_index(uint32_t bank,uint32_t program,uint32_t factories) {
+    if(bank==8u)return program<up_count()?(int32_t)(factories+program):-1;
+    uint32_t n=bank*128u+program;return n<factories+up_count()?(int32_t)n:-1;
+}
 static void up_name(uint32_t k, char *b) { str_cpy(b, k ? "MY PAD" : "MY LEAD", 13); }
 static void up_slot_label(char *b, uint32_t k) { fmt_int(b, (int32_t)k + 1); }
 static void up_ui(uint32_t op, uint32_t k) { (void)op; (void)k; }
+#endif
 static void settings_save(void) {}
 #include "../firmware/src/ui_song.c"
 #include "../firmware/src/ui_studio.c"
@@ -160,7 +166,7 @@ int main(int argc, char **argv)
         bank_resolve();
         for (n = 0; n < NBANK; n++)
             if (bank_pi[n] == 0xFF) {
-                printf("ui: BANK %s: no such preset in engine %u\n", BANK[n].name, BANK[n].e);
+                printf("ui: BANK %s: no such preset in engine %u\n", "indexed entry", BANK[n].e);
                 fails++;
             }
         for (e = 0; e < NENGINES; e++)
@@ -975,6 +981,10 @@ int main(int argc, char **argv)
             while (strcmp(PAGES[ui.page].title, "STEP")) { open_family(FAM_SEQ); frame(); }
             k1 = page_pos(&n1);
             open_family(FAM_SEQ); frame();
+            ok &= !strcmp(PAGES[ui.page].title, "NOTES");
+            open_family(FAM_SEQ); frame();
+            ok &= !strcmp(PAGES[ui.page].title, "NOTE ACTIONS");
+            open_family(FAM_SEQ); frame();
             ok &= !strcmp(PAGES[ui.page].title, "PATTERN");
             k2 = page_pos(&n2);
             open_family(FAM_SEQ); frame();
@@ -990,7 +1000,7 @@ int main(int argc, char **argv)
             (void)page_pos(&n);                       /* GLO: its nine pages */
             go_home(); frame();
             ui.menu = (uint8_t)menu0, ui.menu_sel = (uint8_t)sel0, ui.force = 1; frame();
-            ok &= k1 == 1u && n1 == 4u && k2 == 2u && n2 == 4u && k3 == 5u && n3 == 5u && n == 9u;
+            ok &= k1 == 1u && n1 == 6u && k2 == 4u && n2 == 6u && k3 == 7u && n3 == 7u && n == 9u;
             if (!ok)
                 printf("ui:   counter: STEP %u/%u PATTERN %u/%u SONG %u/%u GLO /%u\n", k1, n1, k2, n2, k3, n3, n);
             check(ok, "page counter: STEP/PATTERN/RECORD/SEQUENCES are SELECT pages; SONG is a separate screen");
@@ -1252,17 +1262,25 @@ int main(int argc, char **argv)
             check(lit > 100u && cur_page()->graph==GR_FILTER, "FILTER page: the cutoff guide is visible");
         }
         TSEL->p[P_TFLT] = 0;
-        SEL(9);
-        check(!strcmp(PT(), "VINYL"), "SELECT on FX: on to the last page, VINYL");
-        for(uint32_t k=0;k<3;k++){encs[panel.enc[EN_K1+k]]=200;frames(2);}
-        check(song.g[G_VWOW]==127 && song.g[G_VTONE]==127 && song.g[G_VCRACKLE]==127,
-              "VINYL controls reach the actual master-bus parameters");
+        SEL(20);
+        check(!strcmp(PT(), "LOFI"), "SELECT on FX: on to the last page, LOFI");
+        encs[panel.enc[EN_K1]]=200;frames(2);
+        for(uint32_t k=0;k<3;k++){encs[panel.enc[EN_K2+k]]=200;frames(2);}
+        check(song.g[G_LTYPE]==4 && song.g[G_VWOW]==127 && song.g[G_VTONE]==127 && song.g[G_VCRACKLE]==127,
+              "LOFI selector and amounts reach the master-bus parameters");
+        encs[panel.enc[EN_K1]]=-200;frames(2);
+        check(song.g[G_LTYPE]==0 && !strcmp(ui.big_v[0],"OFF"),"LOFI OFF is the first choice, retaining its stored amounts");
+        song.g[G_LTYPE]=0;
         song.g[G_VWOW]=song.g[G_VTONE]=song.g[G_VCRACKLE]=0;
         SEL(-1);
-        check(!strcmp(PT(), "REVERB"), "REVERB precedes VINYL");
+        check(!strcmp(PT(), "REVERB"), "REVERB precedes LOFI");
         for (uint32_t turn=0;turn<8u;turn++) { encs[panel.enc[EN_K1]]=1;frames(8); }
-        check(song.g[G_RMODEL]==1 && GP[G_RMODEL].max==1,
-              "REVERB TYPE stops at SPRING, never selects a null third model");
+        check(song.g[G_RMODEL]==4 && GP[G_RMODEL].max==4,
+              "REVERB TYPE reaches HALL and stops at the fifth valid model");
+        int hall_time=song.g[G_RTIME];encs[panel.enc[EN_K4]]=5;frames(2);
+        check(song.g[G_RTIME]==hall_time,"HALL leaves the spring-only TIME knob inactive");
+        for(uint32_t turn=0;turn<3;turn++){encs[panel.enc[EN_K1]]=-1;frames(8);}
+        check(song.g[G_RMODEL]==1,"REVERB can select SPRING between STEREO and ROOM");
         int old_size=song.g[G_RSIZE];encs[panel.enc[EN_K4]]=5;frames(2);
         check(song.g[G_RTIME]>50 && song.g[G_RTIME]<=80 && song.g[G_RSIZE]==old_size,
               "SPRING knob4 changes reflection TIME without changing SIZE");

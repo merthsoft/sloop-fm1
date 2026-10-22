@@ -75,6 +75,8 @@ static volatile uint32_t step_in_w;
 static volatile uint8_t step_in_lost;
 static uint32_t step_in_r;
 static volatile uint8_t pc_req[NTRK];          /* (2.6) a MIDI Program Change for the track: number + 1 (ui.c pc_poll) */
+static volatile uint8_t pc_bank[NTRK];         /* bank captured with that request, not at UI polling time */
+#define PC_USER_BANK 8u
 static void step_in_push(uint32_t ev)
 {
     if (step_in_w - step_in_r >= STEP_IN_Q) {
@@ -510,6 +512,7 @@ static struct {
 } undo;
 static uint32_t undo_sess = 1;           /* UI sessions (seq.c: recording passes use the track's pass) */
 static uint32_t undo_revision;          /* also counts recording edits, independent of UI sessions */
+static uint32_t project_revision;       /* invalidates transient editor selections on load */
 static void undo_mark(const track_t *t, uint32_t sess)
 {
     uint32_t i = trk_index(t);
@@ -2016,6 +2019,7 @@ static void key_down(uint32_t k)
     kb_kind[k] = KS_NONE;
     kb_trk[k] = (uint8_t)sel;
     kb_n[k] = 0;
+    if(kb_grid==2u && layer==LY_PLAY)return; /* sheet-owned keys also have no later key-up action */
     switch (layer) {
     case LY_FX: {                                     /* FX held: the keys pick a punch-in effect (white and black) */
         int32_t fx = punch_fx_of_key(k);
@@ -2965,6 +2969,7 @@ static void midi_scale_usb_reset(void)
 /* (2.6) the pedal and the wheel of a channel: the track they act on is remembered (track + 1), so a pedal let up or a
  * wheel let go after another track got selected (a SEL channel, IN = CH n) still lets go of the one they held */
 static uint8_t ch_sus[16], ch_bend[16];
+static uint8_t ch_bank[2][16];                 /* USB/TRS each latch CC0 per channel */
 static void sus_set(track_t *t, int on);
 static void midi_pedal(uint32_t ch, track_t *t, uint32_t value)
 {
@@ -3089,7 +3094,11 @@ static void __attribute__((noinline)) midi_cc(track_t *t, uint32_t cc, uint32_t 
         if (part < NPART) mod_midi[part] = (uint8_t)(value & 127u);
         return;
     }
-    if (cc == 121u || cc == 120u || cc == 123u) { mod_reset((uint32_t)(t - trk)); return; }
+    if (cc == 11u) { ex_off[trk_index(t) % NTRK] = (uint8_t)(127u - (value & 127u)); return; }
+    if (cc == 121u || cc == 120u || cc == 123u) {
+        if (cc == 121u) ex_off[trk_index(t) % NTRK] = 0;
+        mod_reset((uint32_t)(t - trk)); return;
+    }
     const param_desc_t *d = 0;
     int16_t *slot = 0;
     uint32_t i, id = 0xFFFFu;
@@ -3146,17 +3155,42 @@ static void __attribute__((noinline)) midi_cc(track_t *t, uint32_t cc, uint32_t 
  * (the slicer, delay and arp follow it). START restarts from the top, CONTINUE carries on where it
  * stopped, STOP stops. With no pulse for 0.5 s, the internal tempo takes over (PLAY works as ever). */
 #define MCLK_PULSE_U (BEAT_U / 24u)
+#define MCLK_NB 8u                  /* (2.7.2) the tempo: the mean of the last 8 beats */
 static struct {
     uint32_t pos, done;          /* units: the master's position (pulses since START), ours */
     uint32_t last_ms, iv_ms;     /* the last pulse, the interval between pulses (smoothed) */
     uint32_t beat_ms;            /* when pulse 0 of the last 24 came: the tempo */
     uint8_t have, n24;           /* a pulse since START; pulses towards the next tempo reading */
     uint8_t alive;               /* pulses are coming (from the SYNC source) */
+    uint8_t nb, bi;              /* (2.7.2) the last beats' lengths (bdt[], up to MCLK_NB, bi the next) */
+    uint16_t bdt[MCLK_NB];
 } mclk;
 
 static int mclk_on(void)                          /* the clock drives the sequencer */
 {
     return song.g[G_SYNC] && mclk.alive && fm1_ms - mclk.last_ms < 500u;
+}
+
+/* (2.7.2) the tempo from a beat of dt ms. A beat timed to the millisecond reads +-1 BPM at random (140: 428.6 ms; the
+ * computer, USB and our blocks move a pulse by a few ms), so: the mean of the last 8 beats, in tenths of a BPM; once
+ * there are 8, BPM changes only when the mean is 0.8 away (a steady 140 stays 140; a tempo ramp still goes through). A
+ * beat 5 BPM or more away is a new tempo: taken at once (the 8 start again). The sequencer follows the pulses either
+ * way: this is the BPM shown (and what follows it: delay, slicer, arp) */
+static void mclk_tempo(uint32_t dt)
+{
+    uint32_t k, sum = 0, t10;
+    int32_t one = (int32_t)((60000u + dt / 2u) / dt), cur = song.g[G_BPM];
+    if (mclk.nb && (one - cur >= 5 || cur - one >= 5))
+        mclk.nb = 0;
+    mclk.bdt[mclk.bi] = (uint16_t)dt;
+    mclk.bi = (uint8_t)((mclk.bi + 1u) % MCLK_NB);
+    if (mclk.nb < MCLK_NB)
+        mclk.nb++;
+    for (k = 0; k < mclk.nb; k++)
+        sum += mclk.bdt[(mclk.bi + MCLK_NB - 1u - k) % MCLK_NB];
+    t10 = (600000u * mclk.nb + sum / 2u) / sum;    /* (<= 8 x 600000 + 6000: fits 32 bits) */
+    if (mclk.nb < MCLK_NB || (int32_t)t10 - cur * 10 >= 8 || cur * 10 - (int32_t)t10 >= 8)
+        song.g[G_BPM] = (int16_t)clamp((int32_t)((t10 + 5u) / 10u), 40, 240);
 }
 
 static void mclk_event(uint32_t st, uint32_t src)  /* a realtime message; src 1 USB, 2 TRS */
@@ -3185,13 +3219,14 @@ static void mclk_event(uint32_t st, uint32_t src)  /* a realtime message; src 1 
     }
     if (!mclk.alive || now - mclk.last_ms >= 500u) {   /* (re)started: count a fresh beat */
         mclk.n24 = 0;
+        mclk.nb = 0;
         mclk.beat_ms = now;
     } else if (++mclk.n24 == 24u) {                /* a beat: the tempo */
         uint32_t dt = now - mclk.beat_ms;
         mclk.n24 = 0;
         mclk.beat_ms = now;
         if (dt >= 250u && dt <= 1500u)             /* 40..240 BPM */
-            song.g[G_BPM] = (int16_t)clamp((int32_t)((60000u + dt / 2u) / dt), 40, 240);
+            mclk_tempo(dt);
     }
     mclk.alive = 1;
     mclk.last_ms = now;
@@ -3511,6 +3546,7 @@ static void events_block(uint32_t n)
             if (ch != (uint32_t)song.g[G_ROUTE] - 2u)
                 continue;
             if (st == 0xB0u) {
+                if (d1 == 0u) { ch_bank[((pkt >> 4) & 15u) != 0][ch] = (uint8_t)d2; continue; }
                 if (d1 == 64u)
                     midi_pedal(ch, TSEL, d2);
                 if (d1 == 1u && song.sel < NPART) mod_source[song.sel] = ((pkt >> 4) & 15u) ? 2u : 1u;
@@ -3523,6 +3559,7 @@ static void events_block(uint32_t n)
                 continue;
             }
             if (st == 0xC0u) {                        /* Program Change (2.6): the selected track's sound */
+                pc_bank[song.sel % NTRK] = ch_bank[((pkt >> 4) & 15u) != 0][ch];
                 pc_req[song.sel % NTRK] = (uint8_t)(d1 + 1u);
                 continue;
             }
@@ -3537,6 +3574,10 @@ static void events_block(uint32_t n)
             }
         } else {
             if (st == 0xB0u) {                            /* a CC (IN = CLOCK: none) */
+                if (!song.g[G_ROUTE] && d1 == 0u) {
+                    ch_bank[((pkt >> 4) & 15u) != 0][ch] = (uint8_t)d2;
+                    continue;
+                }
                 if (!song.g[G_ROUTE] && (t = midi_track(ch)) != 0) {
                     if (d1 == 64u)
                         midi_pedal(ch, t, d2);
@@ -3549,8 +3590,10 @@ static void events_block(uint32_t n)
             }
             if (st == 0xC0u) {                            /* Program Change (2.6): the sound of the track its channel
                                                            * plays (IN = CLOCK, OTHER = OFF and nobody's channel: none) */
-                if (!song.g[G_ROUTE] && (t = midi_track(ch)) != 0)
+                if (!song.g[G_ROUTE] && (t = midi_track(ch)) != 0) {
+                    pc_bank[trk_index(t) % NTRK] = ch_bank[((pkt >> 4) & 15u) != 0][ch];
                     pc_req[trk_index(t) % NTRK] = (uint8_t)(d1 + 1u);
+                }
                 continue;
             }
             if (st == 0xE0u) {                            /* pitch bend (2.6): the track its channel plays (IN = CLOCK:

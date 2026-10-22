@@ -239,6 +239,9 @@ static void noise_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const
 }
 
 /* {MODE, COLR, FREQ, RES, TRK, DENS, DRFT, CRSH / CLK} */
+#if FELUCCA_BOOT_PRESETS
+static preset_t NOISE_PRESETS[BP_N_NOISE_PRESETS] __attribute__((section(".lowram")));
+#else
 static const preset_t NOISE_PRESETS[] = {
     {"WIND", {NZ_ANLG, 64, 70, 100, 127, 0, 70, 0}, {90, 90, 110, 90}, 0, 0, FX(0, 30, 20, 80)},
     {"RAIN", {NZ_DUST, 30, 88, 80, 64, 105, 40, 0}, {10, 90, 127, 70}, 0, 0, FX(0, 0, 20, 70)},
@@ -255,6 +258,7 @@ static const preset_t NOISE_PRESETS[] = {
     {"BITCRUSH", {NZ_ANLG, 40, 90, 40, 64, 0, 0, 100}, {0, 70, 110, 40}, 0, 0, FX(0, 0, 20, 30)},
     {"RADIO", {NZ_LFSR, 20, 70, 90, 64, 0, 60, 48}, {10, 70, 120, 50}, 0, 0, FX(0, 10, 30, 40)},
 };
+#endif
 
 static const engine_t ENG_NOISE = {
     .name = "NOISE",

@@ -64,14 +64,17 @@ int main(void)
     assert(min_hz<872 && max_hz>888 && min_hz>840 && max_hz<920);
     /* End-to-end silence through the real master chain: full crackle should be
      * audible under music, while keeping ample output headroom. */
-    host_tracks_init();clear_vinyl();song.playing=1;song.g[G_VCRACKLE]=127;
-    double ss=0;uint32_t count=0;int peak=0;int32_t out[CTL*2];
+    host_tracks_init();clear_vinyl();song.g[G_LTYPE]=1;song.playing=1;song.g[G_VCRACKLE]=127;
+    double ss=0;uint32_t count=0,quiet=0,positive=0,negative=0;int peak=0;int32_t out[CTL*2];
     for(uint32_t b=0;b<FS*4u/CTL;b++) {
         mix_block(out,CTL);
-        if(b>FS/CTL)for(uint32_t i=0;i<CTL*2;i++){ss+=(double)out[i]*out[i];count++;if(abs(out[i])>peak)peak=abs(out[i]);}
+        if(b>FS/CTL)for(uint32_t i=0;i<CTL*2;i++){ss+=(double)out[i]*out[i];count++;quiet+=abs(out[i])<100;positive+=out[i]>3000;negative+=out[i]<-3000;if(abs(out[i])>peak)peak=abs(out[i]);}
     }
     double rms=sqrt(ss/count);printf("VINYL crackle RMS %.1f dBFS, peak %.1f dBFS\n",20*log10(rms/32768),20*log10(peak/32768.));
+    printf("VINYL crackle crest %.2f, quiet fraction %.4f\n",peak/rms,(double)quiet/count);
     assert(rms>328 && rms<1305 && peak>3000 && peak<16000);
+    assert(peak/rms>12 && (double)quiet/count>.90);
+    assert(positive>10 && negative>10);
     /* The former MONO key is now VINYL: effective settings are temporary,
      * stereo stays stereo, and releasing it returns to saved parameters. */
     host_tracks_init();punch_clear();clear_vinyl();song.playing=0;

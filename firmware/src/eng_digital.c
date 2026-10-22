@@ -112,6 +112,9 @@ static void digital_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, con
     v->s[6] = fb2;
 }
 
+#if FELUCCA_BOOT_PRESETS
+static preset_t DIGITAL_PRESETS[BP_N_DIGITAL_PRESETS] __attribute__((section(".lowram")));
+#else
 static const preset_t DIGITAL_PRESETS[] = {
     /* ALG R2 R3 R4 INDEX MODDEC FDBK - ; ALG 5 (4 here) = two stacks: 2 -> 1 and 4 -> 3 (the tine) */
     {"RHODES", {4, 1, 1, 14, 26, 35, 0, 0}, {0, 85, 35, 55}, 0, 0, FX(0, 30, 12, 26), XP(P_LD_AMP + 1, 26, P_LRATE + 1, 84)},
@@ -141,6 +144,7 @@ static const preset_t DIGITAL_PRESETS[] = {
     {"FM PLUCK", {4, 2, 1, 3, 70, 15, 0, 0}, {0, 78, 0, 54}, 0, 0, FX(0, 10, 28, 30)},
     {"FM GRAND", {4, 1, 2, 12, 60, 40, 10, 0}, {0, 90, 20, 60}, 0, 0, FX(0, 20, 14, 30)},
 };
+#endif
 
 static const engine_t ENG_DIGITAL = {
     "DIGITAL", {"OPS", "MOD"},

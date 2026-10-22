@@ -14,6 +14,7 @@ static const char *const N_MCH[] = {"OFF", "1", "2", "3", "4", "5", "6", "7", "8
 static const char *const N_MOTH[] = {"SEL", "OFF"};
 /* GLO > TEXTURE (2.6, fx.c texture_*): the bed's sources (the user slots last), its movement's length, when it plays */
 static const char *const N_TXSRC[] = {"OFF", "VINYL", "TAPE", "RAIN", "WIND", "RADIO", "ROOM", "USR1", "USR2", "USR3", "USR4"};
+static const char *const N_LOFI[] = {"OFF", "VINYL", "TAPE", "VHS", "CD"};
 static const char *const N_TXRATE[] = {"1BAR", "2BAR", "4BAR", "8BAR", "16BAR"};
 static const char *const N_TXWHEN[] = {"PLAY", "ALWAYS"};
 /* ANALOG's filter TYPE (eng_analog.c): the SVF's low-pass (as always), band-pass, high-pass output */
@@ -156,12 +157,18 @@ static void preset_extras(int16_t *p, const preset_t *pr)
 }
 
 
-static const char *const N_RMODEL[] = {"STEREO", "SPRING"};
+static const char *const N_RMODEL[] = {"STEREO", "SPRING", "ROOM", "PLATE", "HALL"};
+static const char *const N_DTYPE[]={"DIGI","TAPE","CRUSH"};
+static const char *const N_DHOLD[]={"2K8", "5K5", "11K", "22K", "44K"};
 static const param_desc_t GP[G_COUNT] = {
     [G_BPM] = PD("BPM", F_BPM, 40, 240, 90),
     [G_SWING] = PD("SWING", F_SWING, 0, 100, 0),
     [G_CLOCK] = PE("CLICK", N_CLICK, 0),            /* (the old CLK slot: projects keep their format) */
     [G_TUNE] = PD("TUNE", F_INT, -50, 50, 0),
+    [G_DTYPE] = PE("TYPE", N_DTYPE, 0),
+    [G_DDRIVE] = PD("DRIVE", F_PCT, 0, 127, 127),
+    [G_DBITS] = {"BITS", F_INT, 4, 16, 8, 0, ""},
+    [G_DHOLD] = PE("RATE", N_DHOLD, 2),
     [G_DTIME] = PE("TIME", N_DLY, 1),
     [G_DFDBK] = PD("FDBK", F_PCT, 0, 120, 60),
     [G_DCOLOR] = PD("COLR", F_PCT, 0, 127, 70),
@@ -169,6 +176,7 @@ static const param_desc_t GP[G_COUNT] = {
     [G_VWOW] = PD("WOW", F_PCT, 0, 127, 0),
     [G_VTONE] = PD("TONE", F_PCT, 0, 127, 0),
     [G_VCRACKLE] = PD("CRACKLE", F_PCT, 0, 127, 0),
+    [G_LTYPE] = PE("TYPE", N_LOFI, 0),
     [G_RTIME] = {"TIME", F_INT, 20, 80, 50, 0, "MS"},
     [G_RMODEL] = PE("TYPE", N_RMODEL, 0),
     [G_RSIZE] = PD("SIZE", F_PCT, 0, 127, 90),
@@ -391,7 +399,7 @@ static void param_format(const param_desc_t *d, int32_t v, char *val, const char
 /* ------------------------------------------------------------ pages --- */
 enum { FAM_HOME, FAM_ENV, FAM_LFO, FAM_FX, FAM_SCL, FAM_EDIT, FAM_GLO, FAM_SAVE, FAM_ARP, FAM_SEQ, FAM_TRK,
        FAM_COUNT };
-enum { SC_TRACK, SC_GLOBAL, SC_ENGINE, SC_STEP, SC_TRK, SC_SONG, SC_DRUM, SC_STARTER, SC_RECORD };
+enum { SC_TRACK, SC_GLOBAL, SC_ENGINE, SC_STEP, SC_TRK, SC_SONG, SC_DRUM, SC_STARTER, SC_RECORD, SC_ACTION };
 static const char *const N_REC_SNAP[] = {"TRACK", "1/8", "1/4"};
 static const param_desc_t REC_SNAP_DESC = PE("SNAP", N_REC_SNAP, 0);
 enum { GR_NONE, GR_ADSR, GR_LFO, GR_STEPS, GR_ARP, GR_SCALE, GR_FX, GR_ROLL, GR_BROWSE, GR_SLOTS, GR_USER, GR_TRK,
@@ -414,11 +422,12 @@ static const page_t PAGES[] = {
     {"FILTER", FAM_FX, SC_TRACK, GR_FILTER, {P_TFLT, 0xFF, 0xFF, 0xFF}},   /* the track's filter (drum track too) */
     {"SLICER", FAM_FX, SC_TRACK, GR_SLCR, {P_SLCR, P_SLPAT, P_SLRATE, P_SLDEPTH}},   /* drum track too */
     {"INSERT", FAM_FX, SC_TRACK, GR_INS, {P_ITYPE, P_IA, P_IB, P_IC}},   /* 2.6 (Felucca 1.5): the track's INSERT (fx.c), */
-    {"INSERT 2", FAM_FX, SC_TRACK, GR_INS, {P_IMIX, 0xFF, 0xFF, 0xFF}},  /* .. its dry / wet; the drum track too */
+    {"INSERT 2", FAM_FX, SC_TRACK, GR_INS, {P_IMIX, P_ITYPE, P_IA, P_IB}}, /* blend, type and main controls together */
     {"DLY", FAM_FX, SC_GLOBAL, GR_DELAY, {G_DTIME, G_DFDBK, G_DCOLOR, G_DMIX}},
+    {"DLY TYPE", FAM_FX, SC_GLOBAL, GR_NONE, {G_DTYPE,G_DTIME,G_DFDBK,G_DMIX}},
     {"REV/CHO", FAM_FX, SC_GLOBAL, GR_NONE, {G_RSIZE, G_RDAMP, G_CRATE, G_CDEPTH}},
     {"REVERB", FAM_FX, SC_GLOBAL, GR_NONE, {G_RMODEL, G_RSIZE, G_RDAMP, G_RTIME}},
-    {"VINYL", FAM_FX, SC_GLOBAL, GR_NONE, {G_VWOW, G_VTONE, G_VCRACKLE, 0xFF}},
+    {"LOFI", FAM_FX, SC_GLOBAL, GR_NONE, {G_LTYPE, G_VWOW, G_VTONE, G_VCRACKLE}},
     {"SEL", FAM_SCL, SC_TRACK, GR_SCALE, {P_ROOT, P_SCALE, P_QUANT, P_CHORD}},
     {"SEL 2", FAM_SCL, SC_TRACK, GR_SCALE, {P_TRANS, P_STRUM, P_VLEAD, P_AHOLD}},   /* HOLD also latches keyboard chords */
     {"EDIT 1", FAM_EDIT, SC_ENGINE, GR_NONE, {P_E0, P_E1, P_E2, P_E3}},
@@ -445,6 +454,8 @@ static const page_t PAGES[] = {
     {"ARP", FAM_ARP, SC_TRACK, GR_ARP, {P_AMODE, P_ARATE, P_AOCT, P_AGATE}},
     {"ARP 2", FAM_ARP, SC_TRACK, GR_NONE, {P_ASWING, P_APROB, P_AHOLD, P_AORDER}},
     {"STEP", FAM_SEQ, SC_STEP, GR_ROLL, {0, 1, 2, 3}},
+    {"NOTES", FAM_SEQ, SC_STEP, GR_ROLL, {4, 1, 2, 3}}, /* local editor variant, not parameter IDs */
+    {"NOTE ACTIONS", FAM_SEQ, SC_ACTION, GR_NONE, {0xFF,0xFF,0xFF,0xFF}},
     {"PATTERN", FAM_SEQ, SC_TRACK, GR_STEPS, {P_SLEN, P_SDIV, P_SSWING, P_SGATE}},
     {"RECORD", FAM_SEQ, SC_RECORD, GR_STEPS, {0, P_SDIV, P_SLEN, P_SGATE}},
     {"SEQUENCES", FAM_SEQ, SC_STARTER, GR_NONE, {0xFF, 0xFF, 0xFF, 0xFF}},
@@ -459,11 +470,11 @@ static const page_t PAGES[] = {
  * shows "DRUM TRACK" */
 static int page_for_drum(const page_t *pg)
 {
-    if (pg->scope == SC_STEP)                       /* (2.4) the synth steps' roll: the drums have their grid. Reached */
+    if (pg->scope == SC_STEP || pg->scope==SC_ACTION) /* synth roll/actions; drums have their own grid */
         return 0;                                   /* by ALGO from a synth track, it drew the drum steps as notes */
     if (pg->scope == SC_GLOBAL)
         return pg->graph != GR_BROWSE && pg->graph != GR_USER;
-    return pg->scope != SC_ENGINE && (pg->scope != SC_TRACK || pg->fam == FAM_SEQ || pg->graph == GR_SLCR ||
+    return pg->scope != SC_ENGINE && (pg->scope != SC_TRACK || pg->fam == FAM_SEQ || pg->graph == GR_FX || pg->graph == GR_FILTER || pg->graph == GR_SLCR ||
                                       pg->graph == GR_INS);
 }
 /* a page the buttons and SELECT reach on the selected track: EDIT > FILTER (TYPE) on ANALOG only */
@@ -475,7 +486,16 @@ static int page_shown(const page_t *pg)
 static const param_desc_t *page_desc(const page_t *pg, uint32_t slot, int16_t **valp)
 {
     uint32_t id = pg->id[slot];
-    if (pg->scope == SC_GLOBAL && id == G_RTIME && !song.g[G_RMODEL]) { *valp=0;return 0; }
+    if(pg->scope==SC_GLOBAL && pg->id[0]==G_DTYPE && slot && slot<3u) {
+        if(song.g[G_DTYPE]==1)id=slot==1?G_DDRIVE:G_DCOLOR;
+        if(song.g[G_DTYPE]==2)id=slot==1?G_DBITS:G_DHOLD;
+    }
+    if(is_drum(TSEL) && pg->graph==GR_FX) {
+        if(slot==1u) { *valp=&TSEL->p[P_PAN];return &TP[P_PAN]; }
+        uint32_t global=slot==0u?G_DRLVL:slot==2u?G_DRDLY:G_DRREV;
+        *valp=&song.g[global];return slot==0u?&GP[G_DRLVL]:&TP[slot==2u?P_DLY:P_REV];
+    }
+    if (pg->scope == SC_GLOBAL && id == G_RTIME && song.g[G_RMODEL]!=1) { *valp=0;return 0; }
     if (id == 0xFFu || (is_drum(TSEL) && (!page_for_drum(pg) || (pg->scope == SC_GLOBAL && id == G_INITSND)))) {
         *valp = 0;
         return 0;

@@ -66,7 +66,7 @@ the arrangement order; REC stores its selected section.
    **OCT−** to listen through the current kit. Press OCT− again to stop preview.
 2. Press **OCT+** to apply. Replacing existing material requires another press or
    a continuous **700 ms hold**. Playback and recording must be stopped.
-3. Select a synth. Tap SEQ through **STEP → PATTERN → RECORD → SEQUENCES**.
+3. Select a synth. Tap SEQ through **STEP → NOTES → NOTE ACTIONS → PATTERN → RECORD → SEQUENCES**.
    Select POP FOUR, your key and scale, and **ARP NOTES**. Listen, then apply.
 4. On another synth, apply the same progression in **BASS** mode. Add a melody,
    choose sounds and develop the ordinary editable steps you have just created.
@@ -317,6 +317,20 @@ the normal mix; HOME can lock the FX control panel open, freeing the FX-button h
 These act on the mix, whereas LFO/ENV modulation acts on one synth.
 See the [physical effect mapping](../../GUIDE.md#punch-in-effects).
 
+### Five reverb characters
+
+**FX → REVERB → TYPE** offers the original **STEREO**, a dual-path **SPRING**,
+short **ROOM**, bright dense **PLATE**, and spacious **HALL**. The new spring
+uses unequal lengths, different dispersion and offset pickup modulation for
+stereo width. The three spaces retune the existing feedback delay network;
+they reuse its buffers and leave the original STEREO sound unchanged.
+
+Knob 2 **SIZE** adjusts decay and knob 3 **DAMP** darkens the tail. SPRING alone
+uses knob 4 **TIME** (20–80 ms) to change reflection spacing independently of
+its nominal decay. Track REV sends remain independent. Type changes fade and
+clear the old tail; FREEZE holds the current type until released. Types and
+spring timing save with projects/sections. See [design and measured checks](REVERB-EXPANSION.md).
+
 The old black-key modifier controls and their screenshot are historical. Current
 black keys select effects directly, as in upstream; they do not toggle effect latch.
 The phone's established performance protocol continues to address the sixteen
@@ -452,3 +466,60 @@ See [the full controls](AUTO-WAH-DESIGN.md) and [branding/version policy](../BRA
 | <img src="../../assets/screens/merthsoft/guide/auto-wah-envelope.png" width="240" alt="MerthSloop signal-following auto-wah with sensitivity and cutoff controls"> | <img src="../../assets/screens/merthsoft/guide/auto-pan.png" width="240" alt="MerthSloop track auto-pan with waveform and beat sync"> |
 
 *Fresh production UI/audio harness renders.*
+
+## Individual notes, action sheets and drum FX
+
+On **SEQ → NOTES**, knob 1 walks chord members/empty cells, knob 2 edits the selected chain's pitch, knob 3 its length and knob 4 its GHOST/SOFT/NORM/HARD level. PRESETS zooms STEP and NOTES to 8/16/32/64 steps. Tied notes remain joined across later attacks. EDIT taps delete just that chain; undo remains EDIT+OCT−. Pitch/move/copy operations require stopped transport.
+
+**NOTE ACTIONS** has SLIDE STEP, NUDGE STEP, FILL STEP, ACCENT STEP, MOVE NOTE, COPY NOTE and DELETE NOTE. Knob 1 selects a row; knob 2 edits a shared field or stages a destination. OCT+ applies a discrete operation once, and OCT− returns to NOTES. Existing voices and shared step automation are retained. Collisions, full chords, pattern-end overflow and locked source onsets refuse without editing the song. A move may overlap its own sustain.
+
+The drum pages add **HIT ACTIONS** after RHYTHM. Its selected lane/step are pinned on entry. Ratchet is per hit; nudge/fill say STEP. Move/copy/delete retain other lanes and expression. OCT− returns to GRID. Physical action-sheet keys are silent, function layers retain priority and PLAY/REC close the sheet normally.
+
+| NOTES | NOTE ACTIONS | HIT ACTIONS |
+| --- | --- | --- |
+| <img src="../../assets/screens/merthsoft/neon/notes.png" width="240" alt="Selected sustained chord member in NOTES"> | <img src="../../assets/screens/merthsoft/neon/note-actions.png" width="240" alt="Selected-note actions with staged move destination"> | <img src="../../assets/screens/merthsoft/neon/hit-actions.png" width="240" alt="Drum hit actions retaining lane and source step"> |
+
+The drum track's first **FX** page is LEVEL / PAN / DLY / REV, with real drum sends shown as percentages. Its second page is the track filter. **INSERT 2** exposes MIX / TYPE / the first two sound controls on both drums and synths.
+
+| Drum FX | Drum filter | Insert blend |
+| --- | --- | --- |
+| <img src="../../assets/screens/merthsoft/neon/drum-fx.png" width="240" alt="Working drum delay and reverb sends"> | <img src="../../assets/screens/merthsoft/neon/drum-filter.png" width="240" alt="Native drum track low-pass filter"> | <img src="../../assets/screens/merthsoft/neon/insert-blend.png" width="240" alt="Insert blend page with four useful controls"> |
+
+## Master LOFI characters
+
+**FX → LOFI** selects VINYL, TAPE, VHS or CD. Their three controls are WOW/DARK/DAMAGE, FLUTTR/DARK/DRIVE, WARBLE/DARK/DAMAGE, and RATE/LATCH/MIX. Vinyl uses irregular pitch drift and sparse varied clicks/pops; tape adds flutter and saturation; VHS adds faster warble/dropouts; CD repeats tiny captured fragments. CD is microstutter, not a phrase-length CSIDMAN delay. That longer delay remains a separate planned expansion.
+
+All amounts zero bypass the processing. Characters and amounts save with sections/projects; older vinyl settings load as VINYL. The held VINYL punch uses its own temporary settings and restores the saved character after release.
+
+| Vinyl | Tape | VHS | CD |
+| --- | --- | --- | --- |
+| <img src="../../assets/screens/merthsoft/neon/lofi-vinyl.png" width="200" alt="Vinyl character controls"> | <img src="../../assets/screens/merthsoft/neon/lofi-tape.png" width="200" alt="Tape flutter, darkness and drive"> | <img src="../../assets/screens/merthsoft/neon/lofi-vhs.png" width="200" alt="VHS warble and damage"> | <img src="../../assets/screens/merthsoft/neon/lofi-cd.png" width="200" alt="CD short-fragment stutter controls"> |
+
+MIDI controllers also gain **CC11 expression**, reset by CC121/project/section adoption, and **CC0 Bank Select** with Program Change. Bank 8 selects physical user-preset slots; empty slots are ignored. Saved levels and playing/effect preferences stay intact, and stale queued Program Changes cannot overwrite newly loaded sounds. See [MIDI details](MIDI-EXPRESSION-BANKS.md).
+
+### Piano-roll grid and LOFI bypass
+
+STEP and NOTES include shaded semitone rows, octave labels and beat/bar guides.
+A white outline marks the selected independent note; the playhead spans the grid.
+PRESETS turns left to zoom in and right to zoom out through 8/16/32/64 steps.
+The graph stays below the knob cards.
+
+![Piano-roll grid with an independently sustained chord](../assets/screens/merthsoft/neon/notes.png)
+
+LOFI TYPE starts with OFF, keeping all three amounts for re-enable. OFF saves with
+projects and sections, and VINYL punch remains available as a temporary override.
+
+![LOFI starts with OFF](../assets/screens/merthsoft/neon/lofi-off.png)
+
+### Delay characters
+
+**FX → DLY TYPE** selects DIGI/TAPE/CRUSH on knob 1. The remaining knobs are TIME/FDBK/MIX for DIGI, DRIVE/TONE/MIX for TAPE, and BITS/RATE/MIX for CRUSH. RATE spans about 2.8–44 kHz; higher values are cleaner. Original DLY keeps TIME/FDBK/COLR/MIX for every type.
+DIGI preserves the original delay, TAPE compresses its repeats and CRUSH adds
+coarse resolution/sample holding. The preceding DLY page retains COLR. These
+settings use the shared delay send bus and save with sections/projects.
+Master LOFI remains separate and defaults to OFF. STEP/NOTES footers now
+explicitly name PRESETS zoom.
+
+![Tape delay type](../assets/screens/merthsoft/neon/delay-tape.png)
+
+![Crush delay bit depth and rate](../assets/screens/merthsoft/neon/delay-crush.png)

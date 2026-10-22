@@ -39,7 +39,7 @@
 #define PROJ_NG 32u                            /* the globals of formats 4 and 5 (G_COUNT until 2.4). SLOOP 2.5's
                                                 * G_DRDLY rides in the byte after sel (0 in older projects: off),
                                                 * so the format and its size do not change */
-_Static_assert(G_DRDLY == PROJ_NG && G_TXSRC == PROJ_NG + 5u && G_RMODEL == G_CLKOUT + 1u && G_VWOW == G_RMODEL + 1u && G_RTIME == G_VCRACKLE + 1u && G_COUNT == G_RTIME + 1u,
+_Static_assert(G_DRDLY == PROJ_NG && G_TXSRC == PROJ_NG + 5u && G_RMODEL == G_CLKOUT + 1u && G_VWOW == G_RMODEL + 1u && G_RTIME == G_VCRACKLE + 1u && G_LTYPE == G_RTIME + 1u && G_DTYPE == G_LTYPE + 1u && G_COUNT == G_DHOLD + 1u,
                "the globals a project holds, then G_DRDLY (then 2.6's GLO > MIDI: settings of the FM-1)");
 #define PROJ_NC6 ((uint32_t)P_ITYPE)           /* format 6: the parameters kept in 16 bits, P_LEVEL .. P_VLEAD (as 5), */
 #define PROJ_NX6 ((uint32_t)(P_E0 - P_ITYPE))  /* the 2.6 ones in a byte (0..127), then P_E0 .. P_E7 */
@@ -467,14 +467,18 @@ UI_SMALL static void proj_capture(project_t *p)        /* what is playing now, a
         p->g[i] = song.g[i];
     p->sel = song.sel;
     p->drdly = (uint8_t)song.g[G_DRDLY];
+    p->g[G_ENGSEL] = song.g[G_DTYPE] ? (int16_t)(0xED00u | (song.g[G_DTYPE] & 3)) : 0;
+    if(song.g[G_DDRIVE]!=127)p->g[G_CLRSEQ]=(int16_t)(0xD400u|song.g[G_DDRIVE]);
+    if(song.g[G_DBITS]!=8 || song.g[G_DHOLD]!=2)
+        p->g[G_INITSND]=(int16_t)(0xD800u|((song.g[G_DBITS]-4)<<3)|song.g[G_DHOLD]);
     proj_tx_put(p);
     if (song.g[G_RMODEL] || song.g[G_RTIME] != 50)
-        p->g[G_LOAD] = (int16_t)(0x5500u | (song.g[G_RTIME] & 127) << 1 | (song.g[G_RMODEL] & 1));
+        p->g[G_LOAD] = (int16_t)(0x5800u | (song.g[G_RTIME] & 127) << 3 | (song.g[G_RMODEL] & 7));
     /* NAME and SET are UI actions, not project values. Two tags distinguish old files;
      * keep the on-disk format unchanged, including song section storage. */
-    if (song.g[G_VWOW] || song.g[G_VTONE] || song.g[G_VCRACKLE]) {
+    if (song.g[G_LTYPE] || song.g[G_VWOW] || song.g[G_VTONE] || song.g[G_VCRACKLE]) {
         p->g[G_NAME] = (int16_t)(0x8000u | (song.g[G_VWOW] & 127) | (song.g[G_VTONE] & 127) << 7);
-        p->g[G_ENGGO] = (int16_t)(0x5600u | (song.g[G_VCRACKLE] & 127));
+        p->g[G_ENGGO] = (int16_t)(0x5C00u | (lofi_mode((uint32_t)song.g[G_LTYPE]) & 7) << 7 | (song.g[G_VCRACKLE] & 127));
     }
     for (i = 0; i < NTRK; i++) {
         uint32_t k;
@@ -498,6 +502,12 @@ static void proj_apply(const project_t *p, int all)
 {
     uint32_t i, k;
     undo.valid = 0;                                  /* undo never crosses project/section adoption */
+    project_revision++;
+    song.g[G_DTYPE] = ((uint16_t)p->g[G_ENGSEL] & 0xFFFCu)==0xED00u && (p->g[G_ENGSEL]&3)<3 ? p->g[G_ENGSEL]&3 : 0;
+    uint32_t drive=(uint16_t)p->g[G_CLRSEQ],crush=(uint16_t)p->g[G_INITSND];
+    uint32_t known=(crush&0xFF80u)==0xD800u && ((crush>>3)&15u)<=12u && (crush&7u)<=4u;
+    song.g[G_DDRIVE]=(drive&0xFF80u)==0xD400u?drive&127u:127;
+    song.g[G_DBITS]=known?4+((crush>>3)&15u):8;song.g[G_DHOLD]=known?crush&7u:2;
     perf_reset();
     if (sequence_preview_end) sequence_preview_end();
     groove_preview.active = 0;
@@ -508,21 +518,29 @@ static void proj_apply(const project_t *p, int all)
                                                                  * its slot and G_INFO's hold the TEXTURE) */
             song.g[i] = (int16_t)clamp(p->g[i], GP[i].min, GP[i].max);
     song.g[G_DRDLY] = (int16_t)clamp(p->drdly, GP[G_DRDLY].min, GP[G_DRDLY].max);   /* (a load and a section, as REV) */
-    uint32_t rev = (uint16_t)p->g[G_LOAD], timed = (rev & 0xFF00u) == 0x5500u;
-    song.g[G_RTIME] = timed ? clamp((rev >> 1) & 127,20,80) : 50;
-    song.g[G_RMODEL] = timed || (rev & 0xFFFEu) == 0x5350u ? rev & 1 : 0;
+    uint32_t rev = (uint16_t)p->g[G_LOAD], expanded = (rev & 0xFC00u) == 0x5800u;
+    uint32_t timed = (rev & 0xFF00u) == 0x5500u;
+    song.g[G_RTIME] = expanded || timed ? clamp((rev >> (expanded?3:1)) & 127,20,80) : 50;
+    song.g[G_RMODEL] = expanded ? ((rev & 7)<=4?rev & 7:0) : timed || (rev & 0xFFFEu) == 0x5350u ? rev & 1 : 0;
     {
+        uint32_t tag = (uint16_t)p->g[G_ENGGO];
+        uint32_t extended = (tag & 0xFC00u) == 0x5C00u;
+        uint32_t typed = extended || (tag & 0xFE00u) == 0x5A00u;
         uint32_t present = ((uint16_t)p->g[G_NAME] & 0xC000u) == 0x8000u &&
-                           ((uint16_t)p->g[G_ENGGO] & 0xFF80u) == 0x5600u;
+                           (typed || (tag & 0xFF80u) == 0x5600u);
         song.g[G_VWOW] = present ? p->g[G_NAME] & 127 : 0;
         song.g[G_VTONE] = present ? ((uint16_t)p->g[G_NAME] >> 7) & 127 : 0;
         song.g[G_VCRACKLE] = present ? p->g[G_ENGGO] & 127 : 0;
+        uint32_t mode=typed?(tag>>7)&(extended?7:3):0;
+        song.g[G_LTYPE] = present && mode<4 ? mode+1 : 0;
     }
     proj_tx_get(p);                                     /* GLO > TEXTURE (2.6): a load and a section */
     drum_tw_get(p);                                     /* (2.7) the drum sounds' TUNE and DECAY: a load and a section */
     for (k = 0; k < NTRK; k++) {
         track_t *t = &trk[k];
         const proj_trk_t *s = &p->t[k];
+        ex_off[k] = 0;                                 /* every project/section adoption restores expression */
+        pc_req[k]=0;pc_bank[k]=0;                       /* stale queued PCs cannot overwrite adopted sounds */
         seq_harmony_clear(t);
         arp_release(t);
         uint32_t e = k < NPART ? s->engine % NENGINES : 0u;

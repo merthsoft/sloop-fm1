@@ -213,6 +213,9 @@ static void lofi_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const 
     v->s[4] = lp;
 }
 
+#if FELUCCA_BOOT_PRESETS
+static preset_t LOFI_PRESETS[BP_N_LOFI_PRESETS] __attribute__((section(".lowram")));
+#else
 static const preset_t LOFI_PRESETS[] = {
     {"GAME LEAD", {0, 0, 32, 0, 0, 20, 0, 127}, {0, 60, 90, 30}, 0, 1, FX(0, 0, 36, 18)},
     {"GB BASS", {1, 1, 0, 0, 0, 0, 0, 90}, {0, 50, 70, 20}, 0, 1, FX(0, 0, 6, 0), XP(P_TRANS + 1, -12)},
@@ -224,6 +227,7 @@ static const preset_t LOFI_PRESETS[] = {
     {"WAVE LEAD", {0, 4, 40, 0, 0, 40, 0, 120}, {2, 60, 100, 30}, 0, 1, FX(0, 0, 30, 20), XP(P_GLIDE + 1, 30)},
     {"CHIP NOISE", {2, 3, 64, 0, 90, 0, 0, 127}, {0, 55, 0, 24}, 0, 0, FX(0, 0, 10, 10)},
 };
+#endif
 
 static const engine_t ENG_LOFI = {
     "LOFI", {"CHIP", "MOTN"},

@@ -2,6 +2,28 @@
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
 /* Effects: per-track DIST insert, then sends into three shared buses (chorus, tempo delay, reverb).
  * Stereo dry mix; the chorus and the reverb come back in stereo, the delay in the middle. */
+
+/* Delay tap is bounded int16. TAPE/CRUSH switching crosses DIGITAL smoothly. */
+static struct {int16_t blend,held;} delay_age;
+static int32_t delay_character_sample(int32_t x,uint32_t mode,uint32_t w)
+{
+    int32_t target=mode==1?-song.g[G_DDRIVE]*4:mode==2?512:0;
+    delay_age.blend+=clamp(target-delay_age.blend,-1,1);
+    int32_t blend=delay_age.blend;
+    if(!blend)return x; /* Settled DIGITAL avoids coloration arithmetic. */
+    int32_t y;
+    if(blend<0)y=x-x*(x<0?-x:x)/65536;
+    else {
+        if(!(w&((16u>>song.g[G_DHOLD])-1u))) {
+            uint32_t q=16u-song.g[G_DBITS];
+            int32_t v=x<0?-x:x;v=(v>>q)<<q;
+            delay_age.held=x<0?-v:v;
+        }
+        y=delay_age.held;
+    }
+    if(blend<0)blend=-blend;
+    return x+((y-x)*blend>>9);
+}
 #define DLY_LEN 65536u           /* 1.49 s: 1/4 down to 41 BPM, 1/8 dotted down to 31, 1/4 dotted down to 61 (clamped below) */
 #define CHO_LEN 2048u
 static int16_t dly_buf[DLY_LEN] __attribute__((section(".pool")));
@@ -12,11 +34,21 @@ static int16_t cho_buf[CHO_LEN] __attribute__((section(".pool")));
 #define REV_MOD 12               /* samples the modulated line moves (+-) */
 static const uint16_t REV_LINE[4] = {1559, 1931, 2389, 2791};   /* 35..63 ms, coprime */
 static const uint16_t REV_AP[2] = {556, 441};
+/* Fixed partitions retain the original storage layout. Active lengths/tuning
+ * give compact rooms, dense bright plates, and longer halls without more RAM. */
+static const struct {
+    uint16_t line[4],ap[2],diff,gain,slope,mod;
+} REV_TUNE[] = {
+    {{1559,1931,2389,2791},{556,441},16384,17000,104,12}, /* upstream STEREO */
+    {{563,733,947,1151},{113,173},14746,12000,120,2},     /* ROOM */
+    {{887,1153,1429,1777},{347,269},22938,19500,96,5},    /* PLATE */
+    {{1559,1901,2333,2749},{541,419},19661,20500,84,12}, /* HALL */
+};
 static int16_t rev_line[1559 + 1931 + 2389 + 2791 + REV_MOD + 2] __attribute__((section(".lowram")));   /* (the pool is
                                                                       * full; .lowram: the SRAM below the RAM region, app.ld) */
 static union {
     int16_t ap[556 + 441];
-    int32_t spring[4 * 11];
+    int32_t spring[2][4 * 9];
 } rev_storage __attribute__((section(".pool")));
 #define rev_ap rev_storage.ap
 static struct {
@@ -79,12 +111,14 @@ typedef struct {
  * (a sawtooth at the bass's pitch with a corner at every block: tones around 1.4 kHz and up) */
 #define LIM_HOLD 48u
 #define LIM_REL 11                      /* the release after the hold: ~46 ms (12 before the hold: ~93 ms; the same loudness) */
-static lim_t lim_dac = {.env = LIM_T, .g = 32768}, lim_usb = {.env = LIM_T, .g = 32768};
+/* Zero envelope marks fresh state; the delay buffers need no flash initializer. */
+static lim_t lim_dac, lim_usb;
 /* l, r: n (<= CTL) samples in; out: the n samples of CTL before, limited (before the knee) */
 static void lim_block(lim_t *s, int32_t *l, int32_t *r, uint32_t n)
 {
     uint32_t i, w = s->w;
     int32_t pk = 0, a, g0 = s->g, g1, dg, e = s->env;
+    if (!e) { e = LIM_T; g0 = 32768; }
     for (i = 0; i < CTL; i++) {                         /* the samples going out now and the ones after them (the
                                                          * rest of the delay, then this block): CTL ahead */
         a = s->dl[i] < 0 ? -s->dl[i] : s->dl[i], pk = a > pk ? a : pk;
@@ -214,12 +248,15 @@ static void fx_buses(const int32_t *cho_in, const int32_t *dly_in, const int32_t
     if (thr_dly && fb < 89 * 230)                       /* ECHO THROW: FDBK at least 70 %, gliding with it (2.6) */
         fb += ((89 * 230 - fb) * thr_dly) >> 15;
     int32_t dmix = song.g[G_DMIX] * 258;
-    int32_t g = 17000 + song.g[G_RSIZE] * 104, lpk = 32767 - song.g[G_RDAMP] * 200;   /* loop gain (RT60 ~0.4..4 s), damping */
+    uint32_t want=reverb_begin(),model=reverb_model.cur;
+    const typeof(*REV_TUNE) *tune=&REV_TUNE[model>1?model-1:0];
+    int32_t g = tune->gain + song.g[G_RSIZE] * tune->slope, lpk = 32767 - song.g[G_RDAMP] * 200;
     int32_t frnd = rev_frz ? 128 : 0;                  /* FREEZE: what is in the lines stays there (below: no
                                                          * loss, rounded to nearest; 0: as always, bit for bit) */
     int32_t cdepth = song.g[G_CDEPTH] * 6;
     int32_t ca0, ca1, cb0, cb1, ma, mb, dca, dcb;
     const uint32_t L0 = REV_LINE[0] + REV_MOD + 2u, B1 = L0, B2 = B1 + REV_LINE[1], B3 = B2 + REV_LINE[2];
+    uint32_t len0=tune->line[0]+REV_MOD+2u;
     {   /* the chorus' two read points (Q8 samples back) and line 0's extra length, at both ends of the block */
         int32_t s0 = osc_sine(fx.cho_ph), s1, m0 = osc_sine(fx.rev_ph), m1;
         fx.cho_ph += LFO_INC[song.g[G_CRATE] & 127];
@@ -228,10 +265,9 @@ static void fx_buses(const int32_t *cho_in, const int32_t *dly_in, const int32_t
         m1 = osc_sine(fx.rev_ph);
         ca0 = (400 << 8) + ((s0 + 32768) * cdepth >> 8), ca1 = (400 << 8) + ((s1 + 32768) * cdepth >> 8);
         cb0 = (400 << 8) + ((32767 - s0) * cdepth >> 8), cb1 = (400 << 8) + ((32767 - s1) * cdepth >> 8);
-        ma = (REV_MOD << 8) + ((m0 * REV_MOD) >> 7), mb = (REV_MOD << 8) + ((m1 * REV_MOD) >> 7);
+        ma = (REV_MOD << 8) + ((m0 * tune->mod) >> 7), mb = (REV_MOD << 8) + ((m1 * tune->mod) >> 7);
         dca = (ca1 - ca0) >> CTL_LOG2, dcb = (cb1 - cb0) >> CTL_LOG2;
     }
-    reverb_begin();
     if (!fx.dly_time) fx.dly_time = fx.dly_next = dl;
     if (!fx.dly_fade && dl != fx.dly_time) { fx.dly_next = dl; fx.dly_fade = 64; }
     for (i = 0; i < n; i++) {
@@ -254,6 +290,7 @@ static void fx_buses(const int32_t *cho_in, const int32_t *dly_in, const int32_t
             x += ((next - x) * (int32_t)(64u - fx.dly_fade)) >> 6;
             if (!--fx.dly_fade) fx.dly_time = fx.dly_next;
         }
+        x=delay_character_sample(x,(uint32_t)song.g[G_DTYPE],fx.dly_w);
         fx.dly_lp += mulq15(x - fx.dly_lp, col);
         dly_buf[fx.dly_w & (DLY_LEN - 1u)] =
             (int16_t)clamp((dly_in[i] >> 1) + mulq15(fx.dly_lp, fb), -32768, 32767);
@@ -261,7 +298,7 @@ static void fx_buses(const int32_t *cho_in, const int32_t *dly_in, const int32_t
         x = mulq15(x << 1, dmix);
         yl += x;
         yr += x;
-        if(reverb_model.cur) {
+        if(model==1) {
             spring_sample(rev_in[i],&o0,&o1);o2=o3=0;
         } else {
         /* reverb: two diffusers, then the four lines */
@@ -269,10 +306,10 @@ static void fx_buses(const int32_t *cho_in, const int32_t *dly_in, const int32_t
         {
             int16_t *c = rev_ap;
             for (k = 0; k < 2u; k++) {
-                int32_t b = c[fx.ap_i[k]], v = a + (b >> 1);
+                int32_t b = c[fx.ap_i[k]], v = a + mulq15(b,tune->diff);
                 c[fx.ap_i[k]] = (int16_t)clamp(v, -32768, 32767);
-                a = b - (v >> 1);
-                if (++fx.ap_i[k] >= REV_AP[k])
+                a = b - mulq15(v,tune->diff);
+                if (++fx.ap_i[k] >= tune->ap[k])
                     fx.ap_i[k] = 0;
                 c += REV_AP[k];
             }
@@ -281,9 +318,9 @@ static void fx_buses(const int32_t *cho_in, const int32_t *dly_in, const int32_t
             int16_t *c = rev_line;
             int32_t s0, s1, d0, d1, r = ma + (((mb - ma) * (int32_t)i) >> CTL_LOG2);   /* (between the two: never below 0) */
             uint32_t ri = fx.line_i[0] + ((uint32_t)r >> 8), rj;
-            if (ri >= L0)                                   /* (the oldest sample is at line_i: reading */
-                ri -= L0;                                   /* past it shortens line 0 by 0..2 REV_MOD) */
-            rj = ri + 1u >= L0 ? 0u : ri + 1u;
+            if (ri >= len0)                                 /* Fixed storage partitions, variable active delays. */
+                ri -= len0;
+            rj = ri + 1u >= len0 ? 0u : ri + 1u;
             o0 = c[ri] + (((c[rj] - c[ri]) * (r & 255) + frnd) >> 8);
             o1 = c[B1 + fx.line_i[1]];
             o2 = c[B2 + fx.line_i[2]];
@@ -308,14 +345,14 @@ static void fx_buses(const int32_t *cho_in, const int32_t *dly_in, const int32_t
                 c[B2 + fx.line_i[2]] = (int16_t)clamp(fx.line_lp[2] + a, -32768, 32767);
                 c[B3 + fx.line_i[3]] = (int16_t)clamp(fx.line_lp[3] - a, -32768, 32767);
             }
-            if (++fx.line_i[0] >= L0) fx.line_i[0] = 0;
-            if (++fx.line_i[1] >= REV_LINE[1]) fx.line_i[1] = 0;
-            if (++fx.line_i[2] >= REV_LINE[2]) fx.line_i[2] = 0;
-            if (++fx.line_i[3] >= REV_LINE[3]) fx.line_i[3] = 0;
+            if (++fx.line_i[0] >= len0) fx.line_i[0] = 0;
+            if (++fx.line_i[1] >= tune->line[1]) fx.line_i[1] = 0;
+            if (++fx.line_i[2] >= tune->line[2]) fx.line_i[2] = 0;
+            if (++fx.line_i[3] >= tune->line[3]) fx.line_i[3] = 0;
         }
         }
         int32_t rl=o0+o2,rr=o1-o3;
-        int32_t target=rev_frz || reverb_model.cur==((uint32_t)song.g[G_RMODEL]&1u)?32768:0;
+        int32_t target=rev_frz || model==want?32768:0;
         reverb_model.gain=clamp(reverb_model.gain+(target?512:-512),0,32768);
         if(reverb_model.gain!=32768) {rl=mulq16(rl,(uint32_t)reverb_model.gain<<1);rr=mulq16(rr,(uint32_t)reverb_model.gain<<1);}
         rev_l[i]=rl;rev_r[i]=rr;wet_l[i]=yl+rl;wet_r[i]=yr+rr;
@@ -710,7 +747,7 @@ static void mix_part_run(track_t *t, uint32_t n, mixacc_t *mx, int32_t *b)
         return;
     }
     {
-        int32_t lvl = LEVEL_Q12[t->p[P_LEVEL] ? clamp(t->p[P_LEVEL] + t->p[P_ED_FX], 1, 127) : 0], pan = live_pan(t);   /* (+ the sound's trim: 1/2 dB steps, as LEVEL's) */
+        int32_t lvl = expr_gain(LEVEL_Q12[t->p[P_LEVEL] ? clamp(t->p[P_LEVEL] + t->p[P_ED_FX], 1, 127) : 0], (uint32_t)(t - trk)), pan = live_pan(t);   /* (+ the sound's trim: 1/2 dB steps, as LEVEL's) */
         int32_t gl = 4096 - (pan > 0 ? pan * 64 : 0), gr = 4096 + (pan < 0 ? pan * 64 : 0);
         int32_t c = t->p[P_CHOR] * 258, d = send_thr(t->p[P_DLY] * 258, thr_dly), r = send_thr(t->p[P_REV] * 258, thr_rev);
         int32_t pk = t->peak;
@@ -981,7 +1018,7 @@ static struct {
                                                          * (a sample that does not end where it starts: no click) */
     uint8_t uwrap;                                      /* USR: tx_usr_next went round */
     djf_t f;                                            /* TONE */
-} tx = {.rnd = 0x2545F491};
+} tx; /* texture_reset seeds noise before the first active source. */
 DSP_INLINE int32_t tx_n16(void) { return (int32_t)(noise32(&tx.rnd) >> 16) - 32768; }   /* -32768 .. 32767 */
 static void texture_reset(uint32_t src)
 {
@@ -1245,7 +1282,7 @@ static void mix_block(int32_t *out, uint32_t n)
         mix_r[i] += wet_r[i];
     }
     dust_process(mix_l, mix_r, n);
-    vinyl_process(mix_l, mix_r, n);
+    vinyl_process_mode(mix_l, mix_r, n, lofi_mode((uint32_t)song.g[G_LTYPE]));
     punch_process(mix_l, mix_r, n);
     djf_process(mix_l, mix_r, n);
     m1 = (int32_t)song.master_q12;

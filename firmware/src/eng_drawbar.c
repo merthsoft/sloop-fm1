@@ -270,6 +270,9 @@ static void drawbar_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, con
         out[i] += mulq15(mulq15(acc[i] >> 1, amp_at(m, i)), VOICE_FS) << 1;
 }
 
+#if FELUCCA_BOOT_PRESETS
+static preset_t DRAWBAR_PRESETS[BP_N_DRAWBAR_PRESETS] __attribute__((section(".lowram")));
+#else
 static const preset_t DRAWBAR_PRESETS[] = {
     /* name, {REG, SUB, BODY, TOP, PERC, CLICK, DRIVE, ROTR}, {A D S R}, fenv, mono */
     {"SOUL ORGAN", {3, 0, 0, 0, 0, 25, 10, 1}, {0, 64, 127, 40}, 0, 0, FX(0, 0, 0, 22)},
@@ -283,6 +286,7 @@ static const preset_t DRAWBAR_PRESETS[] = {
     {"CHAPEL", {12, 0, 0, 0, 0, 10, 0, 1}, {20, 64, 127, 60}, 0, 0, FX(0, 0, 0, 50)},
     {"REGGAE ORG", {2, 0, 0, 0, 0, 60, 10, 0}, {0, 52, 0, 24}, 0, 0, FX(0, 0, 10, 15)},
 };
+#endif
 
 static const engine_t ENG_DRAWBAR = {
     "WHEEL", {"BARS", "TONE"},

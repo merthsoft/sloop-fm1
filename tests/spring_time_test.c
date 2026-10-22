@@ -13,7 +13,7 @@ static int impulse(int ms,int size) {
   if(!(t%CTL))spring_begin();
   int32_t l,r;spring_sample(t?0:120000,&l,&r);
   assert(abs(l)<(1<<22) && abs(r)<(1<<22));
-  if(first<0 && abs(l)+abs(r)>4)first=(int)t;
+  if(first<0 && abs(l)>4)first=(int)t;
  }
  assert(first>=0);return first;
 }
@@ -25,7 +25,7 @@ int main(void) {
   double rt[2];
   for(int k=0;k<2;k++) {
    impulse(k?80:20,size);
-   rt[k]=-(double)(spring.size>>8)/FS*log(1000)/log(spring.gain/32768.);
+   rt[k]=-(double)(spring.size>>8)/FS*log(1000)/log(spring.gain[0]/32768.);
   }
   assert(rt[1]/rt[0]>.95 && rt[1]/rt[0]<1.05);
   printf("SPRING nominal decay at fixed SIZE: %.3f / %.3f sec\n",rt[0],rt[1]);

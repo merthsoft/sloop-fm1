@@ -92,6 +92,15 @@ static void polish_checks(void)
     punch_clear();punch.req=punch.cur=-1;ui.layer=LY_FX;ui.force=1;layer_screen_draw();
     text_visible("DOUBLE",TE_G3,74,224);text_visible("VINYL",TE_G3,74,224);
     ppm("polish-fx");ui.layer=LY_PLAY;
+    for(uint32_t p=0;p<NPAGES;p++)if(PAGES[p].scope==SC_GLOBAL&&PAGES[p].id[0]==G_LTYPE)ui.page=p;
+    ui.home=0;ui.hot_t=0;
+    static const char *const lofi_controls[5][3]={{"WOW","DARK","DAMAGE"},{"WOW","DARK","DAMAGE"},{"FLUTTR","DARK","DRIVE"},{"WARBLE","DARK","DAMAGE"},{"RATE","LATCH","MIX"}};
+    for(uint32_t mode=0;mode<5;mode++) {
+        song.g[G_LTYPE]=mode;regular();same_as_full(regular,"LOFI mode and label change");
+        for(uint32_t k=0;k<3;k++)text_visible(lofi_controls[mode][k],TE_G4,Y_LABEL,Y_GRAPH);
+        char name[24];snprintf(name,sizeof name,"lofi-%u",mode);ppm(name);
+    }
+    song.g[G_LTYPE]=0;
     ui.force=1;tracks();ppm("polish-header");
 }
 int main(int argc,char **argv)
@@ -175,6 +184,16 @@ int main(int argc,char **argv)
         }
     }
     palette_set(NPALETTES-1u);
+    /* Every model has a complete visible label; cached edits match a full draw. */
+    for(uint32_t p=0;p<NPAGES;p++) if(!strcmp(PAGES[p].title,"REVERB"))ui.page=p;
+    ui.hot_t=0;ui.force=1;
+    for(int model=0;model<5;model++) {
+        char capture[32];song.g[G_RMODEL]=model;regular();
+        snprintf(capture,sizeof capture,"neon-reverb-%d",model);ppm(capture);
+        text_visible(N_RMODEL[model],VAL(0),26,224);
+        same_as_full(regular,"reverb type change");
+    }
+    song.g[G_RMODEL]=0;
     ui.page=page_first(FAM_ENV);TSEL->p[P_ATK]=35;TSEL->p[P_DEC]=64;
     TSEL->p[P_SUS]=85;TSEL->p[P_REL]=68;ui.hot_col=1;ui.hot_t=30;
     ui.force=1;regular();ppm("neon-envelope");

@@ -16,6 +16,15 @@ using(var input=new MemoryStream(Fm1Songs.Encode(song)))Check(Fm1Songs.Decode(in
 var canonical=File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory,"upstream271.fun6"));
 var upstreamSong=song with {Firmware="SLOOP 2.7.1",Objects=song.Objects.Select(o=>o.Id==0?new SongObject(0,canonical,SlotBuilder.Crc32(canonical)):o).ToArray()};
 using(var input=new MemoryStream(Fm1Songs.Encode(upstreamSong)))Check(Fm1Songs.Decode(input).Objects.Single(o=>o.Id==0).Data.SequenceEqual(canonical),"Genuine upstream FUN6 continuations, arp IDs and drum settings survive the phone library unchanged.");
+// Optional firmware metadata uses signed action words; the library must keep raw bytes.
+for(int mode=1;mode<=2;mode++){
+ var custom=canonical.ToArray();BinaryPrimitives.WriteUInt16LittleEndian(custom.AsSpan(8+20*2),(ushort)(0xED00|mode));
+ BinaryPrimitives.WriteUInt16LittleEndian(custom.AsSpan(8+22*2),0xD44F);
+ BinaryPrimitives.WriteUInt16LittleEndian(custom.AsSpan(8+23*2),0xD843);SongWire.Seal(custom);
+ var customSong=upstreamSong with{Objects=upstreamSong.Objects.Select(o=>o.Id==0?new SongObject(0,custom,SlotBuilder.Crc32(custom)):o).ToArray()};
+ using var input=new MemoryStream(Fm1Songs.Encode(customSong));
+ Check(Fm1Songs.Decode(input).Objects.Single(o=>o.Id==0).Data.SequenceEqual(custom),"Delay character metadata survives the phone song archive byte-for-byte.");
+}
 var bad=song with{Objects=song.Objects.Select(o=>o.Id==0?o with{Crc=0}:o).ToArray()};
 await Reject(()=>Fm1Songs.Restore(client,info,bad,_=>Task.CompletedTask,default),"Corrupt archive is rejected before touching device.");
 Check(wire.Writes.Count==0,"Invalid archive caused no writes.");

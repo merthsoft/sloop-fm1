@@ -1,3 +1,24 @@
+# Current delay/LOFI integration
+
+The native DLY TYPE page selects DIGI/TAPE/CRUSH. Its other knobs follow the
+type: TIME/FDBK/MIX, DRIVE/TONE/MIX or BITS/RATE/MIX. DLY keeps
+TIME/FDBK/COLR/MIX for every type; shared rings, timing and sends are preserved.
+Master LOFI defaults to OFF and retains its amounts for re-enable. Explicit
+saved characters and older VINYL markers still load. STEP/NOTES footers name
+PRESETS zoom and OCT tools. See [delay design and validation](LOFI-WET-EFFECTS.md).
+
+Image 580,312 bytes in a 584,336-byte slot (4,024 free), main RAM
+89,080/98,304, low RAM 28,280/29,496, audio pool 332,876/344,064.
+[Architectural headroom](ARCHITECTURAL-HEADROOM.md) documents the RAM-for-flash
+preset trade and unchanged physical update extent. Earlier figures are historical.
+
+# Current reverb expansion
+
+The current SPRING is dual-path and TYPE also offers ROOM, PLATE and HALL.
+See [reverb expansion](REVERB-EXPANSION.md) for controls, persistence, measurements
+and limitations. Earlier checkpoints below describe the first spring adapter.
+
+
 # HALF, combinations and SPRING implementation
 
 Unreleased workbench build, 2026-10-19. Implemented in the existing dirty

@@ -118,7 +118,7 @@ static void hit_render(uint32_t note, double *zc, double *tail)
     uint32_t i, n = 66150, c = 0;
     double e0 = 0, e1 = 0;
     memset(&drums, 0, sizeof drums);
-    drums.set = -2;
+    drum_factory_set = -2;
     memset(L, 0, sizeof L), memset(R, 0, sizeof R), memset(RV, 0, sizeof RV), memset(DL, 0, sizeof DL);
     rng_state = 0x1234567u;
     drum_on(note, 110);
@@ -133,6 +133,10 @@ static void hit_render(uint32_t note, double *zc, double *tail)
 }
 int main(void)
 {
+#if FELUCCA_BOOT_TABLES
+    if (!boot_tables_init()) return 100;
+#endif
+
     factory_fixture();
     { /* Frozen upstream 2.7.1 expanded bank oracle (includes upstream stronger kicks). */
         uint64_t hash = UINT64_C(14695981039346656037);

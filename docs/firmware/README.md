@@ -13,6 +13,11 @@ the website installer references the current MerthSloop package.
 - [Live vibrato, tremolo and MIDI modulation](MODULATION-WHEEL.md)
 - [LOFI chord arpeggios](LOFI-CHORD-ARP.md)
 - [Live track auto-wah and auto-pan](AUTO-WAH-DESIGN.md)
+- [Reverb types and dual-path spring](REVERB-EXPANSION.md)
+- [Selective upstream fixes and piano-roll integration status](UPSTREAM-2.8-INTEGRATION.md)
+- [Native piano roll and action sheets](PIANO-ROLL-INTEGRATION.md)
+- [Master LOFI characters](LOFI-MASTER-DESIGN.md)
+- [MIDI expression and preset banks](MIDI-EXPRESSION-BANKS.md)
 - [Recording snap and STEP editing](SEQUENCER-EDITING.md)
 - [Independent per-note ties](PER-NOTE-TIES-DESIGN.md) — native editing and playback implemented; recording/import follow-on
 - [Persistent keyboard scale lights](KEYBOARD-SCALE-LIGHTS.md)
@@ -24,6 +29,10 @@ the website installer references the current MerthSloop package.
 - [USB playback](USB-PLAYBACK-IMPLEMENTATION.md)
 - [Lossless font packing](FONT-PACKING-DESIGN.md)
 - [Measured branch optimization](OPTIMIZATION.md)
+- [Architectural headroom investigation and ranked next steps](ARCHITECTURAL-HEADROOM.md)
+- [Measured MerthSloop/main flash and RAM headroom](HEADROOM-COMPARISON.md)
+- [Duplicated-code audit and measured UI consolidation](REDUNDANCY-AUDIT.md)
+- [Optimization candidates worth suggesting upstream](UPSTREAM-OPTIMIZATION-CANDIDATES.md)
 - [Visualizers and screenshot gallery](VISUALIZERS.md)
 
 Use the [player guide](../../GUIDE.md) for controls and the

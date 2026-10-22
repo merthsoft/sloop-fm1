@@ -527,7 +527,7 @@ async function editorV9() {
   const gp = join(HERE, "../build/gen/felucca_fm6.h");
   if (existsSync(gp)) {
     const h = readFileSync(gp, "utf8").replace(/\/\*[^*]*\*\//g, "");
-    const arr = (name) => (new RegExp(`${name}\\[[^\\]]*\\](?:\\[[^\\]]*\\])?\\s*=\\s*\\{([\\s\\S]*?)\\};`).exec(h) || [])[1] || "";
+    const arr = (name) => (new RegExp(`\\b${name}\\[[^\\]]*\\](?:\\[[^\\]]*\\])?\\s*=\\s*\\{([\\s\\S]*?)\\};`).exec(h) || [])[1] || "";
     const nums = (x) => (x.match(/\d+/g) || []).map(Number);
     const fac = nums(arr("FM6_FACTORY"));
     ok(js(nums(arr("FM6_INIT"))) === js(Array.from(F.INIT_PK)) && fac.length === F.FACTORY_PK.length * 128
@@ -626,6 +626,20 @@ async function editorBackup() {
   await E.backupRestore(rq, JSON.parse(JSON.stringify(A)));   /* as written to disk and read back */
   const B = await E.backupCapture(rq, info);
   ok(js(B.objects) === js(A.objects), "backup: restore -> the same bytes again (presets, projects, samples, settings)");
+  // Native project metadata is opaque to the librarian, including negative action tags.
+  for (const mode of [1, 2]) {
+    const native = new Uint8Array(readFileSync(join(HERE, "../tests/fixtures/upstream271.fun6")));
+    new DataView(native.buffer).setUint16(8 + 20 * 2, 0xED00 | mode, true);
+    new DataView(native.buffer).setUint16(8 + 22 * 2, 0xD44F, true);
+    new DataView(native.buffer).setUint16(8 + 23 * 2, 0xD843, true);
+    let hash = 0x811c9dc5;
+    for (const b of native.subarray(0, native.length - 4)) hash = Math.imul(hash ^ b, 16777619) >>> 0;
+    new DataView(native.buffer).setUint32(native.length - 4, hash, true);
+    const tagged = JSON.parse(JSON.stringify(A));
+    Object.assign(tagged.objects.find(o => o.id === 0), {data: E.b64enc(native), len: native.length, crc: E.crc32(native) >>> 0});
+    const kept = E.backupObjects(tagged).get(0);
+    ok(kept.length === native.length && kept.every((b, i) => b === native[i]), "backup: native delay character metadata survives opaque project export/import");
+  }
   const bad = JSON.parse(JSON.stringify(A));
   bad.objects[2].data = E.b64enc(E.b64dec(bad.objects[2].data).map((x, i) => i === 3 ? x ^ 1 : x));
   let caught = "";
@@ -1645,9 +1659,9 @@ const UPGRADE = [0xF0, 0x22, 0x24, 0x35, 0x7F, 0xF7];
 
 /* an FM-1 on WebMIDI: identity, then "device asks, host answers" reads of the image */
 class FakeFM1 {
-  constructor(image, { unplugAfter = Infinity, finalIdentity = "FM-1_900", name = "FM-1", identity = "FM-1_015" } = {}) {
+  constructor(image, { unplugAfter = Infinity, finalIdentity = "FM-1_900", name = "FM-1", identity = "FM-1_015", loaderName = "Felucca Update" } = {}) {
     this.image = image; this.unplugAfter = unplugAfter; this.served = 0; this.bad = 0;
-    this.finalIdentity = finalIdentity;
+    this.finalIdentity = finalIdentity; this.loaderName = loaderName;
     this.access = { inputs: new Map(), outputs: new Map() };
     this.boot(identity, name);
   }
@@ -1683,7 +1697,7 @@ class FakeFM1 {
       this.waiting = null;
       this.served++;
       if (this.served >= this.unplugAfter) { this.input.state = this.output.state = "disconnected"; return; }
-      if (addr === 0xE0000000) setTimeout(() => this.boot("ota-FM-1_900", "Felucca Update"), 300);
+      if (addr === 0xE0000000) setTimeout(() => this.boot("ota-FM-1_900", this.loaderName), 300);
       else if (addr === 0xF0000000) setTimeout(() => this.boot(this.finalIdentity, "Felucca"), 300);
       else this.next();
     }
@@ -1708,6 +1722,21 @@ async function updater() {
   const got = await new Updater(dev.access).install(image, "FM-1_900", (k) => steps.push(k));
   ok(got === "FM-1_900" && dev.bad === 0 && steps.includes("write") && steps.at(-1) === "done",
     `fm1ota.js: install: running firmware -> loader -> Felucca (${dev.served} reads)`);
+
+  {   /* Windows names the re-enumerated update loader generically ("USB MIDI Device"): the name filter
+         misses it, so the installer must find it by its handshake or the loader "does not appear" (#loader) */
+    const win = new FakeFM1(image, { loaderName: "USB MIDI Device" });
+    const ws = [];
+    const g = await new Updater(win.access).install(image, "FM-1_900", (k) => ws.push(k));
+    ok(g === "FM-1_900" && win.bad === 0 && ws.at(-1) === "done" && !FM1_PORT.test("USB MIDI Device"),
+      "fm1ota.js: a generically-named update loader (USB MIDI Device) is still found by the handshake");
+  }
+  {   /* the same loader, but the device is already stuck in update mode: resume must find it too */
+    const win2 = new FakeFM1(image, { loaderName: "USB MIDI Device" });
+    win2.boot("ota-FM-1_900", "USB MIDI Device");
+    const done = await new Updater(win2.access).resume(image);
+    ok(done === true && win2.bad === 0, "fm1ota.js: resume finds a generically-named loader already in update mode");
+  }
 
   const rescue = new FakeFM1(image);
   rescue.boot("FM-1_000", "Felucca");

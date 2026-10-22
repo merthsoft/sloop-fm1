@@ -809,6 +809,10 @@ static job_t *add(uint32_t kind, const char *name)
 
 int main(int argc, char **argv)
 {
+#if FELUCCA_BOOT_PRESETS
+    /* Enumerating names precedes child DSP startup; restore only metadata here. */
+    if(!boot_presets_init(preset_boot_scratch,sizeof preset_boot_scratch)) abort();
+#endif
     const char *gpath = argc > 1 ? argv[1] : "tests/golden.txt";
     const char *cpath = argc > 2 ? argv[2] : "tests/cpu_baseline.txt";
     int gupd = getenv("GOLDEN_UPDATE") != 0, cupd = getenv("BUDGET_UPDATE") != 0, verbose = getenv("VERBOSE") != 0;

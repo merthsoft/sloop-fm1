@@ -3,6 +3,10 @@
 /* Felucca user interface. Four columns map to KNOB 1..4. Rendering is lazy:
  * every element remembers what it last drew and is redrawn only on change. */
 #include "version.h"
+/* Shared cold clamp: audio DSP keeps its inline version. */
+UI_SMALL static int32_t ui_clamp(int32_t v,int32_t lo,int32_t hi) {return clamp(v,lo,hi);}
+#define clamp ui_clamp
+
 static void project_save(uint32_t slot);
 static void arrangement_save(void);
 static void panel_setup(void);
@@ -18,6 +22,7 @@ static int up_load_to(track_t *t, uint32_t k);
 static uint32_t up_count(void);
 static uint32_t up_nth(uint32_t n);
 static uint32_t up_rank(uint32_t slot);
+static int32_t up_pc_index(uint32_t bank, uint32_t program, uint32_t factories);
 static void up_name(uint32_t k, char *b);
 static void up_slot_label(char *b, uint32_t k);
 static void up_ui(uint32_t op, uint32_t k);
@@ -51,6 +56,10 @@ static struct {
     uint8_t fam_last[FAM_COUNT]; /* last page used per family */
     uint8_t bank;                /* SEQ: 16-step bank (follows the cursor) */
     uint8_t cursor;              /* SEQ: step being edited (STEP page KNOB 1 moves it) */
+    int8_t roll_zoom;            /* transient viewport: -1/0/1/2 = 8/16/32/64 steps */
+    uint8_t roll_pitch;          /* NOTES identity, 0 = empty/unselected */
+    uint32_t roll_project;       /* loaded project generation owning that identity */
+    uint8_t note_context;        /* preserve identity only between NOTES and its actions */
     uint8_t entry_open;          /* SEQ: keys held since the first press of this entry */
     uint8_t tie_start, tie_voice;/* native tie gesture: source step, 0 ALL / 1..4 voice */
     uint32_t tie_sess;           /* STEP: one undo snapshot per OCT tie/rest-paint gesture */
@@ -93,6 +102,29 @@ static struct {
 } ui;
 
 UI_SMALL static const page_t *cur_page(void) { return &PAGES[ui.page]; }
+#include "ui_note_select.c"
+UI_SMALL static int notes_page(void) { return cur_page()->scope==SC_STEP && cur_page()->id[0]==4u; }
+static struct { uint8_t row,dest,hit,lane,at,track;uint32_t epoch; } note_action;
+UI_SMALL static void actions_open(uint32_t hit,uint32_t lane,uint32_t at)
+{
+    note_action.row=0;note_action.dest=note_action.at=(uint8_t)at;
+    note_action.hit=(uint8_t)hit;note_action.lane=(uint8_t)lane;
+    note_action.track=song.sel;note_action.epoch=project_revision;ui.force=1;
+    kb_grid=2;
+}
+static void actions_draw(void);
+static int actions_on(void);
+static int actions_input(uint32_t pressed,uint32_t home);
+UI_SMALL static piano_selection_t roll_selection(void)
+{
+    if(ui.roll_project!=project_revision) ui.roll_pitch=0;
+    return (piano_selection_t){ui.cursor,ui.roll_pitch};
+}
+UI_SMALL static void roll_select(piano_selection_t s)
+{
+    ui.cursor=s.step;ui.bank=(uint8_t)(s.step/16u);ui.roll_pitch=s.pitch;
+    ui.roll_project=project_revision;ui.entry_open=0;
+}
 static int32_t accel(uint32_t role, int32_t s, int32_t range);   /* ui_input.c */
 static void draw_head(void);
 static void draw_frame(void);
@@ -132,6 +164,14 @@ UI_SMALL static void note_edit_error(int result)
 UI_SMALL static void page_entered(void)
 {
     ui.tie_voice=0;ui.tie_start=255;
+    uint32_t context=!ui.home && (notes_page() || cur_page()->scope==SC_ACTION);
+    if(!context || !ui.note_context) {
+        ui.roll_pitch=0;ui.roll_project=project_revision;
+        if(context && !is_drum(TSEL)) roll_select(piano_selection_at(TSEL,ui.cursor));
+    }
+    ui.note_context=(uint8_t)context;
+    kb_grid=cur_page()->scope==SC_ACTION?2u:0u;
+    if(cur_page()->scope==SC_ACTION)actions_open(0,0,ui.cursor);
     groove_preview.active = 0;
     const page_t *pg = cur_page();
     if (pg->scope == SC_STARTER && song.sel < NPART) sequence_screen_open();
@@ -219,6 +259,10 @@ UI_SMALL static uint32_t note_voice_len(const track_t *t,uint32_t i,uint32_t voi
 }
 UI_SMALL static uint32_t note_edit_target(uint32_t *voice)
 {
+    if(notes_page() && !(fm1_in.buttons&((1u<<panel.btn[B_OCTUP])|(1u<<panel.btn[B_OCTDN])))) {
+        int slot=piano_selection_slot(TSEL,roll_selection());
+        *voice=slot>=0?(uint32_t)slot+1u:0;return ui.cursor;
+    }
     uint32_t i=ui.tie_start<trk_len(TSEL)?ui.tie_start:ui.cursor;*voice=0;
     if (ui.tie_voice && ui.tie_start<trk_len(TSEL)) {
         step_t s;note_effective(TSEL,ui.tie_start,&s);
@@ -312,12 +356,18 @@ UI_SMALL static int undo_swap(int redo)
 }
 
 /* SEQ cursor: wraps inside the pattern length, the bank follows, a step entry ends */
+UI_SMALL static uint32_t roll_span(void)
+{
+    uint32_t n=8u<<(uint32_t)clamp((int32_t)ui.roll_zoom+1,0,3);
+    return n<trk_len(TSEL)?n:trk_len(TSEL);
+}
 UI_SMALL static void cursor_set(int32_t c)
 {
     int32_t len = TSEL->p[P_SLEN] > 0 ? TSEL->p[P_SLEN] : 1;
     ui.cursor = (uint8_t)((c % len + len) % len);
     ui.bank = (uint8_t)(ui.cursor / 16u);
     ui.entry_open = 0;
+    ui.roll_pitch=0;
     if (!(fm1_in.buttons&(1u<<panel.btn[B_OCTUP]))) {ui.tie_voice=0;ui.tie_start=255;}
 }
 
@@ -430,6 +480,7 @@ UI_SMALL static void page_fix(void)
 
 UI_SMALL static void go_home(void)
 {
+    ui.note_context=0;ui.roll_pitch=0;kb_grid=0;
     groove_preview.active = 0;
     sequence_screen_close();
 #if FELUCCA_ARRANGER
@@ -590,77 +641,75 @@ enum { BK_BASS, BK_KEYS, BK_ORGAN, BK_PAD, BK_LEAD, BK_PLUCK, BK_STAB, BK_FX };
 static const char *const BANK_KIND[] = {"BASS", "KEYS", "ORGN", "PAD", "LEAD", "PLCK", "STAB", "FX"};
 _Static_assert(NENGINES<=16,"preset browser engine index fits four bits");
 /* Both indices fit a nibble; no alignment padding in this cold ROM lookup. */
-static const struct __attribute__((packed)) { uint8_t kind:4, e:4; const char *name; } BANK[] = {
-    {BK_BASS, 0, "808 BOOM"}, {BK_BASS, 0, "808 DIRTY"}, {BK_BASS, 0, "808 SLIDE"}, {BK_BASS, 0, "SUB BASS"},
-    {BK_BASS, 0, "PLUGG BASS"}, {BK_BASS, 0, "REESE"}, {BK_BASS, 0, "WOBBLE"}, {BK_BASS, 0, "ACID 303"},
-    {BK_BASS, 1, "FM BASS"}, {BK_BASS, 2, "CZ BASS"}, {BK_BASS, 6, "FAT BASS"}, {BK_BASS, 0, "FUNK BASS"},
-    {BK_BASS, 5, "WOW BASS"}, {BK_BASS, 3, "GB BASS"}, {BK_BASS, 4, "UP BASS"}, {BK_BASS, 4, "DEEP BASS"},
-    {BK_BASS, ENGI_FM6, "ROUND BASS"}, {BK_BASS, 1, "BASS GTR"}, {BK_BASS, 0, "MONO BASS"},
-    {BK_BASS, ENGI_PHYS, "PLUCK BASS"}, {BK_BASS, 3, "NES BASS"}, {BK_BASS, 0, "SAW BASS"},
-    {BK_KEYS, 1, "RHODES"}, {BK_KEYS, 1, "DX RHODES"}, {BK_KEYS, 1, "WURLI"}, {BK_KEYS, 1, "M1 PIANO"},
-    {BK_KEYS, 1, "AFRO KEYS"}, {BK_KEYS, 4, "GRAND PNO"}, {BK_KEYS, 4, "DUSTY PNO"}, {BK_KEYS, 4, "LOFI KEYS"},
-    {BK_KEYS, 2, "SOFT KEYS"}, {BK_KEYS, 1, "CLAV"}, {BK_KEYS, ENGI_FM6, "TINE EP"}, {BK_KEYS, 1, "FM GRAND"},
-    {BK_ORGAN, 7, "SOUL ORGAN"}, {BK_ORGAN, 7, "GOSPEL"}, {BK_ORGAN, 7, "JAZZ ORGAN"},
-    {BK_ORGAN, 7, "DIRTY B3"}, {BK_ORGAN, 7, "HOUSE ORGN"}, {BK_ORGAN, ENGI_FM6, "DRAWBARS"},
-    {BK_ORGAN, 6, "ACCORDION"}, {BK_ORGAN, 7, "ROCK ORGAN"}, {BK_ORGAN, 7, "CHAPEL"},
-    {BK_ORGAN, 7, "REGGAE ORG"}, {BK_PAD, 0, "WARM PAD"}, {BK_PAD, 6, "SAW PAD"}, {BK_PAD, 1, "GLASS PAD"},
-    {BK_PAD, 0, "DARK STR"}, {BK_PAD, 2, "CZ STRING"}, {BK_PAD, 0, "ATMOS PAD"}, {BK_PAD, 8, "LOFI CLOUD"},
-    {BK_PAD, 8, "VIBE HAZE"}, {BK_PAD, 5, "CHOIR AAH"}, {BK_PAD, 5, "SOUL OOH"}, {BK_PAD, ENGI_FM6, "SOFT PAD"},
-    {BK_PAD, 6, "ENSEMBLE"}, {BK_PAD, 8, "STR CLOUD"}, {BK_PAD, 8, "SHIMMER"}, {BK_PAD, 8, "DRONE"},
-    {BK_PAD, ENGI_PHYS, "BOWED MTL"}, {BK_PAD, ENGI_NOISE, "WIND"}, {BK_PAD, ENGI_PHYS, "CELLO BOW"},
-    {BK_PAD, ENGI_PHYS, "GLASS BOWL"}, {BK_PAD, ENGI_NOISE, "OCEAN"}, {BK_PAD, 2, "CZ PAD"},
-    {BK_PAD, 5, "VOX PAD"}, {BK_PAD, 8, "PNO FREEZE"}, {BK_PAD, 8, "HORN CLOUD"}, {BK_PAD, 0, "SINE PAD"},
-    {BK_PAD, 6, "PULSE PAD"}, {BK_LEAD, 0, "SUPERSAW"}, {BK_LEAD, 0, "G-FUNK LD"}, {BK_LEAD, 6, "SYNC LEAD"},
-    {BK_LEAD, 6, "HOOVER"}, {BK_LEAD, 5, "TALKBOX"}, {BK_LEAD, 3, "GAME LEAD"}, {BK_LEAD, 4, "LOFI FLUTE"},
-    {BK_LEAD, 8, "FLUTE DUST"}, {BK_LEAD, 0, "FAT LEAD"}, {BK_LEAD, 0, "PAN FLUTE"}, {BK_LEAD, 5, "HARMONICA"},
-    {BK_LEAD, ENGI_NOISE, "NZ ARCADE"}, {BK_LEAD, 3, "WAVE LEAD"}, {BK_LEAD, 2, "CZ LEAD"},
-    {BK_LEAD, 5, "ROBOT"}, {BK_LEAD, 0, "PWM LEAD"}, {BK_LEAD, 6, "SQR LEAD"}, {BK_PLUCK, 0, "TRAP PLUCK"},
-    {BK_PLUCK, 2, "RESO PLUCK"}, {BK_PLUCK, 1, "PLUGG BELL"}, {BK_PLUCK, 1, "TRAP BELL"},
-    {BK_PLUCK, 1, "MUSIC BOX"}, {BK_PLUCK, 1, "KALIMBA"}, {BK_PLUCK, 1, "MARIMBA"}, {BK_PLUCK, 4, "VIBES"},
-    {BK_PLUCK, 3, "8BIT ARP"}, {BK_PLUCK, ENGI_FM6, "GLASS BELL"}, {BK_PLUCK, ENGI_FM6, "WOOD BARS"},
-    {BK_PLUCK, ENGI_FM6, "NYLON PICK"}, {BK_PLUCK, 1, "HARP"}, {BK_PLUCK, 1, "STEEL DRUM"},
-    {BK_PLUCK, 1, "GLOCKEN"}, {BK_PLUCK, 1, "CELESTA"}, {BK_PLUCK, 1, "XYLOPHONE"},
-    {BK_PLUCK, ENGI_PHYS, "STR PLUCK"}, {BK_PLUCK, ENGI_PHYS, "SITAR"}, {BK_PLUCK, ENGI_PHYS, "PHYS HARP"},
-    {BK_PLUCK, ENGI_PHYS, "BELL TREE"}, {BK_PLUCK, ENGI_PHYS, "MODAL BAR"}, {BK_PLUCK, ENGI_PHYS, "THUMB PNO"},
-    {BK_PLUCK, ENGI_PHYS, "NYLON GTR"}, {BK_PLUCK, ENGI_PHYS, "STEEL GTR"}, {BK_PLUCK, ENGI_PHYS, "MUTED GTR"},
-    {BK_PLUCK, ENGI_PHYS, "KOTO"}, {BK_PLUCK, ENGI_PHYS, "BANJO"}, {BK_PLUCK, ENGI_PHYS, "TANPURA"},
-    {BK_PLUCK, ENGI_PHYS, "CHIMES"}, {BK_PLUCK, ENGI_PHYS, "BIG BELL"}, {BK_PLUCK, ENGI_PHYS, "VIBRA BAR"},
-    {BK_PLUCK, ENGI_PHYS, "STEEL PAN"}, {BK_PLUCK, ENGI_PHYS, "WOOD BLOCK"}, {BK_PLUCK, 3, "1BIT BEEP"},
-    {BK_PLUCK, 2, "CZ RESO"}, {BK_PLUCK, 1, "TUBE BELL"}, {BK_PLUCK, 1, "FM PLUCK"}, {BK_STAB, 6, "MIN STAB"},
-    {BK_STAB, 6, "MIN7 STAB"}, {BK_STAB, 6, "RAVE STAB"}, {BK_STAB, 6, "DUB CHORD"}, {BK_STAB, 0, "SYN BRASS"},
-    {BK_STAB, 2, "CZ BRASS"}, {BK_STAB, 4, "HORN STAB"}, {BK_STAB, 4, "STRING STB"},
-    {BK_STAB, ENGI_FM6, "BRASS SECT"}, {BK_STAB, 6, "80S POLY"}, {BK_STAB, 3, "CHIP CHORD"},
-    {BK_STAB, 6, "POWER STAB"}, {BK_FX, 4, "SCRATCH"}, {BK_FX, 4, "GM KIT"}, {BK_FX, ENGI_PHYS, "HAND DRUM"},
-    {BK_FX, ENGI_PHYS, "MEMB TOMS"}, {BK_FX, ENGI_NOISE, "RAIN"}, {BK_FX, ENGI_NOISE, "NZ METAL"},
-    {BK_FX, ENGI_PHYS, "TABLA"}, {BK_FX, ENGI_PHYS, "CONGA"}, {BK_FX, ENGI_PHYS, "TIMPANI"},
-    {BK_FX, ENGI_NOISE, "VINYL"}, {BK_FX, ENGI_NOISE, "HISS"}, {BK_FX, ENGI_NOISE, "RISER"},
-    {BK_FX, ENGI_NOISE, "NZ SNARE"}, {BK_FX, ENGI_NOISE, "BITCRUSH"}, {BK_FX, ENGI_NOISE, "RADIO"},
-    {BK_FX, 3, "CHIP NOISE"},
+static const struct __attribute__((packed)) { uint8_t kind:4, e:4; } BANK[] = {
+    {BK_BASS, 0} /* 808 BOOM */, {BK_BASS, 0} /* 808 DIRTY */, {BK_BASS, 0} /* 808 SLIDE */, {BK_BASS, 0} /* SUB BASS */,
+    {BK_BASS, 0} /* PLUGG BASS */, {BK_BASS, 0} /* REESE */, {BK_BASS, 0} /* WOBBLE */, {BK_BASS, 0} /* ACID 303 */,
+    {BK_BASS, 1} /* FM BASS */, {BK_BASS, 2} /* CZ BASS */, {BK_BASS, 6} /* FAT BASS */, {BK_BASS, 0} /* FUNK BASS */,
+    {BK_BASS, 5} /* WOW BASS */, {BK_BASS, 3} /* GB BASS */, {BK_BASS, 4} /* UP BASS */, {BK_BASS, 4} /* DEEP BASS */,
+    {BK_BASS, ENGI_FM6} /* ROUND BASS */, {BK_BASS, 1} /* BASS GTR */, {BK_BASS, 0} /* MONO BASS */,
+    {BK_BASS, ENGI_PHYS} /* PLUCK BASS */, {BK_BASS, 3} /* NES BASS */, {BK_BASS, 0} /* SAW BASS */,
+    {BK_KEYS, 1} /* RHODES */, {BK_KEYS, 1} /* DX RHODES */, {BK_KEYS, 1} /* WURLI */, {BK_KEYS, 1} /* M1 PIANO */,
+    {BK_KEYS, 1} /* AFRO KEYS */, {BK_KEYS, 4} /* GRAND PNO */, {BK_KEYS, 4} /* DUSTY PNO */, {BK_KEYS, 4} /* LOFI KEYS */,
+    {BK_KEYS, 2} /* SOFT KEYS */, {BK_KEYS, 1} /* CLAV */, {BK_KEYS, ENGI_FM6} /* TINE EP */, {BK_KEYS, 1} /* FM GRAND */,
+    {BK_ORGAN, 7} /* SOUL ORGAN */, {BK_ORGAN, 7} /* GOSPEL */, {BK_ORGAN, 7} /* JAZZ ORGAN */,
+    {BK_ORGAN, 7} /* DIRTY B3 */, {BK_ORGAN, 7} /* HOUSE ORGN */, {BK_ORGAN, ENGI_FM6} /* DRAWBARS */,
+    {BK_ORGAN, 6} /* ACCORDION */, {BK_ORGAN, 7} /* ROCK ORGAN */, {BK_ORGAN, 7} /* CHAPEL */,
+    {BK_ORGAN, 7} /* REGGAE ORG */, {BK_PAD, 0} /* WARM PAD */, {BK_PAD, 6} /* SAW PAD */, {BK_PAD, 1} /* GLASS PAD */,
+    {BK_PAD, 0} /* DARK STR */, {BK_PAD, 2} /* CZ STRING */, {BK_PAD, 0} /* ATMOS PAD */, {BK_PAD, 8} /* LOFI CLOUD */,
+    {BK_PAD, 8} /* VIBE HAZE */, {BK_PAD, 5} /* CHOIR AAH */, {BK_PAD, 5} /* SOUL OOH */, {BK_PAD, ENGI_FM6} /* SOFT PAD */,
+    {BK_PAD, 6} /* ENSEMBLE */, {BK_PAD, 8} /* STR CLOUD */, {BK_PAD, 8} /* SHIMMER */, {BK_PAD, 8} /* DRONE */,
+    {BK_PAD, ENGI_PHYS} /* BOWED MTL */, {BK_PAD, ENGI_NOISE} /* WIND */, {BK_PAD, ENGI_PHYS} /* CELLO BOW */,
+    {BK_PAD, ENGI_PHYS} /* GLASS BOWL */, {BK_PAD, ENGI_NOISE} /* OCEAN */, {BK_PAD, 2} /* CZ PAD */,
+    {BK_PAD, 5} /* VOX PAD */, {BK_PAD, 8} /* PNO FREEZE */, {BK_PAD, 8} /* HORN CLOUD */, {BK_PAD, 0} /* SINE PAD */,
+    {BK_PAD, 6} /* PULSE PAD */, {BK_LEAD, 0} /* SUPERSAW */, {BK_LEAD, 0} /* G-FUNK LD */, {BK_LEAD, 6} /* SYNC LEAD */,
+    {BK_LEAD, 6} /* HOOVER */, {BK_LEAD, 5} /* TALKBOX */, {BK_LEAD, 3} /* GAME LEAD */, {BK_LEAD, 4} /* LOFI FLUTE */,
+    {BK_LEAD, 8} /* FLUTE DUST */, {BK_LEAD, 0} /* FAT LEAD */, {BK_LEAD, 0} /* PAN FLUTE */, {BK_LEAD, 5} /* HARMONICA */,
+    {BK_LEAD, ENGI_NOISE} /* NZ ARCADE */, {BK_LEAD, 3} /* WAVE LEAD */, {BK_LEAD, 2} /* CZ LEAD */,
+    {BK_LEAD, 5} /* ROBOT */, {BK_LEAD, 0} /* PWM LEAD */, {BK_LEAD, 6} /* SQR LEAD */, {BK_PLUCK, 0} /* TRAP PLUCK */,
+    {BK_PLUCK, 2} /* RESO PLUCK */, {BK_PLUCK, 1} /* PLUGG BELL */, {BK_PLUCK, 1} /* TRAP BELL */,
+    {BK_PLUCK, 1} /* MUSIC BOX */, {BK_PLUCK, 1} /* KALIMBA */, {BK_PLUCK, 1} /* MARIMBA */, {BK_PLUCK, 4} /* VIBES */,
+    {BK_PLUCK, 3} /* 8BIT ARP */, {BK_PLUCK, ENGI_FM6} /* GLASS BELL */, {BK_PLUCK, ENGI_FM6} /* WOOD BARS */,
+    {BK_PLUCK, ENGI_FM6} /* NYLON PICK */, {BK_PLUCK, 1} /* HARP */, {BK_PLUCK, 1} /* STEEL DRUM */,
+    {BK_PLUCK, 1} /* GLOCKEN */, {BK_PLUCK, 1} /* CELESTA */, {BK_PLUCK, 1} /* XYLOPHONE */,
+    {BK_PLUCK, ENGI_PHYS} /* STR PLUCK */, {BK_PLUCK, ENGI_PHYS} /* SITAR */, {BK_PLUCK, ENGI_PHYS} /* PHYS HARP */,
+    {BK_PLUCK, ENGI_PHYS} /* BELL TREE */, {BK_PLUCK, ENGI_PHYS} /* MODAL BAR */, {BK_PLUCK, ENGI_PHYS} /* THUMB PNO */,
+    {BK_PLUCK, ENGI_PHYS} /* NYLON GTR */, {BK_PLUCK, ENGI_PHYS} /* STEEL GTR */, {BK_PLUCK, ENGI_PHYS} /* MUTED GTR */,
+    {BK_PLUCK, ENGI_PHYS} /* KOTO */, {BK_PLUCK, ENGI_PHYS} /* BANJO */, {BK_PLUCK, ENGI_PHYS} /* TANPURA */,
+    {BK_PLUCK, ENGI_PHYS} /* CHIMES */, {BK_PLUCK, ENGI_PHYS} /* BIG BELL */, {BK_PLUCK, ENGI_PHYS} /* VIBRA BAR */,
+    {BK_PLUCK, ENGI_PHYS} /* STEEL PAN */, {BK_PLUCK, ENGI_PHYS} /* WOOD BLOCK */, {BK_PLUCK, 3} /* 1BIT BEEP */,
+    {BK_PLUCK, 2} /* CZ RESO */, {BK_PLUCK, 1} /* TUBE BELL */, {BK_PLUCK, 1} /* FM PLUCK */, {BK_STAB, 6} /* MIN STAB */,
+    {BK_STAB, 6} /* MIN7 STAB */, {BK_STAB, 6} /* RAVE STAB */, {BK_STAB, 6} /* DUB CHORD */, {BK_STAB, 0} /* SYN BRASS */,
+    {BK_STAB, 2} /* CZ BRASS */, {BK_STAB, 4} /* HORN STAB */, {BK_STAB, 4} /* STRING STB */,
+    {BK_STAB, ENGI_FM6} /* BRASS SECT */, {BK_STAB, 6} /* 80S POLY */, {BK_STAB, 3} /* CHIP CHORD */,
+    {BK_STAB, 6} /* POWER STAB */, {BK_FX, 4} /* SCRATCH */, {BK_FX, 4} /* GM KIT */, {BK_FX, ENGI_PHYS} /* HAND DRUM */,
+    {BK_FX, ENGI_PHYS} /* MEMB TOMS */, {BK_FX, ENGI_NOISE} /* RAIN */, {BK_FX, ENGI_NOISE} /* NZ METAL */,
+    {BK_FX, ENGI_PHYS} /* TABLA */, {BK_FX, ENGI_PHYS} /* CONGA */, {BK_FX, ENGI_PHYS} /* TIMPANI */,
+    {BK_FX, ENGI_NOISE} /* VINYL */, {BK_FX, ENGI_NOISE} /* HISS */, {BK_FX, ENGI_NOISE} /* RISER */,
+    {BK_FX, ENGI_NOISE} /* NZ SNARE */, {BK_FX, ENGI_NOISE} /* BITCRUSH */, {BK_FX, ENGI_NOISE} /* RADIO */,
+    {BK_FX, 3} /* CHIP NOISE */,
 #if FELUCCA_SLICE
-    {BK_FX, ENGI_SLICE, "BREAK 16"}, {BK_FX, ENGI_SLICE, "CHOP 8"}, {BK_FX, ENGI_SLICE, "REVERSE"},
-    {BK_FX, ENGI_SLICE, "USR SLICE"},
+    {BK_FX, ENGI_SLICE} /* BREAK 16 */, {BK_FX, ENGI_SLICE} /* CHOP 8 */, {BK_FX, ENGI_SLICE} /* REVERSE */,
+    {BK_FX, ENGI_SLICE} /* USR SLICE */,
 #endif
 };
 #define NBANK (sizeof BANK / sizeof BANK[0])
-static uint8_t bank_pi[NBANK];                       /* the preset index of each entry in its engine */
-static uint8_t bank_ready;
-UI_SMALL static void bank_resolve(void)
-{
-    uint32_t i, k;
-    for (i = 0; i < NBANK; i++) {
-        const engine_t *e = ENGINES[BANK[i].e % NENGINES];
-        bank_pi[i] = 0xFF;
-        for (k = 0; k < e->npresets; k++)
-            if (str_eq(e->presets[k].name, BANK[i].name))
-                bank_pi[i] = (uint8_t)k;
-    }
-    bank_ready = 1;
-}
+/* Resolved against engine preset names; keep this order for stored favourites and PC. */
+static const uint8_t bank_pi[NBANK] = {
+    0, 1, 3, 2, 5, 6, 7, 4, 12, 0, 0, 8, 3, 1, 1, 10,
+    2, 18, 18, 12, 3, 20, 0, 1, 2, 4, 5, 0, 8, 9, 1, 3,
+    0, 21, 0, 1, 2, 3, 4, 6, 8, 5, 6, 7, 13, 5, 11, 14,
+    2, 15, 0, 1, 0, 1, 4, 9, 3, 4, 5, 3, 0, 15, 20, 4,
+    6, 6, 6, 7, 21, 13, 12, 9, 6, 7, 2, 0, 5, 2, 17, 16,
+    4, 2, 6, 5, 5, 19, 11, 10, 3, 10, 6, 7, 9, 8, 2, 2,
+    1, 5, 7, 17, 13, 14, 15, 16, 2, 7, 8, 0, 1, 4, 9, 10,
+    11, 13, 14, 16, 17, 18, 19, 21, 22, 5, 7, 19, 20, 1, 2, 3,
+    4, 11, 4, 3, 4, 3, 10, 4, 12, 6, 7, 5, 6, 1, 3, 23,
+    24, 25, 5, 6, 7, 8, 9, 10, 7,
+};
+static void bank_resolve(void) {} /* Existing host fixtures may call this. */
 UI_SMALL static uint32_t base_pos(uint32_t *total)            /* list index of the selected track's preset (no favourites) */
 {
     uint32_t i, cur = 0;
-    if (!bank_ready)
-        bank_resolve();
     for (i = 0; i < NBANK; i++)
         if (BANK[i].e == TSEL->eng_req && bank_pi[i] == TSEL->preset)
             cur = i;
@@ -673,8 +722,6 @@ UI_SMALL static uint32_t base_pos(uint32_t *total)            /* list index of t
 /* list index n (< total) -> engine, *k its preset; NENGINES = user preset, *k its slot (no favourites) */
 UI_SMALL static uint32_t base_at(uint32_t n, uint32_t *k)
 {
-    if (!bank_ready)
-        bank_resolve();
     if (n >= NBANK) {
         *k = up_nth(n - NBANK);
         return NENGINES;
@@ -714,8 +761,6 @@ UI_SMALL static uint32_t fav_list(uint32_t *b)                /* the favourites 
 UI_SMALL static uint32_t fav_key(void)                        /* the selected track's sound as a favourite entry */
 {
     uint32_t i;
-    if (!bank_ready)
-        bank_resolve();
     if (user_of(TSEL) < UP_SLOTS)
         return FAV_USER | user_of(TSEL);
     for (i = 0; i < NBANK; i++)
@@ -823,8 +868,6 @@ UI_SMALL static int preset_go_to(track_t *t, uint32_t n)
     int16_t fx[TRACK_BROWSE_COUNT];int result=0;
     if (is_drum(t))
         return 1;
-    if (!bank_ready)
-        bank_resolve();
     total = NBANK + up_count();
     if (n >= total)
         return 1;
@@ -847,11 +890,14 @@ UI_SMALL static void pc_poll(void)
 {
     uint32_t i;
     for (i = 0; i < NTRK; i++) {
-        uint32_t r = pc_req[i], n;
+        uint32_t r, bank, n;
         char b[12];
+        fm1_irq_off();
+        r = pc_req[i]; bank = pc_bank[i];
+        if (r) pc_req[i] = 0;
+        fm1_irq_on();
         if (!r)
             continue;
-        pc_req[i] = 0;
         n = r - 1u;
         if (is_drum(&trk[i])) {
             if (n >= DRUM_KITS)
@@ -859,8 +905,10 @@ UI_SMALL static void pc_poll(void)
             trk[i].p[P_E0] = (int16_t)n;
             if (&trk[i] == TSEL)
                 sync_reload = 1;
-        } else if (preset_go_to(&trk[i], n)) {
-            continue;
+        } else {
+            int32_t index = up_pc_index(bank, n, NBANK);
+            if (index < 0 || preset_go_to(&trk[i], (uint32_t)index)) continue;
+            n = (uint32_t)index;
         }
         str_cpy(b, "T1 PROG ", sizeof b);
         b[1] = (char)('1' + i);
@@ -917,6 +965,8 @@ UI_SMALL static void track_select(uint32_t i)
     sequence_screen_close();
     if (cur_page()->scope == SC_STARTER) go_home();
     song.sel = (uint8_t)i;
+    ui.roll_pitch=0;ui.roll_project=project_revision;
+    ui.note_context=0;
     ui.tie_start=255;ui.tie_voice=0;
     rec_follow(i);                                   /* LIVE: recording follows the selected track */
     ui.entry_open = 0;

@@ -190,6 +190,11 @@ def build_app():
     flags.append(f'-DFELUCCA_ID="{PRODUCT}"')
     if VERSION:
         flags.append(f'-DFELUCCA_VERSION="{VERSION}"')
+    # Compile a metadata probe without linking; final preset names relocate normally.
+    from pack_presets import pack as pack_presets
+    tc("cc", *flags, "-DFELUCCA_BOOT_PRESETS=0", "-c", FW / "src" / "felucca.c", "-o", OUT / "preset-probe.o")
+    pack_presets(OUT / "preset-probe.o", GEN)
+    flags.append("-DFELUCCA_BOOT_PRESETS=1")
     tc_all(("cc", "-c", FW / "crt0.S", "-o", OUT / "crt0.o"),
            ("cc", "-c", FW / "hal" / "fm1_vec.S", "-o", OUT / "fm1_vec.o"),
            ("cc", "-c", FW / "hal" / "fm1_isr.S", "-o", OUT / "fm1_isr.o"),

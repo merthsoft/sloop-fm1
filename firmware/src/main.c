@@ -1,6 +1,9 @@
 #if FELUCCA_BOOT_TABLES
 #include "boot_tables_init.h"
 #endif
+#if FELUCCA_BOOT_PRESETS
+#include "boot_presets.h"
+#endif
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
 /* FELUCCA boot and main loop. Boot order: WDT first, boot-loop guard, fatal
@@ -398,6 +401,9 @@ UI_SMALL void fm1_cstart(void)
         *d = *s;                                /* the second core's waiting loop (fm1_cpu1.h) */
 #if FELUCCA_BOOT_TABLES
     if (!boot_tables_init()) fm1_enter_uboot();
+#endif
+#if FELUCCA_BOOT_PRESETS
+    if(!boot_presets_init(&proj_tmp, sizeof proj_tmp)) fm1_enter_uboot();
 #endif
     fm1_mailbox_clear();
     fm1_guard_enable(FM1_GUARD_STACK | FM1_GUARD_WRITE | FM1_GUARD_BUS | FM1_GUARD_PC);
