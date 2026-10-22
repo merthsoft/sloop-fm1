@@ -91,9 +91,9 @@ show the previous presentation of the same controls.
 
 **SEQ → NOTES** selects one note within a chord and edits its pitch, sustain and strength. PRESETS zooms STEP/NOTES to 8, 16, 32 or 64 steps. **NOTE ACTIONS** adds selected-note move/copy/delete plus explicitly shared step timing, slide, accent and fill controls. The drum grid adds **HIT ACTIONS** for individual hit editing. Existing OCT-held tie/rest, octave and move brushes remain available.
 
-**FX → LOFI** selects OFF, Vinyl, Tape, VHS or CD, with three controls tailored to the character. Vinyl has stronger irregular wow and sparse clicks/pops; Tape adds flutter, darkening and drive; VHS adds warble and damage; CD uses short captured-fragment stutters. CD is a microstutter character, not a phrase-length delay. Settings save with projects and sections; all three amounts at zero bypass the effect. The VINYL punch remains temporary and returns to the saved character on release.
+**FX → LOFI** selects OFF, Vinyl, Tape, VHS, CD or Radio, with three controls tailored to the character. Vinyl has stronger irregular wow and sparse clicks/pops; Tape adds flutter, darkening and drive; VHS adds warble and damage; CD uses short captured-fragment stutters. Radio narrows the mix to a receiver band with drift and static. CD is a microstutter character, not a phrase-length delay. Settings save with projects and sections; all three amounts at zero bypass the effect. The **LOFI** punch temporarily intensifies the selected character. If TYPE is OFF it uses Vinyl, then returns to dry on release. Saved settings never change.
 LOFI TYPE starts at and defaults to **OFF**: it fades to dry without changing the three stored
-amounts. Selecting a character restores those amounts; VINYL punch remains
+amounts. Selecting a character restores those amounts; LOFI punch remains
 momentary over OFF and returns to dry on release. OFF is saved with the project
 and section. Its inactive controls show the retained WOW/DARK/DAMAGE amounts.
 
@@ -106,7 +106,7 @@ On the drum track, **FX page 1** provides LEVEL / PAN / DELAY / REVERB, and page
 
 ### Delay characters
 
-**FX → DLY TYPE** adds **DIGI**, **TAPE** and **CRUSH**. DIGI is the original digital delay; TAPE softly compresses each repeat, and CRUSH adds a grainy, reduced-resolution echo. Knob 1 selects TYPE. DIGI offers **TIME / FDBK / MIX**; TAPE offers **DRIVE / TONE / MIX**; CRUSH offers **BITS / RATE / MIX**. RATE runs from about 2.8 to 44 kHz; higher settings are cleaner. The preceding DLY page keeps **TIME / FDBK / COLR / MIX** for every type. This is a global delay shared by track sends; the dry instruments stay unchanged. The type saves with projects and sections.
+**FX → DLY TYPE** adds **DIGI**, **TAPE**, **CRUSH** and **DUB**. DIGI is the original digital delay; TAPE softly compresses each repeat, and CRUSH adds a grainy, reduced-resolution echo. DUB gives darker, saturated echoes with TONE filtering the first repeat as well as feedback. Knob 1 selects TYPE. DIGI offers **TIME / FDBK / MIX**; TAPE and DUB offer **DRIVE / TONE / MIX**; CRUSH offers **BITS / RATE / MIX**. RATE runs from about 2.8 to 44 kHz; higher settings are cleaner. The preceding DLY page keeps **TIME / FDBK / COLR / MIX** for every type. This is a global delay shared by track sends; the dry instruments stay unchanged. The type saves with projects and sections.
 
 <img src="assets/screens/merthsoft/neon/delay-tape.png" width="240" alt="Tape delay type and its timing, feedback and mix controls">
 
@@ -148,6 +148,7 @@ These are the implemented MerthSloop additions; the upstream engine, preset and 
 - **Overlapping note sustains:** a note can keep ringing while another attacks on the same POLY track. Hold **OCT+**, choose **ALL** or a source pitch with **knob 4**, then extend it using **knob 1**. Release OCT+ and use **LEN** to shorten the selection, or tap **EDIT** to delete it and its continuations. Existing attacks and other voices stay intact; full steps and same-pitch retriggers are protected. [Controls and current limits](docs/firmware/PER-NOTE-TIES-DESIGN.md).
 - **Recording and timing correction:** RECORD-page **SNAP** records to eighths or quarters while keeping the playback DIV intact. On STEP, hold either OCT button: **knob 2** shifts whole octaves and **knob 3** moves a note/chord by whole steps with its timing, conditions and locks. Moving into its own ties keeps the original end; other moves shift the complete tie chain. Occupied destinations are protected and gestures support undo/redo.
 - **Playable latch:** hold **ARP** or physical **SEL** (labelled SCL in SLOOP) for 700 ms while holding notes to toggle latch without stopping your playing. It works with chord mode and manually played arpeggios. Non-CHROM chord modifiers toggle on latched chords; CHROM allows literal black-key roots.
+- **Chord inversions and spread:** open **SEL → VOICING** for **INVERT / SPREAD / VLEAD / STRUM**. Rotate voices up or down, or choose CLOSE, OPEN and WIDE spacing without adding voices. Settings belong to the track, survive sound changes and save with sections/projects. Held or latched notes keep ringing until the next chord. [Controls and examples](docs/firmware/CHORD-VOICING-DESIGN.md).
 - **Octave hold handoff:** while holding an ordinary keyboard note, change octave and press its newly lit key before releasing the original. It stays sustained without a fresh attack; releasing the last holder ends it. Held pitches light their current-octave keys even with NOTES display off.
 - **Whole-pattern pitch tools:** hold **EDIT** and turn **knob 4** to shift a synth pattern by octaves, or knob 3 for semitones. Numeric shift/transpose/octave readouts follow the last gesture and undo/redo; uniform pitch bounds preserve chord intervals.
 - **Scale-aware keyboard grids and MIDI:** synth EDIT shows key-signature guides with physical-key hints (E minor: **F♯**; C minor: **E♭, A♭, B♭**) while playing/erase behavior stays unchanged. SEL shows actual mapped pitches. Set **KEYS = WHITE** to play successive scale degrees. Optional **HOME menu → MIDI SCALE → KEYBOARD** applies that pitch mapping to incoming USB/TRS MIDI; default OFF keeps literal pitches. Held notes retain their original note-off mapping when settings change. See [scale/MIDI grid guide](docs/firmware/SCALE-MIDI-GRIDS.md).
@@ -288,9 +289,9 @@ Android workflows remain available alongside them.
 
 - **Transport HALF:** momentary half tempo with unchanged note pitch and saved BPM (internal clock only).
 - **Punch combinations:** one existing effect plus LOW/HIGH/PHONE and GATE, with held-key fallback; HALF is independent.
-- **Five reverb types:** FX → REVERB → TYPE selects the original STEREO, a wider dual-path SPRING, tight ROOM, dense bright PLATE, or spacious HALL. They share the existing reverb memory; each track keeps its own send.
+- **Six reverb types:** FX → REVERB → TYPE selects the original STEREO, a wider dual-path SPRING, tight ROOM, dense bright PLATE, spacious HALL, or a dense muted DARK tail. They share the existing reverb memory; each track keeps its own send.
 - **Upstream reliability fixes:** early OCT− USB rescue, better Windows update-loader discovery, macOS USB-audio compatibility, faster encoder tracking and steadier external-clock tempo estimation are retained alongside the custom UI and editing tools.
-- **27 punch-in effects:** eleven more on the black keys (hold FX): KILL LOW / MID / HIGH, REWIND, DOUBLE TIME, FLANGER, AUTO-PAN, FREEZE, LOOP 8T, VINYL, FADE OUT.
+- **27 punch-in effects:** eleven more on the black keys (hold FX): KILL LOW / MID / HIGH, REWIND, DOUBLE TIME, FLANGER, AUTO-PAN, FREEZE, LOOP 8T, LOFI, FADE OUT.
 - **From Felucca (Leo Kuroshita):** an **INSERT** effect on every track (SOFT, HARD, FOLD, FUZZ, CRUSH, PHASR, FLANG, CHOR, with dry / wet), **LFO 2** (tempo SYNC, TRIG NOTE / FREE, POL BI / UNI), **ENV SYNC** (attack, decay and release as note values), the **ANALOG filter** as LP, BP or HP, a note's **LEN** in steps and each step's **velocity**, **MIDI LEARN** (GLO + F#3), and the latched-arp fix (#191).
 - **TEXTURE:** a looping bed under the mix (vinyl, tape, rain, wind, radio, room tone or your own sample), breathing slowly with the tempo, without taking a track (GLO → TEXTURE).
 - **Live drum mutes:** EDIT + a black key, then the sounds' keys.
@@ -707,6 +708,6 @@ See [BUILDING.md](BUILDING.md). In short: the JieLi toolchain and three files of
 
 Code: GPL-3.0-only (see [LICENSE](LICENSE), and [LICENSING.md](LICENSING.md) for the assets). No warranty. M-VAVE and FM-1 are trademarks of their owners; SLOOP is not affiliated with M-VAVE, teenage engineering, Elektron or Akai. Drum kit names describe styles, not products.
 
-Master LOFI controls and the held VINYL punch are described in the MerthSloop additions above.
+Master LOFI controls and the held LOFI punch are described in the MerthSloop additions above.
 
 **Reverb controls:** On FX → REVERB, knob 1 selects TYPE, knob 2 SIZE controls decay, and knob 3 DAMP darkens the tail. SPRING adds knob 4 **TIME** for reflection spacing (20–80 ms), independently of SIZE’s nominal decay target. Other types leave TIME inactive. SPRING uses two unequal dispersive paths for stereo width; ROOM, PLATE and HALL tune the existing feedback network for contrasting spaces. Types save with projects and sections; FREEZE defers type changes until released.

@@ -1,5 +1,12 @@
 # FM1 shared harmony, chord, and arpeggio design
 
+Native per-track inversion/spread controls are now implemented on SEL's third
+VOICING page, after the existing shared chord/modifier/voice-leading builder.
+They preserve held notes and upstream parameter IDs; see
+[voicing implementation](CHORD-VOICING-DESIGN.md). Progression pads are integrated as an arp-driven local performance mode; see
+[performance controls and scope](PROGRESSION-PERFORM-DESIGN.md). The broader
+shared-harmony/follower architecture below remains future work.
+
 Current integration uses upstream canonical arp IDs 0–14 (OFF through CHORD),
 with SHUF, ROOTALT, UPDNREP and PULSE appended at 15–18. CONV and DIVG replace
 the former OUTIN and INOUT names. Earlier incremental notes below describe the

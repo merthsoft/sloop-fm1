@@ -596,7 +596,7 @@ int main(void)
     bad += check("SPRING reflection timing section round trip",song.g[G_RTIME]==73);
     q2.g[G_LOAD]=0;proj_apply(&q2,1);
     bad += check("legacy projects default spring reflection spacing",song.g[G_RTIME]==50);
-    for(int model=0;model<=4;model++) {
+    for(int model=0;model<=5;model++) {
         song.g[G_RMODEL]=model;song.g[G_RTIME]=73;proj_capture(&q2);
         project_t imported_reverb;
         bad += check("reverb metadata survives checked file import",proj_import(&imported_reverb,&q2,sizeof q2)&&!memcmp(&imported_reverb,&q2,sizeof q2));
@@ -616,10 +616,10 @@ int main(void)
     bad += check("VINYL project round trip",song.g[G_VWOW]==37&&song.g[G_VTONE]==89&&song.g[G_VCRACKLE]==127);
     song.g[G_VWOW]=0;proj_apply(&q2,0);
     bad += check("VINYL section round trip",song.g[G_VWOW]==37);
-    for(uint32_t mode=0;mode<5;mode++) {
-        song.g[G_LTYPE]=mode;proj_capture(&q2);song.g[G_LTYPE]=4-mode;proj_apply(&q2,1);
+    for(uint32_t mode=0;mode<6;mode++) {
+        song.g[G_LTYPE]=mode;proj_capture(&q2);song.g[G_LTYPE]=5-mode;proj_apply(&q2,1);
         bad += check("LOFI character project round trip",song.g[G_LTYPE]==mode&&song.g[G_VWOW]==37&&song.g[G_VCRACKLE]==127);
-        song.g[G_LTYPE]=4-mode;proj_apply(&q2,0);
+        song.g[G_LTYPE]=5-mode;proj_apply(&q2,0);
         bad += check("LOFI character section round trip",song.g[G_LTYPE]==mode);
     }
     q2.g[G_ENGGO]=(int16_t)(0x5A00u|(3u<<7)|127u);proj_apply(&q2,1);

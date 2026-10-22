@@ -1,6 +1,54 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
 #ifndef SLOOP_HARMONY_VOICING_H
 #define SLOOP_HARMONY_VOICING_H
+static void harmony_sort_notes(uint8_t *notes, uint32_t n)
+{
+    for (uint32_t j = 1; j < n; j++) {
+        uint32_t k = j; uint8_t v = notes[j];
+        while (k && notes[k-1] > v) { notes[k] = notes[k-1]; k--; }
+        notes[k] = v;
+    }
+}
+
+/* Sorted, distinct MIDI input, at most four voices. Inversions rotate an outer
+ * voice beyond the opposite edge, including octave/sparse chords. A rotation
+ * that would leave MIDI range is refused; no note is clamped or discarded.
+ * OPEN raises alternate voices, WIDE moves the outer voices apart. Apply after
+ * automatic voice leading so these explicit choices remain audible. */
+static void harmony_shape(uint8_t *notes, uint32_t n, int32_t inversion, uint32_t spread)
+{
+    if (!n || n > 4u) return;
+    if (inversion > 3) inversion = 3;
+    if (inversion < -3) inversion = -3;
+    if (spread > 2u) spread = 2u;
+    while (inversion) {
+        uint32_t i = inversion > 0 ? 0 : n-1u;
+        int32_t v = notes[i];
+        do { v += inversion > 0 ? 12 : -12; }
+        while (inversion > 0 ? v <= notes[n-1u] : v >= notes[0]);
+        if (v < 0 || v > 127) break;
+        notes[i] = (uint8_t)v;
+        harmony_sort_notes(notes, n);
+        inversion += inversion > 0 ? -1 : 1;
+    }
+    if (n < 2u) return;
+    if (spread == 1u) {
+        /* Preserve the input indices until all alternating voices are moved. */
+        for (uint32_t i = 1; i < n; i += 2) {
+            uint32_t v = notes[i], j;
+            do {
+                v += 12;
+                for (j = 0; j < n && notes[j] != v; j++) ;
+            } while (j < n);
+            if (v < 128u) notes[i] = (uint8_t)v;
+        }
+    } else if (spread == 2u) {
+        if (notes[0] >= 12u) notes[0] -= 12u;
+        if (notes[n-1u] < 116u) notes[n-1u] += 12u;
+    }
+    if (spread) harmony_sort_notes(notes, n);
+}
+
 /* Same nearest-inversion policy for live chords and stateless ROM progressions. */
 static void harmony_voice_lead(uint8_t *notes, uint32_t n, const uint8_t *prev,
                                uint32_t pn, int octave_pair)
@@ -18,11 +66,7 @@ static void harmony_voice_lead(uint8_t *notes, uint32_t n, const uint8_t *prev,
                 cand[j] = (uint8_t)v;
             }
             if (!valid) continue;
-            for (j = 1; j < n; j++) {
-                uint32_t k = j; uint8_t v = cand[j];
-                while (k && cand[k-1] > v) { cand[k] = cand[k-1]; k--; }
-                cand[k] = v;
-            }
+            harmony_sort_notes(cand, n);
             /* Sparse scales can span an octave within one chord. Rotating such
              * a chord must not collapse two voices onto the same MIDI note. */
             for (j = 1; j < n; j++) if (cand[j] == cand[j-1]) valid = 0;

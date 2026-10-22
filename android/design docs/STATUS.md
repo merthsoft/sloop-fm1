@@ -1,3 +1,16 @@
+# Latest native firmware integration
+
+MerthSloop includes native inversion/spread controls, selected-character LOFI punch
+and a SEQUENCES PERFORM page for live progression pads with sustained direct chords or rhythmic arp output.
+Radio LOFI, Dark reverb and Dub delay expand the shared effects.
+Played/generated notes can be recorded; stored patterns and upstream file compatibility
+are preserved. This requires no Android update. See the [performance guide](../../docs/firmware/PROGRESSION-PERFORM-DESIGN.md)
+and [current measurements](../../docs/firmware/OPTIMIZATION.md).
+
+The checkpoints below describe earlier states; RELEASE-NOTES.md records later changes.
+
+---
+
 # Current firmware: MerthSloop 2.7.1.33
 
 Direct sample reads replace runtime sample decompression. USB recording and MIDI

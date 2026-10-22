@@ -1,3 +1,49 @@
+# MerthSloop firmware 2.7.1.44
+
+- LOFI adds RADIO: DRIFT/BAND/STATIC, using the existing pitch history and noise
+  with a receiver-band filter. OFF remains first/default and retains stored ID4.
+- REVERB adds DARK: dense muted stereo tails with SIZE/DAMP, existing FDN buffers.
+- DLY TYPE adds DUB: DRIVE/TONE/MIX, with dark filtering on the first repeat and
+  feedback. Existing DLY page supplies TIME/FDBK. No new delay buffer.
+- Progression PERFORM accepts ARP OFF for sustained direct chords and normal
+  recorded ties; ARP ON keeps the current rhythmic path. Both use the common
+  emitted-note list/MIDI cleanup. Crossing OFF/ON while live safely disarms.
+- Appended mode IDs fit existing storage tags; old modes/OFF and canonical upstream
+  default projects remain compatible. New-mode full/section save/load checks pass.
+- Image 583,776/584,336 (560 free), main RAM 89,128/98,304, low RAM
+  28,280/29,496, pool 332,876/344,064. Combined delta over .43:608 flash/16 main RAM.
+- Frequency/decay/bounds/silence/transition tests, direct performance recording,
+  sanitizer checks and normal audio goldens pass. Hardware feel remains user testing.
+
+# MerthSloop firmware 2.7.1.43
+
+- SEQUENCES adds a fifth PERFORM page: LIVE / OCTAVE / HOLD / SLOT.
+- Local white-key pads select stock/custom progression chords into the existing
+  arp. Later pads repeat the progression an octave higher. Changes are NOW-only;
+  black modifiers and starter-rhythm output remain deferred.
+- Other tracks continue; the owner's stored pattern is preserved and silent.
+  REC captures generated arp notes with normal tempo/count-in/quantization;
+  the saved FREE preference is unchanged. MIDI input is isolated on the live owner.
+- STOP, navigation, load, preset/track changes and panic release ownership.
+- Image 583,168/584,336 (1,168 free); main RAM 89,112/98,304,
+  low RAM 28,280/29,496; pool 332,876/344,064. No new audio buffers/voices.
+- Actual UI/arp/MIDI/recording ownership checks and normal audio regressions pass;
+  hardware performance feel remains user validation.
+
+# MerthSloop firmware 2.7.1.42
+
+- SEL adds a third VOICING page: INVERT/SPREAD/VLEAD/STRUM.
+- Per-track inversion -3..+3 and CLOSE/OPEN/WIDE spread preserve note count
+  and pitch classes. Held/latched notes stay unchanged until the next chord.
+- Track settings survive preset changes and project/section/autosave restoration
+  without changing upstream P IDs or FUN6 size; neutral upstream fixture stays exact.
+- Image 580,652/584,336 bytes (3,684 free), main RAM 89,096/98,304,
+  low RAM 28,280/29,496, pool 332,876/344,064. No new audio buffers or voices.
+- LOFI punch boosts the selected Vinyl/Tape/VHS/CD character. OFF uses Vinyl
+  temporarily; stronger saved amounts are never reduced and release restores them.
+- Progression performance is designed and privately prototyped separately; it
+  is not included in this release. Hardware audition remains user testing.
+
 # MerthSloop firmware 2.7.1.41
 
 - Shared physical/MIDI step-entry setup and HOME/parameter-card drawing. The

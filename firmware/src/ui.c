@@ -619,6 +619,7 @@ UI_SMALL static void track_fx_reset(void)
 UI_SMALL static void track_defaults(track_t *t)
 {
     uint32_t i;
+    t->chord_inv=t->chord_spread=0;
     for (i = 0; i < P_E0; i++)
         t->p[i] = TP[i].def;
     track_defaults_steps(t);

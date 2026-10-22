@@ -20,7 +20,8 @@ using(var input=new MemoryStream(Fm1Songs.Encode(upstreamSong)))Check(Fm1Songs.D
 for(int mode=1;mode<=2;mode++){
  var custom=canonical.ToArray();BinaryPrimitives.WriteUInt16LittleEndian(custom.AsSpan(8+20*2),(ushort)(0xED00|mode));
  BinaryPrimitives.WriteUInt16LittleEndian(custom.AsSpan(8+22*2),0xD44F);
- BinaryPrimitives.WriteUInt16LittleEndian(custom.AsSpan(8+23*2),0xD843);SongWire.Seal(custom);
+ BinaryPrimitives.WriteUInt16LittleEndian(custom.AsSpan(8+23*2),0xD843);
+ BinaryPrimitives.WriteUInt16LittleEndian(custom.AsSpan(8+31*2),(ushort)(0x8000|20|(8<<5)|(4<<10)));SongWire.Seal(custom);
  var customSong=upstreamSong with{Objects=upstreamSong.Objects.Select(o=>o.Id==0?new SongObject(0,custom,SlotBuilder.Crc32(custom)):o).ToArray()};
  using var input=new MemoryStream(Fm1Songs.Encode(customSong));
  Check(Fm1Songs.Decode(input).Objects.Single(o=>o.Id==0).Data.SequenceEqual(custom),"Delay character metadata survives the phone song archive byte-for-byte.");

@@ -54,9 +54,13 @@ static int seq_arp_route(const track_t *t)
 { return !is_drum(t) && t->p[P_AMODE] && t->p[P_AORDER] >= AORDER_SEQ_NOTE; }
 static void seq_harmony_clear(track_t *t)
 { uint32_t i = (uint32_t)(t - trk); if (i < NPART) seq_harmony[i].n = 0; }
+static volatile struct { uint8_t active, part, key, direct; } progression;
+static uint32_t (*progression_build)(uint32_t key, uint8_t *out);
+static int progression_external_busy(uint32_t part);
+static void progression_stop(void);
 static uint32_t kb_prev;
 /* per key: what its press started, so its release ends the same (whatever the layer or track is now) */
-enum { KS_NONE, KS_NOTE, KS_DRUM, KS_ROLL, KS_ERASE, KS_FX, KS_UI, KS_MOD, KS_MOD_LATCH };
+enum { KS_NONE, KS_NOTE, KS_DRUM, KS_ROLL, KS_ERASE, KS_FX, KS_UI, KS_MOD, KS_MOD_LATCH, KS_PROGRESSION };
 static uint8_t chord_latch_mods[NPART];              /* toggled chord qualities, owned by each synth */
 static uint8_t kb_kind[27], kb_trk[27], kb_n[27], kb_nt[27][4], kb_root[27];   /* kb_root: a chord key's note (CHORD+) */
 static uint8_t chord_latch_n[NPART], chord_latch_notes[NPART][4], chord_latch_root[NPART];
@@ -369,14 +373,6 @@ static uint32_t scale_up(const track_t *t, uint32_t n, uint32_t deg)   /* deg sc
     }
     return (uint32_t)m;
 }
-static void sort_notes(uint8_t *c, uint32_t n)
-{
-    uint32_t a, b;
-    for (a = 1; a < n; a++)
-        for (b = a; b > 0 && c[b - 1u] > c[b]; b--) {
-            uint8_t x = c[b]; c[b] = c[b - 1u]; c[b - 1u] = x;
-        }
-}
 /* the chord of white key n with the modifiers held, voiced (VLEAD); its notes (<= 4) into c[] */
 #include "harmony_voicing.h"
 static uint32_t chord_play_notes(track_t *t, uint32_t n, uint32_t mods, uint8_t *c)
@@ -420,7 +416,7 @@ static uint32_t chord_play_notes(track_t *t, uint32_t n, uint32_t mods, uint8_t 
             }
         }
     }
-    sort_notes(c, k);
+    harmony_sort_notes(c, k);
     if (t->p[P_VLEAD] && part < NPART && vl_n[part] && k) {   /* the inversion and octave nearest the last chord */
         harmony_voice_lead(c, k, vl_prev[part], vl_n[part], type == CH_OCTAVE);
     }
@@ -429,12 +425,14 @@ static uint32_t chord_play_notes(track_t *t, uint32_t n, uint32_t mods, uint8_t 
             c[j] = (uint8_t)(c[j] + 12u);
     } else if ((mods & CM_INV) && type != CH_OCTAVE && k >= 2u && c[0] + 12u < 128u) {
         c[0] = (uint8_t)(c[0] + 12u);
-        sort_notes(c, k);
+        harmony_sort_notes(c, k);
     }
     if (part < NPART) {
         memcpy(vl_prev[part], c, k);
         vl_n[part] = (uint8_t)k;
     }
+    /* Keep explicit register choices out of automatic voice-leading history. */
+    harmony_shape(c,k,t->chord_inv,(uint32_t)t->chord_spread);
     return k;
 }
 
@@ -1447,14 +1445,15 @@ static void arp_release(track_t *t)
     t->arp_n = 0;
 }
 
-static void arp_emit(track_t *t, uint32_t note, uint32_t vel)
+static void generated_emit(track_t *t, uint32_t note, uint32_t vel, int hold)
 {
     t->arp_notes[t->arp_n++] = (uint8_t)note;
     trk_note_on(t, note, vel);
     seq_out_on(t, note, vel);
     if (((song.rec >> trk_index(t)) & 1u) && song.playing)
-        rec_note(t, note, vel, 0, 0);
+        rec_note(t, note, vel, 0, hold);
 }
+static void arp_emit(track_t *t,uint32_t note,uint32_t vel) { generated_emit(t,note,vel,0); }
 
 /* One generated step; explicit active-note count also supports MIDI note zero. */
 static int arp_step(track_t *t)
@@ -1493,6 +1492,7 @@ static int arp_step(track_t *t)
  * each note it plays is recorded (what you hear) */
 static void arp_tick(track_t *t, uint32_t adv)
 {
+    if(progression.active && progression.direct && t==&trk[progression.part]) return;
     uint32_t div = (uint32_t)t->p[P_ARATE] % NDIV_SHORT, u = div_units(div), into, slen, abs = 0, fire = 0;
     if (t->arp_n) {
         if (t->arp_off <= adv) {
@@ -1643,6 +1643,7 @@ static void input_on(track_t *t, uint32_t note, uint32_t vel)
         drum_input(midi_drum_lane(note), vel_lvl(vel), 0, 1);
         return;
     }
+    if(progression.active && t==&trk[progression.part]) return;
     last_note = (uint8_t)note;
     {   /* (2.6) played again under the pedal: the note-off it waited with first (the arp's key count, a recording's
          * note end), then this one held by its key */
@@ -1680,6 +1681,7 @@ static void input_on(track_t *t, uint32_t note, uint32_t vel)
 
 static void input_off(track_t *t, uint32_t note)
 {
+    if(progression.active && t==&trk[progression.part]) return;
     if (is_drum(t)) {
         if (ft_on && ft_trk == TRK_DRUM)
             ft_note_off(midi_drum_lane(note));
@@ -1709,6 +1711,59 @@ static void input_off_now(track_t *t, uint32_t note)
         for (i = 0; i < t->arp_n && t->arp_notes[i] != note; i++) ;
         if (!seq_arp_route(t) || i == t->arp_n) trk_note_off(t, note);
     }
+}
+
+/* Exclusive local progression source; arp_tick remains the only rhythm producer. */
+static void seq_release(track_t *t);
+static void progression_clear_source(void)
+{
+    track_t *t=&trk[progression.part];
+    if(progression.direct) for(uint32_t i=0;i<t->arp_n;i++)rec_release(t,t->arp_notes[i]);
+    arp_release(t);
+    t->nheld=t->arp_phys=t->arp_new=0;
+    progression.key=255;
+}
+static void progression_stop(void)
+{
+    if (!progression.active) return;
+    progression_clear_source();
+    uint32_t into,slen;
+    trk[progression.part].seq_abs=trk_grid(&trk[progression.part],&into,&slen);
+    seq_harmony[progression.part].routed=(uint8_t)seq_arp_route(&trk[progression.part]);
+    progression.active=0;
+}
+static int progression_arm(void)
+{
+    if (song.sel>=NPART || song.playing || transport_req || song.rec || rec_wait || ft_on || ((panic_req>>song.sel)&1u) || fm1_in.notes || progression_external_busy(song.sel)) return 0;
+    track_t *t=&trk[song.sel];
+    if (!progression_build || t->nheld || t->arp_phys || sus_on[song.sel] || chord_latch_n[song.sel] || arp_chord_latch_n[song.sel]) return 0;
+    progression_stop();
+    if(sequence_preview_end) sequence_preview_end();
+    locks_restore(t);seq_release(t);seq_harmony_clear(t);
+    progression.part=(uint8_t)song.sel;progression.direct=(uint8_t)!t->p[P_AMODE];
+    vl_n[song.sel]=0;
+    progression.key=255;progression.active=1;
+    song.seq_mode=0;
+    return 1;
+}
+static void progression_press(uint32_t key)
+{
+    track_t *t=&trk[progression.part];uint8_t chord[4];
+    uint32_t n=progression_build(key,chord);
+    if (!n) return;
+    /* Live arp recording uses the regular tempo recorder, including count-in. */
+    if (rec_wait && !song.playing && !ci_on && !rec_count) {
+        seq_start();
+        if (song.playing) rec_begin();
+    }
+    uint32_t had=t->nheld;
+    progression_clear_source();
+    memcpy(t->held,chord,n);memset(held_key[progression.part],0,n);
+    memset(arp_live_vel[progression.part],100,n);
+    t->nheld=(uint8_t)n;t->arp_phys=1;t->arp_new=(uint8_t)!had;
+    t->arp_idx=0xFFFFFFFFu;t->arp_shuffle_n=0;
+    progression.key=(uint8_t)key;
+    if(progression.direct) for(uint32_t i=0;i<n;i++)generated_emit(t,chord[i],100,1);
 }
 
 static void chord_latch_release(uint32_t part)
@@ -2020,6 +2075,14 @@ static void key_down(uint32_t k)
     kb_trk[k] = (uint8_t)sel;
     kb_n[k] = 0;
     if(kb_grid==2u && layer==LY_PLAY)return; /* sheet-owned keys also have no later key-up action */
+    if(progression.active && progression.part==sel && layer!=LY_FX) {
+        /* Held musical/action layers cannot become a second harmony/erase/roll producer. */
+        if(layer==LY_PLAY && !layer_buttons() && ly_lock==LY_PLAY) {
+            kb_kind[k]=KS_PROGRESSION;
+            progression_press(k);
+        }
+        return;
+    }
     switch (layer) {
     case LY_FX: {                                     /* FX held: the keys pick a punch-in effect (white and black) */
         int32_t fx = punch_fx_of_key(k);
@@ -2152,6 +2215,9 @@ static void key_up(uint32_t k)
     track_t *t = &trk[kb_trk[k] % NTRK];
     kb_kind[k] = KS_NONE;
     switch (kind) {
+    case KS_PROGRESSION:
+        if(progression.active && progression.key==k && !t->p[P_AHOLD]) progression_clear_source();
+        return;
     case KS_FX:
         punch_hold(0,punch_fx_of_key(k),0);
         return;
@@ -2502,6 +2568,7 @@ static void seq_release(track_t *t)
 
 static void seq_stop(void)
 {
+    progression_stop();
     mod_reset(NTRK);
     if (sequence_preview_end) sequence_preview_end();
     groove_preview.active = 0;
@@ -2761,6 +2828,8 @@ static int32_t micro_units(const track_t *t, uint32_t abs, uint32_t slen)
 static void seq_tick(track_t *t, uint32_t adv)
 {
     uint32_t len = trk_len(t), into, slen, abs, idx, nabs, fire = 0;
+    uint32_t live=progression.active && progression.part==trk_index(t);
+
     int32_t rel;
     if (t->seq_n && !(t->seq_hold & 1u) && t->seq_off) {
         if (t->seq_off <= adv)
@@ -2777,7 +2846,10 @@ static void seq_tick(track_t *t, uint32_t adv)
             t->seq_abs = abs;                        /* DIV changed: the next step of the new grid plays */
         t->seq_den = (uint8_t)div;
     }
-    if (t->seq_abs == SEQ_NONE) {                    /* PLAY: the step the grid is in (nudged late: once there) */
+    if(live) {
+        nabs=abs;
+        fire=t->seq_abs!=abs && !(abs+1u==t->seq_abs);
+    } else if (t->seq_abs == SEQ_NONE) {                    /* PLAY: the step the grid is in (nudged late: once there) */
         nabs = abs;
         fire = micro_units(t, nabs, slen) <= (int32_t)into;
     } else {
@@ -2800,6 +2872,11 @@ static void seq_tick(track_t *t, uint32_t adv)
         t->rat_lanes = 0;
         if (!idx)
             t->pass++;                               /* a new pass of the loop (recording: one undo) */
+        if(live) {
+            rec_hold(t,idx,len,nabs);
+            t->rskip_n=0;t->rskip_lanes=0;
+            return;
+        }
         if (erasing(t))
             erase_step(t, idx);                      /* EDIT + key held: gone as it passes */
         t->seq_skip = (uint8_t)!step_plays(t, idx);
@@ -2840,7 +2917,7 @@ static void seq_tick(track_t *t, uint32_t adv)
         rel = (int32_t)into - ((int32_t)slen + micro_units(t, abs + 1u, slen));
     else
         rel = (int32_t)into;
-    if (t->seq_abs != SEQ_NONE && !seq_arp_route(t))
+    if (!live && t->seq_abs != SEQ_NONE && !seq_arp_route(t))
         seq_ratchets(t, rel < 0 ? 0u : (uint32_t)rel, event_step_units(t,t->seq_abs,slen));
 }
 
@@ -2921,6 +2998,10 @@ static void midi_scale_restore_route(uint32_t key)
 }
 static uint32_t midi_scale_input(track_t *t, uint32_t key, uint32_t note, uint32_t vel, int on)
 {
+    if(progression.active && trk_index(t)==progression.part && on) {
+        midi_scale_restore_route(key);
+        return KB_SILENT;
+    }
     uint32_t i, free = MIDI_SCALE_HELD, part = trk_index(t);
     for (i = 0; i < MIDI_SCALE_HELD; i++) {
         if (!midi_scale_held[i].part) { if (free == MIDI_SCALE_HELD) free = i; continue; }
@@ -2970,6 +3051,13 @@ static void midi_scale_usb_reset(void)
  * wheel let go after another track got selected (a SEL channel, IN = CH n) still lets go of the one they held */
 static uint8_t ch_sus[16], ch_bend[16];
 static uint8_t ch_bank[2][16];                 /* USB/TRS each latch CC0 per channel */
+static int progression_external_busy(uint32_t part)
+{
+    if (kh_phys[part] || kh_set[part][0] || kh_set[part][1] || kh_set[part][2] || kh_set[part][3]) return 1;
+    for(uint32_t i=0;i<MIDI_SCALE_HELD;i++) if(midi_scale_held[i].part==part+1u) return 1;
+    for(uint32_t i=0;i<16;i++) if(ch_sus[i]==part+1u) return 1;
+    return 0;
+}
 static void sus_set(track_t *t, int on);
 static void midi_pedal(uint32_t ch, track_t *t, uint32_t value)
 {
@@ -3317,7 +3405,7 @@ static void events_block(uint32_t n)
         } else if (ci_on) {
             ci_on = 0;                              /* PLAY again during the count-in: back to armed */
         } else if (!ext && rec_wait && rec_count && !song.playing && !mclk_on() &&
-                   !(project_empty() && !rec_tempo)) {
+                   !(project_empty() && !rec_tempo && !progression.active)) {
             ci_on = 1;                              /* COUNT: one bar of clicks first (below) */
             ci_u = 0;
             ci_beat = 0;
@@ -3407,6 +3495,8 @@ static void events_block(uint32_t n)
         route_was = (uint8_t)rt;
         chans_was = chans;
     }
+    if(progression.active && (song.sel!=progression.part || progression.direct!=(uint8_t)!trk[progression.part].p[P_AMODE] || ((panic_req>>progression.part)&1u))) progression_stop();
+    if(progression.active && !trk[progression.part].p[P_AHOLD] && progression.key<27u && !(fm1_in.notes&(1u<<progression.key))) progression_clear_source();
     pr = panic_req;
     panic_req = 0;
     {
@@ -3474,7 +3564,7 @@ static void events_block(uint32_t n)
         }
         if (i < NPART)
             engine_block(t);                          /* engine switch: fade, then switch (voice.c) */
-        if (i < NPART && seq_harmony[i].routed != seq_arp_route(t)) {
+        if (i < NPART && !(progression.active && progression.part==i) && seq_harmony[i].routed != seq_arp_route(t)) {
             step_t held = {.n = 0};
             uint8_t velocity[4];
             uint32_t route = (uint32_t)seq_arp_route(t), j;

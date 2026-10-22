@@ -1,0 +1,195 @@
+/* SPDX-License-Identifier: GPL-3.0-only */
+/* Real browser, physical key edges, USB/TRS decoder, arp and recorder together. */
+#define UI_PAGES_HARNESS_ONLY 1
+#include "ui_pages_test.c"
+
+typedef struct { uint8_t part, note, vel; uint16_t step; } attack_t;
+static attack_t attacks[4096];
+static uint32_t nattacks, noffs, sounding[16][128], capture_step;
+static void drain_output(void)
+{
+    while(mo_r!=mo_w) {
+        uint32_t p=midi_out_q[mo_r++%MOUT_Q], st=(p>>8)&240u, ch=(p>>8)&15u;
+        uint32_t note=(p>>16)&127u, vel=(p>>24)&127u;
+        if(st==0x90u && vel) {
+            if(sounding[ch][note])fprintf(stderr,"duplicate on: ch=%u note=%u buttons=%x key=%u live=%u queue=%u/%u\n",ch,note,fm1_in.buttons,progression.key,progression.active,mo_r,mo_w);
+            assert(!sounding[ch][note]); sounding[ch][note]=1;
+            assert(nattacks<4096u);
+            attacks[nattacks++]=(attack_t){(uint8_t)ch,(uint8_t)note,(uint8_t)vel,(uint16_t)capture_step};
+        } else if(st==0x80u || (st==0x90u&&!vel)) {
+            assert(sounding[ch][note]); sounding[ch][note]=0;noffs++;
+        }
+    }
+}
+static void advance(uint32_t count)
+{
+    while(count--) { uint32_t later;capture_step=rec_target(&trk[0],&later)%trk_len(&trk[0]);events_block(CTL);drain_output(); }
+}
+static void keys(uint32_t mask) {fm1_in.notes=mask;advance(1);}
+static void knob(uint32_t k,int32_t delta) {encs[panel.enc[EN_K1+k]]=delta;frame();drain_output();advance(1);}
+static void midi(uint32_t cable,uint32_t status,uint32_t a,uint32_t b)
+{midi_in_q[mi_w++%MQ]=(cable<<4)|(status>>4)|status<<8|a<<16|b<<24;advance(1);}
+static void held(const uint8_t *want,uint32_t n)
+{if(TSEL->nheld!=n||memcmp(TSEL->held,want,n))fprintf(stderr,"held: key=%u active=%u count=%u actual %u %u %u wanted %u %u %u buttons=%x\n",progression.key,progression.active,TSEL->nheld,TSEL->held[0],TSEL->held[1],TSEL->held[2],want[0],want[1],want[2],fm1_in.buttons);assert(TSEL->nheld==n);assert(!memcmp(TSEL->held,want,n));}
+static void stopped(void)
+{
+    seq_stop();drain_output();
+    assert(!progression.active&&!trk[0].nheld&&!trk[0].arp_n);
+    for(uint32_t ch=0;ch<16;ch++)for(uint32_t n=0;n<128;n++)assert(!sounding[ch][n]);
+    assert(noffs==nattacks);
+}
+static void reset_case(void)
+{
+    seq_stop();song.rec=rec_wait=ci_on=ft_on=0;transport_req=0;clk_beat=clk_pos=0;
+    fm1_in.notes=fm1_in.buttons=kb_prev=notes_seen=edges_btn=0;ly_lock=LY_PLAY;
+    panic_req=(1u<<NTRK)-1u;events_block(CTL);
+    host_tracks_init();layers_init();panel=PANEL_DEFAULT;song.sel=0;song.seq_mode=0;song.octave=0;
+    song.g[G_MIDI]=1;song.g[G_BPM]=120;song.g[G_CLKOUT]=0;song.g[G_SYNC]=0;
+    usb.config=1;usb.detached=0;
+    go_home();
+    for(uint32_t p=0;p<NPAGES;p++)if(PAGES[p].scope==SC_STARTER)ui.page=(uint8_t)p;
+    ui.home=0;page_entered();assert(sequence_browser&&sequence_page==0);
+    encs[panel.enc[EN_SELECT]]=4;frame();assert(sequence_page==4&&cur_page()->scope==SC_STARTER);
+    sequence_sel=NSEQUENCE_STARTERS;sequence_custom_count=4;
+    sequence_custom_degree[0]=4;sequence_custom_degree[1]=0;sequence_custom_degree[2]=1;sequence_custom_degree[3]=3;
+    sequence_root=0;sequence_scale=2;sequence_octave=0;sequence_vlead=0;
+    TSEL->p[P_AMODE]=ARP_UP;TSEL->p[P_AHOLD]=0;TSEL->p[P_AOCT]=1;TSEL->p[P_APROB]=127;
+    TSEL->p[P_TRANS]=0;TSEL->p[P_VOICE]=V_POLY;TSEL->p[P_SLEN]=16;
+    TSEL->p[P_ARATE]=2;TSEL->p[P_ASWING]=0;TSEL->p[P_AORDER]=AORDER_NOTE;
+    trk[1].p[P_AMODE]=ARP_UP;trk[1].p[P_AHOLD]=0;
+    TSEL->chord_inv=TSEL->chord_spread=0;
+    rec_count=rec_tempo=rec_quant_off=0;rec_snap[0]=REC_SNAP_TRACK;
+    progression_build=progression_chord;
+    advance(1);fm1_ms+=LY_QUIET_MS;frames(2);memset(mo_set,0,sizeof mo_set);mo_r=mo_w=0;
+    memset(sounding,0,sizeof sounding);nattacks=noffs=0;
+}
+static void arm(void){knob(0,1);if(!progression.active||!sequence_browser||sequence_page!=4)fprintf(stderr,"arm: active=%u browser=%u page=%u held=%u phys=%u sus=%u ext=%u rec=%u wait=%u play=%u panic=%u lock=%u quiet=%u\n",progression.active,sequence_browser,sequence_page,TSEL->nheld,TSEL->arp_phys,sus_on[0],progression_external_busy(0),song.rec,rec_wait,song.playing,panic_req,ly_lock,ly_quiet());assert(progression.active&&sequence_browser&&sequence_page==4);}
+
+int main(int argc,char **argv)
+{
+    outdir=argc>1?argv[1]:"build/host";
+    reset_case();arm();
+    keys(1);held((uint8_t[]){67,70,74},3);
+    uint32_t phase=TSEL->arp_pos;
+    progression_press(2);assert(TSEL->arp_pos==phase&&!TSEL->arp_new);
+    keys(1|(1u<<2));held((uint8_t[]){60,63,67},3);
+    keys(1u<<2);held((uint8_t[]){60,63,67},3); /* superseded pad up cannot release new harmony */
+    keys(0);assert(!TSEL->nheld&&!TSEL->arp_n);
+    keys(1u<<4);held((uint8_t[]){62,65,68},3);keys(0);
+    keys(1u<<6);held((uint8_t[]){65,68,72},3);keys(0);
+    keys(1u<<7);held((uint8_t[]){79,82,86},3);keys(0);
+    keys(1u<<1);assert(!TSEL->nheld);keys(0); /* black keys deliberately unused in slice 1 */
+    knob(2,1);keys(1);keys(0);held((uint8_t[]){67,70,74},3);
+    uint8_t old[4];memcpy(old,TSEL->held,3);
+    knob(1,1);held(old,3);keys(1);held((uint8_t[]){79,82,86},3);keys(0);
+    uint32_t previous=nattacks;keys(1);advance(800);assert(nattacks>previous);keys(0);
+    knob(2,-1);assert(!TSEL->nheld&&!TSEL->arp_n);stopped();
+    puts("perform: custom 5-1-2-4, stale release, HOLD, retrigger, next-chord octave and black-key exclusion PASS");
+
+    reset_case();arm();sequence_vlead=1;
+    keys(1);uint8_t lower[4];memcpy(lower,TSEL->held,3);keys(0);
+    keys(1u<<7);for(uint32_t i=0;i<3;i++)assert(TSEL->held[i]==lower[i]+12);keys(0);stopped();
+    reset_case();arm();TSEL->chord_inv=1;TSEL->chord_spread=1;keys(1);
+    held((uint8_t[]){70,79,86},3);stopped();
+    reset_case();sequence_sel=4;arm();keys(1);held((uint8_t[]){60,63,67,70},4);stopped();
+    puts("perform: explicit octave pad anchor and shared inversion/spread PASS");
+
+    reset_case();
+    midi(0,0x90,91,117);assert(TSEL->nheld&&progression_external_busy(0));assert(!progression_arm());
+    midi(0,0x80,91,0);assert(!progression_external_busy(0)&&!TSEL->nheld);
+    midi(0,0xb0,64,127);assert(!progression_arm());midi(0,0xb0,64,0);arm();keys(1);
+    for(uint32_t cable=0;cable<2;cable++) {midi(cable,0x90,91,127);held((uint8_t[]){67,70,74},3);assert(!progression_external_busy(0));midi(cable,0x80,91,0);}
+    midi(0,0x91,83,113);assert(trk[1].nheld==1&&trk[1].held[0]==83);midi(0,0x81,83,0);assert(!trk[1].nheld);
+    keys(0);knob(0,-1);assert(!progression.active);
+    midi(0,0x90,91,117);assert(TSEL->nheld==1&&TSEL->held[0]==91);midi(0,0x80,91,0);assert(!TSEL->nheld);
+    stopped();puts("perform: actual USB/TRS note/pedal ownership, other-track routing and post-disarm MIDI PASS");
+
+    reset_case();TSEL->step[0]=(step_t){{91},1,ST_NOTE,90,0,0,0};
+    step_t before[NSTEP];memcpy(before,TSEL->step,sizeof before);
+    arm();keys(1);tap(B_PLAY);drain_output();assert(song.playing&&progression.active&&sequence_browser);
+    advance(1300);assert(!TSEL->seq_n&&!memcmp(before,TSEL->step,sizeof before));
+    TSEL->p[P_AORDER]=AORDER_SEQ_NOTE;advance(400);assert(!TSEL->seq_n&&!seq_harmony[0].n&&TSEL->nheld==3);
+    for(uint32_t i=0;i<nattacks;i++)assert(attacks[i].note!=91);
+    uint32_t into,slen,abs=trk_grid(TSEL,&into,&slen);progression_stop();drain_output();
+    assert(TSEL->seq_abs==abs);seq_tick(TSEL,1);assert(TSEL->seq_abs==abs&&!TSEL->seq_n);
+    stopped();puts("perform: PLAY retains harmony, stored/SNOTE sources suppressed, immutable pattern and natural-grid resume PASS");
+
+    reset_case();arm();knob(2,1);keys(1);keys(0);
+    for(uint32_t b=0;b<5;b++) {
+        static const uint8_t buttons[]={B_ENV,B_LFO,B_FX,B_ARP,B_SCL};
+        uint32_t saved_key=progression.key;uint8_t source[4];memcpy(source,TSEL->held,3);
+        press(buttons[b]);drain_output();
+        for(uint32_t f=0;f<50;f++){frame();drain_output();}
+        keys(1u<<2);frame();drain_output();
+        if(buttons[b]==B_FX) assert(punch.keybit); /* effects stay playable over the live arp */
+        keys(0);
+        assert(progression.active&&sequence_browser&&progression.key==saved_key);held(source,3);
+        release(buttons[b]);drain_output();
+    }
+    ui.force=1;frame();drain_output();ppm("progression-perform-live");stopped();
+    puts("perform: ENV/LFO/FX/ARP/SEL holds suspend pads without replacing live harmony PASS");
+
+    /* ARP OFF is a sustained direct chord, not a stalled generator. */
+    reset_case();TSEL->p[P_AMODE]=0;arm();keys(1);
+    assert(progression.direct&&TSEL->arp_n==3&&nattacks==3);
+    advance(500);assert(nattacks==3&&!noffs&&TSEL->arp_n==3);
+    keys(0);assert(!TSEL->arp_n&&!TSEL->nheld&&noffs==3);
+    knob(2,1);keys(1);keys(0);uint32_t direct_attacks=nattacks;
+    knob(1,1);advance(100);assert(TSEL->arp_n==3&&nattacks==direct_attacks);
+    keys(1u<<2);held((uint8_t[]){72,75,79},3);keys(0);stopped();
+    reset_case();TSEL->p[P_AMODE]=0;arm();tap(B_REC);drain_output();keys(1);
+    assert(song.playing&&song.rec==1&&TSEL->rh_n==3&&TSEL->step[0].n==3);
+    advance(1000);assert(nattacks==3&&TSEL->rh_n==3);
+    keys(0);assert(!TSEL->rh_n&&!TSEL->arp_n);uint32_t ties=0;
+    for(uint32_t i=1;i<16;i++)ties+=TSEL->step[i].time==ST_TIE;
+    assert(ties);stopped();
+    reset_case();TSEL->p[P_AMODE]=0;arm();keys(1);TSEL->p[P_AMODE]=ARP_UP;advance(1);
+    assert(!progression.active&&!TSEL->nheld&&!TSEL->arp_n);stopped();
+    puts("perform: ARP OFF sustained chords, HOLD, next-chord octave, recorded ties and mode-change cleanup PASS");
+
+    /* Generated events, not source chords, must become the stored notes once. */
+    reset_case();arm();rec_count=0;tap(B_REC);drain_output();assert(rec_wait&&progression.active);
+    keys(1);assert(song.playing&&song.rec==1&&!ft_on&&!rec_wait);
+    advance(1000);song.rec=0;
+    uint32_t stored=0;for(uint32_t s=0;s<16;s++) {
+        uint32_t expected=0;
+        for(uint32_t e=0;e<nattacks;e++)if(attacks[e].step==s) {
+            expected++;uint32_t k;for(k=0;k<TSEL->step[s].n;k++)if(TSEL->step[s].note[k]==attacks[e].note)break;
+            assert(k<TSEL->step[s].n);assert(step_vel(&TSEL->step[s],k)==attacks[e].vel);
+        }
+        if(TSEL->step[s].n!=expected)fprintf(stderr,"record step %u stored=%u expected=%u attacks=%u clk=%u/%u\n",s,TSEL->step[s].n,expected,nattacks,clk_beat,clk_pos);
+        assert(TSEL->step[s].n==expected);stored+=expected;
+    }
+    assert(stored==nattacks&&stored>2);stopped();
+    puts("perform: REC note-start uses tempo recording; emitted attack pitches/velocities equal stored notes exactly PASS");
+
+    /* Expanded PULSE can sound more notes than the existing four-note recorder stores. */
+    reset_case();sequence_sel=4;TSEL->p[P_AMODE]=ARP_PULSE;TSEL->p[P_AOCT]=4;
+    step_t outside[NSTEP-16];memcpy(outside,TSEL->step+16,sizeof outside);
+    arm();tap(B_REC);drain_output();keys(1);advance(400);song.rec=0;
+    stored=0;for(uint32_t s=0;s<16;s++){assert(TSEL->step[s].n<=4);stored+=TSEL->step[s].n;}
+    assert(stored&&nattacks>stored&&!memcmp(outside,TSEL->step+16,sizeof outside));stopped();
+    puts("perform: four-octave PULSE respects existing four-note recording capacity without adjacent-step corruption PASS");
+
+    reset_case();arm();rec_tempo=0;rec_count=1;tap(B_REC);drain_output();tap(B_PLAY);drain_output();
+    assert(ci_on&&!song.playing&&rec_wait&&progression.active&&!rec_tempo);
+    keys(1);uint32_t waited=0;while(!song.playing&&waited++<6000)advance(1);
+    assert(song.playing&&song.rec==1&&progression.active&&!ci_on&&!rec_tempo);assert(nattacks);
+    stopped();puts("perform: real REC/PLAY count-in retains source and begins generated recording PASS");
+
+    reset_case();arm();keys(1);song.sel=1;advance(1);assert(!progression.active&&!trk[0].nheld&&!trk[0].arp_n);stopped();
+    reset_case();arm();keys(1);panic_req=1;advance(1);assert(!progression.active&&!TSEL->nheld);stopped();
+    reset_case();arm();keys(1);tap(B_HOME);drain_output();assert(!progression.active&&!sequence_browser);stopped();
+    reset_case();arm();keys(1);press(B_EDIT);drain_output();assert(!progression.active);release(B_EDIT);drain_output();stopped();
+    puts("perform: track, panic, HOME and STOP cleanup leave balanced generated MIDI PASS");
+    reset_case();arm();uint32_t fuzz=0x51a7e123u;
+    for(uint32_t edge=0;edge<300;edge++) {
+        fuzz=fuzz*1664525u+1013904223u;
+        if(!(edge%11u))knob(2,(fuzz&1u)?1:-1);
+        else if(!(edge%7u))knob(1,(fuzz&1u)?1:-1);
+        else keys((1u<<((fuzz>>8)%27u))&((fuzz&3u)?~0u:0u));
+        advance(17);assert(progression.active&&TSEL->nheld<=4&&TSEL->arp_n<=64);
+    }
+    stopped();puts("perform: 300 deterministic pad/HOLD/octave transitions retain bounded ownership and balanced MIDI PASS");
+    return 0;
+}

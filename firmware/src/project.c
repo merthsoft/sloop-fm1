@@ -480,8 +480,14 @@ UI_SMALL static void proj_capture(project_t *p)        /* what is playing now, a
         p->g[G_NAME] = (int16_t)(0x8000u | (song.g[G_VWOW] & 127) | (song.g[G_VTONE] & 127) << 7);
         p->g[G_ENGGO] = (int16_t)(0x5C00u | (lofi_mode((uint32_t)song.g[G_LTYPE]) & 7) << 7 | (song.g[G_VCRACKLE] & 127));
     }
+    p->g[G_NEWPRJ]=0; /* optional voicing metadata, never the live NEW action */
     for (i = 0; i < NTRK; i++) {
         uint32_t k;
+        if(i<NPART) {
+            int32_t inv=clamp(trk[i].chord_inv,-3,3);
+            uint32_t code=(uint32_t)clamp(trk[i].chord_spread,0,2)*7u+(uint32_t)(inv<0?3-inv:inv);
+            p->g[G_NEWPRJ]=(int16_t)((uint16_t)p->g[G_NEWPRJ]|(code<<(i*5u)));
+        }
         for (k = 0; k < P_COUNT; k++)
             pt_set(&p->t[i], k, trk[i].p[k]);
         p->t[i].engine = trk[i].eng_req;
@@ -492,6 +498,7 @@ UI_SMALL static void proj_capture(project_t *p)        /* what is playing now, a
         memcpy(p->t[i].lock, trk[i].lock, sizeof trk[i].lock);
     }
     drum_tw_put(p);                                     /* (2.7) the drum sounds' TUNE and DECAY */
+    if(p->g[G_NEWPRJ])p->g[G_NEWPRJ]=(int16_t)((uint16_t)p->g[G_NEWPRJ]|0x8000u);
     p->sum = proj_sum(p);
 }
 
@@ -500,10 +507,11 @@ UI_SMALL static void proj_capture(project_t *p)        /* what is playing now, a
  * meanwhile (the song sections: called from it; a load: IRQ off) */
 static void proj_apply(const project_t *p, int all)
 {
+    progression_stop();
     uint32_t i, k;
     undo.valid = 0;                                  /* undo never crosses project/section adoption */
     project_revision++;
-    song.g[G_DTYPE] = ((uint16_t)p->g[G_ENGSEL] & 0xFFFCu)==0xED00u && (p->g[G_ENGSEL]&3)<3 ? p->g[G_ENGSEL]&3 : 0;
+    song.g[G_DTYPE] = ((uint16_t)p->g[G_ENGSEL] & 0xFFFCu)==0xED00u  ? p->g[G_ENGSEL]&3 : 0;
     uint32_t drive=(uint16_t)p->g[G_CLRSEQ],crush=(uint16_t)p->g[G_INITSND];
     uint32_t known=(crush&0xFF80u)==0xD800u && ((crush>>3)&15u)<=12u && (crush&7u)<=4u;
     song.g[G_DDRIVE]=(drive&0xFF80u)==0xD400u?drive&127u:127;
@@ -521,7 +529,7 @@ static void proj_apply(const project_t *p, int all)
     uint32_t rev = (uint16_t)p->g[G_LOAD], expanded = (rev & 0xFC00u) == 0x5800u;
     uint32_t timed = (rev & 0xFF00u) == 0x5500u;
     song.g[G_RTIME] = expanded || timed ? clamp((rev >> (expanded?3:1)) & 127,20,80) : 50;
-    song.g[G_RMODEL] = expanded ? ((rev & 7)<=4?rev & 7:0) : timed || (rev & 0xFFFEu) == 0x5350u ? rev & 1 : 0;
+    song.g[G_RMODEL] = expanded ? ((rev & 7)<=5?rev & 7:0) : timed || (rev & 0xFFFEu) == 0x5350u ? rev & 1 : 0;
     {
         uint32_t tag = (uint16_t)p->g[G_ENGGO];
         uint32_t extended = (tag & 0xFC00u) == 0x5C00u;
@@ -532,13 +540,19 @@ static void proj_apply(const project_t *p, int all)
         song.g[G_VTONE] = present ? ((uint16_t)p->g[G_NAME] >> 7) & 127 : 0;
         song.g[G_VCRACKLE] = present ? p->g[G_ENGGO] & 127 : 0;
         uint32_t mode=typed?(tag>>7)&(extended?7:3):0;
-        song.g[G_LTYPE] = present && mode<4 ? mode+1 : 0;
+        song.g[G_LTYPE] = present ? (mode<4 ? mode+1 : mode==5 ? 5 : 0) : 0;
     }
     proj_tx_get(p);                                     /* GLO > TEXTURE (2.6): a load and a section */
     drum_tw_get(p);                                     /* (2.7) the drum sounds' TUNE and DECAY: a load and a section */
     for (k = 0; k < NTRK; k++) {
         track_t *t = &trk[k];
         const proj_trk_t *s = &p->t[k];
+        uint32_t shape=(uint16_t)p->g[G_NEWPRJ];
+        uint32_t code=k<NPART && (shape&0x8000u)?(shape>>(5u*k))&31u:0;
+        if(code>20u)code=0;
+        uint32_t inv=code%7u;
+        t->chord_inv=(int16_t)(inv<=3u?(int32_t)inv:3-(int32_t)inv);
+        t->chord_spread=(int16_t)(code/7u);
         ex_off[k] = 0;                                 /* every project/section adoption restores expression */
         pc_req[k]=0;pc_bank[k]=0;                       /* stale queued PCs cannot overwrite adopted sounds */
         seq_harmony_clear(t);

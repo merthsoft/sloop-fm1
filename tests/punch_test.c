@@ -132,7 +132,7 @@ static void punch_new_fx(void)
     /* DOUBLE TIME is transparent to audio; timing is tested in effects_plan_test. */
     assert(!strcmp(PUNCH_NAME[PX_DOUBLE], "DOUBLE TIME") && punch_fx_of_key(10) == PX_DOUBLE);
     /* VINYL is applied before punch_process by the full mixer. */
-    assert(!strcmp(PUNCH_NAME[PX_VINYL], "VINYL") && punch_fx_of_key(22) == PX_VINYL);
+    assert(!strcmp(PUNCH_NAME[PX_VINYL], "LOFI") && punch_fx_of_key(22) == PX_VINYL);
     punch_hold(0,PX_VINYL,1); assert(punch_vinyl_requested());
     punch_hold(0,PX_REV,1); assert(!punch_vinyl_requested());
     punch_hold(0,PX_REV,0); assert(punch_vinyl_requested());

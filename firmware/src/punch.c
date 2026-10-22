@@ -18,7 +18,7 @@ enum { PX_LOOP4, PX_LOOP8, PX_LOOP16, PX_LOOP32, PX_STUT, PX_REV, PX_STOP, PX_HA
 static const char *const PUNCH_NAME[PUNCH_NFX] = {
     "LOOP 4", "LOOP 8", "LOOP 16", "LOOP 32", "STUTTER", "REVERSE", "STOP", "HALF",
     "LOW", "HIGH", "PHONE", "CRUSH", "ALIAS", "GATE", "ECHO", "WOBBLE",
-    "KILL LOW", "KILL MID", "KILL HIGH", "REWIND", "DOUBLE TIME", "FLANGER", "AUTO-PAN", "FREEZE", "LOOP 8T", "VINYL",
+    "KILL LOW", "KILL MID", "KILL HIGH", "REWIND", "DOUBLE TIME", "FLANGER", "AUTO-PAN", "FREEZE", "LOOP 8T", "LOFI",
     "FADE OUT"};
 #define PX_FRZ_CAP 8192u                  /* FREEZE: samples of the mix poured into the held reverb (186 ms) */
 #define PX_RWD_ACC 17                     /* REWIND: speed change per sample (Q16): +1 to -3 in 0.35 s */

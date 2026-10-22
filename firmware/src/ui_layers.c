@@ -899,7 +899,7 @@ UI_SMALL static void layer_screen_draw(void)
             static const char *const PSHORT[PUNCH_NFX] = {"loop 4", "loop 8", "loop16", "loop32", "stutt", "rev", "stop",
                                                           "half", "low", "high", "phone", "crush", "alias", "gate", "echo",
                                                           "wobble", "k low", "k mid", "k high", "rewind", "double", "flange",
-                                                          "pan", "freeze", "loop8t", "vinyl", "fade"};
+                                                          "pan", "freeze", "loop8t", "lofi", "fade"};
             int on = !!(punch_active_keys() & (1u << punch_key_of_fx(i))), black = i >= 16u;
             str_cpy(tl[i].lab, PSHORT[i], 8);
             tl[i].bg = on ? C_WHITE : black ? C_BLACK : TE_G1;

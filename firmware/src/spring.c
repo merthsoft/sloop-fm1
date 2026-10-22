@@ -62,7 +62,7 @@ static void spring_sample(int32_t input,int32_t *left,int32_t *right)
 }
 static uint32_t reverb_begin(void)
 {
-    uint32_t want=(uint32_t)clamp(song.g[G_RMODEL],0,4);
+    uint32_t want=(uint32_t)clamp(song.g[G_RMODEL],0,5);
     if(!reverb_model.gain && want!=reverb_model.cur && !rev_frz) {
         memset(rev_line,0,sizeof rev_line);memset(&rev_storage,0,sizeof rev_storage);
         memset(fx.line_i,0,sizeof fx.line_i);memset(fx.ap_i,0,sizeof fx.ap_i);

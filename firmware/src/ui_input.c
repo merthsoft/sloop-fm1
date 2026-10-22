@@ -558,6 +558,10 @@ UI_SMALL static void edit_param(uint32_t slot, int32_t steps)
     v = d->names == ESYNC_NAMES || d->names == N_IBITS || d->names == N_IRATE ? names_turn(d, *vp, steps)   /* (a name a detent) */
                                     : clamp(*vp + accel(EN_K1 + slot, steps, d->names ? 0 : d->max - d->min), d->min, d->max);
     *vp = (int16_t)v;
+    if(pg->scope==SC_VOICING && slot<2u) {
+        sync_reload=1; /* next played chord, without retuning held notes */
+        return;
+    }
     if(is_drum(TSEL) && pg->graph==GR_FX) {
         if(slot==1u)ml_knob(TSEL,P_PAN);
         return;
@@ -1065,8 +1069,8 @@ UI_SMALL static void rec_knobs(void)
 {
     static const uint8_t LENS[3] = {16u, 32u, 64u};
     int32_t s;
-    uint32_t empty = (uint32_t)project_empty(), tempo = !empty || rec_tempo;
-    if ((s = panel_enc(EN_K1)) != 0 && empty) {
+    uint32_t empty = (uint32_t)project_empty(), tempo = !empty || rec_tempo || progression.active;
+    if ((s = panel_enc(EN_K1)) != 0 && empty && !progression.active) {
         rec_tempo = (uint8_t)(s > 0);
         settings_later = 1;
         ui.hot_col = 0, ui.hot_t = 40;
@@ -1115,6 +1119,7 @@ UI_SMALL static void holds_input(uint32_t pressed, uint32_t now_ms)
         rec_toggle();
     }
     if (rec_down && rec_on && !eaten && !ui.hold_kind && now_ms - rec_t0 >= 700u) {
+        fm1_irq_off(); progression_stop(); fm1_irq_on();
         song.rec = prev_rec;                              /* a hold: the press is undone */
         rec_wait = prev_wait;
         ui.msg_t = 0;
@@ -1228,13 +1233,15 @@ UI_SMALL static void ui_input(void)
             menu_input(pressed);
         return;
     }
-    if (sequence_browser && (pressed & ((1u << panel.btn[B_ENV]) | (1u << panel.btn[B_LFO]) |
+    if (sequence_browser && !progression.active && (pressed & ((1u << panel.btn[B_ENV]) | (1u << panel.btn[B_LFO]) |
         (1u << panel.btn[B_FX]) | (1u << panel.btn[B_EDIT]) | (1u << panel.btn[B_ARP]) |
         (1u << panel.btn[B_SEQ]) | (1u << panel.btn[B_SCL]) | (1u << panel.btn[B_GLO]) |
         (1u << panel.btn[B_SAVE]) | (1u << panel.btn[B_REC]) | (1u << panel.btn[B_PLAY])))) {
         if (pressed & (1u << panel.btn[B_SEQ])) sequence_screen_close();
         else go_home();                               /* new page/transport gestures keep their normal meaning */
     }
+    if(progression.active && (pressed & ((1u<<panel.btn[B_SAVE]) | (1u<<panel.btn[B_EDIT]) |
+        (1u<<panel.btn[B_GLO]) | (1u<<panel.btn[B_SEQ])))) go_home();
     layered = layers_input(notes, &pressed, home);
     if (home_eat && !((fm1_in.buttons >> panel.btn[B_HOME]) & 1u)) {   /* (the HOME that unlocked: let go) */
         if (home == BT_TAP)

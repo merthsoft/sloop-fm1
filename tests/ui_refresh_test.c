@@ -90,7 +90,7 @@ static void polish_checks(void)
         for(uint32_t k=0;k<4;k++) TSEL->p[PAGES[p].id[k]]=saved[k];
     }
     punch_clear();punch.req=punch.cur=-1;ui.layer=LY_FX;ui.force=1;layer_screen_draw();
-    text_visible("DOUBLE",TE_G3,74,224);text_visible("VINYL",TE_G3,74,224);
+    text_visible("DOUBLE",TE_G3,74,224);text_visible("LOFI",TE_G3,74,224);
     ppm("polish-fx");ui.layer=LY_PLAY;
     for(uint32_t p=0;p<NPAGES;p++)if(PAGES[p].scope==SC_GLOBAL&&PAGES[p].id[0]==G_LTYPE)ui.page=p;
     ui.home=0;ui.hot_t=0;

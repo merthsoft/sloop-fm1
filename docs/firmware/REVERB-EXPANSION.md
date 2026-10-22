@@ -9,10 +9,11 @@ Improve the spring's width and texture; add compact ROOM, bright PLATE and spaci
 - SPRING: two unequal dispersive paths, different allpass coefficients and slow pickup modulation, with a high-pass and damped feedback. Eight stretched allpasses per path. TIME sets reflection spacing; SIZE sets nominal decay independently. The two paths should create genuine stereo difference, not duplicate a mono tail.
 - ROOM: short, unequal delays with lower diffusion/feedback for tight early reflections.
 - PLATE: denser input diffusion, medium delays, bright and longer feedback.
+- DARK: a dense muted FDN tail; filtered returns and feedback keep the high end subdued even at low DAMP. It reuses the existing line/filter state.
 - HALL: longer unequal paths with smoother diffusion and a longer tail.
 - STEREO: retain upstream lengths, coefficients, rounding and output exactly.
 
-ROOM/PLATE/HALL are variations of the existing four-line feedback delay network, not physical simulations. Their fixed tunings must produce measurably distinct impulse responses. SIZE and DAMP retain their roles; TIME applies only to SPRING. Switching types fades out, clears incompatible state, and fades in; FREEZE defers the switch until release.
+ROOM/PLATE/HALL/DARK are variations of the existing four-line feedback delay network, not physical simulations. Their fixed tunings must produce measurably distinct impulse responses. SIZE and DAMP retain their roles; TIME applies only to SPRING. Switching types fades out, clears incompatible state, and fades in; FREEZE defers the switch until release.
 
 ## Persistence
 
@@ -24,7 +25,15 @@ Baseline: firmware 2.7.1.34, 581,208 bytes, 356 bytes free; static main RAM 85,6
 
 Checks: old STEREO audio goldens, independent upstream project fixture equality, model/tag round trips, impulse decay and damping, stereo correlation, genuinely different modes, bounded overload and FREEZE, model-switch clearing/defer, UI parameter routing, target RAM/flash and DSP cost/inlining. Capture identical-input before/after and per-type listening examples. Host cost is comparative evidence, not physical deadline validation.
 
-## Implemented and measured
+## Current DARK extension
+
+TYPE 5 DARK appends to the existing five model IDs. It uses another coefficient
+row plus the existing damped line states for its returns; it adds no reverb RAM.
+SIZE lengthens decay, DAMP further reduces brightness, FREEZE and fade/clear
+transitions retain their normal behavior. Impulse, damping, stereo, overload and
+FREEZE tests include all six types. Current image accounting is in OPTIMIZATION.md.
+
+## Earlier integration measurements
 
 Firmware 2.7.1.35 implements all five types. Original STEREO's 182 golden audio renders remain unchanged. Native and browser WASM output agree sample-for-sample across all 12 engines and all five reverb choices. The preview oracle now reads an explicit supplied-global count instead of assuming the editor sends every appended fork global; omitted values keep initialization defaults.
 

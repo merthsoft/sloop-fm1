@@ -43,19 +43,19 @@ static void lifecycle(int model) {
   fx_buses(z,z,in,l,r,CTL);
   for(unsigned i=0;i<CTL;i++)assert(abs(l[i])<(1<<22)&&abs(r[i])<(1<<22));
  }
- rev_frz=1;song.g[G_RMODEL]=(model+1)%5;
+ rev_frz=1;song.g[G_RMODEL]=(model+1)%6;
  for(int b=0;b<3000;b++) {
   fx_buses(z,z,z,l,r,CTL);assert(reverb_model.cur==model&&reverb_model.gain==32768);
   for(unsigned i=0;i<CTL;i++)assert(abs(l[i])<(1<<22)&&abs(r[i])<(1<<22));
  }
  rev_frz=0;
  for(int b=0;b<10;b++)fx_buses(z,z,z,l,r,CTL);
- assert(reverb_model.cur==(model+1)%5&&reverb_model.gain==32768);
+ assert(reverb_model.cur==(model+1)%6&&reverb_model.gain==32768);
  for(unsigned i=0;i<CTL;i++)assert(l[i]==0&&r[i]==0);
 }
 int main(void) {
- setvbuf(stdout,0,_IOLBF,0);uint64_t hashes[5];double decay[5];
- for(int m=0;m<5;m++) {
+ setvbuf(stdout,0,_IOLBF,0);uint64_t hashes[6];double decay[6];
+ for(int m=0;m<6;m++) {
   uint64_t h;double c,short_rt=impulse(m,20,20,&h,&c);
   double long_rt=impulse(m,100,20,&hashes[m],&c);decay[m]=long_rt;
   printf("model%d: RT60 fit %.3f -> %.3f sec, stereo correlation %.3f\n",m,short_rt,long_rt,c);

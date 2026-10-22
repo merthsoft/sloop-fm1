@@ -1,9 +1,9 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
 /* Master LOFI. The existing 256-frame stereo history is shared by every mode. */
 static int punch_vinyl_requested(void);
-enum { VINYL_MODE_VINYL, VINYL_MODE_TAPE, VINYL_MODE_VHS, VINYL_MODE_CD, VINYL_MODE_COUNT, VINYL_MODE_OFF = VINYL_MODE_COUNT };
+enum { VINYL_MODE_VINYL, VINYL_MODE_TAPE, VINYL_MODE_VHS, VINYL_MODE_CD, VINYL_MODE_OFF, VINYL_MODE_RADIO, VINYL_MODE_COUNT };
 static struct {
-    int32_t ring[2][256], low[2], wet, wow, tone, crackle, bed, click, rnd;
+    int32_t ring[2][256], low[2], hp[2], wet, wow, tone, crackle, bed, click, rnd;
     uint32_t w, phase, slow_phase, cd_count, cd_anchor;
     int32_t character, damage;
     unsigned mode;
@@ -22,13 +22,18 @@ static int32_t vinyl_delay(uint32_t phase, uint32_t slow, int32_t depth, unsigne
 static void vinyl_process_mode(int32_t *l, int32_t *r, uint32_t n, unsigned mode)
 {
     int32_t wow = song.g[G_VWOW], tone = song.g[G_VTONE], crackle = song.g[G_VCRACKLE];
-    if (mode == VINYL_MODE_OFF) wow=tone=crackle=0;
-    if (mode >= VINYL_MODE_COUNT) mode = VINYL_MODE_VINYL;
-    if (punch_vinyl_requested()) { wow=96; tone=90; crackle=100; mode=VINYL_MODE_VINYL; }
+    /* Punch boosts the selected character without rewriting the saved controls.
+     * OFF uses VINYL temporarily; amounts above the punch floors stay intact. */
+    if (punch_vinyl_requested()) {
+        if (wow < 96) wow=96;
+        if (tone < 90) tone=90;
+        if (crackle < 100) crackle=100;
+    } else if (mode == VINYL_MODE_OFF) wow=tone=crackle=0;
+    if (mode == VINYL_MODE_OFF || mode >= VINYL_MODE_COUNT) mode = VINYL_MODE_VINYL;
     if (!(wow | tone | crackle | vinyl.wet | vinyl.wow | vinyl.tone | vinyl.crackle)) {
         if (vinyl.w) {
             memset(vinyl.ring, 0, sizeof vinyl.ring);
-            vinyl.w = 0; vinyl.low[0] = vinyl.low[1] = 0;
+            vinyl.w = 0; vinyl.low[0] = vinyl.low[1] = vinyl.hp[0] = vinyl.hp[1] = 0;
         }
         vinyl.click=vinyl.damage=0; vinyl.mode=mode; vinyl.character=0;
         return;
@@ -88,12 +93,18 @@ static void vinyl_process_mode(int32_t *l, int32_t *r, uint32_t n, unsigned mode
                 } else if(vinyl.mode==VINYL_MODE_VHS) {
                     x-=mulq16(x,mulq16(vinyl.damage,amount*384u));
                     x+=noise/128;
+                } else if(vinyl.mode==VINYL_MODE_RADIO) {
+                    /* Band-limited receiver: darkness narrows the band, damage adds static. */
+                    vinyl.hp[c]+=mulq16(x-vinyl.hp[c],3200);
+                    if(!x && vinyl.hp[c]>-32 && vinyl.hp[c]<32)vinyl.hp[c]=0;
+                    x-=mulq16(vinyl.hp[c],(uint32_t)(vinyl.tone>>8)*516u);
+                    x+=noise/8;
                 } else x+=noise;
             }
             out[i]=dry+mulq16(x-dry,vinyl.character);
         }
     }
 }
-/* Legacy callers and punch retain VINYL until the parent wires persistence/UI. */
+/* Legacy direct callers explicitly request the original VINYL character. */
 static void vinyl_process(int32_t *l,int32_t *r,uint32_t n)
 { vinyl_process_mode(l,r,n,VINYL_MODE_VINYL); }

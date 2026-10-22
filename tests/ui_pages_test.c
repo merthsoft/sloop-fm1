@@ -1266,7 +1266,7 @@ int main(int argc, char **argv)
         check(!strcmp(PT(), "LOFI"), "SELECT on FX: on to the last page, LOFI");
         encs[panel.enc[EN_K1]]=200;frames(2);
         for(uint32_t k=0;k<3;k++){encs[panel.enc[EN_K2+k]]=200;frames(2);}
-        check(song.g[G_LTYPE]==4 && song.g[G_VWOW]==127 && song.g[G_VTONE]==127 && song.g[G_VCRACKLE]==127,
+        check(song.g[G_LTYPE]==5 && song.g[G_VWOW]==127 && song.g[G_VTONE]==127 && song.g[G_VCRACKLE]==127,
               "LOFI selector and amounts reach the master-bus parameters");
         encs[panel.enc[EN_K1]]=-200;frames(2);
         check(song.g[G_LTYPE]==0 && !strcmp(ui.big_v[0],"OFF"),"LOFI OFF is the first choice, retaining its stored amounts");
@@ -1275,11 +1275,11 @@ int main(int argc, char **argv)
         SEL(-1);
         check(!strcmp(PT(), "REVERB"), "REVERB precedes LOFI");
         for (uint32_t turn=0;turn<8u;turn++) { encs[panel.enc[EN_K1]]=1;frames(8); }
-        check(song.g[G_RMODEL]==4 && GP[G_RMODEL].max==4,
-              "REVERB TYPE reaches HALL and stops at the fifth valid model");
+        check(song.g[G_RMODEL]==5 && GP[G_RMODEL].max==5,
+              "REVERB TYPE reaches DARK and stops at the sixth valid model");
         int hall_time=song.g[G_RTIME];encs[panel.enc[EN_K4]]=5;frames(2);
-        check(song.g[G_RTIME]==hall_time,"HALL leaves the spring-only TIME knob inactive");
-        for(uint32_t turn=0;turn<3;turn++){encs[panel.enc[EN_K1]]=-1;frames(8);}
+        check(song.g[G_RTIME]==hall_time,"DARK leaves the spring-only TIME knob inactive");
+        for(uint32_t turn=0;turn<4;turn++){encs[panel.enc[EN_K1]]=-1;frames(8);}
         check(song.g[G_RMODEL]==1,"REVERB can select SPRING between STEREO and ROOM");
         int old_size=song.g[G_RSIZE];encs[panel.enc[EN_K4]]=5;frames(2);
         check(song.g[G_RTIME]>50 && song.g[G_RTIME]<=80 && song.g[G_RSIZE]==old_size,

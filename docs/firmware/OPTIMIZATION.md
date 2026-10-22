@@ -1,3 +1,44 @@
+# Radio, Dark, Dub and direct progression chords
+
+The .44 image is **583,776/584,336 bytes**, **560 free**. Main static RAM is
+**89,128/98,304** (9,176 free), low RAM **28,280/29,496**, pool **332,876/344,064**.
+The three effects plus direct chord output add **608 image bytes / 16 main static
+RAM bytes** over .43. Radio adds two logical high-pass states (8 bytes, linked
+alignment yields 16). Dub reuses the delay saturator/filter; Dark reuses FDN
+coefficient tables and damped line states. Direct chords reuse the generated-note
+list/emitter and regular held recorder. No extra audio rings, voices, sample
+compression, scheduler or format expansion. Target budgets/placement/inlining,
+normal audio goldens, effect responses, storage/UI and sanitizer checks pass.
+
+# Integrated progression performance build
+
+The .43 image is **583,168/584,336 bytes**, **1,168 free**. Main static RAM is
+**89,112/98,304** (9,192 free); low RAM **28,280/29,496**; pool **332,876/344,064**.
+Compared with final .42, the complete NOW-only browser/pad/recording/lifecycle
+slice adds **2,516 image bytes / 16 main static RAM bytes**. The finished UI and
+ownership checks exceed the original 2 KiB planning target by 468 bytes; this
+measured image still fits with 1,168 bytes of margin. No new audio buffer,
+per-sample work, heap or scheduler was added. RAM placement, target DSP cost and
+24 hot-helper inlining checks pass. The isolated 1,272-byte private kernel was
+not a finished-feature measurement. See [performance](PROGRESSION-PERFORM-DESIGN.md).
+
+# Selected-character LOFI punch build
+
+The final .42 image is **580,652/584,336 bytes**, **3,684 free**.
+LOFI punch reuses the existing state/ring, retains the selected character and
+uses Vinyl only when OFF. LOFI routing adds 96 bytes before a shared-sort cleanup recovers 48. The net
+increment is 48 image bytes over the voicing-only
+measurement below; main/low/pool RAM is unchanged.
+
+# Native voicing build
+
+MerthSloop 2.7.1.42: **580,604/584,336 image bytes**, **3,732 free**.
+Main RAM **89,096/98,304**, low RAM **28,280/29,496**, pool **332,876/344,064**.
+Native inversion/spread UI and optional project metadata add **544 flash bytes**
+and **16 main RAM bytes** against the packaged .41 baseline. No new buffers,
+voices or per-sample work. See [voicing](CHORD-VOICING-DESIGN.md).
+Earlier measurements below retain their own baselines.
+
 # Packaged cleanup build
 
 MerthSloop 2.7.1.41: **580,060/584,336 application bytes**, **4,276 free**.

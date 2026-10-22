@@ -10,9 +10,70 @@ static void reset(unsigned mode) {
 }
 static void put32(FILE *f,uint32_t n) {for(int i=0;i<4;i++)fputc(n>>(8*i),f);}
 static void put16(FILE *f,uint32_t n) {fputc(n,f);fputc(n>>8,f);}
+/* Punch must equal a normal render of the selected character with parameter
+ * floors, not merely emit nonzero audio (which could hide forced VINYL). */
+static void check_punch_characters(void)
+{
+    uint64_t signatures[VINYL_MODE_COUNT]={0};
+    for(unsigned mode=0;mode<VINYL_MODE_COUNT;mode++) for(unsigned strong=0;strong<2;strong++) {
+        unsigned effective=mode==VINYL_MODE_OFF?VINYL_MODE_VINYL:mode;
+        uint64_t hash[2]={0};
+        for(unsigned punched=0;punched<2;punched++) {
+            reset(mode);
+            song.g[G_LTYPE]=mode==VINYL_MODE_OFF?0:mode==VINYL_MODE_RADIO?5:mode+1;
+            song.g[G_VWOW]=strong?127:punched?25:96;
+            song.g[G_VTONE]=strong?121:punched?35:90;
+            song.g[G_VCRACKLE]=strong?115:punched?45:100;
+            int16_t saved[G_COUNT];memcpy(saved,song.g,sizeof saved);
+            if(punched) punch_hold(0,PX_VINYL,1);
+            int32_t l[CTL],r[CTL];
+            hash[punched]=1469598103934665603ull;
+            for(uint32_t b=0;b<300;b++) {
+                for(uint32_t i=0;i<CTL;i++) {
+                    uint32_t t=b*CTL+i;
+                    l[i]=(int32_t)(10000*sin(t*.031)+3000*sin(t*.39));
+                    r[i]=-l[i];
+                }
+                vinyl_process_mode(l,r,CTL,punched?mode:effective);
+                for(uint32_t i=0;i<CTL;i++)
+                    hash[punched]=(hash[punched]^(uint32_t)l[i])*1099511628211ull;
+            }
+            assert(!memcmp(saved,song.g,sizeof saved));
+            assert(vinyl.mode==effective);
+            assert(vinyl.wow==(strong?127:96)*256);
+            assert(vinyl.tone==(strong?121:90)*256);
+            assert(vinyl.crackle==(strong?115:100)*256);
+            if(punched) {
+                punch_hold(0,PX_VINYL,0);
+                /* Each one-sample release follows the existing slew bounds. */
+                for(uint32_t i=0;i<1400;i++) {
+                    int32_t wow=vinyl.wow,tone=vinyl.tone,crackle=vinyl.crackle;
+                    l[0]=r[0]=1234;
+                    vinyl_process_mode(l,r,1,mode);
+                    assert(abs(vinyl.wow-wow)<=32 && abs(vinyl.tone-tone)<=32 && abs(vinyl.crackle-crackle)<=32);
+                }
+                for(uint32_t b=0;b<300;b++) {
+                    for(uint32_t i=0;i<CTL;i++){l[i]=1234;r[i]=-2345;}
+                    vinyl_process_mode(l,r,CTL,mode);
+                }
+                assert(!memcmp(saved,song.g,sizeof saved));
+                assert(vinyl.wow==(mode==VINYL_MODE_OFF?0:saved[G_VWOW]*256));
+                assert(vinyl.tone==(mode==VINYL_MODE_OFF?0:saved[G_VTONE]*256));
+                assert(vinyl.crackle==(mode==VINYL_MODE_OFF?0:saved[G_VCRACKLE]*256));
+                if(mode==VINYL_MODE_OFF) for(uint32_t i=0;i<CTL;i++)assert(l[i]==1234&&r[i]==-2345);
+            }
+        }
+        assert(hash[0]==hash[1]);
+        if(!strong && mode<VINYL_MODE_COUNT) signatures[mode]=hash[1];
+    }
+    for(unsigned a=0;a<VINYL_MODE_COUNT;a++) for(unsigned b=a+1;b<VINYL_MODE_COUNT;b++)
+        if(a!=VINYL_MODE_OFF && b!=VINYL_MODE_OFF) assert(signatures[a]!=signatures[b]);
+}
 int main(void) {
-    int32_t l[CTL],r[CTL]; double signature[4]={0};
+    check_punch_characters();
+    int32_t l[CTL],r[CTL]; double signature[VINYL_MODE_COUNT]={0};
     for(unsigned mode=0;mode<VINYL_MODE_COUNT;mode++) {
+        if(mode==VINYL_MODE_OFF)continue;
         reset(mode);song.g[G_VWOW]=song.g[G_VTONE]=song.g[G_VCRACKLE]=100;
         char path[128];snprintf(path,sizeof path,"build/lofi-master/character-%u.wav",mode);
         FILE *f=fopen(path,"wb");assert(f);uint32_t frames=(FS*5/CTL)*CTL;

@@ -382,7 +382,7 @@ static uint32_t gated(const track_t *t, uint8_t *out)   /* the notes held by gat
     for (i = 0; i < NVOICE; i++)
         if (t->v[i].active && t->v[i].gate)
             out[n++] = (uint8_t)t->v[i].note;
-    sort_notes(out, n);
+    harmony_sort_notes(out, n);
     return n;
 }
 static int notes_are(const uint8_t *c, uint32_t n, int a, int b, int d, int e)

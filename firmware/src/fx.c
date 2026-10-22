@@ -7,7 +7,7 @@
 static struct {int16_t blend,held;} delay_age;
 static int32_t delay_character_sample(int32_t x,uint32_t mode,uint32_t w)
 {
-    int32_t target=mode==1?-song.g[G_DDRIVE]*4:mode==2?512:0;
+    int32_t target=(mode==1 || mode==3)?-song.g[G_DDRIVE]*4:mode==2?512:0;
     delay_age.blend+=clamp(target-delay_age.blend,-1,1);
     int32_t blend=delay_age.blend;
     if(!blend)return x; /* Settled DIGITAL avoids coloration arithmetic. */
@@ -43,6 +43,7 @@ static const struct {
     {{563,733,947,1151},{113,173},14746,12000,120,2},     /* ROOM */
     {{887,1153,1429,1777},{347,269},22938,19500,96,5},    /* PLATE */
     {{1559,1901,2333,2749},{541,419},19661,20500,84,12}, /* HALL */
+    {{1453,1877,2281,2719},{499,397},24576,20200,88,8}, /* DARK: dense, muted tail */
 };
 static int16_t rev_line[1559 + 1931 + 2389 + 2791 + REV_MOD + 2] __attribute__((section(".lowram")));   /* (the pool is
                                                                       * full; .lowram: the SRAM below the RAM region, app.ld) */
@@ -247,10 +248,12 @@ static void fx_buses(const int32_t *cho_in, const int32_t *dly_in, const int32_t
     int32_t fb = song.g[G_DFDBK] * 230, col = 2000 + song.g[G_DCOLOR] * 240;
     if (thr_dly && fb < 89 * 230)                       /* ECHO THROW: FDBK at least 70 %, gliding with it (2.6) */
         fb += ((89 * 230 - fb) * thr_dly) >> 15;
+    if(song.g[G_DTYPE]==3) col=300+song.g[G_DCOLOR]*55; /* Dub's first repeat is filtered too. */
     int32_t dmix = song.g[G_DMIX] * 258;
     uint32_t want=reverb_begin(),model=reverb_model.cur;
     const typeof(*REV_TUNE) *tune=&REV_TUNE[model>1?model-1:0];
     int32_t g = tune->gain + song.g[G_RSIZE] * tune->slope, lpk = 32767 - song.g[G_RDAMP] * 200;
+    if(model==5) lpk=2500+(127-song.g[G_RDAMP])*40;
     int32_t frnd = rev_frz ? 128 : 0;                  /* FREEZE: what is in the lines stays there (below: no
                                                          * loss, rounded to nearest; 0: as always, bit for bit) */
     int32_t cdepth = song.g[G_CDEPTH] * 6;
@@ -295,6 +298,7 @@ static void fx_buses(const int32_t *cho_in, const int32_t *dly_in, const int32_t
         dly_buf[fx.dly_w & (DLY_LEN - 1u)] =
             (int16_t)clamp((dly_in[i] >> 1) + mulq15(fx.dly_lp, fb), -32768, 32767);
         fx.dly_w++;
+        if(song.g[G_DTYPE]==3) x=fx.dly_lp;
         x = mulq15(x << 1, dmix);
         yl += x;
         yr += x;
@@ -351,6 +355,7 @@ static void fx_buses(const int32_t *cho_in, const int32_t *dly_in, const int32_t
             if (++fx.line_i[3] >= tune->line[3]) fx.line_i[3] = 0;
         }
         }
+        if(model==5) {o0=fx.line_lp[0];o1=fx.line_lp[1];o2=fx.line_lp[2];o3=fx.line_lp[3];}
         int32_t rl=o0+o2,rr=o1-o3;
         int32_t target=rev_frz || model==want?32768:0;
         reverb_model.gain=clamp(reverb_model.gain+(target?512:-512),0,32768);

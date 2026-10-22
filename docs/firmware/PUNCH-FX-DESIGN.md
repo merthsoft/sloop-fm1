@@ -2,9 +2,13 @@
 
 ## Current behavior
 
-The original 27 key IDs remain. OCT DOWN replaces OCT UP. HALF now controls
+The original 27 key IDs remain. DOUBLE TIME occupies the former octave-shift
+slot; HALF controls
 0.5x musical transport, preserving pitch and saved BPM, and is disabled with
-external clock. It is separate from the audio playback ring.
+external clock. It is separate from the audio playback ring. D#5 is LOFI: it temporarily
+boosts the selected character, with Vinyl fallback for OFF. Saved settings
+remain unchanged and release returns smoothly. Internal PX_VINYL and
+punch_vinyl_requested names retain the stable slot/API; the displayed name is LOFI.
 
 One main effect, one LOW/HIGH/PHONE stage and GATE can run together. Last press
 wins within each family, with fallback on release. Physical, USB MIDI and TRS

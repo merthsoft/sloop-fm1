@@ -661,7 +661,7 @@ UI_SMALL static void rec_screen_draw(void)
     static uint8_t layout;
     uint32_t take=ft_on,empty=take||project_empty(),rt=take?ft_trk%NTRK:song.sel;
     uint32_t blink=(fm1_ms/250u)&1u,secs=take?ft_t*CTL/FS:0u,bars=0,bpm=0;
-    uint32_t lay=take?1u:2u,free=empty&&!rec_tempo&&!take,count=ci_on;
+    uint32_t lay=take?1u:2u,free=empty&&!rec_tempo&&!take&&!progression.active,count=ci_on;
     if(take) bars=ft_fit(ft_t,&bpm);
     if(!rec_shown||lay!=layout) {lcd_fill(0,0,240,240,C_BLACK);ui.force=1;}
     rec_shown=1;layout=(uint8_t)lay;
@@ -700,11 +700,11 @@ UI_SMALL static void rec_screen_draw(void)
         static const char *const LAB_N[]={"","LENGTH","START","QUANT"};
         const char *val[]={v[0],v[1],v[2],rec_quant_off?"OFF":"ON"};
         int32_t ratio[4];uint32_t len=(uint32_t)clamp(TSEL->p[P_SLEN],1,64);
-        str_cpy(v[0],rec_tempo?"TEMPO":"FREE",sizeof v[0]);
+        str_cpy(v[0],(rec_tempo||progression.active)?"TEMPO":"FREE",sizeof v[0]);
         fmt_int(v[1],(int32_t)(len%16u?len:len/16u));
         str_cpy(v[1]+str_len(v[1]),len%16u?" ST":len==16?" BAR":" BARS",6);
         str_cpy(v[2],rec_count?"COUNT":"NOTE",sizeof v[2]);
-        ratio[0]=rec_tempo?1000:0;ratio[1]=(int32_t)(len-1u)*1000/63;
+        ratio[0]=(rec_tempo||progression.active)?1000:0;ratio[1]=(int32_t)(len-1u)*1000/63;
         ratio[2]=rec_count?1000:0;ratio[3]=rec_quant_off?0:1000;
         const char *const *lab=!empty?LAB_N:free?LAB_F:LAB_E;
         for(uint32_t k=0;k<4;k++) if(!lab[k][0]) val[k]="";

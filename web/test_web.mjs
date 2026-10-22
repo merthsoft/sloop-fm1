@@ -632,13 +632,14 @@ async function editorBackup() {
     new DataView(native.buffer).setUint16(8 + 20 * 2, 0xED00 | mode, true);
     new DataView(native.buffer).setUint16(8 + 22 * 2, 0xD44F, true);
     new DataView(native.buffer).setUint16(8 + 23 * 2, 0xD843, true);
+    new DataView(native.buffer).setUint16(8 + 31 * 2, 0x8000 | 20 | (8 << 5) | (4 << 10), true);
     let hash = 0x811c9dc5;
     for (const b of native.subarray(0, native.length - 4)) hash = Math.imul(hash ^ b, 16777619) >>> 0;
     new DataView(native.buffer).setUint32(native.length - 4, hash, true);
     const tagged = JSON.parse(JSON.stringify(A));
     Object.assign(tagged.objects.find(o => o.id === 0), {data: E.b64enc(native), len: native.length, crc: E.crc32(native) >>> 0});
     const kept = E.backupObjects(tagged).get(0);
-    ok(kept.length === native.length && kept.every((b, i) => b === native[i]), "backup: native delay character metadata survives opaque project export/import");
+    ok(kept.length === native.length && kept.every((b, i) => b === native[i]), "backup: native delay and chord voicing metadata survives opaque project export/import");
   }
   const bad = JSON.parse(JSON.stringify(A));
   bad.objects[2].data = E.b64enc(E.b64dec(bad.objects[2].data).map((x, i) => i === 3 ? x ^ 1 : x));

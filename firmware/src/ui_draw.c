@@ -771,7 +771,7 @@ UI_SMALL static void draw_parameter_column(uint32_t c,const param_desc_t *d,int3
         /* Generic enum formatting retains five-character legacy displays;
          * these six-letter type names fit the current cards in full. */
         if (d == &GP[G_RMODEL])
-            str_cpy(val,N_RMODEL[clamp(value,0,4)],sizeof val);
+            str_cpy(val,N_RMODEL[clamp(value,0,5)],sizeof val);
     }
     if (!home && cur_page()->scope == SC_RECORD && c == 0u && value) {
         uint32_t snap_units = div_units(value == REC_SNAP_EIGHTH ? 1u : 0u);
@@ -780,11 +780,12 @@ UI_SMALL static void draw_parameter_column(uint32_t c,const param_desc_t *d,int3
     }
     const char *label = d->label;
     if(!home && is_drum(TSEL) && cur_page()->graph==GR_FX && !c)label="LEVEL";
-    if(!home && cur_page()->scope==SC_GLOBAL && cur_page()->id[0]==G_DTYPE && song.g[G_DTYPE]==1 && c==2)label="TONE";
+    if(!home && cur_page()->scope==SC_GLOBAL && cur_page()->id[0]==G_DTYPE && (song.g[G_DTYPE]==1 || song.g[G_DTYPE]==3) && c==2)label="TONE";
     if (!home && cur_page()->scope==SC_GLOBAL && cur_page()->id[0]==G_LTYPE && c) {
-        static const char *const labels[4][3] = {
+        static const char *const labels[5][3] = {
             {"WOW","DARK","DAMAGE"}, {"FLUTTR","DARK","DRIVE"},
-            {"WARBLE","DARK","DAMAGE"}, {"RATE","LATCH","MIX"}
+            {"WARBLE","DARK","DAMAGE"}, {"RATE","LATCH","MIX"},
+            {"DRIFT","BAND","STATIC"}
         };
         label=labels[song.g[G_LTYPE]?song.g[G_LTYPE]-1:0][c-1];
     }

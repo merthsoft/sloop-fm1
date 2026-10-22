@@ -23,10 +23,10 @@ async function request(m, [cmd, a]) {
   const inp = [...m.access.inputs.values()][0], out = [...m.access.outputs.values()][0];
   return new Promise((resolve) => { inp.onmidimessage = ({data}) => resolve(E.unframe(data)); out.send(E.frame(cmd, a)); });
 }
-for (let probe = 0; probe < 29; probe++) {
-  const engine = probe < 12 ? probe : 0, reverb = probe >=12 && probe<17 ? probe-12 : null;
-  const lofi = probe>=17 && probe<22 ? probe-17 : null;
-  const delay = probe>=22 ? (probe<25?probe-22:probe<27?1:2) : null;
+for (let probe = 0; probe < 32; probe++) {
+  const engine = probe < 12 ? probe : 0, reverb = probe===29 ? 5 : probe >=12 && probe<17 ? probe-12 : null;
+  const lofi = probe===30 ? 5 : probe>=17 && probe<22 ? probe-17 : null;
+  const delay = probe===31 ? 3 : probe>=22 && probe<29 ? (probe<25?probe-22:probe<27?1:2) : null;
   const m = device();
   await request(m, E.req.set(1, 20, engine));
   await request(m, E.req.preset(engine, 0));
@@ -41,7 +41,7 @@ for (let probe = 0; probe < 29; probe++) {
   }
   if (lofi !== null) {
     while(state.g.length<55)state.g.push(0);
-    state.g[50]=127;state.g[51]=100;state.g[52]=80;state.g[54]=(lofi+1)%5;
+    state.g[50]=127;state.g[51]=100;state.g[52]=80;state.g[54]=probe===30 ? 5 : (lofi+1)%5;
     state.tracks[0].p[34]=state.tracks[0].p[35]=state.tracks[0].p[36]=0;
   }
   if (delay !== null) {

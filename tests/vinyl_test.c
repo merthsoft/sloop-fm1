@@ -75,7 +75,7 @@ int main(void)
     assert(rms>328 && rms<1305 && peak>3000 && peak<16000);
     assert(peak/rms>12 && (double)quiet/count>.90);
     assert(positive>10 && negative>10);
-    /* The former MONO key is now VINYL: effective settings are temporary,
+    /* The former MONO key is now LOFI: effective settings are temporary,
      * stereo stays stereo, and releasing it returns to saved parameters. */
     host_tracks_init();punch_clear();clear_vinyl();song.playing=0;
     song.g[G_VWOW]=10;song.g[G_VTONE]=20;song.g[G_VCRACKLE]=30;
@@ -105,5 +105,20 @@ int main(void)
     assert(!vinyl.wow && !vinyl.wet && !vinyl.tone && !vinyl.crackle);
     /* The master DC blocker can retain a one-LSB release tail; VINYL is bypassed. */
     for(uint32_t i=0;i<CTL*2;i++)assert(abs(out[i])<=2);
+    /* Production UI-to-DSP mapping must keep TAPE/VHS/CD selected during punch,
+     * and high saved settings must never be reduced to the momentary floors. */
+    for(unsigned mode=VINYL_MODE_TAPE;mode<=VINYL_MODE_CD;mode++) {
+        host_tracks_init();punch_clear();clear_vinyl();
+        song.g[G_LTYPE]=mode+1;
+        song.g[G_VWOW]=127;song.g[G_VTONE]=121;song.g[G_VCRACKLE]=115;
+        punch_hold(2,PX_VINYL,1);
+        for(uint32_t b=0;b<200;b++)mix_block(out,CTL);
+        assert(vinyl.mode==mode && song.g[G_LTYPE]==mode+1);
+        assert(vinyl.wow==127*256 && vinyl.tone==121*256 && vinyl.crackle==115*256);
+        punch_hold(2,PX_VINYL,0);
+        for(uint32_t b=0;b<200;b++)mix_block(out,CTL);
+        assert(vinyl.mode==mode && song.g[G_LTYPE]==mode+1);
+        assert(vinyl.wow==127*256 && vinyl.tone==121*256 && vinyl.crackle==115*256);
+    }
     puts("VINYL: bypass, frequency response, wow/stereo, PLAY/STOP noise, hot input and exit PASS");return 0;
 }

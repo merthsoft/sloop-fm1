@@ -126,8 +126,8 @@ enum {                          /* global parameters */
     G_DDRIVE, G_DBITS, G_DHOLD, /* delay character controls */
     G_COUNT
 };
-/* UI order is OFF first; stored/DSP character IDs remain VINYL/TAPE/VHS/CD/OFF. */
-static inline uint32_t lofi_mode(uint32_t type) { return type ? type-1u : 4u; }
+/* UI order is OFF first; stored/DSP character IDs remain VINYL/TAPE/VHS/CD/OFF/RADIO. */
+static inline uint32_t lofi_mode(uint32_t type) { return type>4u ? type : type ? type-1u : 4u; }
 
 /* ----------------------------------------------------------- voices --- */
 /* Stored mode values are append-only: existing projects keep their direction. */
@@ -254,6 +254,7 @@ enum { FC_NORM, FC_FILL, FC_NOFILL };     /* (3: as FC_NORM) */
 
 typedef struct track {
     int16_t p[P_COUNT];
+    int16_t chord_inv, chord_spread; /* track voicing; outside upstream parameter IDs */
     uint8_t engine, preset;      /* engine: what the audio ISR renders */
     uint8_t eng_req;             /* engine the UI asked for (the ISR switches at a block start) */
     uint8_t user;                /* user preset slot + 1 the sound came from (UI), 0 = none */

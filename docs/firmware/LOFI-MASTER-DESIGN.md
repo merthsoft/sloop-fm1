@@ -5,12 +5,14 @@
 `firmware/src/vinyl.c` remains an include-style DSP module. Its explicit entry is
 `vinyl_process_mode(int32_t *l, int32_t *r, uint32_t n, unsigned mode)`.
 Modes, in stable DSP/persistence order: `VINYL_MODE_VINYL=0`, `VINYL_MODE_TAPE=1`,
-`VINYL_MODE_VHS=2`, `VINYL_MODE_CD=3`, `VINYL_MODE_OFF=4`. The four sound characters retain `VINYL_MODE_COUNT=4`; OFF is a bypass selector.
-Values above OFF select VINYL. Legacy `vinyl_process(l,r,n)` explicitly selects
-VINYL. Punch also selects VINYL with its existing temporary 96/90/100 settings;
+`VINYL_MODE_VHS=2`, `VINYL_MODE_CD=3`, `VINYL_MODE_OFF=4`, `VINYL_MODE_RADIO=5`, `VINYL_MODE_COUNT=6`. OFF remains a bypass selector; its stored ID is unchanged.
+Values at or above COUNT select VINYL. Legacy `vinyl_process(l,r,n)` explicitly selects
+VINYL. The LOFI punch retains the selected character, falling back to VINYL
+only for OFF. It floors the three local amounts at 96/90/100 without reducing
+stronger saved values;
 saved globals are untouched. Parent integration now adds G_LTYPE, the native LOFI selector, mode-specific labels and the single mixer call. FUN6 stores mode in an optional 0x5C00 tag (three bits, including OFF); the earlier 0x5A00 four-character tag remains readable. It is stored alongside the old amounts; absent tags select OFF; explicit old 0x5600 VINYL tags select VINYL. Project/section tests cover every character and old tags. Shared project sizes and default upstream bytes remain unchanged.
 
-The native G_LTYPE selector is OFF=0, VINYL=1, TAPE=2, VHS=3, CD=4.
+The native G_LTYPE selector is OFF=0, VINYL=1, TAPE=2, VHS=3, CD=4, RADIO=5.
 OFF is both the first option and the default. lofi_mode maps it to the stable
 DSP/storage IDs above. Missing or invalid tags select OFF; explicit saved
 characters, including old VINYL tags, retain their intent. The three amounts
@@ -22,6 +24,7 @@ are preserved while OFF. There is one master processing call.
 | TAPE | FLUTTER | DARK | DRIVE |
 | VHS | WARBLE | DARK | DAMAGE |
 | CD | RATE | LATCH | MIX |
+| RADIO | DRIFT | BAND | STATIC |
 
 Amounts remain 0..127. All three zero is bit-exact bypass after the existing
 control release settles. Mode alone does not activate processing. Control
@@ -33,6 +36,13 @@ VHS dropouts intentionally alter audible content. Processing uses the same
 256-frame stereo history; no extra audio ring, allocation, or mono folding.
 The filter snaps residuals below 32 internal units to zero on zero input so
 stopped silence reaches exact zero instead of retaining negative rounding residue.
+
+RADIO adds a high-pass state per channel after the shared low-pass. BAND narrows
+the signal to a receiver-like response; STATIC adds the existing irregular noise
+events at a reduced level. DRIFT uses the shared pitch-history path. No new
+audio ring is added. The extra filter state adds 8 logical RAM bytes (16 linked
+bytes with alignment). Residuals snap to exact silence. The selected-character
+LOFI punch also supports RADIO.
 
 ## Character behavior and limits
 
@@ -111,6 +121,6 @@ the fully integrated firmware before shipping.
 Native/WASM audio matches exactly across all four characters. Actual framebuffer tests check all character labels and forced/incremental redraw parity. The native short label FLUTTR fits the six-character knob card. Host-only abs calls were replaced by equivalent bounded integer operations for the freestanding target. Wet-color TAPE/CRUSH remains a separately tested foundation for the queued delay/reverb expansion; it is not an extra active master mode.
 
 LOFI TYPE also offers **OFF**: it fades to dry without changing the three stored
-amounts. Selecting a character restores those amounts; VINYL punch remains
+amounts. Selecting a character restores those amounts; LOFI punch remains
 momentary over OFF and returns to dry on release. OFF is saved with the project
 and section. Its inactive controls show the retained WOW/DARK/DAMAGE amounts.

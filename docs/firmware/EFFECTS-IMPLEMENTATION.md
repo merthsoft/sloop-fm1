@@ -1,5 +1,9 @@
 # Current delay/LOFI integration
 
+Current punch label: **LOFI**. It boosts the selected master character, falling
+back to Vinyl only for OFF, and restores the saved controls on release. The
+VINYL naming/fixed preset below describes the earlier implementation.
+
 The native DLY TYPE page selects DIGI/TAPE/CRUSH. Its other knobs follow the
 type: TIME/FDBK/MIX, DRIVE/TONE/MIX or BITS/RATE/MIX. DLY keeps
 TIME/FDBK/COLR/MIX for every type; shared rings, timing and sends are preserved.

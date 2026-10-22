@@ -43,6 +43,22 @@ The [design and implementation record](UI-REFRESH-DESIGN.md) contains more actua
 screens. Older detailed screenshots below may show the previous layout; controls
 are unchanged.
 
+## Perform a progression
+
+Choose a stock or CUSTOM progression in SEQ's SEQUENCES browser, then turn SELECT
+to its fifth page, PERFORM. With transport stopped, turn LIVE
+on. The leftmost white keys select the progression's chords; the next group repeats
+them an octave higher. HOLD sustains the last selection. OCTAVE changes the next
+chord without retuning the one currently playing. ARP OFF plays sustained chords; with ARP ON the existing arp supplies the
+rhythm; PLAY runs accompanying tracks and REC captures its generated notes.
+Stored notes on the live track stay intact and silent while you perform.
+
+![Native progression performance](../assets/screens/merthsoft/neon/progression-perform.png)
+
+This first slice uses immediate changes and diatonic triads/sevenths. Black-key
+modifiers, queued beat/bar changes and starter-rhythm performance remain future
+work. [Controls, recording and lifecycle](PROGRESSION-PERFORM-DESIGN.md).
+
 ## Saving sections safely
 
 Hold SAVE and use SAVE A–D (keys 5–8); confirm a used section with a second tap.
@@ -317,10 +333,10 @@ the normal mix; HOME can lock the FX control panel open, freeing the FX-button h
 These act on the mix, whereas LFO/ENV modulation acts on one synth.
 See the [physical effect mapping](../../GUIDE.md#punch-in-effects).
 
-### Five reverb characters
+### Six reverb characters
 
 **FX → REVERB → TYPE** offers the original **STEREO**, a dual-path **SPRING**,
-short **ROOM**, bright dense **PLATE**, and spacious **HALL**. The new spring
+short **ROOM**, bright dense **PLATE**, spacious **HALL**, and a dense muted **DARK** tail. The new spring
 uses unequal lengths, different dispersion and offset pickup modulation for
 stereo width. The three spaces retune the existing feedback delay network;
 they reuse its buffers and leave the original STEREO sound unchanged.
@@ -487,9 +503,9 @@ The drum track's first **FX** page is LEVEL / PAN / DLY / REV, with real drum se
 
 ## Master LOFI characters
 
-**FX → LOFI** selects VINYL, TAPE, VHS or CD. Their three controls are WOW/DARK/DAMAGE, FLUTTR/DARK/DRIVE, WARBLE/DARK/DAMAGE, and RATE/LATCH/MIX. Vinyl uses irregular pitch drift and sparse varied clicks/pops; tape adds flutter and saturation; VHS adds faster warble/dropouts; CD repeats tiny captured fragments. CD is microstutter, not a phrase-length CSIDMAN delay. That longer delay remains a separate planned expansion.
+**FX → LOFI** selects VINYL, TAPE, VHS, CD or RADIO. Their three controls are WOW/DARK/DAMAGE, FLUTTR/DARK/DRIVE, WARBLE/DARK/DAMAGE, RATE/LATCH/MIX, and DRIFT/BAND/STATIC. Vinyl uses irregular pitch drift and sparse varied clicks/pops; tape adds flutter and saturation; VHS adds faster warble/dropouts; CD repeats tiny captured fragments; RADIO adds a narrowed receiver band, drift and static. CD is microstutter, not a phrase-length CSIDMAN delay. That longer delay remains a separate planned expansion.
 
-All amounts zero bypass the processing. Characters and amounts save with sections/projects; older vinyl settings load as VINYL. The held VINYL punch uses its own temporary settings and restores the saved character after release.
+All amounts zero bypass the processing. Characters and amounts save with sections/projects; older vinyl settings load as VINYL. The held LOFI punch intensifies the selected character, using Vinyl when TYPE is OFF, and restores the saved settings after release.
 
 | Vinyl | Tape | VHS | CD |
 | --- | --- | --- | --- |
@@ -507,15 +523,16 @@ The graph stays below the knob cards.
 ![Piano-roll grid with an independently sustained chord](../assets/screens/merthsoft/neon/notes.png)
 
 LOFI TYPE starts with OFF, keeping all three amounts for re-enable. OFF saves with
-projects and sections, and VINYL punch remains available as a temporary override.
+projects and sections, and LOFI punch remains available as a temporary override.
 
 ![LOFI starts with OFF](../assets/screens/merthsoft/neon/lofi-off.png)
 
 ### Delay characters
 
-**FX → DLY TYPE** selects DIGI/TAPE/CRUSH on knob 1. The remaining knobs are TIME/FDBK/MIX for DIGI, DRIVE/TONE/MIX for TAPE, and BITS/RATE/MIX for CRUSH. RATE spans about 2.8–44 kHz; higher values are cleaner. Original DLY keeps TIME/FDBK/COLR/MIX for every type.
+**FX → DLY TYPE** selects DIGI/TAPE/CRUSH/DUB on knob 1. The remaining knobs are TIME/FDBK/MIX for DIGI, DRIVE/TONE/MIX for TAPE and DUB, and BITS/RATE/MIX for CRUSH. RATE spans about 2.8–44 kHz; higher values are cleaner. Original DLY keeps TIME/FDBK/COLR/MIX for every type.
 DIGI preserves the original delay, TAPE compresses its repeats and CRUSH adds
-coarse resolution/sample holding. The preceding DLY page retains COLR. These
+coarse resolution/sample holding. DUB filters the first repeat and feedback with
+a darker TONE range and optional soft saturation. The preceding DLY page retains COLR. These
 settings use the shared delay send bus and save with sections/projects.
 Master LOFI remains separate and defaults to OFF. STEP/NOTES footers now
 explicitly name PRESETS zoom.
@@ -523,3 +540,21 @@ explicitly name PRESETS zoom.
 ![Tape delay type](../assets/screens/merthsoft/neon/delay-tape.png)
 
 ![Crush delay bit depth and rate](../assets/screens/merthsoft/neon/delay-crush.png)
+
+| Radio LOFI | Dark reverb | Dub delay |
+| --- | --- | --- |
+| ![Radio](../assets/screens/merthsoft/neon/lofi-radio.png) | ![Dark](../assets/screens/merthsoft/neon/reverb-dark.png) | ![Dub](../assets/screens/merthsoft/neon/delay-dub.png) |
+
+### Native chord inversions and spread
+
+**SEL → VOICING** is the third synth harmony page: **INVERT / SPREAD / VLEAD /
+STRUM**. INVERT rotates voices by octaves (-3..+3). CLOSE keeps their spacing;
+OPEN lifts alternating voices; WIDE lowers the bass and raises the top voice.
+For C4–E4–G4, OPEN gives C4–G4–E5 and WIDE gives C3–E4–G5.
+
+Settings are independent per track, survive instrument changes, and save with
+projects/sections. New projects reset them. Currently held/latched notes stay
+unchanged until another chord or modifier revoice. The four-note chord and
+shared eight-voice limits stay intact. See [implementation](CHORD-VOICING-DESIGN.md).
+
+![Native voicing controls](../assets/screens/merthsoft/neon/chord-voicing.png)

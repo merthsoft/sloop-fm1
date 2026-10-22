@@ -243,14 +243,24 @@ python3 tools/fm1pkg_make.py "$OUT/old_app.bin" build/loader/ota.bin "$OUT/old.f
 $CC -o "$OUT/ldr_test" tests/ldr_test.c
 run "update loader: other app -> this build" "$OUT/ldr_test" "$OUT/old.fwsc" build/felucca.fwsc
 
+$CC -UNDEBUG -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal tests/effect_colors_test.c -o "$OUT/effect_colors_test" -lm
+run "Radio band and Dub first-repeat tone response" "$OUT/effect_colors_test"
 $CC -UNDEBUG -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal tests/delay_storage_test.c -o "$OUT/delay_storage_test" -lm
 run "delay characters: project/section storage, old defaults and marker coexistence" "$OUT/delay_storage_test"
 $CC -UNDEBUG -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal tests/delay_ui_test.c -o "$OUT/delay_ui_test" -lm
 run "delay characters: native page and controls; LOFI OFF default" "$OUT/delay_ui_test" "$OUT"
 $CC -UNDEBUG -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal tests/ui_shared_paths_test.c -o "$OUT/ui_shared_paths_test" -lm
 run "shared UI paths: HOME isolation and physical/MIDI chord entry" "$OUT/ui_shared_paths_test"
+$CC -UNDEBUG -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal tests/progression_perform_test.c -o "$OUT/progression_perform_test" -lm
+run "progression performance: pads, MIDI ownership, recording and cleanup" "$OUT/progression_perform_test" "$OUT"
+$CC -UNDEBUG -O2 -w tests/chord_voicing_test.c -o "$OUT/chord_voicing_test"
+run "chord voicing: inversions, spread and MIDI-range invariants" "$OUT/chord_voicing_test"
+$CC -UNDEBUG -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal tests/chord_voicing_ui_test.c -o "$OUT/chord_voicing_ui_test" -lm
+run "chord voicing: native controls, latch, preset isolation" "$OUT/chord_voicing_ui_test" "$OUT"
+$CC -UNDEBUG -O2 -w -Ibuild/gen -Ifirmware/src tests/chord_voicing_storage_test.c -o "$OUT/chord_voicing_storage_test" -lm
+run "chord voicing: upstream-compatible project/section storage" "$OUT/chord_voicing_storage_test"
 $CC -UNDEBUG -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal tests/delay_character_test.c -o "$OUT/delay_character_test" -lm
-for mode in 0 1 2; do
+for mode in 0 1 2 3; do
     run "delay character $mode: exhaustive tap bounds and live feedback/time/mode stress" "$OUT/delay_character_test" "$mode" "$OUT/delay-$mode.wav"
 done
 

@@ -599,6 +599,28 @@ Tap **SEL** twice (or SEL, then SELECT) for **SEL 2**:
 
 ---
 
+### VOICING: inversions and chord width
+
+On a synth track, **SEL → SELECT → VOICING** opens the third page:
+**INVERT / SPREAD / VLEAD / STRUM** on knobs 1–4. INVERT ranges from -3 to +3;
+positive turns rotate the lowest voice above the highest, negative turns move
+the highest below the lowest. Zero leaves the automatic/modifier voicing alone.
+
+SPREAD offers **CLOSE**, **OPEN** and **WIDE**. A C4–E4–G4 chord becomes
+C4–G4–E5 in OPEN, or C3–E4–G5 in WIDE. This moves existing notes by octaves;
+it does not consume extra voices. At the ends of MIDI range, impossible moves
+are refused rather than losing notes. Automatic voice leading runs first,
+then your explicit inversion/spread choice, without accumulating octave jumps.
+
+These controls affect new keyboard chords, including their arpeggiated and
+recorded pitches. Literal sequencer notes and MIDI input stay literal. Turning
+a knob preserves currently held/latched pitches; play another chord to hear
+the new setting. Each synth track remembers its own settings across preset
+changes and project/section saves. NEW PROJECT resets them. User presets do
+not replace them.
+
+![Native chord voicing controls](assets/screens/merthsoft/neon/chord-voicing.png)
+
 ## 12. Mix: levels, mute, solo, fills, tap tempo
 
 | Where | What |
@@ -730,7 +752,7 @@ Tap a button to open its first page (or the last one you used); **tap it again**
 | | **INSERT 2** (2.6) | MIX: dry / wet | — | — | — |
 | | **DLY** (global) | TIME: 1/4, 1/8, 1/16, 1/32, 8T, 16T, 1/8D, 1/16D, 1/4D (2.6; at 60 BPM and below it stops at 1.49 s) | FDBK feedback | COLR colour (tone of the repeats) | MIX |
 | | **REV/CHO** (global) | SIZE reverb size | DAMP reverb damping | CRT chorus rate | CDP chorus depth |
-| | **REVERB** (global) | TYPE: STEREO / SPRING / ROOM / PLATE / HALL | SIZE decay | DAMP darker tail | TIME: SPRING reflection spacing, 20–80 ms; inactive on other types |
+| | **REVERB** (global) | TYPE: STEREO / SPRING / ROOM / PLATE / HALL / DARK | SIZE decay | DAMP darker tail | TIME: SPRING reflection spacing, 20–80 ms; inactive on other types |
 | **SEL** | **SEL** | ROOT (the track's key) | SEL: the track's scale (SEL + KNOB 2 sets all three) | QNT keys: OFF, SNAP, WHITE | CHORD: OFF, TRIAD, 7TH, 9TH, SUS4, POWER, SUS2, ADD9, 6TH, SHELL, OCTAVE, MAJOR, MINOR, DOM7, MAJ7, MIN7, DIM, AUG, HALFDIM, DIM7 |
 | | **SEL 2** | TRN transpose ±24 | STRUM ±60 ms | VLEAD: OFF / ON | LATCH: OFF / ON |
 | **EDIT** | **EDIT 1** | engine parameter 1 | 2 | 3 | 4 (see [the engines](#the-twelve-engines)) |
@@ -746,7 +768,7 @@ Tap a button to open its first page (or the last one you used); **tap it again**
 | | **PATTERN** | LEN 1–64 steps | DIV 1/4 … 2BAR | SWG track swing | GATE note length |
 | | **SONG** | the SONG screen | | | |
 | **GLO** | **GLOBAL** | BPM 40–240 | SWING (all tracks) | CLICK: OFF, REC, ON | TUNE ±50 cents |
-| **FX** | **VINYL** | WOW (slow pitch drift) | TONE (darkening) | CRACKLE | — |
+| **FX** | **LOFI** | TYPE | WOW / FLUTTR / WARBLE / RATE | DARK / LATCH | DAMAGE / DRIVE / MIX |
 | | **MASTER** | DUST | DUCK | FILT (DJ filter) | ROLL (note-repeat rate) |
 | | **SYSTEM** | OUT (MIDI out): KEYS / SEQ (also on MIDI 2) | SYNC: INT, USB, TRS | IN: NOTES / CLOCK / CH 1–16 (also on MIDI 2) | CPU load, with or without USB connected |
 | | **DRUMS** | CH4: the drum track's MIDI channel (OFF, 1–16, default 10; the same setting as GLO → MIDI → CH4; 2.6: a setting of the FM-1) | LVL drum level | REV drum reverb | DLY drum delay (2.5): the drums into the tempo delay (FX → DLY sets its time, feedback and tone), saved with the project |
@@ -842,7 +864,7 @@ Edit full patches in the web editor's **FM6** panel (Sound page, on an FM6 track
 
 On the drum track, the first FX page is **LEVEL / PAN / DLY / REV**. DLY and REV are the drum bus's delay/reverb send percentages; synth sends remain independent. The second page edits the drum filter. **INSERT 2** has MIX / TYPE / the insert's first two sound controls, on both drums and synths.
 
-**FX → LOFI:** knob 1 selects VINYL, TAPE, VHS or CD. Knobs 2–4 are WOW/DARK/DAMAGE, FLUTTR/DARK/DRIVE, WARBLE/DARK/DAMAGE, or RATE/LATCH/MIX respectively. All three amounts zero bypass processing; mode alone does not activate it. CD repeats very short fragments from the existing buffer, rather than phrase-length skips. These settings save with sections/projects. Held VINYL temporarily uses its own vinyl settings and restores the saved character after release.
+**FX → LOFI:** knob 1 selects VINYL, TAPE, VHS, CD or RADIO. Knobs 2–4 are WOW/DARK/DAMAGE, FLUTTR/DARK/DRIVE, WARBLE/DARK/DAMAGE, RATE/LATCH/MIX, or DRIFT/BAND/STATIC respectively. All three amounts zero bypass processing; mode alone does not activate it. CD repeats very short fragments from the existing buffer, rather than phrase-length skips. These settings save with sections/projects. Held LOFI temporarily intensifies the selected character; OFF falls back to Vinyl. Release restores the saved character and amounts.
 
 
 ### Signal path
@@ -910,7 +932,7 @@ contract.
 | G#3 | **KILL MID**: the mids gone (~250 Hz – 2.5 kHz) | G#4 | **AUTO-PAN**: the mix in mono, left and right once a beat |
 | A#3 | **KILL HIGH**: the highs gone (above ~2.5 kHz) | A#4 | **FREEZE**: the mix poured into the reverb and held there for as long as you hold the key; let go and it dies away with the reverb's SIZE |
 | C#4 | **REWIND**: the record pulled back: it slows, stops and spins backwards faster and faster (about a third of a second of the past), then silence until you let go | C#5 | **LOOP 8T**: loop 1/8 triplet |
-| D#4 | **DOUBLE TIME**: double the musical tempo while held (pitch unchanged) | D#5 | **VINYL**: momentary wow, tone and crackle |
+| D#4 | **DOUBLE TIME**: double the musical tempo while held (pitch unchanged) | D#5 | **LOFI**: boost the selected character; OFF uses Vinyl |
 | | | F#5 | **FADE OUT**: the mix fades to nothing over two beats |
 
 The screen shows the 27 keys as a keyboard: the white keys in four rows of four, as on the other layers, the black keys above them, each between the two white keys it sits between on the FM-1 (the one after a row's last white key at the right end of that row). The effect held is lit white.
@@ -1637,6 +1659,43 @@ The shared custom draft lasts until power-off; applied notes save with the song.
 
 ![Native custom 5–1–2–4 progression](assets/screens/merthsoft/guide/custom-progression.png)
 
+### Perform a progression live
+
+On a synth track, set **ARP MODE** OFF for sustained chords, or UP/PULSE/another enabled
+mode for rhythmic playing. Stop
+playback and release keys and pedals. In **SEQUENCES**, choose a progression,
+ROOT/SCALE and optional pitch-page VLEAD, then turn SELECT to the fifth page,
+**PERFORM**. Use loop playback, rather than SONG mode.
+
+| Knob | Control |
+| --- | --- |
+| 1 | **LIVE** OFF/ON |
+| 2 | **OCTAVE** for the next selected chord |
+| 3 | **HOLD** keeps the last pad's chord after release |
+| 4 | **SLOT** displays the selected progression position; read-only |
+
+White keys from the left select progression positions. For 5-1-2-4, the first
+four white keys play those chords; the next four repeat them an octave higher.
+Last newly pressed pad wins. Black keys are unused in this first implementation.
+Stock progressions use triads/sevenths; CUSTOM uses triads. SEL VOICING inversion
+and spread apply, but the separate SEL CHORD shape does not override the progression.
+
+With ARP OFF, pads play sustained chords directly. With ARP ON, the track's
+**ARP MODE/RATE/GATE/SWING** supplies the rhythm; the browser's RHY
+selector is for applying patterns, not live performance. Changes are immediate
+(**NOW**), with attacks still following the arp grid. Re-pressing a pad resets
+pitch traversal without restarting that rhythm. Octave changes leave a held
+chord alone until the next pad.
+
+Press **PLAY** for the other tracks to accompany you. The live track's stored
+pattern is temporarily silent and preserved. **REC** records played chords or generated arp
+as ordinary notes, using tempo recording and normal count-in/quantization. It does
+not enter a FREE take or change that saved preference. Expanded PULSE still has
+the recorder's four-note-per-step limit. Turn LIVE off before editing the draft;
+PRESETS/ALGORITHM are blocked while live. MIDI note input to this one track is
+ignored; other tracks retain MIDI input. STOP, leaving the browser, track/preset
+changes and loads end live ownership. Held musical layers suspend pad selection.
+
 ### Independent note sustains
 
 Use **POLY** for guitar-like overlaps. In STEP, select the starting note/chord and
@@ -1675,7 +1734,7 @@ clear it. These live controls retain saved patch settings. See the
 Open **FX → LOFI** and choose VINYL for record colour on the full mix. TYPE defaults to **OFF**. **WOW** adds slow,
 stereo-linked slow wow plus flutter; **DARK** darkens the highs; **DAMAGE** adds
 pops and a little hiss. Start around WOW 15%, TONE 25%, CRACKLE 10% and adjust to
-taste. These controls remain active until changed; the VINYL punch-in applies a temporary preset and restores them on release. All three at zero
+taste. These controls remain active until changed; the LOFI punch-in temporarily boosts the selected character and restores them on release. All three at zero
 bypasses the effect exactly. Settings are saved per project and song section.
 Noise fades out at STOP; wow and tone still affect live playing. The separate
 **GLO → TEXTURE → VINYL** is an additive background bed, so keep it off unless
@@ -1683,7 +1742,7 @@ you want extra record noise.
 
 ### Spring reflection timing
 
-On **FX → REVERB**, TYPE selects STEREO, SPRING, ROOM, PLATE or HALL. With SPRING selected,
+On **FX → REVERB**, TYPE selects STEREO, SPRING, ROOM, PLATE, HALL or DARK. With SPRING selected,
 knob 2 **SIZE** sets the nominal decay target, knob 3 **DAMP** darkens the tail,
 and knob 4 **TIME** sets the spring round-trip spacing from 20 to 80 ms. Early
 pickups occur around one-half and three-quarters of that time, followed by the
@@ -1693,8 +1752,9 @@ actual tails also depend on damping, dispersion and the sound. FREEZE holds its
 current length until released. TIME is saved with the section/project and is
 inactive for STEREO reverb.
 
-The VINYL punch-in replaces the former MONO key (D#5). It uses a temporary
-WOW/TONE/CRACKLE preset without modifying the persistent FX → LOFI controls.
+The LOFI punch-in is on D#5 (hold FX). It boosts the selected Vinyl/Tape/VHS/CD/Radio
+character without modifying the persistent FX → LOFI controls. OFF temporarily
+uses Vinyl. The three amounts are raised to at least 96/90/100, never lowered.
 Releasing it fades back to those controls. DOUBLE TIME replaces the former
 octave-shift key (D#4): the song runs at twice its stored BPM, preserving pitch,
 and releasing returns to normal or a still-held HALF gesture. Both rate gestures
@@ -1709,20 +1769,27 @@ NOTE ACTIONS uses knob 1 to select a row and knob 2 to adjust its value/destinat
 Drums add HIT ACTIONS after RHYTHM, retaining the selected lane and step. Ratchet is per hit; nudge and fill are shared per step. Move/copy/delete preserve the other lanes; occupied same-lane destinations refuse the change. OCT− returns to GRID. Function layers retain priority; action-sheet physical keys are silent, and PLAY/REC leave the sheet normally.
 
 LOFI TYPE starts at and defaults to **OFF**: it fades to dry without changing the three stored
-amounts. Selecting a character restores those amounts; VINYL punch remains
+amounts. Selecting a character restores those amounts; LOFI punch remains
 momentary over OFF and returns to dry on release. OFF is saved with the project
 and section. Its inactive controls show the retained WOW/DARK/DAMAGE amounts.
 
 ### Delay characters
 
 Press FX, then turn SELECT to **DLY TYPE** (page 7). Knob 1 chooses **DIGI**,
-**TAPE** or **CRUSH**. Knobs 2/3/4 follow the type:
+**TAPE**, **CRUSH** or **DUB**. Knobs 2/3/4 follow the type:
 
 | TYPE | Knob 2 | Knob 3 | Knob 4 |
 | --- | --- | --- | --- |
 | DIGI | TIME | FDBK | MIX |
 | TAPE | DRIVE | TONE | MIX |
 | CRUSH | BITS | RATE | MIX |
+| DUB | DRIVE | TONE | MIX |
+
+DUB shares adjustable DRIVE with TAPE, with a much darker TONE range that filters
+the first repeat as well as feedback. Set TIME/FDBK on the preceding DLY page.
+RADIO on the separate LOFI page uses DRIFT/BAND/STATIC: BAND narrows the receiver
+response, STATIC adds crackling interference, and DRIFT adds pitch instability.
+DARK reverb supplies a dense muted stereo tail, with normal SIZE and DAMP controls.
 
 DIGI retains the original sound. TAPE DRIVE sets soft saturation; zero removes
 it, and TONE darkens the feedback. CRUSH BITS selects 4–16 bits and RATE selects

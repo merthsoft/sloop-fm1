@@ -1,5 +1,9 @@
 # DOUBLE TIME punch-in
 
+Current punch label: **LOFI**. It boosts the selected master character, falling
+back to Vinyl only for OFF, and restores the saved controls on release. The
+VINYL naming/fixed preset below describes the earlier implementation.
+
 Implemented in the shared merthsloop workbench on 2026-10-19. No version bump,
 commit, push, target build, generated assets, installer or parent-owned DSP changes.
 

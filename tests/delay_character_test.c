@@ -9,7 +9,7 @@ int main(int argc,char **argv)
 {
     assert(argc==3);unsigned mode=(unsigned)atoi(argv[1]);host_tracks_init();
     /* All int16 tap values and live mode transitions are bounded. */
-    for(unsigned m=0;m<3;m++) {
+    for(unsigned m=0;m<4;m++) {
         memset(&delay_age,0,sizeof delay_age);
         for(unsigned i=0;i<512;i++)delay_character_sample(0,m,i);
         for(int x=-32768;x<32768;x++) {
@@ -37,7 +37,7 @@ int main(int argc,char **argv)
     memset(&delay_age,0,sizeof delay_age);
     int prev=12000;
     for(unsigned i=0;i<10000;i++) {
-        int y=delay_character_sample(12000,(i/1000)%3,i);
+        int y=delay_character_sample(12000,(i/1000)%4,i);
         assert(abs(y-prev)<=64);prev=y;
     }
     for(unsigned i=0;i<1000;i++)assert(delay_character_sample(0,2,i)>=-32768);
@@ -65,7 +65,7 @@ int main(int argc,char **argv)
     for(unsigned b=0;b<1200;b++) {
         int32_t zero[CTL]={0},send[CTL],l[CTL]={0},r[CTL]={0};
         song.g[G_DDRIVE]=b%128;song.g[G_DBITS]=4+(b%13);song.g[G_DHOLD]=b%5;
-        song.g[G_DTYPE]=(b/29)%3;song.g[G_DTIME]=(b/17)%(GP[G_DTIME].max+1);
+        song.g[G_DTYPE]=(b/29)%4;song.g[G_DTIME]=(b/17)%(GP[G_DTIME].max+1);
         song.g[G_BPM]=40+(b%201);song.g[G_DCOLOR]=b%128;
         for(unsigned i=0;i<CTL;i++)send[i]=b<600?((b+i)&1?65534:-65536):0;
         fx_buses(zero,send,zero,l,r,CTL);

@@ -3,8 +3,10 @@
 ## Current native integration
 
 FX → DLY TYPE maps its remaining knobs by type: DIGI TIME/FDBK/MIX,
-TAPE DRIVE/TONE/MIX, CRUSH BITS/RATE/MIX. DIGI retains the original delay;
+TAPE or DUB DRIVE/TONE/MIX, CRUSH BITS/RATE/MIX. DIGI retains the original delay;
 TAPE applies adjustable soft saturation before feedback filtering and return;
+DUB reuses TAPE saturation and the existing delay filter, with a darker cutoff
+range and filtered first repeat as well as feedback. No extra state/buffer is added.
 CRUSH offers 4–16 bits and approximately 2.8–44 kHz sample holding.
 The preceding DLY page keeps TIME/FDBK/COLR/MIX for every type. These are global bus settings,
 independent from master LOFI, which now defaults to OFF.
@@ -18,16 +20,16 @@ values defaulting to DIGI. Default project bytes retain upstream compatibility.
 Other markers, project size and checksum remain unchanged. Phone song archives
 and browser backups preserve the new signed tag byte-for-byte in tests.
 
-Current target: 580,312 image bytes in a 584,336-byte slot, 4,024 free;
+Earlier delay integration target: 580,312 image bytes in a 584,336-byte slot, 4,024 free;
 main static RAM 89,080/98,304, low RAM 28,280/29,496, pool 332,876/344,064.
 See [architectural headroom](ARCHITECTURAL-HEADROOM.md) for the preset-storage
 trade and capacity arithmetic; neither adds playback sample decoding. Target image safety and DSP budgets
 pass. No physical deadline or startup-duration measurement is claimed.
 
 Tests cover exhaustive int16 tap bounds, exact DIGITAL identity, CRUSH grid,
-mode changes, maximum-feedback send/tempo/time/type automation, three modes'
+mode changes, maximum-feedback send/tempo/time/type automation, four modes'
 project and section recall, invalid tags, reverb/LOFI/drum metadata coexistence,
-actual native page controls and 29 native/WASM profiles. Original DIGITAL WAV
+actual native page controls and 32 native/WASM profiles. Original DIGITAL WAV
 bytes match exactly; all 182 existing golden audio renders are unchanged.
 The canonical upstream project fixture and 25 phone song-library checks pass.
 A web fixture parser now anchors FM6 symbol names so BOOT_FM6_FACTORY cannot be
@@ -358,5 +360,5 @@ new order. Tests include OFF-first navigation and saved old-style tags.
 The real target now fits after startup-only preset metadata packing and
 reclaiming unused capacity within the unchanged physical update boundary.
 Native control/persistence, 153 restored preset records, 182 audio goldens,
-29 native/WASM profiles and target DSP budgets pass. Hardware startup timing
+32 native/WASM profiles and target DSP budgets pass. Hardware startup timing
 and SPL boot with the larger directory extent remain unverified.

@@ -25,6 +25,8 @@ the website installer references the current MerthSloop package.
 - [Rhythm shaping](RHYTHM-SHAPING-DESIGN.md)
 - [Eighth-note swing grid](SWING-GRID-DESIGN.md)
 - [Chord and arpeggio architecture](CHORD-ARPEGGIO-DESIGN.md) — includes future work
+- [Native inversion and spread controls](CHORD-VOICING-DESIGN.md)
+- [Progression performance design](PROGRESSION-PERFORM-DESIGN.md) — integrated arp-driven local pads; queued changes and starter rhythms deferred
 - [Punch FX and superseded modifier design](PUNCH-FX-DESIGN.md)
 - [USB playback](USB-PLAYBACK-IMPLEMENTATION.md)
 - [Lossless font packing](FONT-PACKING-DESIGN.md)

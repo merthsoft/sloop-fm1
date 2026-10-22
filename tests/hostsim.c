@@ -97,6 +97,7 @@ static void host_tracks_init(void)                /* as felucca_init: defaults, 
         song.g[i] = GP[i].def;
     song.g[G_BPM] = 120;                         /* (the tests' tempo; SLOOP powers on at 90) */
     for (k = 0; k < NTRK; k++) {
+        trk[k].chord_inv=trk[k].chord_spread=0;
         for (i = 0; i < P_E0; i++)
             trk[k].p[i] = TP[i].def;
         steps_clear(&trk[k]);

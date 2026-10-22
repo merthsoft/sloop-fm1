@@ -14,7 +14,7 @@ static const char *const N_MCH[] = {"OFF", "1", "2", "3", "4", "5", "6", "7", "8
 static const char *const N_MOTH[] = {"SEL", "OFF"};
 /* GLO > TEXTURE (2.6, fx.c texture_*): the bed's sources (the user slots last), its movement's length, when it plays */
 static const char *const N_TXSRC[] = {"OFF", "VINYL", "TAPE", "RAIN", "WIND", "RADIO", "ROOM", "USR1", "USR2", "USR3", "USR4"};
-static const char *const N_LOFI[] = {"OFF", "VINYL", "TAPE", "VHS", "CD"};
+static const char *const N_LOFI[] = {"OFF", "VINYL", "TAPE", "VHS", "CD", "RADIO"};
 static const char *const N_TXRATE[] = {"1BAR", "2BAR", "4BAR", "8BAR", "16BAR"};
 static const char *const N_TXWHEN[] = {"PLAY", "ALWAYS"};
 /* ANALOG's filter TYPE (eng_analog.c): the SVF's low-pass (as always), band-pass, high-pass output */
@@ -157,8 +157,8 @@ static void preset_extras(int16_t *p, const preset_t *pr)
 }
 
 
-static const char *const N_RMODEL[] = {"STEREO", "SPRING", "ROOM", "PLATE", "HALL"};
-static const char *const N_DTYPE[]={"DIGI","TAPE","CRUSH"};
+static const char *const N_RMODEL[] = {"STEREO", "SPRING", "ROOM", "PLATE", "HALL", "DARK"};
+static const char *const N_DTYPE[]={"DIGI","TAPE","CRUSH","DUB"};
 static const char *const N_DHOLD[]={"2K8", "5K5", "11K", "22K", "44K"};
 static const param_desc_t GP[G_COUNT] = {
     [G_BPM] = PD("BPM", F_BPM, 40, 240, 90),
@@ -399,7 +399,10 @@ static void param_format(const param_desc_t *d, int32_t v, char *val, const char
 /* ------------------------------------------------------------ pages --- */
 enum { FAM_HOME, FAM_ENV, FAM_LFO, FAM_FX, FAM_SCL, FAM_EDIT, FAM_GLO, FAM_SAVE, FAM_ARP, FAM_SEQ, FAM_TRK,
        FAM_COUNT };
-enum { SC_TRACK, SC_GLOBAL, SC_ENGINE, SC_STEP, SC_TRK, SC_SONG, SC_DRUM, SC_STARTER, SC_RECORD, SC_ACTION };
+enum { SC_TRACK, SC_GLOBAL, SC_ENGINE, SC_STEP, SC_TRK, SC_SONG, SC_DRUM, SC_STARTER, SC_RECORD, SC_ACTION, SC_VOICING };
+static const char *const N_SPREAD[]={"CLOSE","OPEN","WIDE"};
+static const param_desc_t VOICE_INVERT=PD("INVERT",F_INT,-3,3,0);
+static const param_desc_t VOICE_SPREAD=PE("SPREAD",N_SPREAD,0);
 static const char *const N_REC_SNAP[] = {"TRACK", "1/8", "1/4"};
 static const param_desc_t REC_SNAP_DESC = PE("SNAP", N_REC_SNAP, 0);
 enum { GR_NONE, GR_ADSR, GR_LFO, GR_STEPS, GR_ARP, GR_SCALE, GR_FX, GR_ROLL, GR_BROWSE, GR_SLOTS, GR_USER, GR_TRK,
@@ -430,6 +433,7 @@ static const page_t PAGES[] = {
     {"LOFI", FAM_FX, SC_GLOBAL, GR_NONE, {G_LTYPE, G_VWOW, G_VTONE, G_VCRACKLE}},
     {"SEL", FAM_SCL, SC_TRACK, GR_SCALE, {P_ROOT, P_SCALE, P_QUANT, P_CHORD}},
     {"SEL 2", FAM_SCL, SC_TRACK, GR_SCALE, {P_TRANS, P_STRUM, P_VLEAD, P_AHOLD}},   /* HOLD also latches keyboard chords */
+    {"VOICING", FAM_SCL, SC_VOICING, GR_NONE, {0,1,P_VLEAD,P_STRUM}},
     {"EDIT 1", FAM_EDIT, SC_ENGINE, GR_NONE, {P_E0, P_E1, P_E2, P_E3}},
     {"EDIT 2", FAM_EDIT, SC_ENGINE, GR_NONE, {P_E4, P_E5, P_E6, P_E7}},
     {"FILTER", FAM_EDIT, SC_TRACK, GR_NONE, {P_FTYPE, P_E4, P_E5, P_E7}},   /* ANALOG only (2.6, Felucca 1.5): TYPE CUT
@@ -470,6 +474,7 @@ static const page_t PAGES[] = {
  * shows "DRUM TRACK" */
 static int page_for_drum(const page_t *pg)
 {
+    if(pg->scope==SC_VOICING)return 0;
     if (pg->scope == SC_STEP || pg->scope==SC_ACTION) /* synth roll/actions; drums have their own grid */
         return 0;                                   /* by ALGO from a synth track, it drew the drum steps as notes */
     if (pg->scope == SC_GLOBAL)
@@ -486,8 +491,13 @@ static int page_shown(const page_t *pg)
 static const param_desc_t *page_desc(const page_t *pg, uint32_t slot, int16_t **valp)
 {
     uint32_t id = pg->id[slot];
+    if(pg->scope==SC_VOICING && slot<2u) {
+        if(is_drum(TSEL)){*valp=0;return 0;}
+        *valp=slot?&TSEL->chord_spread:&TSEL->chord_inv;
+        return slot?&VOICE_SPREAD:&VOICE_INVERT;
+    }
     if(pg->scope==SC_GLOBAL && pg->id[0]==G_DTYPE && slot && slot<3u) {
-        if(song.g[G_DTYPE]==1)id=slot==1?G_DDRIVE:G_DCOLOR;
+        if(song.g[G_DTYPE]==1 || song.g[G_DTYPE]==3)id=slot==1?G_DDRIVE:G_DCOLOR;
         if(song.g[G_DTYPE]==2)id=slot==1?G_DBITS:G_DHOLD;
     }
     if(is_drum(TSEL) && pg->graph==GR_FX) {
