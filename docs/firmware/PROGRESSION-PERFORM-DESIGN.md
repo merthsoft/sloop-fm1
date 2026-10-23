@@ -8,7 +8,7 @@ queues remain deferred; they are not selectable controls in this build.
 
 1. On a synth track, tap ARP and select OFF for sustained direct chords, or enable a
    mode for rhythmic output. UP is a useful starting point; PULSE repeats the chord. Set RATE and GATE there as desired.
-2. Stop playback, release keys/pedals, and use loop playback rather than SONG mode.
+2. Use loop playback rather than SONG mode; transport can keep running.
 3. Open SEQ's SEQUENCES browser. Choose a stock progression or edit CUSTOM,
    its ROOT/SCALE, and optional VLEAD on the pitch page.
 4. Turn SELECT to the fifth browser page, PERFORM. Turn knob 1 LIVE to ON.
@@ -18,12 +18,12 @@ queues remain deferred; they are not selectable controls in this build.
 6. Turn knob 3 HOLD on to keep the last chord after releasing its pad.
    PLAY runs the other tracks alongside it. REC captures sounded chords or arp
    attacks into ordinary editable sequencer notes.
-7. Turn LIVE off, STOP, or leave the browser to end live ownership.
+7. Turn LIVE off or STOP to end live ownership. Navigate to ARP, SEL or FX to adjust the sound while it continues.
 
 PERFORM knobs: **LIVE / OCTAVE / HOLD / SLOT**. SLOT displays the current position;
 its knob does not alter the progression. OCTAVE affects the next selected chord,
 including when HOLD is on, without changing the chord already playing. The screen
-states RHYTHM: ARP / CHANGE: NOW, or OUTPUT: CHORD / NOW with ARP OFF. Its chord cards show the draft degrees and highlight
+states RHYTHM: ARP / NOW, or OUTPUT: CHORD / NOW with ARP OFF. Its chord cards show the draft degrees and highlight
 the selected position. The ordinary starter RHY/rotate/offset/feel settings do not
 control this mode: with ARP ON its rhythm is the track's ARP settings. ARP OFF sustains until release/HOLD change or another pad.
 
@@ -58,24 +58,27 @@ than arp gating.
 The common generated-note emitter sends audio, MIDI and recording events. Direct
 chords use held-note recording and end those holds on release/replacement. They
 reuse the existing generated-note list; arp_tick bypasses their sustained gates.
-Crossing ARP OFF/ON while live disarms safely; choose the output before enabling LIVE.
+Crossing ARP OFF/ON while live transfers the current literal harmony between sustained
+chords and the existing arp grid. It does not disarm or replace the source pitches.
 
-Arming requires stopped transport, no pending take/count-in, no physical notes,
-MIDI-owned notes, keyboard holds, pedal or existing chord/arp holds. It requires
-loop playback. It restores parameter locks, releases stored
-sequence ownership, stops audition, and resets reference voicing history.
+Arming works during loop playback and tempo recording/count-in. It retires the selected
+track's old physical/MIDI/pedal/keyboard-hold owners, restores parameter locks, releases
+stored sequence ownership, stops audition, and resets reference voicing history.
+Other tracks and transport continue. Release old physical keys before selecting fresh pads.
+Free-time capture and pending owner panic still prevent arming.
 
 New MIDI note-ons directed at the live owner are ignored before source allocation;
 other tracks continue to receive MIDI normally. Existing note-off/pedal/transport
 cleanup remains serviced. Direct LIVE input cannot add another harmony source.
 Routing changes, panic, preset/engine changes and track changes end ownership.
 
-While live, other browser pages remain reachable, but draft knobs, PRESETS and
-ALGORITHM are consumed with DISARM TO EDIT. The live page's octave and HOLD remain
-editable. Held FX/SEL/ARP/ENV/LFO layers suspend new pad input; their normal controls
-may be used while the source continues. EDIT/GLO/SAVE/SEQ page gestures, HOME/menu,
-project/section adoption, destructive REC hold and STOP disarm and release ownership.
-A short page-button tap keeps its normal navigation behavior and thus leaves live.
+Browser draft knobs, PRESETS and ALGORITHM remain editable while live. Existing
+held harmony is a literal snapshot: root, scale, degree, octave and voicing changes
+apply on the next pad press. HOME and ordinary page navigation retain LIVE; returning
+to the browser opens PERFORM. Held FX/SEL/ARP/ENV/LFO layers suspend new pad input
+while the existing harmony continues. Project/section adoption, destructive REC hold
+and STOP end ownership. Stopped-only audition and destructive starter Apply retain
+their separate restrictions; draft edits do not require either operation.
 
 ## Stored playback and recording
 
@@ -98,9 +101,9 @@ no project format, upstream parameter IDs or preset layout change is introduced.
 ## Validation and measured cost
 
 Focused actual-engine/UI tests cover custom 5-1-2-4 in C minor, last-pad ownership,
-HOLD, octave-repeat and shared voicing, ignored MIDI and pedal ownership, other-track
+HOLD, octave-repeat and shared voicing, MIDI/pedal/physical-source takeover, other-track
 input, stopped-source PLAY, stored-pattern preservation/SNOTE isolation, natural-grid
-resume, held-layer suspension, generated recording, count-in and cleanup. Optimized and UBSan runs pass, including 300 deterministic pad/HOLD/
+resume, held-layer suspension, running entry, live draft/page navigation, direct/arp transfer, generated recording, count-in and cleanup. Optimized and UBSan runs pass, including 300 deterministic pad/HOLD/
 octave transitions with balanced MIDI. Punch keys remain usable over the live arp.
 All 182 ordinary audio golden renders are unchanged with LIVE off. Existing
 chord/arp, canonical upstream project, real section/autosave and UI fuzz regressions

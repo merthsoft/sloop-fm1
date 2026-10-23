@@ -314,7 +314,7 @@ static void chord_latch_test(void)
     assert(chord_latch_notes[0][0] == 60 && chord_latch_notes[0][1] == 63 && chord_latch_notes[0][2] == 67);
     fm1_in.notes = 0; keyboard_block();
     assert(chord_latch_notes[0][1] == 63 && scale_voice_gates(t) == 3); /* release preserves minor */
-    fm1_in.notes = 1u << 13; keyboard_block(); /* same modifier in the upper octave toggles off */
+    fm1_in.notes = 1u << 1; keyboard_block(); /* same physical modifier toggles off */
     assert(chord_latch_notes[0][1] == 64);
     fm1_in.notes = 0; keyboard_block();
     fm1_in.notes = (1u << 3) | (1u << 5); keyboard_block(); /* seventh + sus4 */

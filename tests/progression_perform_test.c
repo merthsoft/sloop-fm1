@@ -95,9 +95,9 @@ int main(int argc,char **argv)
     puts("perform: explicit octave pad anchor and shared inversion/spread PASS");
 
     reset_case();
-    midi(0,0x90,91,117);assert(TSEL->nheld&&progression_external_busy(0));assert(!progression_arm());
+    midi(0,0x90,91,117);assert(TSEL->nheld&&progression_external_busy(0));assert(progression_arm());
     midi(0,0x80,91,0);assert(!progression_external_busy(0)&&!TSEL->nheld);
-    midi(0,0xb0,64,127);assert(!progression_arm());midi(0,0xb0,64,0);arm();keys(1);
+    progression_stop();midi(0,0xb0,64,127);assert(progression_arm());midi(0,0xb0,64,0);keys(1);
     for(uint32_t cable=0;cable<2;cable++) {midi(cable,0x90,91,127);held((uint8_t[]){67,70,74},3);assert(!progression_external_busy(0));midi(cable,0x80,91,0);}
     midi(0,0x91,83,113);assert(trk[1].nheld==1&&trk[1].held[0]==83);midi(0,0x81,83,0);assert(!trk[1].nheld);
     keys(0);knob(0,-1);assert(!progression.active);
@@ -144,7 +144,8 @@ int main(int argc,char **argv)
     for(uint32_t i=1;i<16;i++)ties+=TSEL->step[i].time==ST_TIE;
     assert(ties);stopped();
     reset_case();TSEL->p[P_AMODE]=0;arm();keys(1);TSEL->p[P_AMODE]=ARP_UP;advance(1);
-    assert(!progression.active&&!TSEL->nheld&&!TSEL->arp_n);stopped();
+    assert(progression.active&&!progression.direct&&TSEL->nheld==3);advance(300);
+    TSEL->p[P_AMODE]=0;advance(1);assert(progression.active&&progression.direct&&TSEL->arp_n==3);stopped();
     puts("perform: ARP OFF sustained chords, HOLD, next-chord octave, recorded ties and mode-change cleanup PASS");
 
     /* Generated events, not source chords, must become the stored notes once. */
@@ -179,9 +180,31 @@ int main(int argc,char **argv)
 
     reset_case();arm();keys(1);song.sel=1;advance(1);assert(!progression.active&&!trk[0].nheld&&!trk[0].arp_n);stopped();
     reset_case();arm();keys(1);panic_req=1;advance(1);assert(!progression.active&&!TSEL->nheld);stopped();
-    reset_case();arm();keys(1);tap(B_HOME);drain_output();assert(!progression.active&&!sequence_browser);stopped();
-    reset_case();arm();keys(1);press(B_EDIT);drain_output();assert(!progression.active);release(B_EDIT);drain_output();stopped();
-    puts("perform: track, panic, HOME and STOP cleanup leave balanced generated MIDI PASS");
+    reset_case();arm();keys(1);tap(B_HOME);drain_output();assert(progression.active&&!sequence_browser&&TSEL->nheld==3);stopped();
+    reset_case();arm();keys(1);press(B_EDIT);drain_output();assert(progression.active);release(B_EDIT);drain_output();stopped();
+    puts("perform: track/panic/STOP cleanup and HOME/EDIT continuity leave balanced generated MIDI PASS");
+    /* Take ownership mid-groove; draft editing and page navigation stay musical. */
+    reset_case();memset(TSEL->step,0,sizeof TSEL->step);tap(B_PLAY);drain_output();advance(200);assert(song.playing);
+    sequence_screen_open();sequence_page=4;
+    uint32_t beat_before=clk_beat,pos_before=clk_pos;
+    arm();assert(song.playing&&!TSEL->nheld&&!pen_n);
+    assert(clk_beat>beat_before || clk_pos>=pos_before);
+    keys(0);knob(2,1);keys(1);keys(0);held((uint8_t[]){67,70,74},3);
+    encs[panel.enc[EN_SELECT]]=-4;frame();drain_output();assert(sequence_page==0);
+    knob(1,2);held((uint8_t[]){67,70,74},3);assert(progression.active&&song.playing);
+    keys(1u<<2);held((uint8_t[]){62,65,69},3);keys(0);
+    tap(B_ARP);drain_output();assert(progression.active&&!sequence_browser&&song.playing);
+    advance(300);stopped();
+    puts("perform: running takeover, held-key retirement, draft snapshot and ARP page continuity PASS");
+
+    reset_case();TSEL->p[P_AMODE]=0;keys(1);assert(kb_kind[0]==KS_NOTE&&kb_n[0]);
+    arm();assert(!TSEL->nheld&&!TSEL->arp_n);keys(0);keys(1);
+    held((uint8_t[]){67,70,74},3);keys(0);stopped();
+    reset_case();rec_tempo=1;tap(B_REC);drain_output();assert(rec_wait&&!ft_on);
+    sequence_screen_open();sequence_page=4;arm();keys(1);
+    assert(song.playing&&song.rec&&progression.active);stopped();
+    puts("perform: held physical-source takeover and arming an existing tempo take PASS");
+
     reset_case();arm();uint32_t fuzz=0x51a7e123u;
     for(uint32_t edge=0;edge<300;edge++) {
         fuzz=fuzz*1664525u+1013904223u;

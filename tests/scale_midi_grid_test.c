@@ -47,8 +47,8 @@ int main(void) {
     midi_scale=0;midi(0,1,100,0);assert(owners()==MIDI_SCALE_HELD);
     for(int n=0;n<MIDI_SCALE_HELD;n++)midi(0,1,n,0);assert(!owners());
     ui.menu=1;ui.menu_sel=MI_MIDISCALE;mi_set(MI_MIDISCALE,1);assert(midi_scale);
-    uint32_t word=lights_word();midi_scale=0;lights_from_word(word);assert(midi_scale);
-    lights_from_word(word&~(1u<<23));assert(!midi_scale);ui.menu=0;
+    uint32_t word=lights_word(),forked=fork_settings_word();midi_scale=0;lights_from_word(word);fork_settings_from_word(forked);assert(midi_scale);
+    lights_from_word(word);assert(!midi_scale);ui.menu=0;
     outdir="build/host";song.sel=1;t->p[P_ROOT]=0;t->p[P_SCALE]=2;t->p[P_QUANT]=2;
     go_home();frame();press(B_SCL);frames(12);ppm("scale-grid-c-minor");release(B_SCL);
     live_mod[0].sync=5;press(B_LFO);frames(12);ppm("vibrato-scale-grid");release(B_LFO);

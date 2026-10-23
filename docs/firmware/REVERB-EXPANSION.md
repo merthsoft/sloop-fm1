@@ -29,7 +29,10 @@ Checks: old STEREO audio goldens, independent upstream project fixture equality,
 
 TYPE 5 DARK appends to the existing five model IDs. It uses another coefficient
 row plus the existing damped line states for its returns; it adds no reverb RAM.
-SIZE lengthens decay, DAMP further reduces brightness, FREEZE and fade/clear
+Its return is now compensated by 6 dB to make the dark tail audible at moderate
+sends. A lower filter range and higher feedback at low SIZE distinguish it from
+HALL without needing extreme controls. SIZE lengthens decay, DAMP further reduces
+brightness, FREEZE and fade/clear
 transitions retain their normal behavior. Impulse, damping, stereo, overload and
 FREEZE tests include all six types. Current image accounting is in OPTIMIZATION.md.
 

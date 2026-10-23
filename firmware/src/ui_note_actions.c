@@ -67,9 +67,9 @@ UI_SMALL static void actions_leave(void)
     for(uint32_t p=0;p<NPAGES;p++)if(PAGES[p].scope==SC_STEP&&PAGES[p].id[0]==4u){ui.page=(uint8_t)p;break;}
     page_entered();ui.force=1;
 }
-UI_SMALL static int actions_stopped(void)
+UI_SMALL static int actions_editable(void)
 {
-    if(song.playing||song.rec||transport_req==1||rec_wait||ft_on){ui_message("STOP FIRST");return 0;}
+    if(song.rec||rec_wait||ft_on){ui_message("STOP RECORDING");return 0;}
     return 1;
 }
 UI_SMALL static void actions_edit(uint32_t slot,int32_t delta)
@@ -79,7 +79,7 @@ UI_SMALL static void actions_edit(uint32_t slot,int32_t delta)
     if(slot!=1)return;
     if(note_action.row>=shared) {note_action.dest=(uint8_t)clamp((int32_t)note_action.dest+clamp(delta,-NSTEP,NSTEP),0,trk_len(TSEL)-1);return;}
     if(!actions_ready()){ui_message("EMPTY SOURCE");return;}
-    if(!actions_stopped())return;
+    if(!actions_editable())return;
     uint32_t row=note_action.row;int32_t old=actions_value(row),max=row==1?MICRO_MAX:row==2?2:!row&&note_action.hit?3:1;
     int32_t value=clamp(old+clamp(delta,-64,64),row==1?MICRO_MIN:0,max);
     if(value==old)return;
@@ -88,12 +88,12 @@ UI_SMALL static void actions_edit(uint32_t slot,int32_t delta)
     else if(row==2)step_fill_set(TSEL,at,(uint32_t)value);
     else if(!row&&note_action.hit)dstep_set(&TSEL->dstep[at],note_action.lane,dstep_lvl(&TSEL->dstep[at],note_action.lane),value);
     else {uint32_t flag=row?SF_ACCENT:SF_SLIDE;TSEL->step[at].flags=(uint8_t)((TSEL->step[at].flags&~flag)|(value?flag:0));}
-    fm1_irq_on();sync_reload=1;
+    seq_edit_changed(TSEL);fm1_irq_on();sync_reload=1;
 }
 UI_SMALL static void actions_apply(void)
 {
     if(!actions_ready()){ui_message("EMPTY SOURCE");return;}
-    if(!actions_stopped())return;
+    if(!actions_editable())return;
     uint32_t shared=actions_shared(),row=note_action.row,at=note_action.at,dest=note_action.dest,move=row==shared;
     if(row<shared){ui_message("TURN KNOB 2");return;}
     int rc;
@@ -105,7 +105,7 @@ UI_SMALL static void actions_apply(void)
     if(note_action.hit){if(row==shared+2u)drum_hit_delete(TSEL,note_action.lane,at,1);else drum_hit_place(TSEL,note_action.lane,at,dest,move,1);}
     else if(row==shared+2u)note_erase(TSEL,at,ui.roll_pitch);
     else note_chain_place(TSEL,at,ui.roll_pitch,dest,move,1);
-    fm1_irq_on();
+    seq_edit_changed(TSEL);fm1_irq_on();
     if(row==shared){note_action.at=(uint8_t)dest;if(note_action.hit)drum_cursor=(uint8_t)dest;else roll_select((piano_selection_t){dest,ui.roll_pitch});}
     if(row==shared+2u&&!note_action.hit)ui.roll_pitch=0;
     sync_reload=1;ui.force=1;ui_message(row==shared?"NOTE MOVED":row==shared+1u?"NOTE COPIED":"NOTE DELETED");

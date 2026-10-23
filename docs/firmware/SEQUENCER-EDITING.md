@@ -3,10 +3,10 @@
 For sustained notes across later attacks, use the
 [independent per-note tie controls](PER-NOTE-TIES-DESIGN.md). OCT+ + knob 4 selects
 ALL or one source pitch; OCT+ + knob 1 extends it while retaining other attacks.
-Released LEN and EDIT shorten/delete the chosen voice. Single-event move and
-pitch edits refuse patterns with independent ties; whole-pattern transposition
-remains available. The legacy whole-step controls below still apply to ordinary
-ties and rests.
+Released LEN and EDIT shorten/delete the chosen voice. NOTES supports independent
+voice pitch and length changes; NOTE ACTIONS moves, copies or deletes one selected
+voice and its sustain. The legacy OCT-held whole-step move refuses independent
+ties; use NOTE ACTIONS there. Whole-pattern transposition remains available.
 
 Recording snap and tie/rest painting shipped in 2.5 Merthsoft.6. The controls below
 reflect Merthsoft.7, which adds octave edits, moves event editing to knob 3 and allows
@@ -43,10 +43,36 @@ ends. Selecting a source chord moves its whole onset, not an individual chord vo
 
 Notes, velocity, accents, slides, ratchets, microtiming, fill conditions and parameter
 locks travel together. Vacated cells become clean rests. Direction-aware copying
-handles overlapping moves without allocating a pattern buffer. Moving requires
-stopped transport and no recording/armed/free-take operation. Complete one-gesture
+handles overlapping moves without allocating a pattern buffer. Moving works
+during playback; active recording, armed entry and free takes retain ownership
+of pattern writes and show STOP RECORDING. Complete one-gesture
 undo uses the existing pattern snapshot and shared starter metadata supplement.
 Other tracks, sounds, tempo, length and division remain unchanged.
+
+## Editing while the groove plays
+
+Playback can continue while editing NOTES pitches/lengths, using OCT-held octave
+and move controls, painting ties/rests, or applying NOTE/HIT ACTIONS (including
+copy, move, delete, nudge, accent, fill and ratchet settings). No STOP FIRST is
+required for these edits. Recording, armed entry and free takes keep their write
+ownership; stop/disarm the take before these structural controls.
+
+An already sounding attack keeps its existing gate and pitch until normal
+sequencer reconciliation at the next step. Unchanged tied pitches continue
+without reattack; removed or replaced voices release without silencing the rest
+of the chord or other tracks. Future attacks read the edited pattern, including
+on the next loop. There is no track panic or transport reset.
+
+A successful edit cancels any remaining ratchet repeats of the current step on
+that track. This prevents a changed four-note cell from adding an untracked fifth
+pitch to the old sounding list. Ratchets resume normally on the next step; the
+current attack and other tracks retain their normal gates. This also applies to
+live step entry and EDIT deletion, which were already allowed during playback.
+
+`tests/live_note_editing_test.c` runs actual UI operations with the audio engine
+and MIDI queue active: four-voice pitch replacement under ratchets, independent
+length shortening, move/copy/delete paths, next-loop playback, unchanged chord
+voice and neighboring track continuity, and balanced note-on/note-off cleanup.
 
 ## Independent recording snap
 

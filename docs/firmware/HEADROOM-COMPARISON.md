@@ -7,9 +7,9 @@ checkout or main ref update was needed.
 
 | Region | MerthSloop working release | Local main |
 | --- | ---: | ---: |
-| Application bytes | 583,776 | 567,308 |
+| Application bytes | 584,336 | 567,308 |
 | Application capacity | 584,336 | 581,564 |
-| **Flash free** | **560 B (0.55 KiB)** | **14,256 B (13.92 KiB)** |
+| **Flash free** | **0 B** | **14,256 B (13.92 KiB)** |
 | Main static RAM used / capacity | 89,128 / 98,304 | 59,004 / 98,304 |
 | **Main static RAM free** | **9,176 B** | **39,300 B** |
 | Low RAM used / capacity | 28,280 / 29,496 | 22,772 / 29,488 |
@@ -23,7 +23,7 @@ allocatable RAM budget. These are static linker numbers, not stack high-water,
 heap availability or CPU percentages. Low RAM capacity differs because the
 preceding RAM-resident sections have slightly different extents.
 
-MerthSloop is build **2.7.1.44**, including the shared UI cleanup. Main is
+MerthSloop is build **2.7.1.49**, including the shared UI cleanup. Main is
 **b77bf55e3bf804665b8f5dffb5955bd8443311f0** (the upstream 2.8 source).
 Fetched upstream/main **ec9e537** adds only a GUIDE change over that local main,
 so it has no compilation-source changes. Main uses its normal **-Os**;
@@ -33,13 +33,14 @@ This is each branch's real configuration, not a controlled optimization delta:
 MerthSloop has extra features and assets. Its sample generator emits 51 zones
 and 303,054 ADPCM bytes; main emits 49 zones and 283,212 bytes. MerthSloop also
 uses startup metadata restoration and the larger validated package extent.
-Do not attribute the 16,468-byte application difference solely to our new code.
+Do not attribute the 16,852-byte application difference solely to our new code.
 
 The earlier .40 release had 4,024 B flash free, .41 had 4,276 B and .42 had
 3,684 B. The integrated progression performance page/source/lifecycle adds
 2,516 application bytes and 16 main static RAM bytes over .42, leaving
 **1,168 B flash free** at .43. Radio/Dark/Dub and direct chord performance add
-a further 608 image bytes / 16 main RAM bytes, leaving **560 B flash free**. The frozen same-version redundancy comparison remains
+a further 608 image bytes / 16 main RAM bytes, leaving **560 B flash free** at .44. The response/transition tuning adds another
+384 image bytes, leaving **176 B flash free** with unchanged linked RAM. The frozen same-version redundancy comparison remains
 a separate measurement.
 
 Private evidence:

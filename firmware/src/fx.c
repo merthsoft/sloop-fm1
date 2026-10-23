@@ -3,16 +3,30 @@
 /* Effects: per-track DIST insert, then sends into three shared buses (chorus, tempo delay, reverb).
  * Stereo dry mix; the chorus and the reverb come back in stereo, the delay in the middle. */
 
+/* Earlier response without a dead upper half; input/output 0..127. */
+static int32_t fx_early_amount(int32_t v) {return (v*(256-v))>>7;}
 /* Delay tap is bounded int16. TAPE/CRUSH switching crosses DIGITAL smoothly. */
-static struct {int16_t blend,held;} delay_age;
+static struct {int16_t blend,held;uint8_t mode;} delay_age;
 static int32_t delay_character_sample(int32_t x,uint32_t mode,uint32_t w)
 {
-    int32_t target=(mode==1 || mode==3)?-song.g[G_DDRIVE]*4:mode==2?512:0;
+    int32_t target=mode==3?-fx_early_amount(song.g[G_DDRIVE])*4:mode==1?-song.g[G_DDRIVE]*4:mode==2?512:0;
+    if(mode!=delay_age.mode) {
+        target=0;
+        if(!delay_age.blend) {delay_age.mode=(uint8_t)mode;delay_age.held=(int16_t)x;}
+    }
+    mode=delay_age.mode;
     delay_age.blend+=clamp(target-delay_age.blend,-1,1);
     int32_t blend=delay_age.blend;
     if(!blend)return x; /* Settled DIGITAL avoids coloration arithmetic. */
     int32_t y;
-    if(blend<0)y=x-x*(x<0?-x:x)/65536;
+    if(blend<0) {
+        if(mode==3) {
+            /* Dub sheds bass each pass; reuse CRUSH's mutually exclusive state. */
+            delay_age.held+=(x-delay_age.held)>>6;
+            if(!x && delay_age.held>-64 && delay_age.held<64)delay_age.held=0;
+            y=softclip((x-delay_age.held)*8)/8;
+        } else y=x-x*(x<0?-x:x)/65536;
+    }
     else {
         if(!(w&((16u>>song.g[G_DHOLD])-1u))) {
             uint32_t q=16u-song.g[G_DBITS];
@@ -43,7 +57,7 @@ static const struct {
     {{563,733,947,1151},{113,173},14746,12000,120,2},     /* ROOM */
     {{887,1153,1429,1777},{347,269},22938,19500,96,5},    /* PLATE */
     {{1559,1901,2333,2749},{541,419},19661,20500,84,12}, /* HALL */
-    {{1453,1877,2281,2719},{499,397},24576,20200,88,8}, /* DARK: dense, muted tail */
+    {{1453,1877,2281,2719},{499,397},24576,23500,64,8}, /* DARK: dense, muted tail */
 };
 static int16_t rev_line[1559 + 1931 + 2389 + 2791 + REV_MOD + 2] __attribute__((section(".lowram")));   /* (the pool is
                                                                       * full; .lowram: the SRAM below the RAM region, app.ld) */
@@ -253,7 +267,7 @@ static void fx_buses(const int32_t *cho_in, const int32_t *dly_in, const int32_t
     uint32_t want=reverb_begin(),model=reverb_model.cur;
     const typeof(*REV_TUNE) *tune=&REV_TUNE[model>1?model-1:0];
     int32_t g = tune->gain + song.g[G_RSIZE] * tune->slope, lpk = 32767 - song.g[G_RDAMP] * 200;
-    if(model==5) lpk=2500+(127-song.g[G_RDAMP])*40;
+    if(model==5) lpk=1200+(127-song.g[G_RDAMP])*24;
     int32_t frnd = rev_frz ? 128 : 0;                  /* FREEZE: what is in the lines stays there (below: no
                                                          * loss, rounded to nearest; 0: as always, bit for bit) */
     int32_t cdepth = song.g[G_CDEPTH] * 6;
@@ -357,6 +371,7 @@ static void fx_buses(const int32_t *cho_in, const int32_t *dly_in, const int32_t
         }
         if(model==5) {o0=fx.line_lp[0];o1=fx.line_lp[1];o2=fx.line_lp[2];o3=fx.line_lp[3];}
         int32_t rl=o0+o2,rr=o1-o3;
+        if(model==5) {rl*=2;rr*=2;} /* Compensate the dark return, not the dry bus. */
         int32_t target=rev_frz || model==want?32768:0;
         reverb_model.gain=clamp(reverb_model.gain+(target?512:-512),0,32768);
         if(reverb_model.gain!=32768) {rl=mulq16(rl,(uint32_t)reverb_model.gain<<1);rr=mulq16(rr,(uint32_t)reverb_model.gain<<1);}

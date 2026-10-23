@@ -43,11 +43,22 @@ The [design and implementation record](UI-REFRESH-DESIGN.md) contains more actua
 screens. Older detailed screenshots below may show the previous layout; controls
 are unchanged.
 
+### Eleven black-key chord modifiers
+
+SEL's chord guide now names all eleven physical black keys. The lower five keep
+third flip, seventh, sus4, ninth and upward inversion. The upper six add **sus2,
+thirteenth, explicit major/minor sevenths, downward inversion and open voicing**.
+Hold them momentarily or tap to toggle with chord LATCH; retained arps revoice
+without replaying the root. Automatic voice leading does not cancel register
+choices. Four voices remain the limit, with extensions taking the fifth's place.
+
+CHORD OFF and CHROM show the normal scale guide. These physical mappings stay
+fixed when the playing octave changes. See the [key table and combination rules](CHORD-MODIFIER-EXPANSION.md).
+
 ## Perform a progression
 
 Choose a stock or CUSTOM progression in SEQ's SEQUENCES browser, then turn SELECT
-to its fifth page, PERFORM. With transport stopped, turn LIVE
-on. The leftmost white keys select the progression's chords; the next group repeats
+to its fifth page, PERFORM. Turn LIVE on while stopped or during loop playback. The leftmost white keys select the progression's chords; the next group repeats
 them an octave higher. HOLD sustains the last selection. OCTAVE changes the next
 chord without retuning the one currently playing. ARP OFF plays sustained chords; with ARP ON the existing arp supplies the
 rhythm; PLAY runs accompanying tracks and REC captures its generated notes.
@@ -336,7 +347,8 @@ See the [physical effect mapping](../../GUIDE.md#punch-in-effects).
 ### Six reverb characters
 
 **FX → REVERB → TYPE** offers the original **STEREO**, a dual-path **SPRING**,
-short **ROOM**, bright dense **PLATE**, spacious **HALL**, and a dense muted **DARK** tail. The new spring
+short **ROOM**, bright dense **PLATE**, spacious **HALL**, and a dense muted **DARK** tail with compensated return level
+for more presence at moderate sends. The new spring
 uses unequal lengths, different dispersion and offset pickup modulation for
 stereo width. The three spaces retune the existing feedback delay network;
 they reuse its buffers and leave the original STEREO sound unchanged.
@@ -485,7 +497,7 @@ See [the full controls](AUTO-WAH-DESIGN.md) and [branding/version policy](../BRA
 
 ## Individual notes, action sheets and drum FX
 
-On **SEQ → NOTES**, knob 1 walks chord members/empty cells, knob 2 edits the selected chain's pitch, knob 3 its length and knob 4 its GHOST/SOFT/NORM/HARD level. PRESETS zooms STEP and NOTES to 8/16/32/64 steps. Tied notes remain joined across later attacks. EDIT taps delete just that chain; undo remains EDIT+OCT−. Pitch/move/copy operations require stopped transport.
+On **SEQ → NOTES**, knob 1 walks chord members/empty cells, knob 2 edits the selected chain's pitch, knob 3 its length and knob 4 its GHOST/SOFT/NORM/HARD level. PRESETS zooms STEP and NOTES to 8/16/32/64 steps. Tied notes remain joined across later attacks. EDIT taps delete just that chain; undo remains EDIT+OCT−. Pitch, length, move, copy, delete and pattern undo/redo work during playback. Sounding attacks reconcile at the next step without cutting other voices or tracks; remaining ratchets on the edited track pause until that step. Structural controls require stopping/disarming an active recording or free take, which otherwise owns pattern writes.
 
 **NOTE ACTIONS** has SLIDE STEP, NUDGE STEP, FILL STEP, ACCENT STEP, MOVE NOTE, COPY NOTE and DELETE NOTE. Knob 1 selects a row; knob 2 edits a shared field or stages a destination. OCT+ applies a discrete operation once, and OCT− returns to NOTES. Existing voices and shared step automation are retained. Collisions, full chords, pattern-end overflow and locked source onsets refuse without editing the song. A move may overlap its own sustain.
 
@@ -503,7 +515,7 @@ The drum track's first **FX** page is LEVEL / PAN / DLY / REV, with real drum se
 
 ## Master LOFI characters
 
-**FX → LOFI** selects VINYL, TAPE, VHS, CD or RADIO. Their three controls are WOW/DARK/DAMAGE, FLUTTR/DARK/DRIVE, WARBLE/DARK/DAMAGE, RATE/LATCH/MIX, and DRIFT/BAND/STATIC. Vinyl uses irregular pitch drift and sparse varied clicks/pops; tape adds flutter and saturation; VHS adds faster warble/dropouts; CD repeats tiny captured fragments; RADIO adds a narrowed receiver band, drift and static. CD is microstutter, not a phrase-length CSIDMAN delay. That longer delay remains a separate planned expansion.
+**FX → LOFI** selects VINYL, TAPE, VHS, CD or RADIO. Their three controls are WOW/DARK/DAMAGE, FLUTTR/DARK/DRIVE, WARBLE/DARK/DAMAGE, RATE/LATCH/MIX, and DRIFT/BAND/STATIC. Vinyl uses irregular pitch drift and sparse varied clicks/pops; tape adds flutter and saturation; VHS adds faster warble/dropouts; CD repeats tiny captured fragments; RADIO adds a narrowed receiver band, drift and hiss/crackling static, with more audible low/mid control settings. CD is microstutter, not a phrase-length CSIDMAN delay. That longer delay remains a separate planned expansion.
 
 All amounts zero bypass the processing. Characters and amounts save with sections/projects; older vinyl settings load as VINYL. The held LOFI punch intensifies the selected character, using Vinyl when TYPE is OFF, and restores the saved settings after release.
 
@@ -532,7 +544,8 @@ projects and sections, and LOFI punch remains available as a temporary override.
 **FX → DLY TYPE** selects DIGI/TAPE/CRUSH/DUB on knob 1. The remaining knobs are TIME/FDBK/MIX for DIGI, DRIVE/TONE/MIX for TAPE and DUB, and BITS/RATE/MIX for CRUSH. RATE spans about 2.8–44 kHz; higher values are cleaner. Original DLY keeps TIME/FDBK/COLR/MIX for every type.
 DIGI preserves the original delay, TAPE compresses its repeats and CRUSH adds
 coarse resolution/sample holding. DUB filters the first repeat and feedback with
-a darker TONE range and optional soft saturation. The preceding DLY page retains COLR. These
+a darker TONE range, stronger saturation and progressive bass trimming. DRIVE
+responds earlier while retaining its full adjustment range. The preceding DLY page retains COLR. These
 settings use the shared delay send bus and save with sections/projects.
 Master LOFI remains separate and defaults to OFF. STEP/NOTES footers now
 explicitly name PRESETS zoom.
@@ -558,3 +571,12 @@ unchanged until another chord or modifier revoice. The four-note chord and
 shared eight-voice limits stay intact. See [implementation](CHORD-VOICING-DESIGN.md).
 
 ![Native voicing controls](../assets/screens/merthsoft/neon/chord-voicing.png)
+
+
+### Scale-light brightness
+
+Hold HOME, select **LIGHTS**, then turn **knob 4 — SCALE LEVEL** to choose
+DIM / LOW / MID / HIGH. DIM matches the original scale-guide brightness.
+Played-note LEDs retain full intensity. The level saves with device preferences;
+close the menu and stop playback to allow any deferred settings write.
+SEL+OCT+ remains the independent scale-light on/off toggle.

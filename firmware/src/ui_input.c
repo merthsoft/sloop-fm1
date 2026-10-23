@@ -175,12 +175,15 @@ UI_SMALL static int keys_playing_layer(void)
     return ui.layer == LY_PLAY || ui.layer >= LY_VIB;
 }
 
+UI_SMALL static int scale_lights_active(void)
+{return lights_scale && keys_playing_layer() && !is_drum(TSEL) && !kb_grid;}
+
 /* menu NOTES, on the layers whose keys are tiles (FX effects, SEQ steps, GLO mute / solo): what
  * sounds glows dimly under the tiles, which keep their full light. SEL (the scale) and EDIT on the
  * drum track (the sounds of the pattern): those glow, and what sounds is lit (keys_lit) */
 UI_SMALL static uint32_t keys_notes_dim(void)
 {
-    if (lights_scale && keys_playing_layer() && !is_drum(TSEL) && !kb_grid)
+    if (scale_lights_active())
         return scale_keys(0);
     if (!lights_notes)
         return 0u;
@@ -211,7 +214,7 @@ UI_SMALL static uint32_t keys_guide(void)
 UI_SMALL static uint32_t lights_keys_mask(void)
 {
     uint32_t k, m = 0;
-    if (lights_scale && keys_playing_layer() && !is_drum(TSEL) && !kb_grid)
+    if (scale_lights_active())
         return 0u;                                  /* scale guide replaces the generic keyboard backlight */
     if (!lights_lvl || !lights_keys)
         return 0u;
@@ -264,6 +267,7 @@ UI_SMALL static void ui_leds(void)
         fm1_led_dim[c] = dl[c];
         fm1_led_bg[c] = (uint8_t)(bl[c] & ~nl[c]);
     }
+    fm1_led_dim_ticks=(4u*FM1_TICKS_PER_US) << (scale_lights_active()?scale_light_level:0u);
     fm1_led_bg_ns = LIGHTS_NS[lights_lvl % LIGHTS_N];
 }
 
@@ -339,6 +343,7 @@ UI_SMALL static void step_edit(uint32_t slot, int32_t steps)
     uint32_t i;
     if (is_drum(TSEL))
         return;                                           /* (the drum track: its grid) */
+    if (slot && (song.rec || rec_wait || ft_on)) { ui_message("STOP RECORDING"); return; }
     if (slot==3u && (fm1_in.buttons&(1u<<panel.btn[B_OCTUP]))) {
         step_t src;note_effective(TSEL,ui.tie_start,&src);
         ui.tie_voice=(uint8_t)clamp((int32_t)ui.tie_voice+steps,0,src.n);
@@ -357,13 +362,12 @@ UI_SMALL static void step_edit(uint32_t slot, int32_t steps)
         int selected=piano_selection_slot(TSEL,roll_selection());
         if(selected<0) {ui_message("SELECT A NOTE");return;}
         if(slot==1u) {
-            if(song.playing||song.rec||rec_wait||ft_on){ui_message("STOP FIRST");return;}
             uint32_t pitch=(uint32_t)clamp((int32_t)ui.roll_pitch+clamp(steps,-126,126),1,127);
             if(pitch==ui.roll_pitch)return;
             int result=note_chain_pitch(TSEL,ui.cursor,ui.roll_pitch,pitch,0);
             if(result){note_edit_error(result);return;}
             undo_mark(TSEL,(undo_sess+=4u)|3u);
-            fm1_irq_off();note_chain_pitch(TSEL,ui.cursor,ui.roll_pitch,pitch,1);fm1_irq_on();
+            fm1_irq_off();note_chain_pitch(TSEL,ui.cursor,ui.roll_pitch,pitch,1);seq_edit_changed(TSEL);fm1_irq_on();
             ui.roll_pitch=(uint8_t)pitch;last_note=pitch;return;
         }
         if(slot==3u) {
@@ -400,7 +404,7 @@ UI_SMALL static void step_edit(uint32_t slot, int32_t steps)
                     }
                     TSEL->step[i].time=ST_REST;
                 }
-                fm1_irq_on();
+                seq_edit_changed(TSEL);fm1_irq_on();
             }
             cursor_set(end);
             break;
@@ -409,10 +413,13 @@ UI_SMALL static void step_edit(uint32_t slot, int32_t steps)
         break;
     case 1:                                               /* NOTE: transpose the step */
         if (note_pattern_linked(TSEL)) {ui_message("USE EDIT TRANSPOSE");break;}
+        fm1_irq_off();
+        seq_edit_changed(TSEL);
         if (!st->n) {
             st->note[0] = last_note;
             st->n = 1;
             st->time = ST_NOTE;
+            fm1_irq_on();
             break;
         }
         for (i = 0; i < st->n; i++)
@@ -420,6 +427,7 @@ UI_SMALL static void step_edit(uint32_t slot, int32_t steps)
         st->time = ST_NOTE;
         st->flags &= (uint8_t)~SF_CONT_ALL;              /* (2.7: new pitches start here, not held over from before) */
         last_note = st->note[0];
+        fm1_irq_on();
         break;
     case 2: {                                             /* LEN follows the same anchored source as the display. */
         uint32_t voice,first=note_edit_target(&voice);
@@ -439,6 +447,7 @@ UI_SMALL static void step_edit(uint32_t slot, int32_t steps)
             undo_mark(TSEL, len_sess);                    /* (EDIT + OCT- brings the steps back) */
             fm1_irq_off();
             n = note_set_voice_len(TSEL,first,voice,want);
+            seq_edit_changed(TSEL);
             fm1_irq_on();
             if (steps > 0 && n == was)
                 ui_message(ui.cursor + n < (uint32_t)clamp(TSEL->p[P_SLEN], 1, NSTEP) ? "NOTE AHEAD" : "END OF PATTERN");
@@ -637,7 +646,7 @@ UI_SMALL static void step_entry_begin(track_t *t)
     step_t *st=&t->step[ui.cursor];
     ui.entry_open = 1;
     undo_mark(t, (undo_sess += 4u) | 3u);
-    fm1_irq_off();note_erase(t,ui.cursor,128);fm1_irq_on();
+    fm1_irq_off();note_erase(t,ui.cursor,128);seq_edit_changed(t);fm1_irq_on();
     st->n = 0;
     st->flags&=(uint8_t)~SF_TIES;
     st->lvl = st->rat = 0;
@@ -798,7 +807,7 @@ UI_SMALL static void layer_tap(uint32_t layer)
                 piano_selection_t selected=roll_selection();
                 if(piano_selection_slot(TSEL,selected)<0) {ui_message("SELECT A NOTE");break;}
                 undo_mark(TSEL,(undo_sess+=4u)|3u);
-                fm1_irq_off();note_erase(TSEL,selected.step,selected.pitch);fm1_irq_on();
+                fm1_irq_off();note_erase(TSEL,selected.step,selected.pitch);seq_edit_changed(TSEL);fm1_irq_on();
                 roll_select(piano_selection_at(TSEL,ui.cursor));ui_message("NOTE CLEARED");break;
             }
             undo_mark(TSEL, (undo_sess += 4u) | 3u);      /* STEP page: EDIT clears the step */
@@ -810,6 +819,7 @@ UI_SMALL static void layer_tap(uint32_t layer)
             }
             note_erase(TSEL,ui.cursor,pitch);
             if (!ui.tie_voice) step_clear(&TSEL->step[ui.cursor]);
+            seq_edit_changed(TSEL);
             fm1_irq_on();
             cursor_set(ui.cursor + 1);
             ui_message("NOTES CLEARED");
@@ -1033,8 +1043,7 @@ UI_SMALL static int layers_input(uint32_t note_edges, uint32_t *pressed, uint32_
         prev = b;
         if (press) {
             used[held] = 1;
-            if ((groove_undo_matches() && (song.playing || transport_req == 1)) ||
-                (project_undo_available() && (song.playing || transport_req)))
+            if (project_undo_available() && (song.playing || transport_req))
                 ui_message("STOP FIRST");
             else if (press & ob)
                 ui_message(undo_swap(0) ? "UNDO" : "NOTHING TO UNDO");
@@ -1240,8 +1249,6 @@ UI_SMALL static void ui_input(void)
         if (pressed & (1u << panel.btn[B_SEQ])) sequence_screen_close();
         else go_home();                               /* new page/transport gestures keep their normal meaning */
     }
-    if(progression.active && (pressed & ((1u<<panel.btn[B_SAVE]) | (1u<<panel.btn[B_EDIT]) |
-        (1u<<panel.btn[B_GLO]) | (1u<<panel.btn[B_SEQ])))) go_home();
     layered = layers_input(notes, &pressed, home);
     if (home_eat && !((fm1_in.buttons >> panel.btn[B_HOME]) & 1u)) {   /* (the HOME that unlocked: let go) */
         if (home == BT_TAP)
@@ -1273,6 +1280,13 @@ UI_SMALL static void ui_input(void)
             panel_enc(EN_K1 + k);
         enc_hold |= 15u << EN_K1;
     }
+#if FELUCCA_ARRANGER
+    if (sequence_browser) {
+        if (home == BT_TAP) go_home();
+        else sequence_screen_input(pressed, home);
+        return;
+    }
+#endif
     if (rec_wait && !ft_on && !ci_on) {                 /* the REC screen, armed: how it records */
         rec_knobs();                                    /* (tempo and sound still work; the track too: */
     } else if (rec_wait || ft_on) {                     /* the arm follows) */
@@ -1280,11 +1294,6 @@ UI_SMALL static void ui_input(void)
             panel_enc(EN_K1 + k);
     }
 #if FELUCCA_ARRANGER
-    if (sequence_browser) {
-        if (home == BT_TAP) go_home();
-        else sequence_screen_input(pressed, home);
-        return;
-    }
     if(actions_input(pressed,home))return;
     if (on_song_page()) {
         if (pressed & (1u << panel.btn[B_ENV])) { open_family(FAM_ENV); return; }

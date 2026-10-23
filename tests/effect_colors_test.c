@@ -30,11 +30,32 @@ static double dub_energy(double hz,int tone,int mode) {
  return e;
 }
 int main(void) {
+ assert(fx_early_amount(0)==0 && fx_early_amount(127)==127);
+ assert(fx_early_amount(32)>48 && fx_early_amount(96)<127);
+ for(int i=1;i<=127;i++)assert(fx_early_amount(i)>=fx_early_amount(i-1));
  double bass=radio_energy(30,127)/radio_energy(30,0);
  double treble=radio_energy(8000,127)/radio_energy(8000,0);
  double mid=radio_energy(1000,127)/radio_energy(1000,0);
  printf("Radio: band/dry energy bass %.4f mid %.4f treble %.4f\n",bass,mid,treble);
  assert(bass<.25&&treble<.25&&mid>.03&&mid>bass&&mid>treble);
+ double low_bass=radio_energy(30,32)/radio_energy(30,0);
+ double low_treble=radio_energy(8000,32)/radio_energy(8000,0);
+ printf("Radio at quarter BAND: bass %.4f treble %.4f\n",low_bass,low_treble);
+ assert(low_bass<.25&&low_treble<.25);
+ host_tracks_init();punch_clear();memset(&vinyl,0,sizeof vinyl);vinyl.mode=VINYL_MODE_RADIO;song.playing=1;
+ song.g[G_VCRACKLE]=32;song.g[G_VWOW]=song.g[G_VTONE]=0;
+ double static_energy=0;int32_t l[CTL],r[CTL];
+ for(uint32_t b=0;b<1000;b++) {
+  memset(l,0,sizeof l);memset(r,0,sizeof r);vinyl_process_mode(l,r,CTL,VINYL_MODE_RADIO);
+  if(b>500)for(uint32_t i=0;i<CTL;i++)static_energy+=(double)l[i]*l[i];
+ }
+ double static_rms=sqrt(static_energy/(499u*CTL));printf("Radio quarter STATIC RMS %.1f\n",static_rms);
+ assert(static_rms>100&&static_rms<2000);
+ song.g[G_DDRIVE]=32;memset(&delay_age,0,sizeof delay_age);
+ int32_t dub=0;for(uint32_t i=0;i<1000;i++)dub=delay_character_sample(12000,3,i);
+ memset(&delay_age,0,sizeof delay_age);int32_t old=0;for(uint32_t i=0;i<1000;i++)old=delay_character_sample(12000,1,i);
+ printf("Quarter DRIVE DC probe: Dub %d Tape %d original 12000\n",dub,old);
+ assert(dub<10500 && dub<old-1000); /* Bass rejection/coloration before the upper knob range. */
  double dark=dub_energy(6000,0,3),bright=dub_energy(6000,127,3),tape=dub_energy(6000,0,1);
  printf("Dub first repeat: dark %.3e bright %.3e Tape %.3e\n",dark,bright,tape);
  assert(bright>dark*10&&dark<tape*.1&&bright<tape*.6);

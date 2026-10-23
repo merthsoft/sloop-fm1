@@ -7,12 +7,12 @@
  * OCT- closes (from ABOUT: back to the section). */
 /* ------------------------------------------------------------ menu --- */
 /* (2.7: USB SERIAL only in a build with the serial console, FELUCCA_CDC=1: the FM-1's build has none) */
-enum { MI_COLOR, MI_ZOOM, MI_ACCEL, MI_HELP, MI_LIGHTS, MI_KEYS, MI_NOTES, MI_LOWCUT, MI_USB,
+enum { MI_COLOR, MI_ZOOM, MI_ACCEL, MI_HELP, MI_LIGHTS, MI_KEYS, MI_NOTES, MI_SCALELEVEL, MI_LOWCUT, MI_USB,
 #if FELUCCA_CDC
        MI_SERIAL,
 #endif
        MI_RATE, MI_MIDISCALE, MI_SWING, MI_CPU1, MI_PANEL, MI_LCLEAR, MI_ABOUT, MI_COUNT };
-static const char *const MI_NAME[MI_COUNT] = {"COLOR", "ZOOM", "KNOB ACCEL", "PAGE HELP", "LIGHTS", "KEYS", "NOTES", "SPEAKER LOWCUT", "USB AUDIO",
+static const char *const MI_NAME[MI_COUNT] = {"COLOR", "ZOOM", "KNOB ACCEL", "PAGE HELP", "LIGHTS", "KEYS", "NOTES", "SCALE LEVEL", "SPEAKER LOWCUT", "USB AUDIO",
 #if FELUCCA_CDC
                                               "USB SERIAL",
 #endif
@@ -61,6 +61,7 @@ UI_SMALL static const char *mi_value(uint32_t i, uint16_t *c)
         return PALETTES[settings.palette % NPALETTES].name;
     case MI_ZOOM: return settings.zoom ? "ON" : "OFF";
     case MI_ACCEL: return knob_accel_off ? "OFF" : "ON";   /* (2.7) the knobs speed up with a fast turn */
+    case MI_SCALELEVEL: return scale_light_level?LIGHTS_NAME[scale_light_level]:"DIM";
     case MI_LIGHTS: return LIGHTS_NAME[lights_lvl % LIGHTS_N];
     case MI_KEYS:
         *c = lights_lvl ? C_HI : C_DIM;               /* (needs LIGHTS) */
@@ -140,7 +141,7 @@ UI_SMALL static void draw_menu(void)
     uint32_t sig = ui.menu * 7u + ui.menu_sel * 131u + settings.palette * 1009u + settings.lowcut * 7919u +
                    settings.zoom * 104729u + lights_lvl * 1299709u + lights_keys * 15485863u + ml_count() * 2654435u +
                    lights_notes * 32452843u + usb_full * 49979687u + usb_serial * 86028121u + usb_rate * 15486719u + theme_shown() * 32452867u + theme.crc + cpu1_off * 122949829u +
-                   knob_accel_off * 179424673u + midi_scale * 961748941u + swing_eighth * 1234567u;
+                   ((uint32_t)scale_light_level << 5) + knob_accel_off * 179424673u + midi_scale * 961748941u + swing_eighth * 1234567u;
     if (!ui.force && sig == ui.menu_sig)
         return;
     ui.menu_sig = sig;
@@ -258,6 +259,10 @@ UI_SMALL static void menu_close(void)
     go_home();
 }
 
+/* Shared byte switches keep identical menu direction/toggle rules in one place. */
+UI_SMALL static void mi_toggle(uint8_t *value,int32_t direction)
+{*value=(uint8_t)(direction>0?1u:direction<0?0u:!*value);}
+
 /* item i: a knob turned s (> 0 right, < 0 left), or 0: OCT+ (steps round, toggles, or opens) */
 UI_SMALL static void mi_set(uint32_t i, int32_t s)
 {
@@ -275,7 +280,7 @@ UI_SMALL static void mi_set(uint32_t i, int32_t s)
         break;
     }
     case MI_ACCEL:                                     /* (2.7) right ON, left OFF; OCT+ toggles (ui_input.c accel) */
-        knob_accel_off = (uint8_t)(s > 0 ? 0u : s < 0 ? 1u : !knob_accel_off);
+        mi_toggle(&knob_accel_off,-s);
         break;
     case MI_ZOOM:
     case MI_LOWCUT: {                                  /* right ON, left OFF; OCT+ toggles */
@@ -285,11 +290,11 @@ UI_SMALL static void mi_set(uint32_t i, int32_t s)
         break;
     }
     case MI_USB:                                       /* right FULL, left MASTER */
-        usb_full = (uint8_t)(s > 0 ? 1u : s < 0 ? 0u : !usb_full);
+        mi_toggle(&usb_full,s);
         break;
 #if FELUCCA_CDC
     case MI_SERIAL:
-        usb_serial = (uint8_t)(s > 0 ? 1u : s < 0 ? 0u : !usb_serial);
+        mi_toggle(&usb_serial,s);
         break;
 #endif
     case MI_RATE:                                      /* (2.7 beta) AUTO 44.1 48: the knob steps (stops at the ends),
@@ -302,7 +307,7 @@ UI_SMALL static void mi_set(uint32_t i, int32_t s)
             usb_rate = (uint8_t)((usb_rate + 1u) % 3u);
         break;
     case MI_CPU1:                                      /* right ON, left OFF; at once (the next block renders so) */
-        cpu1_off = (uint8_t)(s > 0 ? 0u : s < 0 ? 1u : !cpu1_off);
+        mi_toggle(&cpu1_off,-s);
         cpu1_units = cpu1_off ? 0 : -1;
         if (!cpu1_off && !cpu1_on())                   /* 2.7: core 1 starts only at power-on */
             ui_message("ON AT NEXT POWER-ON");
@@ -310,16 +315,17 @@ UI_SMALL static void mi_set(uint32_t i, int32_t s)
     case MI_MIDISCALE:
     case MI_SWING: {
         uint8_t *v = i == MI_SWING ? &swing_eighth : &midi_scale;
-        *v = (uint8_t)(s > 0 ? 1u : s < 0 ? 0u : !*v);
+        mi_toggle(v,s);
         settings_later = 1;
         break;
     }
     case MI_NOTES:
-        lights_notes = (uint8_t)(s > 0 ? 1u : s < 0 ? 0u : !lights_notes);
+        mi_toggle(&lights_notes,s);
         break;
+    case MI_SCALELEVEL:
     case MI_LIGHTS:
     case MI_KEYS: {                                    /* brighter / dimmer (stops at the ends); OCT+ steps round */
-        uint8_t *v = i == MI_LIGHTS ? &lights_lvl : &lights_keys;
+        uint8_t *v = i == MI_LIGHTS ? &lights_lvl : i == MI_KEYS ? &lights_keys : &scale_light_level;
         uint32_t n = i == MI_LIGHTS ? LIGHTS_N : KEYS_N;
         if (s > 0 && *v + 1u < n)
             (*v)++;

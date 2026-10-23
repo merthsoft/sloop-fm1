@@ -1,6 +1,6 @@
 #!/bin/sh
 # SPDX-License-Identifier: GPL-3.0-only
-# Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
+# Copyright (C) 2026 Leo Kuroshita (@kurogedelic), HÃ¼gelton Instruments
 # Host tests (no hardware). Run from the repo root after ./build.sh:
 #   tests/run_tests.sh
 #
@@ -158,6 +158,8 @@ $CC -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/piano_notes_review
 run "NOTES review: undo, redraw, held tools, epoch invalidation and encoder bounds" "$OUT/piano_notes_review_test"
 $CC -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/piano_actions_ui_test" tests/piano_actions_ui_test.c -lm
 run "note/hit sheets: staged edits, ownership, undo, exits and renderer parity" "$OUT/piano_actions_ui_test"
+$CC -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/live_note_editing_test" tests/live_note_editing_test.c -lm
+run "live note editing: sounding ties, ratchet safety, note/track isolation and balanced MIDI" "$OUT/live_note_editing_test"
 $CC -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/note_chain_actions_test" tests/note_chain_actions_test.c -lm
 run "chain actions: atomic pitch/move/copy, overlap, metadata and balanced MIDI" "$OUT/note_chain_actions_test"
 $CC -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/drum_hit_actions_test" tests/drum_hit_actions_test.c -lm
@@ -253,6 +255,8 @@ $CC -UNDEBUG -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal tests/ui_shared_pa
 run "shared UI paths: HOME isolation and physical/MIDI chord entry" "$OUT/ui_shared_paths_test"
 $CC -UNDEBUG -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal tests/progression_perform_test.c -o "$OUT/progression_perform_test" -lm
 run "progression performance: pads, MIDI ownership, recording and cleanup" "$OUT/progression_perform_test" "$OUT"
+$CC -UNDEBUG -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal tests/chord_modifiers_test.c -o "$OUT/chord_modifiers_test" -lm
+run "eleven chord modifiers: physical/latch/arp/MIDI, all combinations and bounds" "$OUT/chord_modifiers_test"
 $CC -UNDEBUG -O2 -w tests/chord_voicing_test.c -o "$OUT/chord_voicing_test"
 run "chord voicing: inversions, spread and MIDI-range invariants" "$OUT/chord_voicing_test"
 $CC -UNDEBUG -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal tests/chord_voicing_ui_test.c -o "$OUT/chord_voicing_ui_test" -lm

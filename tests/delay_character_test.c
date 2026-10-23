@@ -38,6 +38,7 @@ int main(int argc,char **argv)
     int prev=12000;
     for(unsigned i=0;i<10000;i++) {
         int y=delay_character_sample(12000,(i/1000)%4,i);
+        if(abs(y-prev)>64)fprintf(stderr,"switch sample %u mode %u old %d new %d blend %d state %u\n",i,(i/1000)%4,prev,y,delay_age.blend,delay_age.mode);
         assert(abs(y-prev)<=64);prev=y;
     }
     for(unsigned i=0;i<1000;i++)assert(delay_character_sample(0,2,i)>=-32768);

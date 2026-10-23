@@ -308,17 +308,22 @@ UI_SMALL static void graph_roll(const track_t *t, uint16_t c)
     if(song.playing && t->seq_idx>=base && t->seq_idx<base+span)
         cv_rect(x0+((int32_t)t->seq_idx-(int32_t)base)*w/(int32_t)span,top,1,bot-top,C_HI);
 }
+/* Physical black-key names stay fixed when ROOT / keyboard octave changes. */
 UI_SMALL static void graph_scale(const track_t *t, uint16_t c)
 {
-    static const uint8_t BLACK[12] = {0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0};
-    uint32_t i, mask = scale_mask(t);
-    for (i = 0; i < 12u; i++) {
-        uint32_t deg = (i + 12u - (uint32_t)t->p[P_ROOT]) % 12u;
-        int32_t x = 6 + (int32_t)i * 19;
-        uint16_t col = (mask >> deg) & 1u ? (deg == 0u ? C_WHITE : c) : C_DIM;
-        cv_rect(x, BLACK[i] ? 10 : 40, 16, 1, col);
-        cv_rect(x + 7, BLACK[i] ? 10 : 40, 1, 40, col);
+    if(!t->p[P_CHORD] || t->p[P_QUANT]==3) {
+        uint32_t root=(uint32_t)t->p[P_ROOT],mask=scale_mask(t);
+        mask=(mask<<root)|(mask>>(12u-root));
+        for(uint32_t i=0;i<12;i++) {
+            int32_t x=6+(int32_t)i*19, y=((0x54au>>i)&1u)?10:40;
+            uint16_t col=(mask>>i)&1u?(i==root?C_WHITE:c):C_DIM;
+            cv_rect(x,y,16,1,col);cv_rect(x+7,y,1,40,col);
+        }
+        return;
     }
+    static const char *const guide[]={"F#3 FLIP3 G#3 +7","A#3 SUS4  C#4 +9","D#4 INV+  F#4 SUS2","G#4 +13   A#4 MAJ7","C#5 MIN7  D#5 INV-","F#5 OPEN  WHEN LATCHED: TAP"};
+    for(uint32_t i=0;i<6;i++)
+        cv_text(8,(int32_t)i*16,&FONT_S,guide[i],c);
 }
 
 UI_SMALL static void graph_fx(const track_t *t, uint16_t c)

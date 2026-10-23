@@ -492,13 +492,13 @@ There are three ways to enter steps:
 | Hold **OCT+** + KNOB 1 **STEP** clockwise | extends after the selected note/chord with ties, one per step; stops at the pattern's end. Turning backward moves without erasing. Undo the whole gesture with EDIT + OCT−. |
 | Hold **OCT−** + KNOB 1 **STEP** clockwise | writes rests into each following step; the starting step stays intact. The same end-stop, backward movement and undo apply. On STEP, the OCT buttons are painting modifiers; use another page to change playing octave. |
 | Hold either **OCT** button + KNOB 2 | shifts the selected note/chord by whole octaves; selecting a tie edits its onset. Intervals and metadata stay intact; MIDI bounds limit the shift. |
-| Hold either **OCT** button + KNOB 3 | moves the selected note/chord by whole steps; moving into its own tie run keeps its old end, while other moves shift the full chain. Timing, fill conditions and locks travel with the event. Stopped only; unrelated occupied destinations are protected. EDIT + OCT−/OCT+ undoes/redoes the gesture. |
+| Hold either **OCT** button + KNOB 3 | moves the selected note/chord by whole steps; moving into its own tie run keeps its old end, while other moves shift the full chain. Timing, fill conditions and locks travel with the event. Playback can continue; unrelated occupied destinations are protected. EDIT + OCT−/OCT+ undoes/redoes the gesture. |
 | KNOB 2 **NOTE** | transposes the step (an empty step gets your last note) |
 | KNOB 3 **TIME** / **LEN** | on an empty step, a TIE or a REST: **NOTE**, **TIE** (holds the previous note on) or **REST** · on a note (2.6): **LEN**, how many steps the note lasts: longer turns the steps after it into TIEs (it stops at the next step that has notes, and at the pattern's end: *NOTE AHEAD*, *END OF PATTERN*), shorter turns its last TIEs back into RESTs |
 | KNOB 4 **FLAG** | **–**, **ACC** (accent), **SLD** (slide to the next note), **A+S** (both) |
 | **EDIT (tap)** | clears the cursor's step and moves on |
 
-Not while recording or armed (the keys record live then). On the drum track, the STEP page shows *DRUM TRACK*: use the DRUMS grid or the SEQ layer.
+Playback can continue while editing notes, lengths, octave, moves and action sheets. Sounding attacks keep their existing pitch/gate until the next step; unchanged tied voices and other tracks keep playing. A successful edit cancels the edited track's remaining current-step ratchets; normal repeats resume next step. Pattern undo/redo also works during playback. Recording/armed/free-take entry retains write ownership (STOP RECORDING for structural controls); the keys record live then. On the drum track, the STEP page shows *DRUM TRACK*: use the DRUMS grid or the SEQ layer.
 
 The **PATTERN** page (tap SEQ again) holds the track's **LEN**, **DIV**, **SWG** (swing) and **GATE** (how long each note lasts).
 
@@ -576,15 +576,43 @@ With a chord on, **the white keys walk the scale from C4**: C4 plays the chord o
 
 With a chord mode on, **hold a black key while you play a white one** — or press it while the chord is held, and the chord changes under your finger:
 
-| Black key | Changes the chord |
-| --- | --- |
-| **F#** | major ↔ minor |
-| **G#** | adds the 7th |
-| **A#** | sus4 |
-| **C#** | adds the 9th |
-| **D#** | an inversion |
+The eleven black keys are distinct physical positions; changing playing octave or
+ROOT does not move these functions:
 
-Both octaves of black keys work, and you can hold several. The 7th and 9th come from the scale: in C major, G4 plays **G** (the V chord), **G#** makes it **G7**, **F# + G#** make it **Gm7**; on C4, F# + G# give C-E♭-G-B. What you play is recorded as it sounds. For fixed-quality chords, F# flips the actual third, A# replaces it with a perfect fourth, and C# adds a major ninth. G# adds a major seventh to MAJOR/AUG, a diminished seventh to DIM, and a minor seventh to MINOR; existing sevenths stay unchanged. At four notes, the ninth replaces the fifth. POWER and OCTAVE accept inversion only; OCTAVE raises the whole pair by an octave when both notes fit below MIDI 128.
+| Physical key | Changes the chord |
+| --- | --- |
+| **F#3** | flip the third: major ↔ minor |
+| **G#3** | add the scale/chord's seventh |
+| **A#3** | sus4 |
+| **C#4** | add ninth |
+| **D#4** | invert upward |
+| **F#4** | sus2 |
+| **G#4** | add thirteenth |
+| **A#4** | explicit major seventh |
+| **C#5** | explicit minor seventh |
+| **D#5** | invert downward |
+| **F#5** | open voicing |
+
+![Eleven physical black-key chord modifiers](assets/screens/merthsoft/guide/chord-modifiers.png)
+
+Hold several modifiers for combinations. With chord LATCH on, tap to toggle them,
+including after releasing the root and while the arp continues. Selecting sus2 or
+sus4 replaces the other latched suspension; explicit major/minor sevenths similarly
+replace each other. When both are physically held, sus4 and minor seventh win.
+Up/down inversion cancel when held together. These register choices happen after
+automatic voice leading, so it cannot undo the gesture or accumulate octave drift.
+
+Ninths/thirteenths follow scale degrees for scale-aware shapes; fixed-quality
+shapes use major ninth/thirteenth intervals. Explicit major/minor sevenths are
+always 11/10 semitones above the root. Four voices remain the limit: extensions
+replace the fifth first. With +7, +9 and +13 together, the result is root, third,
+seventh and thirteenth. POWER/OCTAVE accept register/open-voicing changes, not
+quality extensions. Inversions stop at MIDI bounds without clipping voices.
+
+SEL displays this physical-key legend when CHORD is on. CHORD OFF and CHROM retain
+the normal scale guide; in CHROM the black keys are roots. Played results record
+as ordinary notes. The separate SEQUENCES LIVE white-pad mode retains its own
+input ownership and does not use these modifiers.
 
 ### SEL 2: STRUM and VLEAD
 
@@ -1662,8 +1690,7 @@ The shared custom draft lasts until power-off; applied notes save with the song.
 ### Perform a progression live
 
 On a synth track, set **ARP MODE** OFF for sustained chords, or UP/PULSE/another enabled
-mode for rhythmic playing. Stop
-playback and release keys and pedals. In **SEQUENCES**, choose a progression,
+mode for rhythmic playing. Playback can continue. In **SEQUENCES**, choose a progression,
 ROOT/SCALE and optional pitch-page VLEAD, then turn SELECT to the fifth page,
 **PERFORM**. Use loop playback, rather than SONG mode.
 
@@ -1691,10 +1718,13 @@ Press **PLAY** for the other tracks to accompany you. The live track's stored
 pattern is temporarily silent and preserved. **REC** records played chords or generated arp
 as ordinary notes, using tempo recording and normal count-in/quantization. It does
 not enter a FREE take or change that saved preference. Expanded PULSE still has
-the recorder's four-note-per-step limit. Turn LIVE off before editing the draft;
-PRESETS/ALGORITHM are blocked while live. MIDI note input to this one track is
-ignored; other tracks retain MIDI input. STOP, leaving the browser, track/preset
-changes and loads end live ownership. Held musical layers suspend pad selection.
+the recorder's four-note-per-step limit. Edit the draft while live: changes affect the
+next pad, leaving the held chord alone. Change ARP OFF/ON to transfer the harmony
+between sustained chords and arp output. Page navigation and HOME keep LIVE running;
+return to PERFORM to turn it off, or press STOP. Arming retires this track's earlier
+keyboard/MIDI/pedal owners; other tracks keep playing. MIDI note input to this one
+track is ignored while live. Track/preset changes and loads end live ownership.
+Held musical layers suspend pad selection.
 
 ### Independent note sustains
 
@@ -1785,11 +1815,14 @@ Press FX, then turn SELECT to **DLY TYPE** (page 7). Knob 1 chooses **DIGI**,
 | CRUSH | BITS | RATE | MIX |
 | DUB | DRIVE | TONE | MIX |
 
-DUB shares adjustable DRIVE with TAPE, with a much darker TONE range that filters
+DUB DRIVE adds stronger saturation and removes low-end buildup from repeats. Its
+response starts earlier in the knob range, while TONE filters
 the first repeat as well as feedback. Set TIME/FDBK on the preceding DLY page.
 RADIO on the separate LOFI page uses DRIFT/BAND/STATIC: BAND narrows the receiver
-response, STATIC adds crackling interference, and DRIFT adds pitch instability.
-DARK reverb supplies a dense muted stereo tail, with normal SIZE and DAMP controls.
+response (already pronounced near 25%), STATIC adds receiver hiss and crackling
+interference, and DRIFT adds pitch instability with an earlier response.
+DARK reverb supplies a dense, strongly muted stereo tail, with a compensated wet
+return so moderate sends stay audible. SIZE and DAMP retain their normal roles.
 
 DIGI retains the original sound. TAPE DRIVE sets soft saturation; zero removes
 it, and TONE darkens the feedback. CRUSH BITS selects 4–16 bits and RATE selects
@@ -1804,3 +1837,12 @@ smoothly through the original delay. The type saves with the project/section;
 older untagged saves use DIGI. TAPE currently adds saturation, not wow/flutter.
 
 ![Tape delay controls](assets/screens/merthsoft/neon/delay-tape.png)
+
+
+### Scale-light brightness
+
+Hold HOME, select **LIGHTS**, then turn **knob 4 — SCALE LEVEL** to choose
+DIM / LOW / MID / HIGH. DIM matches the original scale-guide brightness.
+Played-note LEDs retain full intensity. The level saves with device preferences;
+close the menu and stop playback to allow any deferred settings write.
+SEL+OCT+ remains the independent scale-light on/off toggle.

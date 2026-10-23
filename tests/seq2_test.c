@@ -436,8 +436,8 @@ static void t_chordplus(void)
     n = chord_play_notes(&trk[0], 60, CM_MINOR | CM_SEVEN, c);
     check(notes_are(c, n, 60, 63, 67, 71), "CHORD+: modifiers combine (F# + G#: C Eb G B)");
     check(chord_mod_of_key(1) == CM_MINOR && chord_mod_of_key(3) == CM_SEVEN && chord_mod_of_key(5) == CM_SUS4 &&
-          chord_mod_of_key(8) == CM_NINE && chord_mod_of_key(10) == CM_INV && chord_mod_of_key(13) == CM_MINOR &&
-          !chord_mod_of_key(7), "CHORD+: the black keys F# G# A# C# D# (both octaves), white keys none");
+          chord_mod_of_key(8) == CM_NINE && chord_mod_of_key(10) == CM_INV && chord_mod_of_key(13) == CM_SUS2 &&
+          !chord_mod_of_key(7), "CHORD+: the black keys F# G# A# C# D# (lower group), upper F# is SUS2, white keys none");
     /* the keys: F#3 held, then C4: C minor; F#3 let go while C4 is held: the third goes back up, C and G ring on */
     keys(1u << 1);
     keys(1u << 1 | 1u << 7);

@@ -79,6 +79,7 @@ enum { LIGHTS_OFF, LIGHTS_LOW, LIGHTS_MID, LIGHTS_HIGH, LIGHTS_N };
 enum { KEYS_OFF, KEYS_C, KEYS_WHITE, KEYS_ALL, KEYS_N };   /* (ALL: SLOOP 2.4; an older SLOOP reads it as OFF) */
 static uint8_t lights_lvl, lights_keys;
 static uint8_t lights_notes;                   /* 1: on a synth track the sounding notes light their keys */
+static uint8_t scale_light_level;              /* 0 DIM (legacy), 1 LOW, 2 MID, 3 HIGH */
 static uint8_t lights_scale;                   /* SEL + OCT+: persistent scale guide, fork side record */
 static uint8_t lights_sync;                    /* GLO > SYSTEM > SYNC (G_SYNC), kept here: 0 INT, 1 USB, 2 TRS */
 static uint8_t lights_mout;                    /* GLO > SYSTEM > MIDI (G_MIDI): 1 = the sequencer goes to MIDI OUT too */
@@ -108,10 +109,11 @@ static uint8_t vis_upstream_id(void) { return vis_style<=VIS_METERS?VIS_SAVE_ID[
 UI_SMALL static uint32_t fork_settings_word(void)
 {
     return (uint32_t)(lights_scale != 0u) | (uint32_t)(midi_scale != 0u) << 1 |
-           (uint32_t)(swing_eighth != 0u) << 2 | (uint32_t)VIS_SAVE_ID[vis_style % VIS_STYLE_COUNT] << 8;
+           (uint32_t)(swing_eighth != 0u) << 2 | (uint32_t)scale_light_level << 3 | (uint32_t)VIS_SAVE_ID[vis_style % VIS_STYLE_COUNT] << 8;
 }
 UI_SMALL static void fork_settings_from_word(uint32_t w)
 {
+    scale_light_level = (w >> 3) & 3u;
     lights_scale = w & 1u;
     midi_scale = (w >> 1) & 1u;
     swing_eighth = (w >> 2) & 1u;
@@ -135,7 +137,7 @@ UI_SMALL static void lights_from_word(uint32_t w)
     lights_lvl = (uint8_t)((w & 15u) < LIGHTS_N ? (w & 15u) : LIGHTS_OFF);
     lights_keys = (uint8_t)(((w >> 4) & 15u) < KEYS_N ? ((w >> 4) & 15u) : KEYS_OFF);
     lights_notes = (uint8_t)((w >> 8) & 1u);
-    lights_scale = midi_scale = swing_eighth = 0;
+    lights_scale = midi_scale = swing_eighth = scale_light_level = 0;
     rec_tempo = (uint8_t)((w >> 9) & 1u);       /* the REC screen: MODE, START (seq.c) */
     rec_count = (uint8_t)((w >> 10) & 1u);
     usb_full = (uint8_t)((w >> 11) & 1u);       /* menu USB AUDIO (fx.c) */
@@ -165,7 +167,7 @@ UI_SMALL static void settings_restore_word(uint32_t w)
     uint32_t previous = lights_word(), forked = fork_settings_word();
     lights_from_word(w);
     if ((w ^ previous) & (15u << 17))
-        forked = (forked & 7u) | (uint32_t)VIS_SAVE_ID[vis_style] << 8;
+        forked = (forked & 31u) | (uint32_t)VIS_SAVE_ID[vis_style] << 8;
     fork_settings_from_word(forked);
 }
 static uint8_t settings_later;                 /* changed while playing: saved once stopped (project.c) */

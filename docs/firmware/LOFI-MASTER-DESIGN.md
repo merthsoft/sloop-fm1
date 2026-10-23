@@ -37,9 +37,12 @@ VHS dropouts intentionally alter audible content. Processing uses the same
 The filter snaps residuals below 32 internal units to zero on zero input so
 stopped silence reaches exact zero instead of retaining negative rounding residue.
 
-RADIO adds a high-pass state per channel after the shared low-pass. BAND narrows
-the signal to a receiver-like response; STATIC adds the existing irregular noise
-events at a reduced level. DRIFT uses the shared pitch-history path. No new
+RADIO adds a high-pass state per channel after the shared low-pass. BAND blends
+into a receiver-like response within the first quarter of its range; the rest
+narrows the low-pass further. STATIC combines the irregular events with a much
+stronger hiss bed than the vinyl character, already audible at quarter strength.
+DRIFT uses the shared pitch history with a concave response rather than a flat
+upper half. Zero settings still retain exact settled bypass. No new
 audio ring is added. The extra filter state adds 8 logical RAM bytes (16 linked
 bytes with alignment). Residuals snap to exact silence. The selected-character
 LOFI punch also supports RADIO.

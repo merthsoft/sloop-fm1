@@ -57,11 +57,12 @@ static void seq_harmony_clear(track_t *t)
 static volatile struct { uint8_t active, part, key, direct; } progression;
 static uint32_t (*progression_build)(uint32_t key, uint8_t *out);
 static int progression_external_busy(uint32_t part);
+static void progression_takeover(uint32_t part);
 static void progression_stop(void);
 static uint32_t kb_prev;
 /* per key: what its press started, so its release ends the same (whatever the layer or track is now) */
 enum { KS_NONE, KS_NOTE, KS_DRUM, KS_ROLL, KS_ERASE, KS_FX, KS_UI, KS_MOD, KS_MOD_LATCH, KS_PROGRESSION };
-static uint8_t chord_latch_mods[NPART];              /* toggled chord qualities, owned by each synth */
+static uint16_t chord_latch_mods[NPART];              /* toggled chord qualities, owned by each synth */
 static uint8_t kb_kind[27], kb_trk[27], kb_n[27], kb_nt[27][4], kb_root[27];   /* kb_root: a chord key's note (CHORD+) */
 static uint8_t chord_latch_n[NPART], chord_latch_notes[NPART][4], chord_latch_root[NPART];
 static uint8_t arp_chord_latch_n[NPART], arp_chord_latch_notes[NPART][4], arp_chord_latch_root[NPART];
@@ -344,22 +345,14 @@ static uint32_t chord_notes(const track_t *t, uint32_t n, uint8_t *c)
     return chord_notes_type(t,n,c,(uint32_t)clamp(t->p[P_CHORD],0,CH_COUNT-1));
 }
 
-/* CHORD+ (2.4, after HiChord / minichord): in chord mode the black keys are modifiers. Held while a white key
- * plays (or pressed while it is held: the chord changes under the finger), they change its chord: F# flips its
- * third (major <-> minor), G# adds the 7th, A# makes it sus4, C# adds the 9th, D# inverts it (its lowest note an
- * octave up); several at once combine. Chord latch turns modifier presses into per-part toggles.
- * P_VLEAD ON voices each chord nearest the last one played on the track. */
-enum { CM_MINOR = 1, CM_SEVEN = 2, CM_SUS4 = 4, CM_NINE = 8, CM_INV = 16 };
-static uint32_t chord_mod_of_key(uint32_t k)            /* key k's modifier (0: a white key) */
+/* Eleven physical black keys, independent of playing octave and selected root. */
+enum { CM_MINOR=1, CM_SEVEN=2, CM_SUS4=4, CM_NINE=8, CM_INV=16,
+       CM_SUS2=32, CM_THIRTEEN=64, CM_MAJ7=128, CM_MIN7=256, CM_DOWN=512, CM_OPEN=1024 };
+static uint32_t chord_mod_of_key(uint32_t k)
 {
-    switch ((53u + k) % 12u) {
-    case 6: return CM_MINOR;                            /* F# */
-    case 8: return CM_SEVEN;                            /* G# */
-    case 10: return CM_SUS4;                            /* A# */
-    case 1: return CM_NINE;                             /* C# */
-    case 3: return CM_INV;                              /* D# */
-    default: return 0;
-    }
+    static const uint8_t index[27]={0,1,0,2,0,3,0,0,4,0,5,0,0,6,0,7,0,8,0,0,9,0,10,0,0,11,0};
+    uint32_t i=index[k]; /* caller supplies a physical key, 0..26 */
+    return (1u<<i)>>1; /* zero index naturally produces no modifier */
 }
 static uint8_t vl_prev[NPART][4], vl_n[NPART];          /* the last chord played on each part (voice leading) */
 static uint32_t scale_up(const track_t *t, uint32_t n, uint32_t deg)   /* deg scale degrees above n */
@@ -375,63 +368,56 @@ static uint32_t scale_up(const track_t *t, uint32_t n, uint32_t deg)   /* deg sc
 }
 /* the chord of white key n with the modifiers held, voiced (VLEAD); its notes (<= 4) into c[] */
 #include "harmony_voicing.h"
+/* Add one extension within four voices; an occupied fifth gives way first. */
+__attribute__((noinline)) static uint32_t chord_extension(uint8_t *c,uint32_t count,uint32_t note,uint32_t fifth)
+{
+    uint32_t i;
+    if(note>=128u)return count;
+    harmony_sort_notes(c,count);
+    for(i=0;i<count;i++)if(c[i]==note)return count;
+    if(count<4u)c[count++]=(uint8_t)note;
+    else {
+        for(i=0;i<count && c[i]!=fifth;i++);
+        c[i<count?i:count-1u]=(uint8_t)note;
+    }
+    return count;
+}
 static uint32_t chord_play_notes(track_t *t, uint32_t n, uint32_t mods, uint8_t *c)
 {
-    if (t->p[P_QUANT] == 3) mods = 0;   /* every black key is a root in CHROM, including held former modifiers */
-    uint32_t k = chord_notes(t, n, c), j, type = (uint32_t)clamp(t->p[P_CHORD], 0, CH_COUNT - 1), part = trk_index(t);
-    if (type != CH_POWER && type != CH_OCTAVE && k >= 2u && mods) {          /* POWER / OCTAVE: inversion only */
-        uint32_t fixed = type >= CH_MAJOR;
-        uint32_t third = fixed ? n + (type == CH_MINOR || type == CH_MIN7 || type == CH_DIM ||
-                                         type == CH_HALFDIM || type == CH_DIM7 ? 3u : 4u) : scale_up(t, n, 2u);
-        for (j = 0; j < k; j++) {
-            if ((c[j] == third || (type == CH_SUS2 && j == 1u)) && (mods & CM_SUS4)) {
-                uint32_t fourth = fixed ? n + 5u : scale_up(t, n, 3u);
-                if (fourth < 128u)
-                    c[j] = (uint8_t)fourth;           /* the 4th instead of the 3rd / suspended 2nd */
-            } else if (c[j] == third && (mods & CM_MINOR))
-                c[j] = (uint8_t)(c[j] - n == 4u ? c[j] - 1u : c[j] - n == 3u ? c[j] + 1u : c[j]);
+    if(t->p[P_QUANT]==3)mods=0; /* CHROM black keys remain literal roots. */
+    uint32_t k=chord_notes(t,n,c),i,j,type=(uint32_t)clamp(t->p[P_CHORD],0,CH_COUNT-1);
+    if(type!=CH_POWER && type!=CH_OCTAVE && k>=2u && mods) {
+        uint32_t fixed=type>=CH_MAJOR;
+        uint32_t fifth=k>2u && type!=CH_NINTH && type!=CH_SHELL?c[2]:128u;
+        uint32_t third=c[1];
+        if(mods&CM_SUS4)third=fixed?n+5u:scale_up(t,n,3);
+        else if(mods&CM_SUS2)third=fixed?n+2u:scale_up(t,n,1);
+        else if(mods&CM_MINOR)third+=third-n==4u?-1:third-n==3u?1:0;
+        if(third<128u)c[1]=(uint8_t)third;
+        if(mods&(CM_SEVEN|CM_MAJ7|CM_MIN7)) {
+            uint32_t seventh=fixed?n+(type==CH_DIM?9u:(type==CH_MAJOR || type==CH_AUG)?11u:10u):scale_up(t,n,6);
+            if(fixed && k==4u)seventh=c[3];
+            uint32_t desired=(mods&CM_MIN7)?n+10u:(mods&CM_MAJ7)?n+11u:seventh;
+            /* Explicit quality replaces a base seventh instead of doubling it. */
+            for(i=2;i<k && c[i]!=seventh;i++);
+            if(i<k && desired<128u)c[i]=(uint8_t)desired;
+            else k=chord_extension(c,k,desired,fifth);
+            if(k==4u && c[2]==desired)fifth=c[3]; /* protect the requested seventh in sixth/add9 shapes */
         }
-        if ((mods & CM_SEVEN) && k < 4u) {
-            uint32_t s7 = fixed ? n + (type == CH_MAJOR || type == CH_MAJ7 || type == CH_AUG ? 11u :
-                                      type == CH_DIM || type == CH_DIM7 ? 9u : 10u) : scale_up(t, n, 6u);
-            for (j = 0; j < k && c[j] != s7; j++)
-                ;
-            if (j == k && s7 < 128u)
-                c[k++] = (uint8_t)s7;
-        }
-        if (mods & CM_NINE) {
-            uint32_t s9 = fixed ? n + 14u : scale_up(t, n, 8u);
-            uint32_t s5 = fixed ? n + (type == CH_DIM || type == CH_HALFDIM || type == CH_DIM7 ? 6u :
-                                      type == CH_AUG ? 8u : 7u) : scale_up(t, n, 4u);
-            for (j = 0; j < k && c[j] != s9; j++)
-                ;
-            if (j == k && s9 < 128u) {
-                if (k < 4u) {
-                    c[k++] = (uint8_t)s9;
-                } else {                                /* four already: the 9th for the 5th */
-                    for (j = 0; j < k && c[j] != s5; j++)
-                        ;
-                    c[j < k ? j : k - 1u] = (uint8_t)s9;
-                }
-            }
-        }
+        if(mods&CM_NINE)k=chord_extension(c,k,fixed?n+14u:scale_up(t,n,8),fifth);
+        if(mods&CM_THIRTEEN)k=chord_extension(c,k,fixed?n+21u:scale_up(t,n,12),fifth);
     }
-    harmony_sort_notes(c, k);
-    if (t->p[P_VLEAD] && part < NPART && vl_n[part] && k) {   /* the inversion and octave nearest the last chord */
-        harmony_voice_lead(c, k, vl_prev[part], vl_n[part], type == CH_OCTAVE);
+    harmony_sort_notes(c,k);
+    for(i=j=0;i<k;i++)if(!j || c[i]!=c[j-1u])c[j++]=c[i];
+    k=j;
+    uint32_t part=trk_index(t);
+    if(part<NPART) {
+        if(t->p[P_VLEAD] && vl_n[part] && k)
+            harmony_voice_lead(c,k,vl_prev[part],vl_n[part],type==CH_OCTAVE);
+        /* Automatic history excludes explicit register/spread gestures. */
+        memcpy(vl_prev[part],c,k);vl_n[part]=(uint8_t)k;
     }
-    if ((mods & CM_INV) && type == CH_OCTAVE && k && c[k - 1u] + 12u < 128u) {
-        for (j = 0; j < k; j++)                     /* octave doubling: raise the pair, keep its spacing */
-            c[j] = (uint8_t)(c[j] + 12u);
-    } else if ((mods & CM_INV) && type != CH_OCTAVE && k >= 2u && c[0] + 12u < 128u) {
-        c[0] = (uint8_t)(c[0] + 12u);
-        harmony_sort_notes(c, k);
-    }
-    if (part < NPART) {
-        memcpy(vl_prev[part], c, k);
-        vl_n[part] = (uint8_t)k;
-    }
-    /* Keep explicit register choices out of automatic voice-leading history. */
+    harmony_shape(c,k,!!(mods&CM_INV)-!!(mods&CM_DOWN),(mods&CM_OPEN)?1u:0u);
     harmony_shape(c,k,t->chord_inv,(uint32_t)t->chord_spread);
     return k;
 }
@@ -1734,10 +1720,10 @@ static void progression_stop(void)
 }
 static int progression_arm(void)
 {
-    if (song.sel>=NPART || song.playing || transport_req || song.rec || rec_wait || ft_on || ((panic_req>>song.sel)&1u) || fm1_in.notes || progression_external_busy(song.sel)) return 0;
+    if (song.sel>=NPART || ft_on || ((panic_req>>song.sel)&1u) || !progression_build) return 0;
     track_t *t=&trk[song.sel];
-    if (!progression_build || t->nheld || t->arp_phys || sus_on[song.sel] || chord_latch_n[song.sel] || arp_chord_latch_n[song.sel]) return 0;
     progression_stop();
+    progression_takeover(song.sel);
     if(sequence_preview_end) sequence_preview_end();
     locks_restore(t);seq_release(t);seq_harmony_clear(t);
     progression.part=(uint8_t)song.sel;progression.direct=(uint8_t)!t->p[P_AMODE];
@@ -1936,7 +1922,7 @@ static uint32_t chord_mods(uint32_t sel)
 {
     uint32_t k, m = sel < NPART ? chord_latch_mods[sel] : 0;
     for (k = 0; k < 27u; k++)
-        if (kb_kind[k] == KS_MOD)
+        if (kb_kind[k] == KS_MOD && kb_trk[k] == sel)
             m |= chord_mod_of_key(k);
     return m;
 }
@@ -2163,7 +2149,12 @@ static void key_down(uint32_t k)
             if (t->p[P_CHORD] && layer == LY_PLAY && chord_mod_of_key(k)) {   /* CHORD+: a modifier key */
                 if (sel < NPART && t->p[P_AHOLD]) {
                     kb_kind[k] = KS_MOD_LATCH;
-                    chord_latch_mods[sel] ^= (uint8_t)chord_mod_of_key(k);
+                    uint32_t mod=chord_mod_of_key(k),m=chord_latch_mods[sel];
+                    if(!(m&mod)) {
+                        if(mod&(CM_SUS2|CM_SUS4))m&=~(CM_SUS2|CM_SUS4);
+                        if(mod&(CM_MAJ7|CM_MIN7))m&=~(CM_MAJ7|CM_MIN7);
+                    }
+                    chord_latch_mods[sel]=(uint16_t)(m^mod);
                 } else {
                     kb_kind[k] = KS_MOD;
                 }
@@ -2630,6 +2621,12 @@ static uint32_t seq_tie_hold(const track_t *t)
     return hold;
 }
 
+/* A live structural edit changes the pattern, not the in-flight gate/pitch list.
+ * Ratchets must not reread the edited current cell into that old pitch list:
+ * at four voices this could create an untracked fifth pitch. The normal next
+ * step recalculates seq_skip, then reconciles ties/releases without a panic. */
+static void seq_edit_changed(track_t *t) { t->seq_skip = 1; }
+
 /* At the normal gate end, retain independent continuations and their velocity.
  * A zero timer means this gate was consumed, not that a held note should stop. */
 static void seq_gate_release(track_t *t)
@@ -3057,6 +3054,23 @@ static int progression_external_busy(uint32_t part)
     for(uint32_t i=0;i<MIDI_SCALE_HELD;i++) if(midi_scale_held[i].part==part+1u) return 1;
     for(uint32_t i=0;i<16;i++) if(ch_sus[i]==part+1u) return 1;
     return 0;
+}
+/* Arm without stopping the transport: retire only the selected track's old owners. */
+__attribute__((minsize,noinline)) static void progression_takeover(uint32_t part)
+{
+    track_t *t=&trk[part];
+    for(uint32_t k=0;k<27;k++)if(kb_trk[k]==part && kb_kind[k]==KS_NOTE)key_up(k);
+    kh_release(t);chord_latch_release(part);arp_release(t);
+    for(uint32_t r=0;r<NROLL;r++)if(roll[r].on && roll[r].trk==part)roll_end(r);
+    for(uint32_t i=0;i<MIDI_SCALE_HELD;i++)if(midi_scale_held[i].part==part+1u) {
+        midi_scale_held[i].part=0;midi_scale_restore_route(midi_scale_held[i].key);
+    }
+    for(uint32_t i=0;i<16;i++)if(ch_sus[i]==part+1u)ch_sus[i]=0;
+    sus_on[part]=0;memset(sus_wait[part],0,sizeof sus_wait[part]);
+    memset(mi_pen,0,sizeof mi_pen);pen_n=0;
+    while(t->rh_n)rec_release(t,t->rh_note[0]);
+    trk_all_off(t);t->nheld=t->arp_phys=t->arp_new=0;
+    arp_chord_latch_n[part]=chord_latch_mods[part]=0;
 }
 static void sus_set(track_t *t, int on);
 static void midi_pedal(uint32_t ch, track_t *t, uint32_t value)
@@ -3495,7 +3509,7 @@ static void events_block(uint32_t n)
         route_was = (uint8_t)rt;
         chans_was = chans;
     }
-    if(progression.active && (song.sel!=progression.part || progression.direct!=(uint8_t)!trk[progression.part].p[P_AMODE] || ((panic_req>>progression.part)&1u))) progression_stop();
+    if(progression.active && (song.sel!=progression.part || ((panic_req>>progression.part)&1u))) progression_stop();
     if(progression.active && !trk[progression.part].p[P_AHOLD] && progression.key<27u && !(fm1_in.notes&(1u<<progression.key))) progression_clear_source();
     pr = panic_req;
     panic_req = 0;
@@ -3589,6 +3603,12 @@ static void events_block(uint32_t n)
                 t->seq_abs = SEQ_NONE;
             }
             t->arp_new = t->nheld != 0 || seq_harmony[i].n != 0;
+        }
+        if(progression.active && progression.part==i && progression.direct!=(uint8_t)!t->p[P_AMODE]) {
+            if(progression.direct)for(uint32_t j=0;j<t->arp_n;j++)rec_release(t,t->arp_notes[j]);
+            arp_release(t);progression.direct=(uint8_t)!t->p[P_AMODE];
+            t->armp=t->p[P_AMODE];t->arp_new=t->nheld!=0;t->arp_idx=0xFFFFFFFFu;t->arp_shuffle_n=0;
+            if(progression.direct)for(uint32_t j=0;j<t->nheld;j++)generated_emit(t,t->held[j],100,1);
         }
         /* ARP turned off, or HOLD released with no key down: drop the latched chord */
         if ((t->armp && !t->p[P_AMODE]) || (t->aholdp && !t->p[P_AHOLD] && !t->arp_phys)) {

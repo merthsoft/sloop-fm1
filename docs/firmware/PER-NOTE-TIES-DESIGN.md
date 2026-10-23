@@ -86,7 +86,7 @@ full extent. Do not silently move only its attack and leave disconnected ties.
 
 The initial native implementation guards single-event pitch/octave edits and
 move/merge while a pattern contains independent continuations. It says USE EDIT
-TRANSPOSE or TIED VOICES: NO MOVE. Whole-pattern semitone/octave transposition is
+TRANSPOSE or USE NOTE ACTIONS. Whole-pattern semitone/octave transposition is
 safe and remains available. Moving a selected independent voice, with collision
 review, is still follow-on work. Ordinary whole-step tie moves remain available.
 

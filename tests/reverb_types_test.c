@@ -6,7 +6,7 @@
 #undef NDEBUG
 #include <assert.h>
 #define IR_N (FS*8u)
-static double energy[IR_N],brightness;
+static double energy[IR_N],brightness,spectral_ratio;
 static void reset(int model,int size,int damp) {
  host_tracks_init();punch_clear();rev_frz=0;
  memset(&fx,0,sizeof fx);memset(rev_line,0,sizeof rev_line);
@@ -27,7 +27,7 @@ static double impulse(int model,int size,int damp,uint64_t *hash,double *corr) {
    if(t+i>FS/20 && t+i<FS) {high+=(double)(l[i]-pl)*(l[i]-pl)+(double)(r[i]-pr)*(r[i]-pr);ll+=(double)l[i]*l[i];rr+=(double)r[i]*r[i];lr+=(double)l[i]*r[i];}pl=l[i];pr=r[i];
   }
  }
- brightness=high;
+ brightness=high;spectral_ratio=high/(ll+rr);
  double floor=0;for(unsigned t=IR_N-FS;t<IR_N;t++)floor+=energy[t]/FS;
  for(unsigned t=0;t<IR_N;t++)energy[t]=fmax(0,energy[t]-floor*1.25);
  for(int t=IR_N-2;t>=0;t--)energy[t]+=energy[t+1];
@@ -54,10 +54,10 @@ static void lifecycle(int model) {
  for(unsigned i=0;i<CTL;i++)assert(l[i]==0&&r[i]==0);
 }
 int main(void) {
- setvbuf(stdout,0,_IOLBF,0);uint64_t hashes[6];double decay[6];
+ setvbuf(stdout,0,_IOLBF,0);uint64_t hashes[6];double decay[6],spectral[6];
  for(int m=0;m<6;m++) {
   uint64_t h;double c,short_rt=impulse(m,20,20,&h,&c);
-  double long_rt=impulse(m,100,20,&hashes[m],&c);decay[m]=long_rt;
+  double long_rt=impulse(m,100,20,&hashes[m],&c);decay[m]=long_rt;spectral[m]=spectral_ratio;
   printf("model%d: RT60 fit %.3f -> %.3f sec, stereo correlation %.3f\n",m,short_rt,long_rt,c);
   assert(long_rt>short_rt*1.15 && fabs(c)<.95);
   double bright=brightness,damped=impulse(m,100,127,&h,&c);
@@ -66,6 +66,7 @@ int main(void) {
   for(int j=0;j<m;j++)assert(hashes[j]!=hashes[m]);
   lifecycle(m);
  }
+ assert(spectral[5]<spectral[4]*.3); /* DARK stays darker than HALL before max damping. */
  assert(decay[2]<decay[3]&&decay[2]<decay[4]);
  puts("reverb types: distinct stereo/decay, damping, overload, FREEZE and cleared switching PASS");return 0;
 }

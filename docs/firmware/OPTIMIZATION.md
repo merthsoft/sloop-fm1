@@ -1,3 +1,63 @@
+# Eleven physical chord modifiers
+
+The .49 image is **584,336/584,336 bytes**, **0 free**, eight bytes over .48.
+Main RAM remains **89,128/98,304**, low RAM **28,280/29,496**, audio pool
+**332,876/344,064**. The eleven-bit latch set grows logically by three bytes across
+three synths, absorbed by existing alignment. No audio voices/buffers are added.
+
+A compact physical-key index table replaces repeated pitch-class modifiers. One
+shared extension insertion path replaces the old repeated seventh/ninth logic;
+existing harmony_shape handles both inversion directions and open voicing.
+Automatic voice-leading history excludes explicit register gestures. Common
+capacity/lock messages are reused rather than adding synonymous strings.
+
+The new work runs at note/modifier events, not in sample playback loops. Target
+placement/budgets, 182 unchanged ordinary audio renders, chord/scale/arp/voicing
+regressions, UI fuzz and normal/UBSan exhaustive modifier tests pass. The latter
+checks all 3,932,160 shape/scale/register/mask combinations, plus real physical and
+latched direct/arp ownership. Hardware feel remains user validation.
+
+# Conditional SEL guide and adjustable scale LEDs
+
+The .48 image is **584,328/584,336 bytes**, **8 free**. Restoring the normal scale
+sketch and adding saved guide brightness fit by sharing byte menu toggles and
+note-move completion paths, keeping cold edit handlers out of line, rotating the
+12-bit scale mask once per drawing rather than taking a remainder per key, and
+precomputing adjustable LED timer ticks outside the scan interrupt.
+
+Linked RAM remains main **89,128/98,304**, low **28,280/29,496**, pool
+**332,876/344,064**. There are no new audio buffers or voices. The maximum dim
+pulse increases from 4 us to 32 us only while the persistent guide owns the playing
+keyboard. Hardware brightness/scan-load validation is still needed; host tests do
+not measure electrical LEDs or interrupt latency. Target checks and focused UI,
+scale settings, note-move, transpose and starter regressions pass.
+
+# Compact chord-screen guide
+
+The .47 image is **584,336/584,336 bytes**, **0 free**, adding **8 image bytes**
+over .46. The SEL modifier legend replaces the scale sketch. It uses only static
+strings and the existing canvas; linked RAM, audio processing and input behavior
+are unchanged. Target placement and budget checks pass.
+
+# Live editing and progression control flow
+
+The .46 image is **584,328/584,336 bytes**, **8 free**, adding **168 image bytes**
+over .45. Linked RAM is unchanged: main **89,128/98,304**, low **28,280/29,496**,
+pool **332,876/344,064**. Live note edits reuse `seq_skip` to suppress stale
+current-step ratchets; normal step processing reconciles held notes. No new state,
+audio buffers, scheduler or persistence layout. The cold progression takeover helper
+is explicitly kept out of line. Target placement and budget checks pass.
+
+# Radio/Dub/Dark response tuning
+
+The .45 image is **584,160/584,336 bytes**, **176 free**, adding **384 image bytes**
+over .44 with unchanged linked RAM: main **89,128/98,304**, low **28,280/29,496**,
+pool **332,876/344,064**. No new audio ring, voices or scheduler. Radio gains an
+explicit early band mix and receiver hiss; Dub reuses the mutually exclusive
+CRUSH held state for a bass-cut filter and shares a small concave amount mapping
+with Radio. The tiny delay mode field fits existing linker alignment. Dark changes
+coefficient/return tuning. Target RAM/flash placement and hot DSP checks pass.
+
 # Radio, Dark, Dub and direct progression chords
 
 The .44 image is **583,776/584,336 bytes**, **560 free**. Main static RAM is

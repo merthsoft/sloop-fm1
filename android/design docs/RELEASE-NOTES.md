@@ -1,3 +1,66 @@
+# MerthSloop firmware 2.7.1.49
+
+- Eleven distinct physical black-key chord modifiers replace octave duplicates.
+  Upper keys add sus2, thirteenth, explicit major/minor seventh, downward inversion
+  and open voicing; the lower five keep their functions.
+- All modifiers work held or as chord-latch toggles, including retained arp chords.
+  Suspension and explicit-seventh latch groups are mutually exclusive.
+- Four-voice extension priority preserves a requested seventh; thirteenth wins
+  over ninth when both cannot fit. Register gestures are excluded from automatic
+  voice-leading history to prevent octave drift.
+- SEL's six-line physical-key guide shows each position. CHORD OFF and CHROM
+  retain the normal scale guide. No project/preset/MIDI parameter IDs change.
+- Image 584,336/584,336 (0 free), with unchanged linked RAM.
+- Existing chord/scale/arp/voicing/storage/UI regressions and 182 audio goldens pass.
+  Normal and UBSan modifier tests cover all keys, held/latch/arp/MIDI ownership and
+  3,932,160 bounded output combinations.
+
+# MerthSloop firmware 2.7.1.48
+
+- Restore the normal SEL scale sketch while CHORD is off; show modifiers when on.
+- Add MAIN MENU > LIGHTS > knob 4 SCALE LEVEL: DIM/LOW/MID/HIGH (4/8/16/32 us).
+  The saved device preference defaults to the original DIM level and preserves
+  full played-note lights and unrelated layer/drum indicators.
+- Reuse menu toggle and note-move completion code; keep large cold edit handlers
+  out of line. Scale scan consumes precomputed timer ticks.
+
+# MerthSloop firmware 2.7.1.47
+
+- SEL's graph area now contains a compact guide to all five physical black-key
+  chord modifiers, plus reminders for latch toggling and CHROM root behavior.
+- Replaces the former scale sketch; no audio, input, persistence or RAM changes.
+
+# MerthSloop firmware 2.7.1.46
+
+- Live note editing: pitch, length, move, NOTE/HIT ACTIONS and pattern undo/redo
+  work during playback. Sounding notes reconcile at the next step; pending
+  current-step ratchets are cancelled after structural edits. Active recording
+  ownership, voice capacity and pattern-boundary checks remain.
+- Progression LIVE can arm during loop playback and tempo recording/count-in.
+  Old input owners on that track retire without stopping the other tracks.
+- Browser draft edits affect the next pad; navigation/HOME keep LIVE running.
+  ARP OFF/ON transfers the held harmony between direct chords and rhythmic output.
+  Browser controls take priority over hidden recording-screen knobs.
+- Image 584,328/584,336 (8 free); linked RAM unchanged from the preceding build.
+- Live-note and progression regressions, UBSan, transport/tie/arp suites,
+  20,000-frame UI fuzz, 182 unchanged audio renders and native/WASM agreement pass.
+
+# MerthSloop firmware 2.7.1.45
+
+- Radio BAND reaches a receiver-like response in its first quarter, with further
+  low-pass narrowing above that. STATIC has a stronger receiver hiss bed and
+  crackling events; DRIFT uses an earlier concave response without a flat upper half.
+- Dub DRIVE now adds stronger soft clipping and bass trimming per repeat, with
+  an earlier concave response. It reuses CRUSH's mutually exclusive held state.
+  Type changes fade through clean and prime the held state to avoid startup clicks.
+- Dark reverb has a lower damping range, more feedback at low SIZE and a 6 dB
+  compensated wet return; the dry instruments and other reverb models are unchanged.
+- Image 584,160/584,336 (176 free); main RAM 89,128/98,304, low RAM
+  28,280/29,496, pool 332,876/344,064. No new buffers or linked RAM growth.
+- Tests check quarter-range Radio band/static and Dub coloration, all delay
+  tap values/transitions, Dark-vs-Hall brightness, tails/bounds/FREEZE/silence,
+  arithmetic sanitizers and unchanged normal audio goldens.
+
 # MerthSloop firmware 2.7.1.44
 
 - LOFI adds RADIO: DRIFT/BAND/STATIC, using the existing pitch history and noise

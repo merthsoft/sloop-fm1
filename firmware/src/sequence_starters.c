@@ -82,7 +82,7 @@ static struct {
     rhythm_shape_t shape;
 } sequence_preview;
 
-static uint32_t sequence_degree_note(uint32_t degree, uint32_t root, uint32_t scale, int32_t octave)
+UI_SMALL static uint32_t sequence_degree_note(uint32_t degree, uint32_t root, uint32_t scale, int32_t octave)
 {
     uint32_t mask=SCALE_MASK[scale%NSCALES],pc=0;
     for(;;pc++) if((mask>>(pc%12u))&1u) {

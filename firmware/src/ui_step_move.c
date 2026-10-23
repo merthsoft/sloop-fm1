@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
 /* Move a selected synth onset and its following ties without destroying neighbors. */
-static void step_octave(int32_t amount)
+UI_SMALL static void step_octave(int32_t amount)
 {
     track_t *t = TSEL;
     uint32_t first = ui.cursor, i, low = 127, high = 0;
@@ -20,19 +20,18 @@ static void step_octave(int32_t amount)
     undo_mark(t, ui.tie_sess);
     for (i = 0; i < s->n; i++) s->note[i] = (uint8_t)(s->note[i] + delta);
     last_note = s->note[0];
+    seq_edit_changed(t);
     fm1_irq_on();
     sync_reload = 1; ui.force = 1;
 }
 
-static void step_move(int32_t delta)
+UI_SMALL static void step_move(int32_t delta)
 {
     track_t *t = TSEL;
     uint32_t first = ui.cursor, end, len = trk_len(t), i;
     int32_t dest;
-    if (note_pattern_linked(t)) {ui_message("TIED VOICES: NO MOVE");return;}
-    if (song.playing || transport_req || song.rec || rec_wait || ft_on) {
-        ui_message("STOP FIRST"); return;
-    }
+    if (note_pattern_linked(t)) {ui_message("USE NOTE ACTIONS");return;}
+    if (song.rec || rec_wait || ft_on) { ui_message("STOP RECORDING"); return; }
     while (first && t->step[first].time == ST_TIE) first--;
     if (t->step[first].time != ST_NOTE || !t->step[first].n) {
         ui_message("SELECT A NOTE"); return;
@@ -60,10 +59,8 @@ static void step_move(int32_t delta)
         for (i = first; i < (uint32_t)dest; i++) {
             step_clear(&t->step[i]); t->micro[i] = 0; step_fill_set(t, i, 0);
         }
-        fm1_irq_on();
-        cursor_set(clamp((int32_t)ui.cursor + delta, dest, (int32_t)end - 1));
-        sync_reload = 1; ui.force = 1;
-        return;
+        dest=clamp((int32_t)ui.cursor+delta,dest,(int32_t)end-1);
+        goto moved;
     }
     dest = clamp((int32_t)first + delta, 0, (int32_t)(len - (end - first)));
     delta = dest - (int32_t)first;
@@ -75,7 +72,7 @@ static void step_move(int32_t delta)
             ui_message("TIE LENGTH DIFFERS"); return;
         }
         for (i=0;i<NLOCK;i++) if (t->lock[i].step>=first && t->lock[i].step<end) {
-            ui_message("SOURCE HAS LOCKS"); return;
+            ui_message("STEP HAS LOCKS"); return;
         }
         step_t merged=t->step[dest];
         for (i=0;i<t->step[first].n;i++) {
@@ -90,9 +87,7 @@ static void step_move(int32_t delta)
         if (!groove_undo_matches()) starter_undo_capture(t);
         t->step[dest]=merged;
         for(i=first;i<end;i++) {step_clear(&t->step[i]);t->micro[i]=0;step_fill_set(t,i,0);}
-        fm1_irq_on();
-        cursor_set(dest);sync_reload=1;ui.force=1;
-        return;
+        goto moved;
     }
     for (i = (uint32_t)dest; i < (uint32_t)dest + end - first; i++) {
         const step_t *s = &t->step[i];
@@ -118,7 +113,10 @@ static void step_move(int32_t delta)
     for (i = 0; i < NLOCK; i++)
         if (t->lock[i].step >= first && t->lock[i].step < end)
             t->lock[i].step = (uint8_t)((int32_t)t->lock[i].step + delta);
+    dest=(int32_t)ui.cursor+delta;
+moved:
+    seq_edit_changed(t);
     fm1_irq_on();
-    cursor_set((int32_t)ui.cursor + delta);
+    cursor_set(dest);
     sync_reload = 1; ui.force = 1;
 }

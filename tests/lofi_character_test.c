@@ -40,7 +40,7 @@ static void check_punch_characters(void)
             }
             assert(!memcmp(saved,song.g,sizeof saved));
             assert(vinyl.mode==effective);
-            assert(vinyl.wow==(strong?127:96)*256);
+            assert(vinyl.wow==(mode==VINYL_MODE_RADIO?(strong?127:120):strong?127:96)*256);
             assert(vinyl.tone==(strong?121:90)*256);
             assert(vinyl.crackle==(strong?115:100)*256);
             if(punched) {
@@ -57,7 +57,7 @@ static void check_punch_characters(void)
                     vinyl_process_mode(l,r,CTL,mode);
                 }
                 assert(!memcmp(saved,song.g,sizeof saved));
-                assert(vinyl.wow==(mode==VINYL_MODE_OFF?0:saved[G_VWOW]*256));
+                assert(vinyl.wow==(mode==VINYL_MODE_OFF?0:mode==VINYL_MODE_RADIO?((saved[G_VWOW]*(256-saved[G_VWOW]))>>7)*256:saved[G_VWOW]*256));
                 assert(vinyl.tone==(mode==VINYL_MODE_OFF?0:saved[G_VTONE]*256));
                 assert(vinyl.crackle==(mode==VINYL_MODE_OFF?0:saved[G_VCRACKLE]*256));
                 if(mode==VINYL_MODE_OFF) for(uint32_t i=0;i<CTL;i++)assert(l[i]==1234&&r[i]==-2345);

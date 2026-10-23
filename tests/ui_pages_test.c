@@ -36,6 +36,7 @@ static uint32_t fm1_ticks(void) { return fm1_ms * 1000u * 24u; }
 #define FM1_TICKS_PER_US 24u
 static int32_t fm1_enc_take(uint32_t e) { int32_t s = encs[e]; encs[e] = 0; return s; }
 static uint8_t fm1_led[16], fm1_led_dim[16], fm1_led_bg[16];
+static volatile uint16_t fm1_led_dim_ticks = 96u;
 static volatile uint16_t fm1_led_bg_ns;
 #define FM1_NCOL 16u
 static const int8_t FM1_KEYMAP[5][16];
@@ -418,7 +419,7 @@ int main(int argc, char **argv)
             fm1_in.notes = 0; frame();
             check(trk[0].held[2] == pool[1] - 1 && !trk[0].arp_phys,
                   "latched arp: modifier release preserves quality and physical count");
-            fm1_in.notes = 1u << 13; frame(); fm1_in.notes = 0; frame();
+            fm1_in.notes = 1u << 1; frame(); fm1_in.notes = 0; frame();
             check(trk[0].held[2] == pool[1] && !chord_latch_mods[0],
                   "latched arp: second minor modifier press restores major");
             fm1_in.notes = 1u << 9; frame();
@@ -1181,7 +1182,7 @@ int main(int argc, char **argv)
         encs[panel.enc[EN_K3]] = 1; frame();
         check(lights_notes == 1u && ui.menu_sel == MI_NOTES, "menu LIGHTS: KNOB 3 sets NOTES (row 3)");
         encs[panel.enc[EN_K4]] = 1; frame();
-        check(ui.menu_sel == MI_NOTES, "menu: KNOB 4 on a section of three rows does nothing");
+        check(ui.menu_sel == MI_SCALELEVEL && scale_light_level == 1, "menu: LIGHTS KNOB 4 raises scale-guide level");
         ui.force = 1; frame(); ppm("menu-lights");
         encs[panel.enc[EN_PRESET]] = 1; frame();
         check(ui.menu_sel == MI_LIGHTS, "menu: PRESETS moves the cursor round the section's rows");

@@ -327,10 +327,6 @@ UI_SMALL static int undo_swap(int redo)
         return project_undo_swap(redo);
     if (!undo.valid || (uint32_t)!!redo != undo.undone)
         return 0;
-    if (groove_undo_matches() && (song.playing || transport_req == 1)) {
-        ui_message("STOP FIRST");
-        return 0;
-    }
     t = &trk[undo.trk % NTRK];
     fm1_irq_off();
     {
@@ -348,6 +344,7 @@ UI_SMALL static int undo_swap(int redo)
     t->p[P_SLEN] = undo.len;
     undo.len = len;
     if (groove_undo_matches()) groove_undo_swap();
+    seq_edit_changed(t);
     undo.undone = (uint8_t)!redo;
     fm1_irq_on();
     sync_reload = 1;
@@ -963,6 +960,7 @@ UI_SMALL static void track_select(uint32_t i)
     groove_preview.active = 0;
     if (i >= NTRK || i == song.sel)
         return;
+    fm1_irq_off();progression_stop();fm1_irq_on();
     sequence_screen_close();
     if (cur_page()->scope == SC_STARTER) go_home();
     song.sel = (uint8_t)i;

@@ -5,8 +5,13 @@
 FX → DLY TYPE maps its remaining knobs by type: DIGI TIME/FDBK/MIX,
 TAPE or DUB DRIVE/TONE/MIX, CRUSH BITS/RATE/MIX. DIGI retains the original delay;
 TAPE applies adjustable soft saturation before feedback filtering and return;
-DUB reuses TAPE saturation and the existing delay filter, with a darker cutoff
-range and filtered first repeat as well as feedback. No extra state/buffer is added.
+DUB uses a stronger soft-clip curve and a high-pass that removes low-end buildup
+from successive repeats, alongside the existing dark low-pass on the first
+repeat and feedback. DRIVE has an earlier concave response across its full
+range. Its high-pass reuses CRUSH's mutually exclusive held-sample state. A small
+mode selector fades through DIGITAL before changing algorithms and primes the
+held state at the transition, avoiding a sample-hold startup click. No extra
+audio buffer is added.
 CRUSH offers 4–16 bits and approximately 2.8–44 kHz sample holding.
 The preceding DLY page keeps TIME/FDBK/COLR/MIX for every type. These are global bus settings,
 independent from master LOFI, which now defaults to OFF.

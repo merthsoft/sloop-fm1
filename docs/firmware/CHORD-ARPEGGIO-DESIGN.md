@@ -1,5 +1,8 @@
 # FM1 shared harmony, chord, and arpeggio design
 
+The [eleven physical chord modifiers](CHORD-MODIFIER-EXPANSION.md) are integrated,
+including sus2, thirteenth, explicit sevenths, downward inversion and open voicing.
+
 Native per-track inversion/spread controls are now implemented on SEL's third
 VOICING page, after the existing shared chord/modifier/voice-leading builder.
 They preserve held notes and upstream parameter IDs; see

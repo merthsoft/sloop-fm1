@@ -106,7 +106,7 @@ UI_SMALL static void pattern_length(track_t *t, int32_t d)       /* x2 (the patt
         ui_say("STEPS ", b);
     }
 }
-static void pattern_transpose(track_t *t, int32_t d)    /* one uniform shift; preserve chord intervals at bounds */
+UI_SMALL static void pattern_transpose(track_t *t, int32_t d)    /* one uniform shift; preserve chord intervals at bounds */
 {
     uint32_t i, j, low = 127, high = 0, notes = 0;
     if (is_drum(t))

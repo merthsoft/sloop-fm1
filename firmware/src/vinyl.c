@@ -29,6 +29,7 @@ static void vinyl_process_mode(int32_t *l, int32_t *r, uint32_t n, unsigned mode
         if (tone < 90) tone=90;
         if (crackle < 100) crackle=100;
     } else if (mode == VINYL_MODE_OFF) wow=tone=crackle=0;
+    if(mode==VINYL_MODE_RADIO)wow=fx_early_amount(wow);
     if (mode == VINYL_MODE_OFF || mode >= VINYL_MODE_COUNT) mode = VINYL_MODE_VINYL;
     if (!(wow | tone | crackle | vinyl.wet | vinyl.wow | vinyl.tone | vinyl.crackle)) {
         if (vinyl.w) {
@@ -65,7 +66,8 @@ static void vinyl_process_mode(int32_t *l, int32_t *r, uint32_t n, unsigned mode
         }
         vinyl.click=vinyl.click*3/4;
         vinyl.damage-=clamp(vinyl.damage,0,vinyl.mode==VINYL_MODE_CD?128:32);
-        int32_t noise=mulq16(vinyl.click+((int32_t)(nz>>16)-32768)*amount/32768,vinyl.bed);
+        int32_t hiss=((int32_t)(nz>>16)-32768)*amount;
+        int32_t noise=mulq16(vinyl.click+(vinyl.mode==VINYL_MODE_RADIO?(hiss>>7):hiss/32768),vinyl.bed);
         uint32_t period=256u-(uint32_t)(vinyl.wow>>8)*192u/127u;
         if (++vinyl.cd_count>=period) { vinyl.cd_count=0; vinyl.cd_anchor=(w-32u)&255u; }
         for (uint32_t c=0;c<2;c++) {
@@ -81,9 +83,10 @@ static void vinyl_process_mode(int32_t *l, int32_t *r, uint32_t n, unsigned mode
                     x+=mulq16(y-x,amount*516u);
             } else {
                 x+=mulq16(y-x,vinyl.wet*2);
-                vinyl.low[c]+=mulq16(x-vinyl.low[c],(32767-(vinyl.tone>>8)*232)*2);
+                uint32_t radio=vinyl.mode==VINYL_MODE_RADIO,band=(uint32_t)clamp((vinyl.tone>>8)*4,0,127);
+                vinyl.low[c]+=mulq16(x-vinyl.low[c],radio?24000-(vinyl.tone>>8)*128:(32767-(vinyl.tone>>8)*232)*2);
                 if(!x && vinyl.low[c]>-32 && vinyl.low[c]<32) vinyl.low[c]=0;
-                if(vinyl.tone)x=vinyl.low[c];
+                if(vinyl.tone)x=radio?x+mulq16(vinyl.low[c]-x,band*516u):vinyl.low[c];
                 if(vinyl.mode==VINYL_MODE_TAPE) {
                     /* Bounded soft saturation, full bus headroom in intermediates. */
                     int32_t sat=clamp(x,-32768,32768);
@@ -97,7 +100,7 @@ static void vinyl_process_mode(int32_t *l, int32_t *r, uint32_t n, unsigned mode
                     /* Band-limited receiver: darkness narrows the band, damage adds static. */
                     vinyl.hp[c]+=mulq16(x-vinyl.hp[c],3200);
                     if(!x && vinyl.hp[c]>-32 && vinyl.hp[c]<32)vinyl.hp[c]=0;
-                    x-=mulq16(vinyl.hp[c],(uint32_t)(vinyl.tone>>8)*516u);
+                    x-=mulq16(vinyl.hp[c],band*516u);
                     x+=noise/8;
                 } else x+=noise;
             }

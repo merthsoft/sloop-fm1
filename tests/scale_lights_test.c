@@ -72,6 +72,28 @@ int main(void)
     press(B_SCL);tap(B_OCTUP);frames(50);
     assert(lights_scale && !trk[1].p[P_AHOLD]); /* gesture cancels SEL long-hold latch */
     release(B_SCL);fm1_in.notes=0;frame();
+    /* Level changes alter only the dim guide plane, and survive side-record restore. */
+    const uint16_t ns[]={4000,8000,16000,32000};
+    song.sel=1;ui.layer=LY_PLAY;kb_grid=0;lights_scale=1;
+    uint32_t guide_mask=keys_notes_dim();
+    for(uint32_t level=0;level<4;level++) {
+        scale_light_level=(uint8_t)level;ui_leds();
+        assert(fm1_led_dim_ticks==ns[level]*FM1_TICKS_PER_US/1000&&keys_notes_dim()==guide_mask);
+        fm1_in.notes=1u<<5;assert(keys_lit()&(1u<<5));fm1_in.notes=0;
+        uint32_t saved=fork_settings_word();scale_light_level=0;fork_settings_from_word(saved);
+        assert(scale_light_level==level);
+        uint32_t canonical=lights_word()^(1u<<17);settings_restore_word(canonical);
+        assert(scale_light_level==level); /* changing upstream visualizer preserves level */
+    }
+    scale_light_level=0;
+    for(uint32_t level=1;level<4;level++){mi_set(MI_SCALELEVEL,1);assert(scale_light_level==level);}
+    mi_set(MI_SCALELEVEL,1);assert(scale_light_level==3);
+    mi_set(MI_SCALELEVEL,0);assert(!scale_light_level);
+    mi_set(MI_SCALELEVEL,-1);assert(!scale_light_level);
+    scale_light_level=3;lights_scale=0;ui_leds();assert(fm1_led_dim_ticks==4*FM1_TICKS_PER_US);
+    lights_scale=1;ui.layer=LY_FX;ui_leds();assert(fm1_led_dim_ticks==4*FM1_TICKS_PER_US);
+    ui.layer=LY_PLAY;song.sel=3;ui_leds();assert(fm1_led_dim_ticks==4*FM1_TICKS_PER_US);
+    fork_settings_from_word(0);assert(!scale_light_level);
     puts("scale lights: physical toggle, all roots/scales, layer isolation and settings PASS");
     return 0;
 }

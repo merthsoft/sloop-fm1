@@ -41,7 +41,6 @@ UI_SMALL static void sequence_preview_cancel(void)
 
 UI_SMALL static void sequence_screen_close(void)
 {
-    fm1_irq_off(); progression_stop(); fm1_irq_on();
     sequence_preview_cancel();
     sequence_preview_tick = 0; sequence_preview_end = 0;
     sequence_browser = sequence_confirm = 0;
@@ -60,7 +59,7 @@ UI_SMALL static void sequence_screen_open(void)
         sequence_vlead = (uint8_t)!!trk[song.sel].p[P_VLEAD];
         sequence_initialized = 1;
     }
-    sequence_browser = 1; sequence_page = sequence_confirm = 0;
+    sequence_browser = 1; sequence_page = progression.active?4:0;sequence_confirm = 0;
     sequence_preview_tick = sequence_preview_block; sequence_preview_end = sequence_preview_stop;
     sequence_hold_t0 = 0; ui.force = 1;
 }
@@ -107,7 +106,7 @@ UI_SMALL static void sequence_screen_draw(void)
         cv_rect(x,26,24,28,TE_G1);cv_text(x+4,23,&FONT_L,b,TE_COL[song.sel]);
         if((sequence_page==3&&k==sequence_custom_slot) || (sequence_page==4 && progression.active && k+1u==(uint32_t)(v[3][0]-'0'))) cv_rect(x,55,24,2,C_WHITE);
     }
-    cv_text(4,62,&FONT_S,sequence_page==4?(TSEL->p[P_AMODE]?"RHYTHM: ARP / CHANGE: NOW":"OUTPUT: CHORD / NOW"):sequence_add?"ALGO: MERGE":"ALGO: REPLACE",TE_G4);
+    cv_text(4,62,&FONT_S,sequence_page==4?(TSEL->p[P_AMODE]?"RHYTHM: ARP / NOW":"OUTPUT: CHORD / NOW"):sequence_add?"ALGO: MERGE":"ALGO: REPLACE",TE_G4);
     cv_text(4,82,&FONT_S,sequence_page==4?N_NOTE[sequence_root]:"RHY:",TE_G4);
     cv_text(40,82,&FONT_S,sequence_page==4?N_SCALE[sequence_scale]:SEQUENCE_RHYTHMS[sequence_rhythm].name,C_WHITE);
     cv_text(4,102,&FONT_S,sequence_page==4?(song.rec?"REC: PLAYED NOTES":"WHITE KEYS: CHORD SLOTS"):sequence_preview.active?"PREVIEW PLAYING":"PRESETS: RHYTHM",TE_COL[song.sel]);
@@ -140,12 +139,11 @@ UI_SMALL static void sequence_screen_input(uint32_t pressed,uint32_t home)
                 if(s<0) progression_stop();
                 else if(!progression.active) ok=!(arrangement_enabled || chain_n) && progression_arm();
                 fm1_irq_on();
-                if(!ok) ui_message((arrangement_enabled || chain_n)?"USE LOOP MODE":song.playing?"STOP FIRST":"RELEASE FIRST");
+                if(!ok) ui_message((arrangement_enabled || chain_n)?"LOOP MODE":"FINISH TAKE");
             } else if(k==1) sequence_octave=(int8_t)clamp(sequence_octave+s,-3,3);
             else if(k==2) TSEL->p[P_AHOLD]=(int16_t)clamp(TSEL->p[P_AHOLD]+s,0,1);
             ui.force=1;continue;
         }
-        if(progression.active) {ui_message("DISARM TO EDIT");continue;}
         if (sequence_page == 3) {
             if(k==1) {
                 sequence_custom_slot=(uint8_t)clamp(sequence_custom_slot+s,0,sequence_custom_count-1);
@@ -171,7 +169,6 @@ UI_SMALL static void sequence_screen_input(uint32_t pressed,uint32_t home)
         changed=1;
     }
     if ((s=panel_enc(EN_PRESET))) {
-        if(progression.active) {ui_message("DISARM TO EDIT");s=0;}
         sequence_rhythm=(uint8_t)clamp((int32_t)sequence_rhythm+s,0,NSEQUENCE_RHYTHMS-1);
         changed=1;
     }
@@ -179,7 +176,6 @@ UI_SMALL static void sequence_screen_input(uint32_t pressed,uint32_t home)
         sequence_preview_cancel(); sequence_confirm=0; sequence_hold_t0=0; ui.force=1;
     }
     if ((s=panel_enc(EN_ALGO))) {
-        if(progression.active) {ui_message("DISARM TO EDIT");s=0;}
         sequence_add=(uint8_t)clamp(sequence_add+s,0,1);
         sequence_confirm=0; sequence_hold_t0=0; ui.force=1;
     }
@@ -220,7 +216,7 @@ UI_SMALL static void sequence_screen_input(uint32_t pressed,uint32_t home)
     if (apply) {
         int result=sequence_starter_apply_mode(sequence_add);
         sequence_confirm=0;sequence_hold_t0=0;
-        ui_message(result<0 ? "4 NOTE LIMIT" : result ? "SEQUENCE APPLIED" : "STOP FIRST");
+        ui_message(result<0 ? "CHORD FULL" : result ? "SEQUENCE APPLIED" : "STOP FIRST");
     }
     if(pressed & (1u << panel.btn[B_PLAY])) sequence_screen_close();
 }

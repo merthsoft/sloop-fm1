@@ -1,8 +1,7 @@
 # Persistent keyboard scale lights
 
-Introduced in 2.5 Merthsoft.8; behavior below includes the Merthsoft.9 alignment
-and backlight fixes. Hold physical SEL (SLOOP label SCL), then press
-OCT+ to toggle the guide. A SCALE LIGHTS ON/OFF message confirms the change.
+Hold physical SEL (SLOOP label SCL), then press OCT+ to toggle the guide.
+A SCALE LIGHTS ON/OFF message confirms the change.
 This consumes the octave press and SEL page tap, and cancels that hold's latch
 shortcut. It does not change pitch, octave, chord state or active note ownership.
 
@@ -21,23 +20,33 @@ generic KEYS backlighting is suppressed so off-scale keys stay dark unless playe
 Turning it off restores the existing backlight preference. Drum/grid and held/locked
 control layers keep their established step, effect, mute, roll and scale indicators.
 
-The device preference uses bit 22 of the existing persisted lights word, after the
-five-bit visualizer ID. Older settings default to off. Existing settings and project
-layouts are unchanged; writes use `settings_later`, deferred until playback stops.
+## Brightness
 
-`tests/scale_lights_test.c` drives production controls with audio running, checks
-every root/scale mask, normal bright-note priority, layer/drum/grid isolation,
-one toggle per press, octave preservation, consumed page tap, settings round trip
-and cancellation of the SEL long-hold latch while notes remain held. Merthsoft.9
-also covers deliberately mismatched track keys/scales and every background-light
-mode/level. The full UI
-regression and 20,000-frame fuzz also pass. Target image grows by 240 bytes;
-static RAM remains 97,412/98,304 bytes. Merthsoft.9 adds another 112 image bytes.
-Physical LED brightness awaits user testing.
+Hold HOME to open the main menu, select LIGHTS, then turn knob 4, SCALE LEVEL.
+DIM / LOW / MID / HIGH select 4 / 8 / 16 / 32 microsecond guide pulses. DIM is the
+legacy brightness. OCT+ cycles levels while that row is selected. The separate
+SEL+OCT+ toggle enables/disables the guide. Played notes keep the normal bright
+plane; background LIGHTS/KEYS preferences remain independent.
 
-Merthsoft.12 preserves the normal keyboard lighting while LFO/vibrato or
-ENV/tremolo is held: selected-scale dim lights, bright played notes and generic
-backlight preferences retain their normal playing behavior, with no grid landmarks.
+The adjustable pulse is used only when the persistent scale guide owns the normal
+playing keyboard, including held vibrato/tremolo/wah/pan panels. Other layers,
+drums and grid landmarks retain their original four-microsecond dim pulses.
+The existing timer scan uses precomputed ticks; no new timer or LED plane is added.
+Hardware perception and scan-load testing remain user validation.
+
+The fork settings side record stores enabled in bit 0 and level in bits 3–4;
+missing bits default to disabled/DIM. Canonical upstream settings keep their format.
+Changing their visualizer preserves the local brightness. Menu changes save on
+close, with writes deferred while playback runs.
+
+`tests/scale_lights_test.c` checks every root/scale, bright-note priority,
+layer/drum/grid isolation, physical toggling, all four pulse levels, menu bounds,
+cycle behavior, side-record round trips, legacy defaults and canonical-settings
+restoration. The full menu/screen and 20,000-frame UI fuzz suite checks the fourth
+LIGHTS row. No song layout changes are required.
+
+The tapped SEL screens show the normal scale sketch when CHORD is OFF and the
+physical modifier legend when CHORD is ON. Neither graph changes playing behavior.
 
 ## Octave handoff for ordinary keyboard notes
 
