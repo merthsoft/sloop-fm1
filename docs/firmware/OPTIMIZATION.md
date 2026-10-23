@@ -495,3 +495,41 @@ Explicit section saves also refresh the existing startup object. This adds 144 i
 bytes without RAM/pool growth and preserves the upstream project/storage format.
 Queued section writes bypass routine settings idle delay once stopped and quiet;
 failed writes retain their retry delay.
+
+## Unused parameter icons after the NEON overhaul
+
+Same-source/version target comparison against `9fd9ddc`: **584,336 → 581,296 B**,
+recovering **3,040 B** in the 584,336-byte application slot. Main static RAM
+89,128 B, low RAM 28,280 B and pool 332,876 B are unchanged. This is a private
+development build; the served .49 installer has not been replaced.
+
+NEON cards have full-width labels and do not draw parameter/engine icons.
+However, they still called the old descriptor/value-to-icon lookup and put
+the result in their redraw cache. Those calls kept the label map, waveform
+map, engine map and their lookup code alive despite having no visible output.
+Removing the obsolete card argument/cache component lets that code disappear.
+
+Only the tempo and tape icons are actually drawn, both in the header. The
+generator now emits a separate compact two-icon atlas from the same PNG;
+production uses it, while the complete atlas remains available for asset and
+renderer tests. The atlas payload is **66 B versus 1,755 B**. That raw-data
+difference is part of the **3,040 B total linked saving**, not an additional
+saving to add to it. The compact IDs are private render indices, not stored
+song fields or MIDI/protocol IDs. No artwork, visible control or musical
+feature is removed. No audio decoder, delay buffer, DSP stage or storage
+format is changed.
+
+Validation: **113 before/after framebuffer captures are byte-identical**,
+including regular pages, held layers, settings and redraw transitions. The
+actual UI's 20,000-frame fuzz, shared HOME/entry-context tests and redraw
+checks pass. Generator tests compare the compact atlas against the original
+PNG, reject invalid/repeated subset names, and retain full-atlas row-packing,
+fallback and missing-artwork coverage. The actual C renderer checks 40,960
+header-atlas pixels and 1,761,280 pixels each for full packed and legacy atlas
+formats, including clipping and alpha. Target placement and DSP loop budgets
+pass. Evidence is under ignored `build/space-50/`.
+
+This is primarily a MerthSloop cleanup: upstream still draws parameter icons,
+so deleting their mappings there would remove visible behavior. The generally
+useful lesson is to trace retained assets through their actual draw calls;
+the same 3,040-byte saving is not claimed for upstream.

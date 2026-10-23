@@ -120,14 +120,13 @@ UI_SMALL static void draw_frame(void)
 
 }
 
-/* one column: [icon] LABEL / value unit / gauge, redrawn only when it changed.
- * ratio: 0..1000 for the gauge, -1 = no gauge. icon: ICON_* (icons.c), ICON_AUTO = by label */
-#define LABEL_X (FELUCCA_ICONS ? ICON_CELL + ICON_GAP : 0)
+/* One NEON card: label / value unit / gauge, redrawn only when changed.
+ * ratio: 0..1000 for the gauge, -1 = no gauge. Icons belong to the header. */
 UI_SMALL static void draw_column(uint32_t c, const char *label, const char *val, const char *unit, uint16_t vc,
-                        int32_t ratio, uint32_t icon)
+                        int32_t ratio)
 {
     char l[8], v[8], u[8], key[32], shown[16];
-    /* Labels take the card width; retain icon in the cache for compatibility. */
+    /* Labels take the full card width. */
     fit(l, label, &FONT_S, 48);
     fit(v, val, &FONT_S, is_eng_name(val) ? 56 : 48);   /* engine names whole */
     str_cpy(u, unit, sizeof u);
@@ -140,8 +139,7 @@ UI_SMALL static void draw_column(uint32_t c, const char *label, const char *val,
         uint32_t n = str_len(key);
         key[n] = (char)('A' + (vc == C_WHITE) + (vc == C_DIM) * 2);
         key[n + 1] = (char)(' ' + (ratio < 0 ? 0 : 1 + ratio / 20));
-        key[n + 2] = (char)(icon == ICON_NONE ? '~' : '!' + icon % 90u);   /* same label, other icon */
-        key[n + 3] = 0;
+        key[n + 2] = 0;
     }
     if (c < 4u) {                                       /* (the big values: their own fit) */
         str_cpy(ui.big_l[c], l, 8);
@@ -794,8 +792,7 @@ UI_SMALL static void draw_parameter_column(uint32_t c,const param_desc_t *d,int3
         };
         label=labels[song.g[G_LTYPE]?song.g[G_LTYPE]-1:0][c-1];
     }
-    draw_column(c, !home && cur_page()->fam == FAM_SCL && cur_page()->id[c] == P_AHOLD ? "LATCH" : label, val, unit, VAL(c), !home && d->fmt == F_ENUM && d->max < 2 ? -1 : RATIO(d, value),
-                param_icon(d, value));
+    draw_column(c, !home && cur_page()->fam == FAM_SCL && cur_page()->id[c] == P_AHOLD ? "LATCH" : label, val, unit, VAL(c), !home && d->fmt == F_ENUM && d->max < 2 ? -1 : RATIO(d, value));
 }
 UI_SMALL static void draw_columns(void)
 {
@@ -812,14 +809,14 @@ UI_SMALL static void draw_columns(void)
     }
     if (is_drum(TSEL) && !page_for_drum(cur_page())) {   /* "DRUM TRACK" (the graph says so) */
         for (c = 0; c < 4u; c++)
-            draw_column(c, "", "", "", C_HI, -1, ICON_AUTO);
+            draw_column(c, "", "", "", C_HI, -1);
         return;
     }
     if (cur_page()->scope == SC_TRK) {                 /* TRACK LEVEL LEN PAN of the selected track */
         const track_t *t = TSEL;
         uint32_t lvl = trk_level(song.sel);
         fmt_int(val, (int32_t)song.sel + 1);
-        draw_column(0, "TRACK", val, "/4", VAL(0u), (int32_t)song.sel * 1000 / (NTRK - 1), ICON_AUTO);
+        draw_column(0, "TRACK", val, "/4", VAL(0u), (int32_t)song.sel * 1000 / (NTRK - 1));
         if (!lvl || t->p[P_MUTE]) {                    /* (MUTE: a turn of KNOB 2 unmutes, tracks_edit) */
             str_cpy(val, "MUTE", 12);
             unit = "";
@@ -829,11 +826,11 @@ UI_SMALL static void draw_columns(void)
         } else {
             param_format(&TP[P_LEVEL], (int32_t)lvl, val, &unit);
         }
-        draw_column(1, "LEVEL", val, unit, lvl && !t->p[P_MUTE] ? VAL(1u) : C_DIM, (int32_t)lvl * 1000 / 127, ICON_AUTO);
+        draw_column(1, "LEVEL", val, unit, lvl && !t->p[P_MUTE] ? VAL(1u) : C_DIM, (int32_t)lvl * 1000 / 127);
         param_format(&TP[P_SLEN], t->p[P_SLEN], val, &unit);
-        draw_column(2, "LEN", val, unit, VAL(2u), RATIO(&TP[P_SLEN], t->p[P_SLEN]), ICON_AUTO);
+        draw_column(2, "LEN", val, unit, VAL(2u), RATIO(&TP[P_SLEN], t->p[P_SLEN]));
         param_format(&TP[P_PAN], t->p[P_PAN], val, &unit);
-        draw_column(3, "PAN", val, unit, VAL(3u), RATIO(&TP[P_PAN], t->p[P_PAN]), param_icon(&TP[P_PAN], t->p[P_PAN]));
+        draw_column(3, "PAN", val, unit, VAL(3u), RATIO(&TP[P_PAN], t->p[P_PAN]));
         return;
     }
     if (cur_page()->graph == GR_BROWSE) {
@@ -842,19 +839,19 @@ UI_SMALL static void draw_columns(void)
         fmt_int(val, (int32_t)cur + 1);
         str_cpy(u, "/", 8);
         fmt_int(u + 1, (int32_t)total);
-        draw_column(0, "No.", val, u, VAL(0u), -1, ICON_NONE);
-        draw_column(1, "ENG", ENGINES[TSEL->eng_req]->name, "", VAL(1u), -1, engine_icon(ENGINES[TSEL->eng_req]->name));
-        draw_column(2, "", "", "", C_HI, -1, ICON_AUTO);
-        draw_column(3, "FAV", fav_has(fav_key()) ? "ON" : "--", "", VAL(3u), -1, ICON_NONE);   /* (2.7) KNOB 4 */
+        draw_column(0, "No.", val, u, VAL(0u), -1);
+        draw_column(1, "ENG", ENGINES[TSEL->eng_req]->name, "", VAL(1u), -1);
+        draw_column(2, "", "", "", C_HI, -1);
+        draw_column(3, "FAV", fav_has(fav_key()) ? "ON" : "--", "", VAL(3u), -1);   /* (2.7) KNOB 4 */
         return;
     }
     if (cur_page()->graph == GR_USER) {                  /* SLOT, then three GO buttons */
         int used = up_used(ui.uslot);
         up_slot_label(val, ui.uslot);
-        draw_column(0, "SLOT", val, "", VAL(0u), (int32_t)ui.uslot * 1000 / (int32_t)(UP_SLOTS - 1u), ICON_AUTO);
-        draw_column(1, "LOAD", "--", "", used ? C_HI : C_DIM, -1, ICON_AUTO);
-        draw_column(2, "ERASE", "--", "", used ? C_HI : C_DIM, -1, ICON_AUTO);
-        draw_column(3, "SAVE", "--", "", C_HI, -1, ICON_AUTO);
+        draw_column(0, "SLOT", val, "", VAL(0u), (int32_t)ui.uslot * 1000 / (int32_t)(UP_SLOTS - 1u));
+        draw_column(1, "LOAD", "--", "", used ? C_HI : C_DIM, -1);
+        draw_column(2, "ERASE", "--", "", used ? C_HI : C_DIM, -1);
+        draw_column(3, "SAVE", "--", "", C_HI, -1);
         return;
     }
     if (notes_page() && !(fm1_in.buttons&((1u<<panel.btn[B_OCTUP])|(1u<<panel.btn[B_OCTDN])))) {
@@ -864,11 +861,11 @@ UI_SMALL static void draw_columns(void)
         static const char *const levels[]={"NORM","GHOST","SOFT","HARD"};
         fmt_int(step,(int32_t)ui.cursor+1);str_cpy(unit,"/",sizeof unit);fmt_int(unit+1,trk_len(TSEL));
         if(slot>=0) {scale_note_name(pitch,TSEL,selected.pitch);fmt_int(length,note_chain_len(TSEL,selected.step,selected.pitch));}
-        draw_column(0,"EVENT",step,unit,VAL(0u),-1,ICON_AUTO);
-        draw_column(1,"PITCH",pitch,"",slot>=0?VAL(1u):C_DIM,-1,ICON_AUTO);
-        draw_column(2,"LEN",length,"STEP",slot>=0?VAL(2u):C_DIM,-1,ICON_AUTO);
+        draw_column(0,"EVENT",step,unit,VAL(0u),-1);
+        draw_column(1,"PITCH",pitch,"",slot>=0?VAL(1u):C_DIM,-1);
+        draw_column(2,"LEN",length,"STEP",slot>=0?VAL(2u):C_DIM,-1);
         draw_column(3,"FORCE",slot>=0?levels[(TSEL->step[ui.cursor].lvl>>(2u*slot))&3u]:"--",
-                    TSEL->step[ui.cursor].flags&SF_ACCENT?"STEP ACC":"",slot>=0?VAL(3u):C_DIM,-1,ICON_AUTO);
+                    TSEL->step[ui.cursor].flags&SF_ACCENT?"STEP ACC":"",slot>=0?VAL(3u):C_DIM,-1);
         return;
     }
     if (cur_page()->scope == SC_STEP) {
@@ -898,25 +895,25 @@ UI_SMALL static void draw_columns(void)
             fmt_int(sn, (int32_t)ui.cursor + 1);
             str_cpy(sl, "/", 8);
             fmt_int(sl + 1, TSEL->p[P_SLEN]);
-            draw_column(0, "STEP", sn, sl, VAL(0u), -1, ICON_AUTO);
-            draw_column(1, "NOTE", val, u, step_on(st) ? VAL(1u) : C_DIM, -1, ICON_AUTO);
+            draw_column(0, "STEP", sn, sl, VAL(0u), -1);
+            draw_column(1, "NOTE", val, u, step_on(st) ? VAL(1u) : C_DIM, -1);
             if (step_on(st) || st->time==ST_TIE) {
                 char ln[8];
                 uint32_t voice,first=note_edit_target(&voice);
                 fmt_int(ln, (int32_t)note_voice_len(TSEL,first,voice));
-                draw_column(2, "LEN", ln, "STEP", VAL(2u), -1, ICON_AUTO);
+                draw_column(2, "LEN", ln, "STEP", VAL(2u), -1);
             } else {
-                draw_column(2, "TIME", TIME_N[st->time % 3u], "", VAL(2u), -1, ICON_AUTO);
+                draw_column(2, "TIME", TIME_N[st->time % 3u], "", VAL(2u), -1);
             }
             if (fm1_in.buttons&(1u<<panel.btn[B_OCTUP])) {
                 step_t src;note_effective(TSEL,ui.tie_start,&src);
                 str_cpy(val,"ALL",12);
                 if(ui.tie_voice && ui.tie_voice<=src.n) note_name(val,src.note[ui.tie_voice-1]);
-                draw_column(3,"VOICE",val,"",VAL(3u),-1,ICON_AUTO);
+                draw_column(3,"VOICE",val,"",VAL(3u),-1);
             } else {
                 st=&TSEL->step[ui.cursor];
                 draw_column(3, "FLAG", FLAG_N[(st->flags & SF_ACCENT ? 1u : 0u) | (st->flags & SF_SLIDE ? 2u : 0u)],
-                        st->flags&SF_TIES?"TIE":"",VAL(3u), -1, ICON_AUTO);
+                        st->flags&SF_TIES?"TIE":"",VAL(3u), -1);
             }
         }
         return;
@@ -925,11 +922,11 @@ UI_SMALL static void draw_columns(void)
         int16_t *vp;
         const param_desc_t *d = page_desc(cur_page(), c, &vp);
         if (cur_page()->graph == GR_SLOTS && c == 1u) {   /* 2.6: ERASE, lit while the slot holds a project */
-            draw_column(1, "ERASE", "--", "", project_used((uint32_t)song.g[G_SLOT] - 1u) ? C_HI : C_DIM, -1, ICON_AUTO);
+            draw_column(1, "ERASE", "--", "", project_used((uint32_t)song.g[G_SLOT] - 1u) ? C_HI : C_DIM, -1);
             continue;
         }
         if (!d || !d->label || d->label[0] == '-') {
-            draw_column(c, "", "", "", C_HI, -1, ICON_AUTO);
+            draw_column(c, "", "", "", C_HI, -1);
             continue;
         }
         draw_parameter_column(c,d,*vp,0);

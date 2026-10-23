@@ -99,6 +99,7 @@ def generate():
     tools = SRC / "tools"
     cmds = [[tools / "gen_font.py", GEN / "felucca_font.h"],
             [tools / "gen_icons.py", GEN / "felucca_icons.h"],
+            [tools / "gen_icons.py", GEN / "felucca_header_icons.h", SRC / "assets", "tempo,tape"],
             [tools / "gen_tables.py", GEN / "felucca_tables.h"],
             [tools / "gen_samples.py", GEN / "felucca_samples.h"],
             [tools / "gen_drumkits.py", GEN / "felucca_drumkits.h"],

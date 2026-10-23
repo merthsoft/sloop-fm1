@@ -65,6 +65,13 @@ frozen comparison includes the new build/version. See the
 
 ## Next worthwhile work
 
+The later NEON icon audit removes a dead UI lookup/asset dependency rather
+than a copied algorithm: the cards retained icon selection after icon drawing
+was removed. Together with an atlas containing just the two visible header
+icons, this saves **3,040 linked bytes**, with 113 identical framebuffer
+captures and no RAM increase. See
+[the measured cleanup](OPTIMIZATION.md#unused-parameter-icons-after-the-neon-overhaul).
+
 1. Share page field metadata, including display labels, rather than resolving
    related state independently in help, graphs and input.
 2. Prototype one browser confirmation/footer path across the two starter

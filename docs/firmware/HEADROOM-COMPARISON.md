@@ -1,5 +1,15 @@
 # Measured branch headroom
 
+## Current source cleanup (not yet published)
+
+Removing obsolete parameter-icon lookups and generating only the two header
+icons actually drawn by NEON reduces the same-version target image from
+**584,336 to 581,296 bytes**, recovering **3,040 B (2.97 KiB)**. Main static
+RAM remains **89,128 B**, low RAM **28,280 B**, and the audio pool **332,876 B**.
+The served .49 package is unchanged; the table below describes that published
+package, not the smaller development image. See the
+[measurement and validation](OPTIMIZATION.md#unused-parameter-icons-after-the-neon-overhaul).
+
 Both builds use the installed JieLi 20250324.1 toolchain and pinned AC79 SDK.
 Main was exported to an isolated directory, generated its own assets and ran
 its own normal build, including loader/package and target checks. No branch

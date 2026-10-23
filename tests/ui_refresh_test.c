@@ -74,10 +74,10 @@ static void polish_checks(void)
     ppm("polish-about");ui.menu=0;
     /* Long summary values and units cannot collide with the neighbouring cell. */
     cv_begin(240,H_GRAPH,C_BLACK);cv_oy=0;
-    for(uint32_t k=0;k<4;k++) draw_column(k,"VALUE","SMOOTH","",TE_COL[k],-1,ICON_NONE);
+    for(uint32_t k=0;k<4;k++) draw_column(k,"VALUE","SMOOTH","",TE_COL[k],-1);
     cv_begin(240,H_GRAPH,C_BLACK);graph_big();cv_blit(0,Y_GRAPH);
     text_visible("SMOOTH",C_HI,Y_GRAPH,Y_GRAPH+H_GRAPH);
-    for(uint32_t k=0;k<4;k++) draw_column(k,"VALUE","100.0","KHZ",TE_COL[k],-1,ICON_NONE);
+    for(uint32_t k=0;k<4;k++) draw_column(k,"VALUE","100.0","KHZ",TE_COL[k],-1);
     cv_begin(240,H_GRAPH,C_BLACK);graph_big();cv_blit(0,Y_GRAPH);
     text_visible("100.0",C_HI,Y_GRAPH,Y_GRAPH+H_GRAPH);
     text_visible("KHZ",C_GRAY,Y_GRAPH,Y_GRAPH+H_GRAPH);

@@ -64,7 +64,7 @@
 #include "ui_song.c"
 #include "ui_studio.c"
 #include "ui_sequence_starters.c"
-#include "icons.c"           /* parameter icons (FELUCCA_ICONS), used by ui_draw.c */
+#include "icons.c"           /* header icons (FELUCCA_ICONS), used by ui_draw.c */
 #include "ui_draw.c"
 #include "ui_vis.c"           /* the full-screen visualiser (HOME on HOME, 2.4) */
 #include "ui_layers.c"       /* hold a function button: what the keys and knobs do (TE style) */

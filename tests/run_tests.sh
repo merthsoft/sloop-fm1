@@ -46,6 +46,8 @@ run "four-bit font renderer compatibility" "$OUT/font_render_legacy_test"
 python3 tests/icon_assets_test.py
 $CC -O2 -w -Ibuild/host/icon-assets -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/icon_render_test" tests/icon_render_test.c -lm
 run "lossless icon rows: source pixels, alpha and clipping" "$OUT/icon_render_test"
+$CC -O2 -w -DICON_TEST_HEADER_ONLY=1 -Ibuild/host/icon-assets -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/icon_render_header_test" tests/icon_render_test.c -lm
+run "header-only atlas: original tempo/tape pixels, alpha and clipping" "$OUT/icon_render_header_test"
 $CC -O2 -w -Ibuild/host/icon-assets/legacy -Ibuild/host/icon-assets -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/icon_render_legacy_test" tests/icon_render_test.c -lm
 run "legacy icon renderer compatibility" "$OUT/icon_render_legacy_test"
 $CC -o "$OUT/rhythm_shapes_test" tests/rhythm_shapes_test.c

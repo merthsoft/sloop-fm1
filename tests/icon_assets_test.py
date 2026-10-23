@@ -40,7 +40,16 @@ def main():
     out=ROOT/'build/host/icon-assets';out.mkdir(parents=True,exist_ok=True)
     header=out/'felucca_icons.h';generate(header,ROOT/'assets')
     expected=oracle(ROOT/'assets');text,packed=verify(header,expected,12);assert packed
+    names=json.loads((ROOT/'assets/icons.json').read_text())['names']
+    subset=[names.index(n) for n in ('tempo','tape')]
+    compact=out/'felucca_header_icons.h';generate(compact,ROOT/'assets','tempo,tape')
+    verify(compact,[expected[n] for n in subset],12)
+    for invalid in ('missing','tempo,tempo'):
+        try: generate(compact,ROOT/'assets',invalid)
+        except ValueError: pass
+        else: raise AssertionError('Invalid subset accepted')
     (out/'icon_oracle.h').write_text('#define ICON_ORACLE_N '+str(len(expected))+'\n'+
+        f'#define ICON_ORACLE_TEMPO {subset[0]}\n#define ICON_ORACLE_TAPE {subset[1]}\n'+
         'static const uint8_t ICON_ORACLE[][144]={\n'+
         ''.join('{'+','.join(map(str,glyph))+'},\n' for glyph in expected)+'};\n')
     legacy=out/'legacy';legacy.mkdir(exist_ok=True)
@@ -61,6 +70,6 @@ def main():
         generate(header,assets);_,packed=verify(header,oracle(assets),12);assert not packed
         (assets/'icons.png').unlink();generate(header,assets)
         assert '#define FELUCCA_ICONS_N 0' in header.read_text()
-    print('icon assets: every pixel, row padding, overflow fallback and missing artwork PASS')
+    print('icon assets: full/header atlas pixels, subset validation, row padding, overflow fallback and missing artwork PASS')
 
 if __name__=='__main__':main()

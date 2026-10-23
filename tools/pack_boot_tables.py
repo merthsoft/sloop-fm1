@@ -9,7 +9,7 @@ def pack(gen):
     from pack_uac_fir import pack_uac_fir
     fir_ram=pack_uac_fir(gen)
     gen=Path(gen);entries=[];oracle=bytearray();total_raw=total_packed=0
-    for filename in ['felucca_tables.h','felucca_font.h','felucca_drumkits.h','felucca_icons.h','felucca_fm6.h']:
+    for filename in ['felucca_tables.h','felucca_font.h','felucca_drumkits.h','felucca_header_icons.h','felucca_fm6.h']:
         path=gen/filename;text=path.read_text()
         if 'BOOT_TABLES_PACKED' in text:raise ValueError('Regenerate raw headers before packing boot tables')
         def replace(m):
