@@ -76,7 +76,7 @@ def app_files(out, version, fw_name):
                   {"src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"},
                   {"src": "icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}],
     }
-    (app / "sloop.webmanifest").write_text(json.dumps(manifest, indent=1) + "\n", encoding="utf-8")
+    (app / "sloop.webmanifest").write_text(json.dumps(manifest, indent=1) + "\n", encoding="utf-8", newline="\n")
     keep = {"installer/": app / "installer" / "index.html", "editor/": app / "editor" / "index.html",
             "../firmware/" + fw_name: out / "firmware" / fw_name, "sloop.webmanifest": app / "sloop.webmanifest"}
     for f in ("fukiai.ttf", "FUKIAI-LICENSE.txt"):
@@ -95,7 +95,7 @@ def app_files(out, version, fw_name):
         if sw.count(mark) != 1:
             raise SystemExit(f"sw.js must contain {mark} once; update make_site.py")
     sw = sw.replace("/*STAMP*/", f"{version}-{h.hexdigest()[:12]}").replace("/*FILES*/[]", json.dumps(sorted(keep)))
-    (app / "sw.js").write_text(sw, encoding="utf-8")
+    (app / "sw.js").write_text(sw, encoding="utf-8", newline="\n")
     return sorted(keep)
 BLOCKS, BLK, KEEP = 20, 0x30, 0x2F
 
@@ -155,15 +155,18 @@ def main(pkg, version, out, preview=None):
     dl = f'download="merthsloop-editor-{re.sub(r"[^A-Za-z0-9.-]", "-", version)}.html"'
     if ed_html.count('download="sloop-editor.html"') != 1 or html.count('download="sloop-editor.html"') != 1:
         raise SystemExit('editor.html and index_pkg.html must link download="sloop-editor.html" once; update make_site.py')
-    (ed / "index.html").write_text(ed_html.replace('download="sloop-editor.html"', dl), encoding="utf-8")
-    (ed / "sloop-editor.html").write_text(offline_editor(ed_html), encoding="utf-8")
-    (inst / "index.html").write_text(html.replace('download="sloop-editor.html"', dl), encoding="utf-8")
+    (ed / "index.html").write_text(ed_html.replace('download="sloop-editor.html"', dl), encoding="utf-8", newline="\n")
+    (ed / "sloop-editor.html").write_text(offline_editor(ed_html), encoding="utf-8", newline="\n")
+    (inst / "index.html").write_text(html.replace('download="sloop-editor.html"', dl), encoding="utf-8", newline="\n")
     for f in ("fukiai.ttf", "FUKIAI-LICENSE.txt"):
         if (HERE / f).exists():
-            shutil.copy(HERE / f, ed / f)
+            if f.endswith('.txt'):
+                (ed / f).write_text((HERE / f).read_text(encoding="utf-8"), encoding="utf-8", newline="\n")
+            else:
+                shutil.copy(HERE / f, ed / f)
     # Optional browser DSP, built separately without the hardware toolchain.
     for f in ("preview.js", "preview-worklet.js"):
-        shutil.copy(HERE / f, ed / f)
+        (ed / f).write_text((HERE / f).read_text(encoding="utf-8"), encoding="utf-8", newline="\n")
     if dsp.exists():
         shutil.copy(dsp, ed / dsp.name)
         shutil.copy(preview / PREVIEW_MANIFEST, ed / PREVIEW_MANIFEST)
@@ -175,7 +178,7 @@ def main(pkg, version, out, preview=None):
     (out / "index.html").write_text(
         '<!doctype html><meta charset="utf-8"><title>MerthSloop</title>'
         '<meta http-equiv="refresh" content="0; url=webapp/installer/">'
-        '<a href="webapp/installer/">MerthSloop installer</a>\n', encoding="utf-8")
+        '<a href="webapp/installer/">MerthSloop installer</a>\n', encoding="utf-8", newline="\n")
     print(f"site: {out}: webapp/installer ({len(html)} B), webapp/editor, firmware/{name} ({len(raw)} B, {product})")
 
 

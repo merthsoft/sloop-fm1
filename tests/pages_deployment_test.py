@@ -9,7 +9,7 @@ import subprocess
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'tools'))
 from check_pages import check
-from web_provenance import write_preview_manifest
+from web_provenance import write_preview_manifest, preview_inputs, input_digest
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -68,6 +68,30 @@ class PagesDeploymentTests(unittest.TestCase):
     def test_missing_worklet(self):
         (self.root / 'docs/webapp/editor/preview-worklet.js').unlink()
         with self.assertRaisesRegex(SystemExit, 'Stale or missing'): check(self.root)
+
+    def test_source_line_endings_do_not_change_identity(self):
+        path = self.root / 'firmware/src/engine.c'
+        path.write_bytes(b'/* DSP */\nint value = 1;\n')
+        lf = preview_inputs(self.root)
+        path.write_bytes(path.read_bytes().replace(b'\n', b'\r\n'))
+        self.assertEqual(lf, preview_inputs(self.root))
+        path.write_bytes(b'/* DSP */\r\nint value = 2;\r\n')
+        self.assertNotEqual(lf, preview_inputs(self.root))
+
+    def test_site_regeneration_ignores_source_checkout_line_endings(self):
+        # Linux CI must reproduce a release packaged from a Windows checkout.
+        for path in (self.root / 'web').rglob('*'):
+            if path.suffix in {'.html', '.js', '.txt'}:
+                data = path.read_bytes().replace(b'\r\n', b'\n')
+                path.write_bytes(data.replace(b'\n', b'\r\n'))
+        self.assertIn('2.6.0.14', check(self.root))
+
+    def test_binary_line_endings_remain_significant(self):
+        path = self.root / 'sample.wav'
+        path.write_bytes(b'RIFF\r\nDATA')
+        before = input_digest(path)
+        path.write_bytes(b'RIFF\nDATA')
+        self.assertNotEqual(before, input_digest(path))
 
     def test_changed_dsp_input(self):
         (self.root / 'firmware/src/engine.c').write_text('/* changed DSP */')
