@@ -27,6 +27,19 @@ jobs:
         run: python3 tests/pages_deployment_test.py
       - name: Verify packaged installer matches firmware version
         run: python3 tools/check_pages.py
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install browser regression dependencies
+        run: |
+          npm install --prefix build/pages-browser --no-package-lock playwright@1.62.1
+          build/pages-browser/node_modules/.bin/playwright install --with-deps chromium
+      - name: Test installer recovery and offline browser release
+        env:
+          NODE_PATH: ${{ github.workspace }}/build/pages-browser/node_modules
+        run: |
+          node tests/web_recovery_test.mjs
+          node tests/pwa_test.mjs docs
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v4
         with:

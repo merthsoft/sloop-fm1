@@ -878,7 +878,7 @@
       <button id="connect" class="pri" data-t="connect" data-ic="port_usb_c"></button>
       <div class="links"><a class="dim" href="../installer/" data-t="installer"></a><button class="lang" id="lang"></button></div>
       <button id="install" class="pri" data-t="install" hidden></button>
-      <!--DL--><a class="dim" id="offline" href="sloop-editor.html" download="merthsloop-editor-2.7.1.49.html" data-t="offline"></a><!--/DL-->
+      <!--DL--><a class="dim" id="offline" href="sloop-editor.html" download="merthsloop-editor-2.8.0.58.html" data-t="offline"></a><!--/DL-->
     </div>
   </aside>
 
@@ -889,6 +889,7 @@
     </header>
     <p class="hint" id="hint" hidden></p>
     <section class="preview" id="preview" aria-label="Local audio preview" hidden>
+      <p id="preview-file-help" hidden><span data-t="previewFile"></span> <a href="https://merthsoft.github.io/sloop-fm1/webapp/editor/?mock=1" target="_blank" rel="noopener" data-t="previewPwa"></a></p>
       <div class="preview-toolbar">
         <div class="preview-transport">
           <button id="preview-enable" aria-pressed="false"></button>
@@ -1364,6 +1365,7 @@ function stepExt(r, a, o) {
     const lo = r.b(), hi = r.b(), rt = r.b();
     o.lvl = lo | ((hi & 1) << 7);
     o.rat = rt | (((hi >> 1) & 1) << 7);
+    o.flags = (o.flags & 0x7B) | ((hi & 4) << 5);
   }
   return o;
 }
@@ -1564,8 +1566,8 @@ const req = {
   stepSet: (i, st) => {
     const n = Math.max(0, Math.min(4, st.n | 0));
     const notes = [0, 1, 2, 3].map((k) => (st.notes[k] | 0) & 0x7F);
-    const ext = st.lvl == null && st.rat == null ? []   /* v5: level / ratchet kept (older firmware ignores them) */
-      : [(st.lvl | 0) & 0x7F, (((st.lvl | 0) >> 7) & 1) | ((((st.rat | 0) >> 7) & 1) << 1), (st.rat | 0) & 0x7F];
+    const ext = st.lvl == null && st.rat == null && !(st.flags & 128) ? []   /* v5: level / ratchet kept (older firmware ignores them) */
+      : [(st.lvl | 0) & 0x7F, (((st.lvl | 0) >> 7) & 1) | ((((st.rat | 0) >> 7) & 1) << 1) | ((st.flags & 128) >> 5) | 8, (st.rat | 0) & 0x7F];
     return [CMD.STEP_SET, [i, n, ...notes, Math.max(0, Math.min(2, st.time | 0)), st.flags & 0x7B, (st.vel | 0) & 0x7F, ...ext]];
   },
   /* v5: get (d == null) or set the drum track's step i: {on: 16 bits, lvl[16], rat[16]} */
@@ -1708,6 +1710,10 @@ class Link {
     // Protocol 13 keeps companion commands 72..75 and moves SYN kits to 80..84.
     // Internal SYN command IDs stay at the upstream values for v10 compatibility.
     const wireCmd = this.protocol >= 13 && this.protocol < 15 && c.cmd >= CMD.DSYN_LIST && c.cmd <= CMD.DSYN_PLAY ? c.cmd + 8 : c.cmd;
+    if (this.protocol < 16 && ((c.cmd === CMD.STEP_SET && (c.args[10] & 4)) ||
+        (c.cmd === CMD.TRACK_STEP && (c.args[11] & 4)))) {
+      this.finish(null, new Error("Legato editing requires firmware protocol 16 or newer.")); return;
+    }
     try { this.sendRaw(frame(wireCmd, c.args)); } catch (e) { this.finish(null, e); return; }
     c.timer = setTimeout(() => {
       if (this.cur !== c) return;
@@ -2967,7 +2973,7 @@ function makeMockDevice(opt = {}) {
     14, 14, 15, 15, 13, 13, 15, 15, 13, 13, 7, 7, 7, 14, 14, 15, 15];
   const laneOf = (n) => (n < 35 ? 0 : n > 81 ? 13 : LANE_OF_GM[n - 35]);
   const v5 = !opt.legacy && !opt.v3;              /* SLOOP 2.0: steps with level / ratchet, DRUM_STEP, TRACK solo */
-  const mockProto = opt.noBackup ? 5 : opt.v7 ? 7 : opt.v8 ? 8 : opt.v9 ? 9 : opt.v10 ? 10 : opt.v11 ? 11 : 12;   /* INFO's protocol */
+  const mockProto = opt.v16 ? 16 : opt.noBackup ? 5 : opt.v7 ? 7 : opt.v8 ? 8 : opt.v9 ? 9 : opt.v10 ? 10 : opt.v11 ? 11 : 12;   /* INFO's protocol */
   /* the drum step as an old (v1..v4) step: its first 4 lanes as GM notes, ACC when one is hard (editor.c ed_dstep_old) */
   const dOld = (d) => {
     const notes = [];
@@ -2984,12 +2990,13 @@ function makeMockDevice(opt = {}) {
   };
   /* a step's bytes as STEP_GET sends them (v5: + lvl, hi, rat) */
   const stepOut = (b, x) => {
-    b(x.n); x.notes.forEach(b); b(x.time); b(x.flags); b(x.vel);
-    if (v5) { b(x.lvl | 0); b((((x.lvl | 0) >> 7) & 1) | ((((x.rat | 0) >> 7) & 1) << 1)); b(x.rat | 0); }
+    b(x.n); x.notes.forEach(b); b(x.time); b(x.flags & 127); b(x.vel);
+    if (v5) { b(x.lvl | 0); b((((x.lvl | 0) >> 7) & 1) | ((((x.rat | 0) >> 7) & 1) << 1) | (mockProto >= 16 ? ((x.flags & 128) >> 5) | 8 : 0)); b(x.rat | 0); }
   };
   /* a step written (n, 4 notes, time, flags, vel [, lvl, hi, rat]) */
   const stepIn = (x, a) => {
-    x.n = Math.min(4, a[0]); x.notes = a.slice(1, 5); x.time = Math.min(2, a[5]); x.flags = a[6] & 0x7B; x.vel = a[7];
+    const leg = mockProto >= 16 && a.length >= 11 && (a[9] & 8) ? (a[9] & 4) << 5 : x.flags & 128;
+    x.n = Math.min(4, a[0]); x.notes = a.slice(1, 5); x.time = Math.min(2, a[5]); x.flags = (a[6] & 0x7B) | leg; x.vel = a[7];
     x.lvl = a.length >= 11 ? (a[8] & 0x7F) | ((a[9] & 1) << 7) : 0;
     x.rat = a.length >= 11 ? (a[10] & 0x7F) | (((a[9] >> 1) & 1) << 7) : 0;
   };
@@ -3574,7 +3581,7 @@ function makeMockDevice(opt = {}) {
             const js = () => JSON.parse(Array.from(P.buf, (c) => String.fromCharCode(c)).join(""));
             if (id === 1) {                                 /* project.c settings_restore */
               if (P.len !== st.settings.length || !ARR.ok(P.buf) || P.buf[ARR.OFF] > ARR.STEPS || P.buf[ARR.OFF + 1] > 1 || !ARR.valid(ARR.decode(P.buf))) throw 0;
-              if (st.playing && P.buf.subarray(ARR.OFF, ARR.OFF + ARR.SIZE).some((v, k) => v !== st.settings[ARR.OFF + k])) { rc = 3; }
+              if (st.playing) { rc = 3; } // every settings restore writes flash, even an unchanged order
               else st.settings = P.buf.slice();
             }
             else if (id === 0) { const o = js(); st.tracks = o.tracks; st.sel = o.sel; st.g = o.g; }
@@ -4737,7 +4744,9 @@ const TEXT = {
     loadedUser: "読み込みました: ", reloaded: "本体で音色が変わったので読み直しました", readingBank: "スロットを読み込み中",
     badEngine: "このファームウェアにないエンジンです: ", flashFail: "書き込みに失敗しました（rc {rc}）",
     installer: "SLOOP インストーラー",
-    offline: "エディタをダウンロード（パソコンでオフライン用：Chrome / Edge で開く）",
+    previewFile: "このダウンロード版は実機の編集用です。音声試聴をオフラインで使うには、オンライン版でアプリをインストールしてください。",
+    previewPwa: "音声試聴とオフラインアプリを開く",
+    offline: "実機編集用エディタをダウンロード（Chrome / Edge）。音声試聴のオフライン利用はインストールしたアプリで。",
     install: "アプリとしてインストール（オフラインで使える・Android も）",
     tabSeq: "シーケンサー", tabTracks: "トラック", tabSettings: "設定",
     navTrack: "トラック", navSounds: "サウンド", navDevice: "本体", tabKits: "ドラムキット", fm1: "FM-1",
@@ -5074,7 +5083,9 @@ const TEXT = {
     loadedUser: "Loaded ", reloaded: "The sound changed on the device: read again", readingBank: "Reading the slots",
     badEngine: "This firmware has no such engine: ", flashFail: "Write failed (rc {rc})",
     installer: "SLOOP installer",
-    offline: "Download the editor (offline on a computer: open it in Chrome or Edge)",
+    previewFile: "This download edits the FM-1. For offline audio preview, open the online editor once and install the app.",
+    previewPwa: "Open audio preview and the offline app",
+    offline: "Download for offline FM-1 editing (Chrome / Edge). Offline audio preview uses the installed app.",
     install: "Install the app (works offline, Android too)",
     tabSeq: "Sequencer", tabTracks: "Tracks", tabSettings: "Settings",
     navTrack: "Track", navSounds: "Sounds", navDevice: "Device", tabKits: "Drum kit", fm1: "FM-1",
@@ -5364,7 +5375,9 @@ function previewButton(id, key, shape) {
   svg.append(path);
   b.replaceChildren(svg, el("span", { text: label }));
 }
+const previewFile = /*OFFLINE-EDITOR*/false || location.protocol === "file:";
 function renderPreview() {
+  $("preview-file-help").hidden = !previewFile;
   $("preview").dataset.expanded = String(previewExpanded);
   for (const id of ["preview-instrument-panel", "preview-footer", "preview-volume-panel"]) $(id).hidden = !previewExpanded;
   $("preview-enable").hidden = !previewExpanded;
@@ -5380,8 +5393,8 @@ function renderPreview() {
   $("preview-enable").title = t(active ? "previewDisable" : "previewEnable");
   $("preview-enable").setAttribute("aria-label", $("preview-enable").title);
   $("preview-enable").setAttribute("aria-pressed", String(active));
-  $("preview-enable").disabled = !ready || !!previewStarting;
-  $("preview-play").disabled = !ready || !!previewStarting;
+  $("preview-enable").disabled = previewFile || !ready || !!previewStarting;
+  $("preview-play").disabled = previewFile || !ready || !!previewStarting;
   $("preview-stop").disabled = !active;
   $("preview-keys").hidden = !previewExpanded || previewKeysHidden;
   $("preview-fold").textContent = t(previewKeysHidden ? (drum ? "previewShowPads" : "previewShowKeys") : (drum ? "previewHidePads" : "previewHideKeys"));
@@ -5745,6 +5758,7 @@ function previewChanged(cmd, args) {
   if (cmd === CMD.DSYN_PLAY) localAudio.hit(args[0], args[1], args[2]);
 }
 async function startPreview() {
+  if (previewFile) { $("preview-status").textContent = t("previewFile"); return false; }
   if (!dev?.dump || !mock) return false;
   delete $("preview-status").dataset.error;
   if (localAudio?.node && localAudio.context.state === "running") return true;
@@ -5881,6 +5895,8 @@ let access = null;     /* MIDIAccess */
 let dev = null;        /* {link, input, output, info, pdesc[], gdesc[], names[][], dump, steps[], slotUsed[],
                           keys[] (paramKeys), watch (pushes on), bank ({total, slots[]} or null: no user bank)} */
 let busy = 0;          /* multi-request operations in progress: no polling */
+let connectionEpoch = 0; /* invalidates pending discovery/load after disconnect */
+let connectingEpoch = null;
 let dragging = null;   /* key of the slider being dragged */
 let wantConnected = false;
 const ctl = new Map(); /* key "s:id" -> {input, out, desc, scope, id, row} */
@@ -5939,6 +5955,10 @@ const drumGrid = () => isDrum() && !!dev.info.proto && dev.info.proto >= 5;
 
 /* -------------------------------------------------------------- MIDI --- */
 async function connect() {
+  if (connectingEpoch === connectionEpoch) return;
+  const epoch = ++connectionEpoch;
+  connectingEpoch = epoch;
+  let connected = null;
   wantConnected = true;
   if (!MOCK && !navigator.requestMIDIAccess) { sayK("nomidi"); return; }
   $("connect").disabled = true;
@@ -5952,6 +5972,7 @@ async function connect() {
       }
       access.onstatechange = onState;
     }
+    if (epoch !== connectionEpoch) return;
     const pairs = fm1Ports(access);
     if (!pairs.length) { sayK("nodevice"); return; }
     let link = null, input = null, output = null;
@@ -5963,44 +5984,50 @@ async function connect() {
         onPush: (f) => onPush(f),
         onGap: () => { rewatch = true; },
       });
-      pr.input.onmidimessage = (e) => l.receive(e.data);
+      const receive = (e) => l.receive(e.data);
+      pr.input.onmidimessage = receive;
       if (pr.input.open) await pr.input.open().catch(() => {});
       try {
         await l.request(req.info(), { timeout: 500, retries: 3, quiet: true });   /* (the first frame can be lost) */
+        if (epoch !== connectionEpoch) { l.close(); if (pr.input.onmidimessage === receive) pr.input.onmidimessage = null; return; }
         link = l, input = pr.input, output = pr.output;
         break;
       } catch (e) {
         l.close();
-        pr.input.onmidimessage = null;
+        if (pr.input.onmidimessage === receive) pr.input.onmidimessage = null;
+        if (epoch !== connectionEpoch) return;
       }
     }
     if (!link) { sayK(pairs.length ? "noreply" : "nodevice"); return; }
     dev = { link, input, output, info: null, pdesc: [], gdesc: [], names: [], dump: null, steps: [], slotUsed: [null, null, null, null],
       keys: null, watch: false, bank: null };
+    connected = dev;
     sets.clear();                                    /* (another FM-1, maybe) */
     setLabel($("connect"), t("disconnect"));
     renderLive();
     await load(dev);
   } catch (e) {
     console.error(e);
-    if (dev) {                                       /* not unplugged meanwhile (that says "lost") */
+    if (epoch === connectionEpoch && dev && dev === connected) {
       const timeout = /^timeout/.test(e.message);
       disconnect();
       sayK(timeout ? "noreply" : "error", timeout ? "" : e.message);
     }
   } finally {
-    $("connect").disabled = false;
+    if (connectingEpoch === epoch) connectingEpoch = null;
+    if (epoch === connectionEpoch || !dev) $("connect").disabled = false;
   }
 }
 
 function disconnect(reasonKey = "disconnected") {
+  connectionEpoch++;
   stopPreview();
   if (dev) {
     dev.link.close();
     dev.input.onmidimessage = null;
   }
   dev = null;
-  busy = 0;
+  // Outstanding tasks still own their increments and release them in finally.
   needReload = false;
   renderPanels();
   renderMixer();
@@ -6039,18 +6066,21 @@ function drumAsStep(d) {
 /* the whole connect sequence */
 async function load(d) {
   busy++;
+  const current = () => { if (d !== dev) throw new Error("closed"); };
   try {
     /* the first frame after opening the port can be lost: a few tries */
     d.info = parse[CMD.INFO](await d.link.request(req.info(), { timeout: 500, retries: 3 }));
+    current();
     $("version").textContent = d.info.version;
     const total = d.info.pcount + d.info.gcount;
-    for (let i = 0; i < d.info.pcount; i++) { sayK("reading", `${i + 1}/${total}`); d.pdesc[i] = await getDescOrNull(0, i); }
-    for (let i = 0; i < d.info.gcount; i++) { sayK("reading", `${d.info.pcount + i + 1}/${total}`); d.gdesc[i] = await getDescOrNull(1, i); }
+    for (let i = 0; i < d.info.pcount; i++) { sayK("reading", `${i + 1}/${total}`); d.pdesc[i] = await getDescOrNull(0, i); current(); }
+    for (let i = 0; i < d.info.gcount; i++) { sayK("reading", `${d.info.pcount + i + 1}/${total}`); d.gdesc[i] = await getDescOrNull(1, i); current(); }
     const kd = d.pdesc[d.info.pe0];
     if (kd && kd.label === "KIT" && kd.names.length) d.kitNames = kd.names;   /* (the drum track was selected) */
     d.titles = [];
     for (let e = 0; e < d.info.nengines; e++) {
       const r = parse[CMD.NAMES](await d.link.request(req.names(e)));
+      current();
       d.names[e] = r.names;
       d.titles[e] = r.titles;
     }
@@ -6068,21 +6098,28 @@ async function load(d) {
     }
     fm6Names(d);
     await libAdopt(d);
+    current();
     if (d.info.ntrk) d.sel = parse[CMD.TRACK](await d.link.request(req.track())).sel;   /* v3: the selected track */
+    current();
     d.dump = await getDump();
+    current();
     buildUI();
     renderPanels();
     await loadSteps();
+    current();
     if (d.info.ntrk) await readMixer();
+    current();
     /* protocol v2: live pushes and the user bank; older firmware: DUMP polling, no bank */
     const rqd = (r, o) => d.link.request(r, o);
     d.watch = await startWatch(rqd);
+    current();
     d.v4 = d.watch === 3;                           /* TRACK_PARAM / TRACK_CHANGED */
     if (d.watch) {
       sayK("readingBank");
       try { d.bank = await bank.list((r, o) => d.link.request(r, { ...o, quiet: true })); }
       catch (e) { if (e.message === "closed") throw e; d.bank = null; }
     }
+    current();
     renderLive();
     renderLib();
     renderBank();
@@ -6104,15 +6141,18 @@ async function rereadEngineDesc() {
 }
 
 async function loadSteps() {
-  const n = dev.info.nstep, drum = drumGrid();
-  if (!dev.dsteps) dev.dsteps = [];
+  const d = dev, n = d.info.nstep, drum = drumGrid();
+  if (!d.dsteps) d.dsteps = [];
   for (let i = 0; i < n; i++) {
     if (i % 8 === 0) sayK("steploading", `${i}/${n}`);
-    if (drum) { dev.dsteps[i] = await getDrumStep(i); dev.steps[i] = drumAsStep(dev.dsteps[i]); }
-    else dev.steps[i] = await getStep(i);
+    const step = drum ? await getDrumStep(i) : await getStep(i);
+    if (d !== dev) throw new Error("closed");
+    if (drum) { d.dsteps[i] = step; d.steps[i] = drumAsStep(step); }
+    else d.steps[i] = step;
   }
   dev.dstepsOk = drum;
   await loadLocks();
+  if (d !== dev) throw new Error("closed");
   renderSteps();
 }
 /* v7: the selected track's nudges and locks (none on older firmware); v8: its fill conditions too */
@@ -6121,9 +6161,10 @@ const hasFill = () => !!dev && !!dev.info && dev.info.proto >= 8;
 async function loadLocks() {
   const d = dev;
   if (!hasLocks()) { d.micro = null; d.locks = null; d.fill = null; return; }
-  const m = parse[CMD.MICRO_GET](await rq(req.microGet(d.sel), { key: "micro" }));
-  const l = parse[CMD.LOCK_GET](await rq(req.lockGet(d.sel), { key: "locks" }));
-  const f = hasFill() ? parse[CMD.FILL_GET](await rq(req.fillGet(d.sel), { key: "fill" })) : null;
+  const rqd = (r, o) => d.link.request(r, o);
+  const m = parse[CMD.MICRO_GET](await rqd(req.microGet(d.sel), { key: "micro" }));
+  const l = parse[CMD.LOCK_GET](await rqd(req.lockGet(d.sel), { key: "locks" }));
+  const f = d.info.proto >= 8 ? parse[CMD.FILL_GET](await rqd(req.fillGet(d.sel), { key: "fill" })) : null;
   if (d !== dev) return;
   d.micro = m.micro;
   d.locks = l.locks;
@@ -6687,7 +6728,7 @@ async function writeStep(i, tr) {
   const all = notes.concat(old.notes.slice(notes.length)).slice(0, 4);
   let time = +c.time.value;
   if (notes.length && !old.n && time === 2) time = 0;   /* typing notes into an empty step makes it play */
-  const s = { n: notes.length, notes: all, time, flags: (c.acc.checked ? 1 : 0) | (c.sl.checked ? 2 : 0),
+  const s = { n: notes.length, notes: all, time, flags: (old.flags & 0xF8) | (c.acc.checked ? 1 : 0) | (c.sl.checked ? 2 : 0),
     vel: Math.max(0, Math.min(127, +c.vel.value || 0)), lvl: old.lvl, rat: old.rat };   /* v5: level / ratchet kept */
   if (s.n && !s.vel) s.vel = 96;
   stepEdit.set(i, performance.now());
@@ -8760,7 +8801,7 @@ function trackName(x) {
 async function readMixer() {
   const d = dev;
   if (!d || !hasTracks()) return;
-  const m = await mixer.read(rq, d.info, { pan: pPan() });
+  const m = await mixer.read((r, o) => d.link.request(r, o), d.info, { pan: pPan() });
   if (d !== dev) return;
   if (d.mix) m.tracks.forEach((x, i) => {           /* what the user is moving stays */
     const o = d.mix.tracks[i];
@@ -8927,6 +8968,7 @@ async function panOther(i, v) {
   const d = dev;
   try {
     while (busy && d === dev) await sleep(20);      /* not in the middle of another multi-request operation */
+    if (d !== dev) return;
     busy++;
     panning = true;
     try {
