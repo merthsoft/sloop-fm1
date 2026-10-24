@@ -75,8 +75,14 @@ class PagesDeploymentTests(unittest.TestCase):
         lf = preview_inputs(self.root)
         path.write_bytes(path.read_bytes().replace(b'\n', b'\r\n'))
         self.assertEqual(lf, preview_inputs(self.root))
+        credits = self.root / 'assets/samples-cc0/CREDITS.txt'
+        credits.parent.mkdir(parents=True, exist_ok=True)
+        credits.write_bytes(b'Attribution\nCredit\n')
+        lf_credits = preview_inputs(self.root)
+        credits.write_bytes(b'Attribution\r\nCredit\r\n')
+        self.assertEqual(lf_credits, preview_inputs(self.root))
         path.write_bytes(b'/* DSP */\r\nint value = 2;\r\n')
-        self.assertNotEqual(lf, preview_inputs(self.root))
+        self.assertNotEqual(lf_credits, preview_inputs(self.root))
 
     def test_site_regeneration_ignores_source_checkout_line_endings(self):
         # Linux CI must reproduce a release packaged from a Windows checkout.

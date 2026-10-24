@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 
 PREVIEW_MANIFEST = 'sloop-preview.inputs.json'
-TEXT_INPUTS = {'.c', '.h', '.py', '.json'}
+TEXT_INPUTS = {'.c', '.h', '.py', '.json', '.txt', '.md', '.csv'}
 
 def input_digest(path):
     # Git checks text out as CRLF or LF depending on the host. Hash the same
