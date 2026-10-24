@@ -17,6 +17,11 @@ static size_t logical_len;
 static uint8_t rx[1024];
 static uint32_t rx_len, rx_full, now_ms, requests, erases, bad_range, record_cleared, f0_asked;
 static uint32_t corrupt_at, corrupt_once, no_finish;   /* the host serves a damaged byte / never says "success" */
+static const char *finish_body = "success";
+static uint32_t negative_finishes;                    /* negative replies before the normal finish body */
+enum { RECORD_OK, RECORD_READ_FAIL, RECORD_ERASE_FAIL, RECORD_ERASE_UNCHANGED,
+       RECORD_VERIFY_READ_FAIL };
+static uint32_t record_fault, record_reads;
 
 static uint32_t pack7(const uint8_t *in, uint32_t n, uint8_t *out)
 {
@@ -60,7 +65,11 @@ static int ota_wire_send(const uint8_t *p, uint32_t n)
     if (addr >= 0xE0000000u) {
         f0_asked += addr == 0xF0000000u;
         memset(m + 14, 0, len);
-        memcpy(m + 14, "success", 8);
+        if (addr == 0xF0000000u && negative_finishes) {
+            memcpy(m + 14, "failure", 8);
+            negative_finishes--;
+        } else
+            memcpy(m + 14, addr == 0xF0000000u ? finish_body : "success", 8);
     } else {
         if (addr + len > logical_len) { printf("read past the package %#x\n", addr); exit(1); }
         memcpy(m + 14, logical + addr, len);
@@ -87,12 +96,26 @@ static void ota_show(uint32_t step, int32_t code) { (void)step; (void)code; }
 static void ota_commit(const uint8_t *parm) { (void)parm; }
 #include "../firmware/src/ota.c"
 
-static int ldr_fread(uint32_t off, void *p, uint32_t n) { memcpy(p, nor + off, n); return 0; }
+static int ldr_fread(uint32_t off, void *p, uint32_t n)
+{
+    if (off == 0xE4F00u) {
+        record_reads++;
+        if (record_fault == RECORD_READ_FAIL ||
+            (record_fault == RECORD_VERIFY_READ_FAIL && record_reads == 2u))
+            return -1;
+    }
+    memcpy(p, nor + off, n);
+    return 0;
+}
 static int ldr_erase(uint32_t off)
 {
     if (off < 0x4000u || off >= 0xFC000u || (off & 0xFFFu)) bad_range++;
     if (off < 0x4000u) { printf("ERASE IN THE HEAD %#x\n", off); exit(1); }
     erases++;
+    if (off == 0xE4000u) {
+        if (record_fault == RECORD_ERASE_FAIL) return -4;
+        if (record_fault == RECORD_ERASE_UNCHANGED) return 0;
+    }
     memset(nor + off, 0xFF, 0x1000);
     return 0;
 }
@@ -232,6 +255,55 @@ int main(int argc, char **argv)
         bad += check("unknown flash chip: nothing written, record dropped", rc == -14 && record_cleared && erases == 1
                      && nor[0xE4F06] == 0xFF && !memcmp(nor, old + ofo, 0x93000));
         flash_unknown = 0;
+    }
+    /* Completion is a protocol decision, not just a correctly framed read. */
+    {
+        const char *bodies[] = {"failure", "successX"};
+        uint32_t k;
+        for (k = 0; k < 2u; k++) {
+            put_record();
+            record_cleared = f0_asked = 0;
+            finish_body = bodies[k];
+            rc = ldr_session();
+            bad += check(k ? "finish requires the terminating zero too" : "negative finish retains resume records",
+                         rc == -13 && !record_cleared && nor[0xE4F06] == 0x41 && f0_asked == 4u);
+            finish_body = "success";
+            rc = ldr_session();
+            bad += check("valid finish in next session completes", rc == 0 && record_cleared && nor[0xE4F06] == 0xFF);
+        }
+        put_record();
+        record_cleared = f0_asked = 0;
+        negative_finishes = 1;
+        rc = ldr_session();
+        bad += check("negative then success uses bounded in-session retry", rc == 0 && record_cleared && f0_asked == 2u);
+    }
+    /* Cleanup failure must never select loader.c's success/unknown-chip reset path.
+     * Both paths run the real ldr_session; the fake NOR fails only at the record. */
+    {
+        uint32_t unknown, fault;
+        for (unknown = 0; unknown < 2u; unknown++) {
+            for (fault = RECORD_READ_FAIL; fault <= RECORD_VERIFY_READ_FAIL; fault++) {
+                memcpy(nor, old + ofo, 0x93000);
+                put_record();
+                record_cleared = record_reads = 0;
+                record_fault = fault;
+                flash_unknown = unknown;
+                rc = ldr_session();
+                bad += check("record read/erase/verify fault blocks completion", rc == -15 && !record_cleared);
+                /* A failed readback can follow a real erase. The loader stays for
+                 * retry, but cannot promise that an already erased record survives. */
+                bad += check("resume record survives faults before completed erase",
+                             nor[0xE4F06] == (fault == RECORD_VERIFY_READ_FAIL ? 0xFF : 0x41));
+                bad += check("fault never changes head or unknown-chip app",
+                             !memcmp(nor, old + ofo, unknown ? 0x93000 : 0x4000));
+                record_fault = RECORD_OK;
+                rc = ldr_session();
+                bad += check("cleanup retry completes with the original exit policy",
+                             rc == (unknown ? -14 : 0) && record_cleared && nor[0xE4F06] == 0xFF);
+            }
+        }
+        flash_unknown = 0;
+        bad += check("cleanup faults never broaden write ranges", bad_range == 0);
     }
     printf("%s\n", bad ? "LOADER TEST FAILED" : "loader test passed");
     return bad != 0;

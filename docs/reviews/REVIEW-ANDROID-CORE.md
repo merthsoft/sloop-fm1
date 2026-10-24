@@ -1,5 +1,31 @@
 # Android core review
 
+## Implementation handoff — APP-1 and APP-2
+
+Implemented on 2026-10-23 after approval of the synthesis plan. The historical review below remains the record of the original findings.
+
+- **APP-1:** `LiveNotes` now commits the complete desired owner/count state before sending, tracks unsent versus ambiguous wire transitions, and retains failed cleanup for later release/panic. An ambiguous transition is reconciled with off before restoring a still-owned pitch at its remembered velocity. Normal revoice still releases outgoing pitches before attacks and leaves common tones untouched. Panic attempts every obligation even if one send fails. An explicit `Forget` drops obligations only when their connection epoch ends; `Fm1Connection.Disconnect` invokes it after best-effort release so a failed old-device off cannot block a new connection or be replayed to it. `PerformancePlayer` exposes the same epoch discard under its existing ownership lock and cancels its jobs before forgetting.
+- **APP-2:** Hardware performance initialization is idempotent for a healthy session on the same editor. The adapter owns its renewal task, cancels and joins it on retirement, and clears the captured old session before allowing replacement discovery/publication. Retirements remain awaitable after their fields are detached, preventing a concurrent refresh from racing an older CLEAR. Generation, editor identity and cancellation checks reject stale async initialization. A retiring old session never uses the replacement session fields.
+- Added the dedicated automatically discovered runner `android/src/Sloop.CoreOwnership.Tests`. It uses production Workstation classes and links the actual Android `Services/HardwarePerformance.cs`; shell stubs replace only the platform handler, connection snapshot and current-client plumbing. No protocol/session behavior is reimplemented by the shell.
+
+**Failure-before evidence:** the new runner was also copied to the original frozen private source. Its note test fails with the original `LiveNotes.Set` `KeyNotFoundException`; its hardware-only portion fails the repeated-song-refresh invariant (multiple discoveries/session owners). Compile-only private shims supply the newly added epoch-discard API and task accessor, neither reached before those failures. Logs: `build/code-review-android-core-51/baseline-ownership-notes.log` and `baseline-ownership-renewal.log`. The original unmodified-adapter reproduction remains in `repro.log`.
+
+**Passing validation:** current private implementation snapshot under `build/code-review-android-core-51/implementation/src`, with logs named `implementation-*.log`:
+
+| Runner | Result |
+| --- | --- |
+| Sloop.CoreOwnership.Tests | 42 checks: failure before/after accepting first/middle/final chord on/off; repeated release/panic; shared pitches; failed revoice and latch retrigger; timed-job cleanup; explicit epoch discard; repeated song refresh; close/join; cancelled discovery; reconnect and same-editor reopening during in-flight renewal |
+| Sloop.Transport.Tests | 26 checks passed |
+| Sloop.Workstation.Tests | 142 integration + 79 kit-mapping checks passed |
+| Sloop.ExternalMidiInput.Tests | Decoder, ownership, sustain, channel reset, harmony and timed disconnect checks passed |
+| Sloop.HardwarePerformance.Tests | 62 checks passed |
+| Sloop.PerformanceControls.Tests | 3,035 checks passed |
+| Sloop.Protocol.Tests | 410 protocol/simulator/sampling checks passed |
+
+`git diff --check` passed for the assigned production changes. Initial implementation validation caught off/on ordering drift due to reused dictionary slots; the final implementation explicitly retains release-before-attack ordering and the existing musical-behavior regressions pass. Only assigned production files, this report and the dedicated runner were edited. No commit, version bump, package generation, publication or hardware operation was performed. No parent hook remains outstanding.
+
+**Limits:** no APK/device test was performed; the Android adapter is exercised as linked production C# with a platform shell and deterministic MIDI transport. A synchronous MIDI sender cannot reveal whether a throwing call accepted its bytes; recovery can therefore reattack a pitch that remains logically held, after sending off to reconcile it. This behavior is restricted to ambiguous failures, preserves shared owners, and retains the cleanup obligation if recovery itself fails. Real USB transport ambiguity, musical feel after recovery and hardware lease timing remain device-validation limits. No size, speed or battery improvement is claimed.
+
 Review date: 2026-10-23. Reviewed the current working-tree Android source, copied into `build/code-review-android-core-51/src` for executable checks. No production source, shared build output, Git reference or other report was changed. No device operations were performed. Repository search found no `AGENTS.md`. Read the existing firmware optimization, architectural headroom and redundancy reports; none of their integrated work is counted here.
 
 ## Integration recommendation

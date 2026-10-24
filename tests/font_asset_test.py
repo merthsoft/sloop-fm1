@@ -10,17 +10,22 @@ import contextlib
 import importlib.util
 import io
 import re
+import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-out = ROOT / "build/host/font-assets"
+out = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / "build/host/font-assets"
 out.mkdir(parents=True, exist_ok=True)
 try:
     import PIL
 except ImportError:
     # Firmware generation already requires Pillow, but headless WSL tests can
     # consume the resulting production header without installing image tools.
-    (out / "felucca_font.h").write_text((ROOT / "build/gen/felucca_font.h").read_text())
+    header = (ROOT / "build/gen/felucca_font.h").read_text()
+    # The production header also contains a boot-compressed branch. This test
+    # validates the raw one-bit rows, not the compressed byte stream.
+    header = re.sub(r"#if FELUCCA_BOOT_TABLES\n.*?#else\n(.*?)#endif", r"\1", header, flags=re.S)
+    (out / "felucca_font.h").write_text(header)
 else:
     spec = importlib.util.spec_from_file_location("gen_font", ROOT / "tools/gen_font.py")
     gen = importlib.util.module_from_spec(spec)
@@ -50,7 +55,8 @@ for record in "\n".join(bdf).split("STARTCHAR ")[1:]:
     by_code[code] = (advance, 12, pixels)
 glyphs = [by_code.get(code, by_code[63]) for code in range(32, 256)]
 header = (out / "felucca_font.h").read_text()
-assert re.search(r"FONT_S = .*?, 1 \};", header), "regenerate packed firmware font assets before testing"
+font_s = re.search(r"FONT_S = \{([^}]+)\};", header).group(1).split(",")
+assert int(font_s[9]) == 1, "regenerate packed firmware font assets before testing"
 data = bytes(int(v, 16) for v in re.findall(r"0x([0-9a-f]{2})", re.search(
     r"FONT_S_DATA\[.*?\] = \{(.*?)\};", header, re.S).group(1)))
 offsets = list(map(int, re.search(r"FONT_S_OFF\[.*?\] = \{(.*?)\};", header, re.S).group(1).split(",")))
@@ -72,7 +78,11 @@ for _, width, pixels in glyphs:
     for row in range(height):
         for col in range(0, width, 2):
             legacy.append((pixels[row * width + col] << 4) | pixels[row * width + col + 1])
-legacy_header = header.replace(", 1 };", ", 0 };")
+def four_bit_font(m):
+    fields = m[2].split(",")
+    fields[9] = " 0"
+    return m[1] + ",".join(fields) + "};"
+legacy_header = re.sub(r"(static const felucca_font_t FONT_\w+ = \{)([^}]+)\};", four_bit_font, header)
 legacy_header = re.sub(r"FONT_S_DATA\[.*?\] = \{.*?\};", "FONT_S_DATA[21504] = {" +
                        ",".join(str(v) for v in legacy) + "};", legacy_header, flags=re.S)
 legacy_header = re.sub(r"FONT_S_OFF\[.*?\] = \{.*?\};", "FONT_S_OFF[224] = {" +

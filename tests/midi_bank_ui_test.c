@@ -44,6 +44,21 @@ int main(void)
     assert(trk[1].p[P_VOICE]==V_LEGATO&&trk[1].p[P_REV]==33&&trk[1].p[P_LEVEL]==53);
     trk[1].p[P_E0]=0;pc(1,1,NBANK-128); /* first occupied user in linear list */
     assert(trk[1].user==6&&trk[1].p[P_E0]==2);
+    /* Factory-owned arps follow the new sound; player edits survive it,
+     * including an engine switch before the audio engine catches up. */
+    track_t *t=&trk[0];t->user=0;t->p[P_AMODE]=0;t->eng_req=3;
+    unsigned chip=0;while(strcmp(ENGINES[3]->presets[chip].name,"8BIT ARP"))chip++;
+    apply_preset_to(t,chip);assert(t->p[P_AMODE] && arp_is_sounds(t));
+    apply_preset_to(t,0);assert(!t->p[P_AMODE]);
+    apply_preset_to(t,chip);t->p[P_ARATE]++;int rate=t->p[P_ARATE];
+    apply_preset_to(t,0);assert(t->p[P_AMODE] && t->p[P_ARATE]==rate);
+    t->p[P_AMODE]=0;apply_preset_to(t,chip);set_engine_of(t,0);assert(!t->p[P_AMODE]);
+    t->p[P_AMODE]=ARP_PULSE;set_engine_of(t,3);assert(t->p[P_AMODE]==ARP_PULSE);
+    /* A user preset has the same ownership policy as a factory sound. */
+    t->p[P_AMODE]=0;rec->p[P_AMODE]=ARP_PULSE;assert(!up_load_to(t,5));
+    assert(arp_is_sounds(t));apply_preset_to(t,0);assert(!t->p[P_AMODE]);
+    t->p[P_AMODE]=0;up_load_to(t,5);t->p[P_ARATE]++;
+    rate=t->p[P_ARATE];apply_preset_to(t,0);assert(t->p[P_AMODE]==ARP_PULSE && t->p[P_ARATE]==rate);
     puts("MIDI production UI PC seam: factory/user records, invalid inputs, drum bank-ignore and preservation PASS");
     return 0;
 }

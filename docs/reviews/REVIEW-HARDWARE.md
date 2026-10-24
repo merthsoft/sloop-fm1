@@ -1,5 +1,21 @@
 # Hardware, USB and updater review
 
+## Implemented follow-up: UPDATE-1 and UPDATE-2
+
+Implemented in the shared working tree on 2026-10-23 after explicit integration authorization (base HEAD `270c0e3`). Changes are confined to `firmware/loader/ldr_core.c`, `tests/ldr_test.c` and this report. The original findings and review limits below are historical evidence.
+
+- UPDATE-1: record cleanup returns `LDR_ERECORD` (-15) on scan/read, erase or erased-content verification failure. Each matching record's 80-byte validity region must read back as FF. RAM completion state is cleared only after the entire cleanup succeeds. Both the ordinary completion and unknown-chip return paths propagate cleanup failure, so the existing `loader.c` reset condition does not select either successful exit on failure. No parent hook or loader.c change is needed.
+- UPDATE-2: the final host body must match all eight bytes of `success\0`. The existing four-attempt finish loop remains bounded; persistent refusal yields LDR_ENOFIN without cleanup, and a later correct reply/session can complete.
+- App/record scan and erase ranges, head restrictions, package CRC handling, and the three-pass damaged-transfer retry policy are unchanged. Unknown-chip cleanup still returns LDR_EFLASH and boots the untouched old app when cleanup succeeds. Cleanup errors require a subsequent session rather than an unbounded erase retry.
+
+Meaningful regression evidence is under `build/code-review-hardware-51/`: the extended test compiled against the private original loader snapshot fails 11 new assertions (`regression-before.log`); the same tests against the actual fixed production loader pass (`regression-after.log`). The fake host sends `failure\0`, `successX` (wrong terminating byte), and one negative reply followed by success. The fake NOR injects scan-read failure, explicit record-erase failure, successful-but-unchanged erase, and readback failure after an actual erase, on both normal and unknown-chip paths. Tests check failure return/no RAM clear, flash-record retention where erasure has not completed, subsequent retry, unchanged head/unknown-chip app, and unchanged allowed write ranges. These tests extend the existing loader suite already invoked by tests/run_tests.sh; that runner was not edited.
+
+The actual extended suite also passes with existing package fixtures for old-to-.49 upgrade, .49-to-old downgrade, and .49-to-stock FM-1_015 return (`regression-upgrade.log`, `regression-downgrade.log`, `regression-stock-return.log`). Host compilation uses `build/host/optimization-cc -O2 tests/ldr_test.c`, with executable outputs exclusively in the private directory. `git diff --check` passes for the implementation and test changes.
+
+Retention limit: once a real record-sector erase has completed, a subsequent readback error cannot restore that record; the loader nevertheless returns failure and remains available for retry. The app is already CRC verified (or untouched on the unknown-chip path), so a power cycle after completed cleanup can safely select it. Earlier scan/failed/unchanged-erase faults preserve the tested persistent resume record. The platform's separate early-start RAM-record clear remains unchanged.
+
+No target build, loader packaging, firmware package regeneration, version bump, commit, publication, physical flash operation or hardware timing/power-loss test was performed. Parent integration must rebuild/check the loader/package before release; the host results do not establish target size or SPL behavior.
+
 Reviewed 2026-10-23: current working tree based on HEAD `9fd9ddc`, including the uncommitted icon cleanup. Scope was read-only except this report and private evidence in `build/code-review-hardware-51/`. No production source, generated output, Git refs or hardware were changed. No repository AGENTS.md was found. Existing OPTIMIZATION, ARCHITECTURAL-HEADROOM and REDUNDANCY-AUDIT results are not counted as new savings.
 
 ## Integration recommendation

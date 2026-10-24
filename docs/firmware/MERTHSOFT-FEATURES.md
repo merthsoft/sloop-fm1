@@ -8,7 +8,37 @@ the [Android overview](../../README.md#merthsloop-mobile-for-android) covers the
 **SEL** is the physical button between FX and ENV, historically labelled SCL in
 firmware. **SELECT** is the separate rotary encoder. They do different things.
 
-## NEON and the refreshed display
+## Filter, punch and step-entry preferences
+
+Hold **HOME**, then use **SELECT** to find **FX** or **SEQ** in the menu.
+
+| Menu | Knob 1 | Knob 2 |
+| --- | --- | --- |
+| FX | FILTER RESO, 0–10 | PUNCH FADE, 0–15 |
+| SEQ | STEP ADVANCE, ON/OFF | DRUM PREVIEW, ON/OFF |
+
+| FX preferences | SEQ preferences |
+| --- | --- |
+| <img src="../../assets/screens/merthsoft/neon/menu-fx-controls.png" width="240" alt="NEON menu with filter resonance and punch fade"> | <img src="../../assets/screens/merthsoft/neon/menu-seq-controls.png" width="240" alt="NEON menu with step advance and drum preview"> |
+
+FILTER RESO adds resonance to synth/drum track filters, independently of wah and
+the master DJ filter. PUNCH FADE controls effect engagement/release from the
+original fast anti-click ramp to about 0.37 seconds. Holding **FX** and turning
+**SELECT** also adjusts it, with the value shown below the effect keys. It covers
+primary effects, punch filters, gate engagement and the temporary LOFI boost.
+The gate's rhythm and HALF/DOUBLE transport gestures stay immediate.
+
+STEP ADVANCE defaults ON. Turn it OFF to keep the cursor in place after releasing
+a played chord; the next chord starts a fresh replacement with its own undo.
+DRUM PREVIEW defaults OFF and controls audition when browsing lanes/steps on GRID
+and SOUND. Explicit grid entry, groove HEAR/preview and stopped TUNE/DECAY audition
+remain available. These preferences save on the device rather than in a song.
+
+For noise-based drum sounds, SOUND → TUNE now shifts filter brightness as well as
+the existing pitch controls for tonal sounds. Factory and user synth kits use the
+same behavior; tuning at zero retains the original sound.
+
+## NEON display
 
 Hold **HOME → SCREEN → COLOR** and choose **NEON**. New settings default to it;
 existing saved colors and editor-created themes remain available. Four knob cards
@@ -59,16 +89,18 @@ fixed when the playing octave changes. See the [key table and combination rules]
 
 Choose a stock or CUSTOM progression in SEQ's SEQUENCES browser, then turn SELECT
 to its fifth page, PERFORM. Turn LIVE on while stopped or during loop playback. The leftmost white keys select the progression's chords; the next group repeats
-them an octave higher. HOLD sustains the last selection. OCTAVE changes the next
+them another octave higher for each group, across all sixteen white keys. HOLD sustains the last selection. OCTAVE changes the next
 chord without retuning the one currently playing. ARP OFF plays sustained chords; with ARP ON the existing arp supplies the
 rhythm; PLAY runs accompanying tracks and REC captures its generated notes.
 Stored notes on the live track stay intact and silent while you perform.
 
 ![Native progression performance](../assets/screens/merthsoft/neon/progression-perform.png)
 
-This first slice uses immediate changes and diatonic triads/sevenths. Black-key
-modifiers, queued beat/bar changes and starter-rhythm performance remain future
-work. [Controls, recording and lifecycle](PROGRESSION-PERFORM-DESIGN.md).
+Black keys use the same eleven modifiers as ordinary chord mode, momentarily or
+as toggles with HOLD on. Both sustained chords and arps respond. This mode uses
+immediate changes and diatonic triads/sevenths; queued beat/bar changes and
+starter-rhythm performance remain future work.
+[Controls, recording and lifecycle](PROGRESSION-PERFORM-DESIGN.md).
 
 ## Saving sections safely
 
@@ -515,7 +547,7 @@ The drum track's first **FX** page is LEVEL / PAN / DLY / REV, with real drum se
 
 ## Master LOFI characters
 
-**FX → LOFI** selects VINYL, TAPE, VHS, CD or RADIO. Their three controls are WOW/DARK/DAMAGE, FLUTTR/DARK/DRIVE, WARBLE/DARK/DAMAGE, RATE/LATCH/MIX, and DRIFT/BAND/STATIC. Vinyl uses irregular pitch drift and sparse varied clicks/pops; tape adds flutter and saturation; VHS adds faster warble/dropouts; CD repeats tiny captured fragments; RADIO adds a narrowed receiver band, drift and hiss/crackling static, with more audible low/mid control settings. CD is microstutter, not a phrase-length CSIDMAN delay. That longer delay remains a separate planned expansion.
+**FX → LOFI** selects OFF, VINYL, TAPE, VHS, CD, RADIO or SMPLR. Their three controls are WOW/DARK/DAMAGE, WOW/DARK/WEAR, WARBLE/DARK/DAMAGE, RATE/LATCH/MIX, and DRIFT/BAND/STATIC. Vinyl uses irregular pitch drift and sparse varied clicks/pops; tape adds flutter and saturation; VHS adds faster warble/dropouts; CD repeats tiny captured fragments; RADIO adds a narrowed receiver band, drift and hiss/crackling static, with more audible low/mid control settings. CD is microstutter, not a phrase-length CSIDMAN delay. That longer delay remains a separate planned expansion.
 
 All amounts zero bypass the processing. Characters and amounts save with sections/projects; older vinyl settings load as VINYL. The held LOFI punch intensifies the selected character, using Vinyl when TYPE is OFF, and restores the saved settings after release.
 
@@ -580,3 +612,30 @@ DIM / LOW / MID / HIGH. DIM matches the original scale-guide brightness.
 Played-note LEDs retain full intensity. The level saves with device preferences;
 close the menu and stop playback to allow any deferred settings write.
 SEL+OCT+ remains the independent scale-light on/off toggle.
+
+## Additional factory instruments
+
+The appended CHIP bank adds NES PLS12, NES PLS50, NES PLUCK, NES TRI, GB WAVE BS, GB HOLLOW, GB ORGAN and GB ARP. INST adds VIOLIN, CLARINET, OBOE, BASSOON, HARPSICHORD and OUD. All fourteen use existing engines and normal sound/envelope controls; save edited variations to USER. These are synthesized interpretations, rather than exact console emulation or orchestral samples. See the [preset pack design and validation](INSTRUMENT-PRESET-PACK.md).
+
+## Recording and sound-browsing refinements
+
+Live POLY recording preserves overlapping notes until their individual releases.
+Incoming legato records the voice mode's non-POLY handoff, with independent ties
+remaining available for guitar-style sustain. Editing and project round-trips
+retain the marker. An untouched factory/user arp follows its preset; changing
+its arp values makes it yours to keep through sound changes. HOME displays the
+actually running A–D arrangement section. See the [integration scope](UPSTREAM-2.8-INTEGRATION.md).
+
+![HOME showing the running section C](../../assets/screens/merthsoft/neon/home-playing-section.png)
+
+### More LOFI sounds to try
+
+On **FX → LOFI**, choose **TAPE** for worn tape: **WOW / DARK / WEAR**.
+Choose **SMPLR** for early-digital crunch: **RATE / CRUSH / DRIVE**. Higher RATE
+amount means a lower sampling rate; higher CRUSH means fewer bits. DRIVE is
+level-compensated clipping. Each control blends progressively: low settings stay gentle, while maximum settings retain heavy destruction. Start around 25–40% per control and increase to taste.
+All three zero bypasses the effect; OFF remains first and retains saved amounts.
+
+Near the end of PRESETS, the **LOFI** bank adds **DUST KEYS, WORN PAD, TOY BELL
+and DUST BASS**. These are editable instrument sounds and leave the master LOFI
+choice alone. Combine the warm presets with TAPE, or try SMPLR on drums.

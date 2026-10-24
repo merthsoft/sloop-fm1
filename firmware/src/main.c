@@ -395,6 +395,7 @@ UI_SMALL void fm1_cstart(void)
     stack_paint(_sstack_lo, _sstack_top);
     for (s = _data_load, d = _data_start; d < _data_end; s++, d++)
         *d = *s;
+    punch_boot_init();
     for (s = _rt_load, d = _rt_start; d < _rt_end; s++, d++)
         *d = *s;                                /* flash driver code that must run from RAM */
     for (s = _c1_load, d = _c1_start; d < _c1_end; s++, d++)

@@ -1,5 +1,73 @@
 # Selective upstream 2.8 integration
 
+## Integration completion
+
+MerthSloop **2.8.0.54** completes the selected upstream 2.8 feature integration
+against `b77bf55`. The version now denotes the adopted SLOOP 2.8 behavior;
+our independent build counter continues at 54. This is a selective source port,
+not a Git ancestry merge or a claim that every upstream UI/content decision was
+copied. Local `main` remains the unmodified upstream mirror.
+
+- Partial held-note recording follows each POLY note to its own release, including
+  new attacks over a held group and quantized onsets before the next TIE exists.
+  MerthSloop recording snap, musical-clock latency and independent ties remain.
+- Upstream `SF_LEG` bit 7 records overlapping non-POLY transitions and sustains
+  the voice envelope on playback without forcing glide. Continuations take
+  precedence; explicit SLIDE retains its separate meaning.
+- INFO protocol 16 carries legato in the existing STEP extension's `hi` byte,
+  without enlarging STEP replies. Old writers preserve the existing marker;
+  aware writers explicitly replace it. Web, preview, Android native snapshots
+  and scene validation retain it. Project layout remains upstream FUN6.
+- Factory and user preset arps follow the next sound when their eight arp values
+  still match the loaded preset. An enabled/edited player arp remains. Engine
+  switches compare the previous requested sound before changing its engine.
+- HOME shows a themed A–D badge only while an arrangement section is playing.
+
+Earlier batches already integrated the piano roll/action sheets, CC11/CC0,
+resonance/fade, drum preferences/tuning, clock, encoder, USB descriptor and
+recovery/updater changes. Deliberate differences remain: our editing/navigation,
+independent-tie tools, complete sample content, effects, USB playback removal and
+return-to-stock installer workflow. FREE TAKE and MIDI-file duration authoring
+remain separate enhancements; this batch improves ordinary live overdub.
+
+Measured target: **582,968 / 584,336 B**, **1,368 B flash free**; main static
+RAM **86,176 / 98,304 B**, low RAM **28,784 / 29,496 B**, audio pool
+**332,876 / 344,064 B**. Relative to .53 this is 544 B flash and 32 B main RAM;
+low RAM and the audio pool are unchanged.
+
+Validation includes unchanged 196-render audio goldens; upstream recording tests
+for staggered release, early/late entry and legato envelopes; independent ties,
+real factory/user arp loading, v16/legacy STEP handling, web seven-bit round-trips,
+Android workstation/sequencing tests, preview parity and target DSP budgets.
+The new upstream 2.8 fixture is generated independently from the unmodified main
+source and survives import/apply/save byte-for-byte.
+
+Broader testing exposed old navigation and preview-clock expectations, and a
+TRACKS test that explicitly expected the group-release behavior being replaced.
+Those assertions now cover the current pages, musical clock and independent
+releases, and their focused reruns pass. Font-test fallback reads the raw branch
+of boot-packed assets. Divide-by-zero trap instrumentation passes UI fuzz,
+sequencer, independent ties, projects and random live use; the host toolchain
+has no working UBSan handler runtime, ThreadSanitizer or AddressSanitizer, so
+full runtime-sanitizer coverage is not claimed. The monolithic WSL runner is
+not a green result: its initial pass includes the corrected stale assertions,
+unavailable sanitizer runtime and missing Node executable. Those functional
+cases pass focused reruns; the complete web suite and native/WASM parity run
+separately with Windows Node. Hardware recording/listening
+remains unverified for this build.
+
+The following sections are historical checkpoints and explain the staged port.
+
+## Current controls follow-up
+
+Build **2.7.1.51** additionally integrates upstream-compatible device-setting
+bits, track-filter resonance, punch fade, noise-drum tuning and optional drum
+browsing preview/step advance. See [controls and validation](UPSTREAM-CONTROLS-REVIEW.md).
+These join the already adapted piano roll, MIDI expression/banks and low-conflict
+fixes below. This remains a selective backport, not a complete upstream merge.
+Recording/bit-7 legato and preset-owned arp behavior remain pending; independent
+ties are compatible with upstream continuation bits and should be retained.
+
 This batch adapts the low-conflict fixes from upstream commit beab3f62d04ff8defcc7b663505bd6bd6ad7836a, reviewed against the last integrated 2.7.1 base (4ec1ac8). Main/origin main mirror upstream at b77bf55; merthsloop is not marked as fully merged with 2.8. Its version remains based on 2.7.1 with an incremented MerthSloop build.
 
 ## Included

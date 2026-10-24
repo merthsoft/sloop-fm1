@@ -35,6 +35,14 @@ static uint32_t pow2_q16(int32_t d16)
     return oct >= 16u ? r << (oct - 16u) : r >> (16u - oct);
 }
 
+/* Q16 source rate with the common fine pitch (voice.c: |fine| < 256).
+ * step <= 32 << 16, so the signed product fits; retain fractions at slow rates.
+ * The caller keeps its own decode-load cap after this adjustment. */
+DSP_INLINE uint32_t sample_fine_step(uint32_t step, int32_t fine)
+{
+    return step + (uint32_t)(((int32_t)step * fine) >> 12);
+}
+
 /* ---- user sample slots (loaded from the web editor into flash, see web/EDITOR_PROTOCOL.md)
  * 4 slots of 80 KiB: 3 at flash 0xA0000.., USR4 at 0xE7000 (Felucca data regions), read through the plain XIP
  * window. Slot = header (magic, count, name, data length, CRC32) + up to 16 zones in the
@@ -172,6 +180,8 @@ static void sample_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, cons
     uint32_t i, frac = v->ph[1];
     int32_t d16 = clamp(m->pitch16 + p[P_E1] * 16 - z->root16, -1536, 576);   /* <= 3 octaves up: bounded decode load */
     uint32_t r = pow2_q16(d16), stepq = (r >> 8) * (z->rate >> 8);   /* Q16 samples per output */
+    stepq = sample_fine_step(stepq, m->fine);
+    if (stepq > (z->rate >> 8) * 2048u) stepq = (z->rate >> 8) * 2048u;   /* at most 8x the source rate */
     int32_t bits = p[P_E2], lp = 4000 + ((clamp((p[P_E4] << 8) + m->cutoff, 0, 127 << 8) * 28767) >> 15);
     int32_t drv = p[P_E6], sh = bits / 10;
     if (v->s[6] || !z->n) {

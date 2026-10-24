@@ -1,5 +1,22 @@
 # Latest native firmware integration
 
+LOFI now also offers stronger TAPE and progressive SMPLR early-digital coloration, with
+four appended dusty/warm presets (171 factory sounds total). No new audio
+buffer or feature cuts; current target has 948 B flash and 568 B low RAM free.
+See [LOFI controls and validation](../../docs/firmware/LOFI-MASTER-DESIGN.md).
+
+The selected SLOOP 2.8 integration is complete: partial held-note recording,
+incoming legato, factory/user arp ownership and a playing-section HOME badge
+join the prior controls/editor/MIDI/recovery changes. INFO protocol 16 safely
+round-trips legato through STEP without changing project layout. See the
+[integration scope](../../docs/firmware/UPSTREAM-2.8-INTEGRATION.md).
+
+The factory bank now includes fourteen appended CHIP/INST voices (167 total):
+NES/Game Boy-inspired sounds plus violin, clarinet, oboe, bassoon, harpsichord
+and oud. Existing engines and factory identities are retained. The pack adds
+376 B flash and 504 B low RAM; no feature cuts or Android update are needed.
+See the [preset pack](../../docs/firmware/INSTRUMENT-PRESET-PACK.md).
+
 MerthSloop includes native inversion/spread controls, selected-character LOFI punch
 and a SEQUENCES PERFORM page for live progression pads with sustained direct chords or rhythmic arp output.
 Radio LOFI, Dark reverb and Dub delay expand the shared effects.

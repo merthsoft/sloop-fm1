@@ -60,9 +60,9 @@ try {
     Check(transport.Selected==0&&native.Tracks.Length==4,"native read restores selection and includes every track");
     Check(((SynthStep)native.Tracks[0].Steps[0]).Slots[3].Pitch==99&&((SynthStep)native.Tracks[0].Steps[0]).Slots[3].Ratchet==4,"native read preserves inactive slot high bits");
     Check(((DrumStep)native.Tracks[3].Steps[0]).Lanes[15].On&&((DrumStep)native.Tracks[3].Steps[0]).Lanes[15].Level==HitLevel.Hard,"native read preserves drum lane 16");
-    var continuationStep=(SynthStep)native.Tracks[0].Steps[0] with { Flags=StepFlags.Accent|StepFlags.Slide|StepFlags.Continue1|StepFlags.Continue2|StepFlags.Continue3|StepFlags.Continue4 };
+    var continuationStep=(SynthStep)native.Tracks[0].Steps[0] with { Flags=StepFlags.Legato|StepFlags.Accent|StepFlags.Slide|StepFlags.Continue1|StepFlags.Continue2|StepFlags.Continue3|StepFlags.Continue4 };
     var continuationBytes=HardwareSteps.Encode(continuationStep);
-    Check(continuationBytes[6]==123 && HardwareSteps.DecodeSynth(continuationBytes,continuationStep,continuationStep.Micro,continuationStep.Fill).Flags==continuationStep.Flags,"upstream bits 3..6 survive native snapshots and edits");
+    Check(continuationBytes[6]==123 && (continuationBytes[9]&12)==12 && HardwareSteps.DecodeSynth(continuationBytes,continuationStep,continuationStep.Micro,continuationStep.Fill).Flags==continuationStep.Flags,"upstream bits 3..6 survive native snapshots and edits");
     continuationBytes[6]=4;try{HardwareSteps.DecodeSynth(continuationBytes,continuationStep,continuationStep.Micro,continuationStep.Fill);throw new Exception("reserved preset bit accepted");}catch(FormatException){checks++;}
     var nativePath=Path.Combine(directory,"native");WorkspaceFiles.SaveHardware(nativePath,native);var nativeRestored=WorkspaceFiles.LoadHardware(nativePath);
     Check(native.Tracks.Zip(nativeRestored.Tracks).All(pair=>HardwareSteps.ContentEquals(pair.First,pair.Second))&&nativeRestored.Tracks[0].Steps[0].Id==native.Tracks[0].Steps[0].Id,"native durable snapshot retains all fields and identities");

@@ -14,6 +14,10 @@ const IS_OTA = (id) => /^ota-/i.test(id.model);
 // the update loader of SLOOP / Felucca packages ("ota-FM-1_9XX"). A device left in the update mode of another
 // firmware (the stock updater's loader) is never written: its loader may lay the image out differently.
 export const OUR_LOADER = (id) => /^ota-FM-1_9\d\d$/i.test(id.text);
+// The official-return exception is only for the pinned V15 package, never an
+// arbitrary product supplied to resume(). Our loader identity is fixed at 900.
+const expectedLoader = (id, product) => product === "FM-1_015"
+  ? id.text === "ota-FM-1_015" : OUR_LOADER(id);
 // the MIDI ports the installer may probe (never other gear): the FM-1 under SLOOP / Felucca ("Felucca"), under
 // CLIPPER ("Clipper", its sister firmware), under a firmware named after itself ("SLOOP"), the update loaders, and
 // the names Windows / macOS give the stock firmware
@@ -144,28 +148,27 @@ export class Updater {
     return null;
   }
 
-  // the FM-1 (or its update loader) among the MIDI ports. Named ports first (fast, and other gear is
-  // never touched). With deep=true (hunting the re-enumerated update loader only), if no named port
-  // matched, the remaining ports are probed too and accepted SOLELY when they answer the FM-1 handshake
-  // (other gear returns no valid identity). Windows often names the update loader generically (e.g.
-  // "USB MIDI Device"), so a name filter alone misses it and the loader seems to "not appear": this
-  // handshake fallback is what makes the loader reliably found, without probing other gear when looking
-  // for the running firmware (which always names itself).
+  // Count identities before applying the mode filter: a running FM-1 plus a
+  // loader is ambiguous too. Re-enumeration has no stable serial in this
+  // protocol, so installation requires one FM-1 throughout the transaction.
+  // Deep discovery also checks generic Windows loader names by handshake.
   async find(filter, deep = false) {
     const outs = [...this.access.outputs.values()];
     const inputs = [...this.access.inputs.values()].filter((i) => i.state !== "disconnected");
-    for (const input of inputs)
-      if (FM1_PORT.test(input.name || "")) {
-        const dev = await this.probe(input, outs, filter);
-        if (dev) return dev;
+    const found = [];
+    try {
+      for (const input of inputs.filter((i) => deep || FM1_PORT.test(i.name || ""))) {
+        const dev = await this.probe(input, outs);
+        // Only the update loader needs the unnamed-port fallback. Running
+        // firmware must retain an FM-1 port name, as in ordinary discovery.
+        if (dev && (FM1_PORT.test(input.name || "") || IS_OTA(dev.id))) found.push(dev);
+        else if (dev) dev.link.close();
       }
-    if (deep)
-      for (const input of inputs)
-        if (!FM1_PORT.test(input.name || "")) {
-          const dev = await this.probe(input, outs, filter);
-          if (dev) return dev;
-        }
-    return null;
+      if (found.length > 1) throw fail("ambiguous", "Disconnect other FM-1 devices before installing.");
+      const dev = found[0];
+      if (dev && (!filter || filter(dev.id))) { found.pop(); return dev; }
+      return null;
+    } finally { for (const dev of found) dev.link.close(); }
   }
 
   // the MIDI inputs there are, for the "not found" message: " (MIDI: a, b)" (a port the installer skipped shows)
@@ -216,25 +219,28 @@ export class Updater {
   // full install: running firmware -> loader -> new firmware
   async install(image, product, onStep) {
     const step = onStep || (() => {});
-    const dev = await this.find((id) => !IS_OTA(id));
+    const dev = await this.find((id) => !IS_OTA(id), true);
     if (!dev) throw fail("notfound", "FM-1 not found (USB cable, and no other app using it?)", this.seen());
     const [model] = product.split("_");
     if (dev.id.model !== model) { dev.link.close(); throw fail("model", `the device is ${dev.id.text}, the package is for ${product}`); }
-    step("start", dev.id.text);
-    dev.link.send(UPGRADE);
-    await sleep(2000);
-    const s1 = await this.serve(dev.link, image, 0xE0000000, 8000, (n) => step("verify", n));
-    dev.link.close();
+    let s1;
+    try {
+      step("start", dev.id.text);
+      dev.link.send(UPGRADE);
+      await sleep(2000);
+      s1 = await this.serve(dev.link, image, 0xE0000000, 8000, (n) => step("verify", n));
+    } finally { dev.link.close(); }
     if (!s1.finished) throw fail(s1.lost ? "lost" : "stopped", `the device ${s1.lost ? "was disconnected" : "stopped"} after ${s1.served} requests: nothing was written`);
     step("loader");
     await sleep(3000);
     const ota = await this.waitFor(IS_OTA, 60000, true);
     if (!ota) throw fail("noloader", "the update loader did not appear. Replug the USB cable and press Install again: the device stays in update mode until it is finished.", this.seen());
+    this.checkLoader(ota, product);
     const s2 = await this.write(ota, image, step);
     if (!s2.finished) throw fail(s2.lost ? "lost" : "stopped", `the loader ${s2.lost ? "was disconnected" : "stopped"} after ${s2.served} requests. Replug and press Install again to resume.`);
     step("reboot");
     await sleep(3000);
-    const back = await this.waitFor((id) => !IS_OTA(id), 60000);
+    const back = await this.waitFor((id) => !IS_OTA(id), 60000, true);
     if (!back) throw fail("noreturn", "the device did not come back: power-cycle it");
     back.link.close();
     if (back.id.text !== product) throw fail("mismatch", `installed, but the device reports ${back.id.text}`, back.id.text);
@@ -244,11 +250,18 @@ export class Updater {
 
   // step 2 with the loader found by find()/waitFor()
   async write(ota, image, step) {
-    ota.link.send(UPGRADE);
-    await sleep(2000);
-    const s2 = await this.serve(ota.link, image, 0xF0000000, 180000, (n) => step("write", n));
-    ota.link.close();
-    return s2;
+    try {
+      ota.link.send(UPGRADE);
+      await sleep(2000);
+      return await this.serve(ota.link, image, 0xF0000000, 180000, (n) => step("write", n));
+    } finally { ota.link.close(); }
+  }
+
+  checkLoader(ota, product) {
+    if (!expectedLoader(ota.id, product)) {
+      ota.link.close();
+      throw fail("foreign", `unexpected update loader (${ota.id.text}): finish its update with its own updater`, ota.id.text);
+    }
   }
 
   // resume: the device is already in update mode (loader) -> true when the write finished. Only SLOOP's
@@ -258,16 +271,13 @@ export class Updater {
   async resume(image, onStep, opts = {}) {
     const ota = await this.find(IS_OTA, true);
     if (!ota) return false;
-    if (!OUR_LOADER(ota.id) && !opts.product) {
-      ota.link.close();
-      throw fail("foreign", `the FM-1 is in the update mode of another firmware (${ota.id.text}): finish that update with its own updater`, ota.id.text);
-    }
+    this.checkLoader(ota, opts.product);
     const step = onStep || (() => {});
     if (!(await this.write(ota, image, step)).finished) return false;
     if (opts.product) {
       step("reboot");
       await sleep(3000);
-      const back = await this.waitFor((id) => !IS_OTA(id), 60000);
+      const back = await this.waitFor((id) => !IS_OTA(id), 60000, true);
       if (!back) throw fail("noreturn", "the FM-1 did not come back after the write: power-cycle it");
       back.link.close();
       if (back.id.text !== opts.product) throw fail("mismatch", `written, but the FM-1 reports ${back.id.text}`, back.id.text);

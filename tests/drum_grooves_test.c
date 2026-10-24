@@ -137,7 +137,9 @@ int main(int argc, char **argv)
     tap(B_SEQ);
     check(on_drum_page() && drum_page == 4, "fifth SEQ tap reaches SHAPE");
     tap(B_SEQ);
-    check(on_drum_page() && drum_page == 0, "sixth SEQ tap wraps to GRID");
+    check(drum_page == 5, "sixth SEQ tap reaches HIT ACTIONS");
+    tap(B_SEQ);
+    check(on_drum_page() && drum_page == 0, "seventh SEQ tap wraps to GRID");
     encs[panel.enc[EN_SELECT]] = 1; frame();
     check(on_drum_page() && drum_page == 1, "SELECT detent advances GRID to KIT");
     encs[panel.enc[EN_SELECT]] = 1; frame();
@@ -196,10 +198,11 @@ int main(int argc, char **argv)
     for (i = 0; i < 65; i++) {
         dstep_t expected = drum_groove_step(14, i % 64);
         drums.hits = 0;
-        groove_preview_block(0);
+        musical_advance=0;groove_preview_block(0);
         assert(groove_preview.step == i % 64);
         assert(drums.hits == dstep_mask(&expected));
-        groove_preview_block((div_units(2) + (uint32_t)song.g[G_BPM] - 1u) / (uint32_t)song.g[G_BPM]);
+        musical_advance=swing_preview_units(groove_preview.div,song.g[G_SWING],groove_preview.swing_step,groove_preview.feel);
+        groove_preview_block(0);
     }
     { project_t after; proj_capture(&after); assert(!memcmp(&saved, &after, sizeof after)); }
     assert(!song.playing && !song.rec);

@@ -1,5 +1,80 @@
 # Immutable asset and catalog headroom audit
 
+## Approved generator integration follow-up (2026-10-23)
+
+The parent subsequently authorized production edits for **only** the fixed font
+metrics and ragged preset trims. These are now implemented through their actual
+generators. The analysis-only statements below describe the earlier experiments;
+zone and additional numeric boot packing remain experimental and unintegrated.
+
+Changed files: `tools/gen_font.py`, `firmware/src/gfx.c`, `tools/level_presets.py`,
+`firmware/src/preset_trim.h`, `tests/font_asset_test.py`, `tests/font_render_test.c`,
+`tests/font_test.c`, and new `tests/font_generation_test.py`. No shared `build/gen`
+output was regenerated. No engine implementation, test runner, version, package,
+Git ref, or device was changed by this specialist.
+
+The real font generator independently selects scalar or array storage for each
+metric. Nonuniform advances/bitmap widths retain their existing arrays. Rendering
+and width calculation use `font_advance()` / `font_bitmap_width()`. Fixed scalar
+fields occupy the existing descriptor's target padding. The asset oracle now
+accepts both descriptor forms, changes the bitmap format field explicitly when
+building legacy fixtures, and accepts an optional private output directory.
+Standalone C font tests include their required test-local string helpers.
+
+`level_presets.format_header()` emits a flat signed trim array with uint16 offsets,
+uint8 counts and a bounded inline `preset_trim_value(e, pi)` accessor. It preserves
+every engine/preset/name/value comment so the existing name-based loudness carry
+forward continues to work. Interior holes retain their index; named zero values
+are retained; only unnamed zero tails are omitted. All 157 existing named trims,
+including the optional engine, and their 416-byte expanded gain table are unchanged.
+No loudness measurement was rerun. Scientific dependencies load only when actual
+loudness analysis is requested, allowing pure generation tests without SciPy.
+
+**Required parent/engine-owner hook:** in `firmware/src/engines.c`, replace only
+the body expression of the existing `preset_trim(uint32_t e, uint32_t pi)`:
+
+```c
+return preset_trim_value(e, pi);
+```
+
+The old `PRESET_TRIM[e][pi]` caller is incompatible with the new flat header until
+that hook lands. This specialist deliberately did not edit the engine-owned file.
+There is one additional parent-owned test hook: in `tests/stress_test.c:38`,
+replace `FONT_S.bw[gi]` and `FONT_L.bw[gi]` with
+`font_bitmap_width(&FONT_S, gi)` and `font_bitmap_width(&FONT_L, gi)` respectively.
+Its independent enlarged bitmap oracle otherwise dereferences null metric pointers
+when consuming the new generated fixed-width font. This specialist did not edit
+the unowned stress test.
+Parent-owned `tests/run_tests.sh` should additionally run
+`python3 tests/font_generation_test.py`; existing font test invocations continue
+to work. Parent must regenerate normal shared assets and measure the final
+combined target after all approved integrations. The earlier isolated −144/−192
+byte figures are **not** claimed as newly measured final generator-backed deltas.
+
+Validation completed against private outputs in
+`build/headroom-assets-51/integration/`:
+
+- `python tests/font_generation_test.py`: **5 tests pass**, including real fixed
+  metric generation, synthetic proportional generation, invalid metric bounds,
+  trim holes/empty rows, deterministic header regeneration and the frozen
+  expanded gain-table SHA-256.
+- `python tests/font_asset_test.py build/headroom-assets-51/integration/font-assets`:
+  **all 224 BDF glyphs match**, with unchanged 3,952 bitmap bytes.
+- Actual C `font_render_test`: **6,120 pixel/metric comparisons pass** for both
+  one-bit and independent four-bit fixtures. A synthetic varying-advance AND
+  varying-width font additionally checks exact pixels and total advance.
+- Actual C `font_test`: all historical glyph/width hashes, clipped captures,
+  Latin-1/capitalization and anti-aliased fallback checks pass against the actual
+  newly generated header.
+- Native C exhaustive `preset_trim_value` test: **525 engine/preset combinations**
+  plus UINT32_MAX boundaries equal the original frozen expanded gain table.
+- `git diff --check` passes for the owned implementation files.
+
+Native tests use the installed Zig 0.13 compiler under WSL, copying only owned
+sources/generated assets into private paths; logs and executables are retained
+under `integration/`. No final combined target, audio golden suite, UI fuzz or
+hardware startup result is claimed here; those remain parent integration gates.
+
 2026-10-23. Analysis only, against a frozen copy of the **working source after
 the two-icon cleanup**, not HEAD `9fd9ddc`. No production firmware, shared
 generated assets, shared build outputs, Git refs, package, or device changed.

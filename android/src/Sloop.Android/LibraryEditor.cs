@@ -8,7 +8,6 @@ namespace Sloop.Android;
 public sealed partial class MainActivity
 {
     private const int ImportSoundRequest=414, ExportFileRequest=415, ImportSessionRequest=416;
-    private string? sessionExportPath;
     private string libraryFilter="";
     private SessionWorkspace SessionLibrary=>new(FilesDir!.AbsolutePath,EffectiveWorkspaceRoot);
     // Root supplies one transactional adapter: stop notes, stage documents, adopt all editors.
@@ -21,24 +20,19 @@ public sealed partial class MainActivity
     }
     private void ExportSession(Guid id)
     {
-        var path=System.IO.Path.Combine(CacheDir!.AbsolutePath,"session-"+Guid.NewGuid().ToString("N")+".sloopzip");
-        try{using(var output=File.Create(path))SessionLibrary.Store.Export(id,output);sessionExportPath=path;exportBytes=null;
-            var intent=new Intent(Intent.ActionCreateDocument);intent.AddCategory(Intent.CategoryOpenable);intent.SetType("application/zip");intent.PutExtra(Intent.ExtraTitle,"session.sloopzip");StartActivityForResult(intent,ExportFileRequest);
-        }catch{if(File.Exists(path))File.Delete(path);throw;}
+        StageFileExport("session.sloopzip","application/zip",output=>SessionLibrary.Store.Export(id,output));
     }
-    private byte[]? exportBytes;
-    private int importSoundTrack;
     private void ExportBytes(byte[] bytes,string name,string type="application/octet-stream")
     {
-        exportBytes=bytes.ToArray();
-        sessionExportPath=null;
-        var intent=new Intent(Intent.ActionCreateDocument);intent.AddCategory(Intent.CategoryOpenable);intent.SetType(type);intent.PutExtra(Intent.ExtraTitle,name);
-        StartActivityForResult(intent,ExportFileRequest);
+        StageFileExport(name,type,output=>output.Write(bytes));
     }
     private void ImportSound(int track)
     {
-        importSoundTrack=track;
-        var intent=new Intent(Intent.ActionOpenDocument);intent.AddCategory(Intent.CategoryOpenable);intent.SetType("*/*");StartActivityForResult(intent,ImportSoundRequest);
+        if(soundImportRequest is {} old)FileRequests.Complete(old);
+        soundImportRequest=FileRequests.BeginImport(EffectiveWorkspaceRoot,track).Id;
+        try {
+            var intent=new Intent(Intent.ActionOpenDocument);intent.AddCategory(Intent.CategoryOpenable);intent.SetType("*/*");StartActivityForResult(intent,ImportSoundRequest);
+        }catch {FileRequests.Complete(soundImportRequest.Value);soundImportRequest=null;throw;}
     }
     private async Task FileResultAsync(int requestCode,Result resultCode,Intent? data)
     {
@@ -46,35 +40,63 @@ public sealed partial class MainActivity
         if(requestCode==ImportFm1SongRequest){await ImportFm1SongAsync(resultCode,data);return;}
         if (await TryHandleCompositionFileResultAsync(requestCode, resultCode, data)) return;
         if(requestCode==ExportFileRequest) {
-            var bytes=exportBytes;exportBytes=null;var path=sessionExportPath;sessionExportPath=null;
-            try{if(resultCode!=Result.Ok||data?.Data is not {} target||bytes is null&&path is null)return;
-                await Task.Run(()=>{using var output=ContentResolver!.OpenOutputStream(target,"wt")??throw new IOException("Cannot write destination.");if(path is not null){using var input=File.OpenRead(path);input.CopyTo(output);}else output.Write(bytes!);});editing.SetStatus("File exported.");}
-            catch(Exception e){editing.SetStatus("Export failed: "+e.Message);}finally{if(path is not null&&File.Exists(path))File.Delete(path);}return;
+            var id=fileExportRequest;bool prepared=false;
+            try {
+                if(resultCode!=Result.Ok||data?.Data is not {} target){if(id is {} cancelled)FinishFileExport(cancelled);return;}
+                if(id is null)throw new IOException("Export expired. Choose Export again.");
+                FileRequests.RequireExport(id.Value);
+                prepared=true;
+                await Task.Run(()=>{using var output=ContentResolver!.OpenOutputStream(target,"wt")??throw new IOException("Cannot write destination.");FileRequests.CopyExport(id.Value,output);});
+                FinishFileExport(id.Value);editing.SetStatus("File exported.");
+            }catch(Exception e){
+                editing.SetStatus((prepared?"Export failed; prepared file retained. Retry in Library: ":"Export failed; choose Export again: ")+e.Message);
+                if(id is {} retry){if(prepared)OfferExportRetry(retry);else FinishFileExport(retry);}
+            }
+            return;
         }
         if(requestCode==ImportSessionRequest){
             if(resultCode!=Result.Ok||data?.Data is not {} source)return;
             try{var candidate=await Task.Run(()=>{using var input=ContentResolver!.OpenInputStream(source)??throw new IOException("Cannot open archive.");return SessionLibrary.Import(input);});editing.SetStatus("Imported session: "+candidate.Manifest.Name+". Current work preserved.");}
             catch(Exception e){editing.SetStatus("Session import failed: "+e.Message);}ShowWorkspace();return;
         }
-        if(requestCode!=ImportSoundRequest||resultCode!=Result.Ok||data?.Data is not {} uri)return;
+        if(requestCode!=ImportSoundRequest)return;
+        var importId=soundImportRequest;
+        if(resultCode!=Result.Ok||data?.Data is not {} uri){if(importId is {} cancelled)FileRequests.Complete(cancelled);soundImportRequest=null;return;}
         try {
+            if(importId is null)throw new IOException("Import expired. Choose Import again.");
+            var request=FileRequests.RequireImport(importId.Value,EffectiveWorkspaceRoot);
+            void RequireDestination() {
+                if(activityDestroyed||IsFinishing||IsDestroyed||soundImportRequest!=request.Id)
+                    throw new IOException("Import review expired. Choose Import again.");
+                FileRequests.RequireImport(request.Id,EffectiveWorkspaceRoot);
+            }
             var asset=await Task.Run(()=> {
                 using var input=ContentResolver!.OpenInputStream(uri)??throw new IOException("Cannot open patch.");
                 using var buffer=new MemoryStream();var chunk=new byte[4096];int count;
                 while((count=input.Read(chunk))>0) {if(buffer.Length+count>4104)throw new IOException("Choose one complete single-voice or 32-voice DX bank SysEx.");buffer.Write(chunk,0,count);}
                 return SysExCodec.Import(buffer.ToArray());
             });
-            int track=importSoundTrack;
-            var originals=System.IO.Path.Combine(EffectiveWorkspaceRoot,"patch-imports");Directory.CreateDirectory(originals);
+            RequireDestination();int track=request.Track;
+            var originals=System.IO.Path.Combine(request.Workspace,"patch-imports");Directory.CreateDirectory(originals);
             File.WriteAllBytes(System.IO.Path.Combine(originals,Guid.NewGuid().ToString("N")+".syx"),asset.ExportOriginal());
-            void Choose(int index)=>editing.Run(()=>editing.ChangeSound(track,editing.Sounds[track].State with{Patch=asset.Voices[index]},"SysEx import"),"Imported patch saved; original SysEx retained.");
+            void Choose(int index)=>editing.Run(()=> {
+                RequireDestination();editing.ChangeSound(track,editing.Sounds[track].State with{Patch=asset.Voices[index]},"SysEx import");
+                FileRequests.Complete(request.Id);soundImportRequest=null;
+            },"Imported patch saved; original SysEx retained.");
             if(asset.Voices.Length==1)Choose(0);
-            else new global::Android.App.AlertDialog.Builder(this)!.SetTitle("Choose voice from bank")!.SetItems(asset.Voices.Select(p=>p.Name).ToArray(),(_,a)=>Choose(a.Which))!.Show();
-        }catch(Exception e){editing.SetStatus("Patch import failed: "+e.Message);}
+            else {
+                var dialog=new global::Android.App.AlertDialog.Builder(this)!.SetTitle("Choose voice from bank")!.SetItems(asset.Voices.Select(p=>p.Name).ToArray(),(_,a)=>Choose(a.Which))!.Create()!;
+                dialog.DismissEvent+=(_,_)=>{FileRequests.Complete(request.Id);if(soundImportRequest==request.Id)soundImportRequest=null;};dialog.Show();
+            }
+        }catch(Exception e){if(importId is {} failed)FileRequests.Complete(failed);if(soundImportRequest==importId)soundImportRequest=null;editing.SetStatus("Patch import failed: "+e.Message);}
     }
     private void AddLibraryEditor()
     {
         content.AddView(Label(editing.Status,14));
+        if(fileExportRequest is {} retry) {
+            ActionButton("Retry prepared export…",LaunchFileExport);
+            ActionButton("Discard prepared export",()=>FinishFileExport(retry));
+        }
         AddFm1SongLibrary();
         ActionButton("Browse sample library", BrowseCrossSessionSamples);
         content.AddView(Label("Sessions & performance presets",18));

@@ -143,6 +143,9 @@ static const preset_t DIGITAL_PRESETS[] = {
     {"TUBE BELL", {4, 6, 1, 13, 50, 90, 0, 0}, {0, 100, 0, 90}, 0, 0, FX(0, 10, 25, 50)},
     {"FM PLUCK", {4, 2, 1, 3, 70, 15, 0, 0}, {0, 78, 0, 54}, 0, 0, FX(0, 10, 28, 30)},
     {"FM GRAND", {4, 1, 2, 12, 60, 40, 10, 0}, {0, 90, 20, 60}, 0, 0, FX(0, 20, 14, 30)},
+    /* Reed interpretations: 2:1 modulation emphasizes odd carrier harmonics. */
+    {"CLARINET", {0, 2, 1, 1, 18, 64, 0, 0}, {24, 60, 105, 26}, 0, 1, FX(0, 0, 0, 18)},
+    {"BASSOON", {2, 2, 1, 2, 46, 100, 4, 0}, {10, 65, 100, 24}, 0, 1, FX(0, 0, 0, 18)},
 };
 #endif
 

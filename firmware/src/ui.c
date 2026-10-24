@@ -19,6 +19,7 @@ static int project_used(uint32_t slot);
 static int up_used(uint32_t k);              /* user presets: upreset.c */
 static int up_load(uint32_t k);
 static int up_load_to(track_t *t, uint32_t k);
+static int up_arp_of(uint32_t k, int16_t *a);
 static uint32_t up_count(void);
 static uint32_t up_nth(uint32_t n);
 static uint32_t up_rank(uint32_t slot);
@@ -523,11 +524,32 @@ UI_SMALL static int param_kept(uint32_t i)
  * audio ISR never sees them change) and the notes it holds (seq.c arp_keep_req: the panic of this track leaves them).
  * With the arp OFF, a preset brings its own arp, as before */
 UI_SMALL static int arp_param(uint32_t i) { return i >= P_AMODE && i <= P_AORDER; }
-UI_SMALL static void apply_preset_to(track_t *t, uint32_t pi)
+UI_SMALL static int arp_is_sounds(const track_t *t)
+{
+    int16_t a[8];
+    uint32_t i, k = user_of(t);
+    if (k < UP_SLOTS) {
+        if (up_arp_of(k, a))
+            return 0;
+    } else {
+        const engine_t *e = ENGINES[t->eng_req % NENGINES];
+        const preset_t *pr;
+        if (t->user || !e->npresets)
+            return 0;
+        pr = &e->presets[t->preset % e->npresets];
+        for (i = 0; i < 8u; i++)
+            a[i] = (int16_t)(i < 4u && pr->arp[i] ? pr->arp[i] - 1 : TP[P_AMODE + i].def);
+    }
+    for (i = 0; i < 8u; i++)
+        if (t->p[P_AMODE + i] != a[i])
+            return 0;
+    return 1;
+}
+UI_SMALL static void apply_preset_sound(track_t *t, uint32_t pi, int keep_arp)
 {
     const engine_t *e = ENGINES[t->eng_req % NENGINES];
     uint32_t i;
-    int keep_arp = t->p[P_AMODE] != 0, kbd_hold = !t->p[P_AMODE] && t->p[P_AHOLD];   /* (2.7: KBD HOLD stays on) */
+    int kbd_hold = !t->p[P_AMODE] && t->p[P_AHOLD];   /* (2.7: KBD HOLD stays on) */
     if (is_drum(t))
         return;
     if (keep_arp)
@@ -566,12 +588,18 @@ UI_SMALL static void apply_preset_to(track_t *t, uint32_t pi)
     fm6_track_loaded(t);                             /* FM6: the preset's patch (its PTCH) */
 }
 
+UI_SMALL static void apply_preset_to(track_t *t, uint32_t pi)
+{
+    apply_preset_sound(t, pi, t->p[P_AMODE] && !arp_is_sounds(t));
+}
+
 /* the engine's defaults and its first preset. With the audio IRQ off: the ISR sees the old engine with
  * its values or the new one with its own (voice.c engine_block), never one with the other's */
 UI_SMALL static void set_engine_of(track_t *t, uint32_t ei)
 {
     const engine_t *e = ENGINES[ei % NENGINES];
     uint32_t i;
+    int keep_arp = t->p[P_AMODE] && !arp_is_sounds(t);
     if (is_drum(t))
         return;
     fm1_irq_off();
@@ -580,7 +608,7 @@ UI_SMALL static void set_engine_of(track_t *t, uint32_t ei)
     t->eng_req = (uint8_t)(ei % NENGINES);
     for (i = 0; i < 8u; i++)
         t->p[P_E0 + i] = e->edit[i].def;
-    apply_preset_to(t, 0);
+    apply_preset_sound(t, 0, keep_arp);
     fm1_irq_on();
 }
 
@@ -635,8 +663,8 @@ UI_SMALL static void select_engine(uint32_t e)
 /* the factory presets as one list by kind (basses, keys, organs, pads, leads, plucks and bells, stabs,
  * the rest), then the used user presets: the PRESETS knob and the PRESETS page browse it. By name: an
  * engine's preset table may change order; tests/ui_pages_test.c checks every preset is here once */
-enum { BK_BASS, BK_KEYS, BK_ORGAN, BK_PAD, BK_LEAD, BK_PLUCK, BK_STAB, BK_FX };
-static const char *const BANK_KIND[] = {"BASS", "KEYS", "ORGN", "PAD", "LEAD", "PLCK", "STAB", "FX"};
+enum { BK_BASS, BK_KEYS, BK_ORGAN, BK_PAD, BK_LEAD, BK_PLUCK, BK_STAB, BK_FX, BK_CHIP, BK_INST, BK_LOFI };
+static const char *const BANK_KIND[] = {"BASS", "KEYS", "ORGN", "PAD", "LEAD", "PLCK", "STAB", "FX", "CHIP", "INST", "LOFI"};
 _Static_assert(NENGINES<=16,"preset browser engine index fits four bits");
 /* Both indices fit a nibble; no alignment padding in this cold ROM lookup. */
 static const struct __attribute__((packed)) { uint8_t kind:4, e:4; } BANK[] = {
@@ -689,10 +717,16 @@ static const struct __attribute__((packed)) { uint8_t kind:4, e:4; } BANK[] = {
     {BK_FX, ENGI_SLICE} /* BREAK 16 */, {BK_FX, ENGI_SLICE} /* CHOP 8 */, {BK_FX, ENGI_SLICE} /* REVERSE */,
     {BK_FX, ENGI_SLICE} /* USR SLICE */,
 #endif
+    /* Append collections: existing factory/favourite identities stay unchanged. */
+    {BK_CHIP, 3} /* NES PLS12 */, {BK_CHIP, 3} /* NES PLS50 */, {BK_CHIP, 3} /* NES PLUCK */, {BK_CHIP, 3} /* NES TRI */,
+    {BK_CHIP, 3} /* GB WAVE BS */, {BK_CHIP, 3} /* GB HOLLOW */, {BK_CHIP, 3} /* GB ORGAN */, {BK_CHIP, 3} /* GB ARP */,
+    {BK_INST, 2} /* VIOLIN */, {BK_INST, 1} /* CLARINET */, {BK_INST, 2} /* OBOE */, {BK_INST, 1} /* BASSOON */,
+    {BK_INST, ENGI_PHYS} /* HARPSICHORD */, {BK_INST, ENGI_PHYS} /* OUD */,
+    {BK_LOFI, 3}, {BK_LOFI, 3}, {BK_LOFI, 3}, {BK_LOFI, 3},
 };
 #define NBANK (sizeof BANK / sizeof BANK[0])
 /* Resolved against engine preset names; keep this order for stored favourites and PC. */
-static const uint8_t bank_pi[NBANK] = {
+static const uint8_t bank_pi[] = {
     0, 1, 3, 2, 5, 6, 7, 4, 12, 0, 0, 8, 3, 1, 1, 10,
     2, 18, 18, 12, 3, 20, 0, 1, 2, 4, 5, 0, 8, 9, 1, 3,
     0, 21, 0, 1, 2, 3, 4, 6, 8, 5, 6, 7, 13, 5, 11, 14,
@@ -703,7 +737,12 @@ static const uint8_t bank_pi[NBANK] = {
     11, 13, 14, 16, 17, 18, 19, 21, 22, 5, 7, 19, 20, 1, 2, 3,
     4, 11, 4, 3, 4, 3, 10, 4, 12, 6, 7, 5, 6, 1, 3, 23,
     24, 25, 5, 6, 7, 8, 9, 10, 7,
+#if FELUCCA_SLICE
+    0, 1, 2, 3,
+#endif
+    8, 9, 10, 11, 12, 13, 14, 15, 8, 22, 9, 23, 26, 27, 16, 17, 18, 19,
 };
+_Static_assert(NELEM(bank_pi) == NBANK, "every browser entry has an engine-local index");
 static void bank_resolve(void) {} /* Existing host fixtures may call this. */
 UI_SMALL static uint32_t base_pos(uint32_t *total)            /* list index of the selected track's preset (no favourites) */
 {

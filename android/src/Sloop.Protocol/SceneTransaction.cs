@@ -48,7 +48,7 @@ public static class SceneTransactionCodec
             for (int i = 0; i < 64; i++, o += 11)
             {
                 for (int j = 0; j < 4; j++) if (p[o + j] > 127) throw new FormatException("Invalid note.");
-                if (p[o + 4] > 4 || p[o + 5] > 2 || (p[o + 6] & ~0x7b) != 0 || p[o + 7] > 127 || p[o + 10] > 63)
+                if (p[o + 4] > 4 || p[o + 5] > 2 || (p[o + 6] & ~0xfb) != 0 || p[o + 7] > 127 || p[o + 10] > 63)
                     throw new FormatException("Invalid step.");
             }
             for (int i = 0; i < 16; i++, o++) for (int j = 0; j < 4; j++)

@@ -37,6 +37,8 @@ check("offline: no other file next to it (no relative src / href)", not rel)
 check("offline: no url() to a file", not re.search(r'url\((?!data:)["\']?[A-Za-z]', off))
 check("offline: no app, no service worker (a file has no site)",
       "serviceWorker" not in off and "webmanifest" not in off and 'id="install"' not in off)
+check("offline: preview explicitly uses the installed app, without importing absent modules",
+      'const previewFile = true ||' in off and 'if (previewFile)' in off and 'id="preview-file-help"' in off)
 
 # the site without internet: a site made from any package (a fake one with the identity make_site checks)
 tmp = Path(tempfile.mkdtemp())
@@ -48,7 +50,7 @@ try:
         pkg[i * make_site.BLK + make_site.KEEP] = 0x7D
     pkg[2000:2016] = b"FELUCCA-LOADER-1"
     (tmp / "p.fwsc").write_bytes(bytes(pkg))
-    make_site.main(tmp / "p.fwsc", "9.9", tmp / "site")
+    make_site.main(tmp / "p.fwsc", "9.9", tmp / "site", preview=tmp / 'no-preview')
     app = tmp / "site" / "webapp"
     sw = (app / "sw.js").read_text(encoding="utf-8")
     files = json.loads(re.search(r"const FILES = (\[.*?\]);", sw).group(1))
@@ -69,11 +71,11 @@ try:
               'href="../sloop.webmanifest"' in h and 'register("../sw.js")' in h and "beforeinstallprompt" in h)
     stamp = sw.split('const STAMP = "')[1].split('"')[0]
     (tmp / "site2").mkdir()
-    make_site.main(tmp / "p.fwsc", "9.9", tmp / "site2")
+    make_site.main(tmp / "p.fwsc", "9.9", tmp / "site2", preview=tmp / 'no-preview')
     same = (tmp / "site2" / "webapp" / "sw.js").read_text(encoding="utf-8").split('const STAMP = "')[1].split('"')[0]
     pkg[3000] ^= 1
     (tmp / "p.fwsc").write_bytes(bytes(pkg))
-    make_site.main(tmp / "p.fwsc", "9.9", tmp / "site2")
+    make_site.main(tmp / "p.fwsc", "9.9", tmp / "site2", preview=tmp / 'no-preview')
     other = (tmp / "site2" / "webapp" / "sw.js").read_text(encoding="utf-8").split('const STAMP = "')[1].split('"')[0]
     check("sw.js: the same site, the same stamp; a file changed, a new one", stamp == same and stamp != other)
 finally:

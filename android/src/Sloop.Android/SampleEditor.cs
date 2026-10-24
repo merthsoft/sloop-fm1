@@ -83,6 +83,7 @@ public sealed partial class MainActivity
     protected override async void OnActivityResult(int requestCode, Result resultCode, Intent? data)
     {
         base.OnActivityResult(requestCode, resultCode, data);
+        try {
         await FileResultAsync(requestCode, resultCode, data);
         if (requestCode == ExportKitRequest) {
             if (resultCode == Result.Ok && data?.Data is {} kitUri) await samples.ExportKitAsync(kitUri); else samples.PendingKitExport = null;
@@ -91,6 +92,7 @@ public sealed partial class MainActivity
         if (requestCode == ExportWaveRequest) {
             if (resultCode == Result.Ok && data?.Data is {} destination) await samples.ExportAsync(destination); else samples.PendingExport = null;
         }
+        }catch(Exception error){editing.SetStatus("File operation failed: "+error.Message);}
     }
 #pragma warning restore CS0672
     private void AddAdvancedSampleEditor()

@@ -1,5 +1,22 @@
-> **Current MerthSloop integration:** INFO protocol **15**, upstream 2.7.1 layout (71 track parameters, engine parameters 63–70). DSYN **72–76** and LIVE **77** keep upstream meanings. Fork extensions: scene **85** (reserved/disabled in production), performance **86**, grooves **87**, USB return **88**, musical starters **89**. Continuations use upstream flags bits **3–6**. Discover descriptors and capabilities; earlier sections retain historical release context.
+> **Current MerthSloop integration:** INFO protocol **16**, upstream 2.8 layout (71 track parameters, engine parameters 63–70). DSYN **72–76** and LIVE **77** keep upstream meanings. Fork extensions: scene **85** (reserved/disabled in production), performance **86**, grooves **87**, USB return **88**, musical starters **89**. Continuations use upstream flags bits **3–6**. Discover descriptors and capabilities; earlier sections retain historical release context.
 
+
+## MerthSloop STEP legato extension
+
+Protocol 16 retains the v5 11-byte synth STEP layout. Flags byte bits 0–6
+retain accent, slide and four continuations. In the existing `hi` extension:
+bit 0 remains level bit 7, bit 1 remains ratchet bit 7, bit 2 carries persisted
+`SF_LEG` (flags bit 7), and bit 3 declares an authoritative legato value.
+Replies set bit 3. A writer setting bit 3 replaces the marker from bit 2;
+older writes without bit 3 preserve the destination's existing legato marker.
+Every MIDI payload byte remains seven-bit safe. No new command or STEP length.
+
+Clients must check INFO >=16 before authoring legato. Older firmware can accept
+ordinary steps with the unused high bits ignored; it cannot faithfully author
+legato. The updated web writer and Android adapter reject that unsupported edit.
+Android native snapshot files write `SLOOP-NATIVE-2` and continue reading version
+1. Scene schema 1 keeps the same raw-byte shape but accepts flags mask `0xfb`;
+older validators reject the new marker rather than silently dropping it.
 
 # SLOOP editor protocol (SysEx over USB-MIDI)
 

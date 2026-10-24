@@ -359,7 +359,7 @@ static int32_t glide_ticks(int32_t g)                    /* control ticks of TIM
 static void glide_set(track_t *t, voice_t *v, int glide)
 {
     int32_t d, ticks;
-    if (!glide || !v->pitch_cur) {
+    if (!glide) {
         v->pitch_cur = v->pitch16;
         v->pitch_frac = 0;
         v->gstep = 0;
@@ -388,7 +388,7 @@ static void voice_start(track_t *t, voice_t *v, uint32_t note, uint32_t vel, int
     v->stage = 1;
     v->age = ++vage;
     v->pitch16 = (int32_t)note * 16;
-    glide_set(t, v, glide);
+    glide_set(t, v, glide && (sounding || v->pitch_cur));  /* a sounding MIDI 0 still has a pitch */
     v->penv = 32767;                                    /* the pitch envelope starts over (not on legato) */
     if (!sounding) {
         v->env = 0;
@@ -460,7 +460,7 @@ static void mono_play(track_t *t, uint32_t note, uint32_t vel, int retrig, int g
     t->mono_note = (uint8_t)note;
 }
 
-/* the note the mono stack asks for (PRIO: LAST / LOW / HIGH), 0 = none */
+/* the note the mono stack asks for (PRIO: LAST / LOW / HIGH); nmono says if one exists */
 static uint32_t mono_pick(const track_t *t)
 {
     uint32_t i, n;
@@ -527,7 +527,7 @@ static void trk_note_on(track_t *t, uint32_t note, uint32_t vel)
         return;
     }
     {
-        uint32_t sounding = t->mono_note && t->v[0].active && t->v[0].gate, want;
+        uint32_t sounding = t->nmono && t->v[0].active && t->v[0].gate, want;
         mono_remove(t, note);
         if (t->nmono >= 8u)
             mono_remove(t, t->mono_stack[0]);
@@ -556,7 +556,7 @@ static void strum_cancel(const track_t *t, uint32_t note, int all)
 }
 static void trk_note_off(track_t *t, uint32_t note)
 {
-    uint32_t i, k = 0, mode = (uint32_t)t->p[P_VOICE];
+    uint32_t i, k = 0, mode = (uint32_t)t->p[P_VOICE], was_mono = t->nmono;
     if (is_drum(t))
         return;                                         /* one-shots */
     strum_cancel(t, note, 0);
@@ -570,9 +570,9 @@ static void trk_note_off(track_t *t, uint32_t note)
                                                          * not stay in the MONO stack (after Felucca 1.0) */
     if (mode != V_POLY) {
         uint32_t nv = mode == V_UNISON ? trk_nvoice(t) : 1u;
-        if (t->mono_note == note) {
+        if (was_mono && t->mono_note == note) {
             uint32_t next = mono_pick(t);
-            if (next) {                                 /* fall back to a held note, legato */
+            if (t->nmono) {                             /* fall back to a held note, including MIDI 0 */
                 mono_play(t, next, t->v[0].vel, 0, t->p[P_GLIDE] != 0);
             } else {
                 for (i = 0; i < nv; i++)
@@ -586,7 +586,7 @@ static void trk_note_off(track_t *t, uint32_t note)
     }
     for (i = 0; i < NVOICE; i++)                        /* POLY voices (also ones left from another mode: */
         if (t->v[i].note == note && t->v[i].gate &&     /* VOICE changed while they were held) */
-            (mode == V_POLY || i >= (mode == V_UNISON ? trk_nvoice(t) : 1u) || t->mono_note != note)) {
+            (mode == V_POLY || i >= (mode == V_UNISON ? trk_nvoice(t) : 1u) || !t->nmono || t->mono_note != note)) {
             t->v[i].gate = 0;
             t->v[i].stage = 3;
         }

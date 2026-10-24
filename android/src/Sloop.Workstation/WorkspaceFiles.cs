@@ -17,7 +17,7 @@ public static class WorkspaceFiles
     {
         PatternValidation.Validate(p);
         Write(path,w=> {
-            w.Write("SLOOP-NATIVE-1");w.Write(p.Id.ToByteArray());w.Write(p.Revision.ToByteArray());
+            w.Write("SLOOP-NATIVE-2");w.Write(p.Id.ToByteArray());w.Write(p.Revision.ToByteArray());
             foreach(var t in p.Tracks) {
                 w.Write(t.Id.ToByteArray());w.Write(t.IsDrum);w.Write(t.Length);w.Write(t.Capabilities.Identity);
                 w.Write(t.Parameters.Count);foreach(var pair in t.Parameters.OrderBy(p=>p.Key)){w.Write(pair.Key);w.Write(pair.Value);}
@@ -34,7 +34,7 @@ public static class WorkspaceFiles
     public static HardwarePattern LoadHardware(string path)
     {
         using var r=new BinaryReader(File.OpenRead(path));
-        if(r.ReadString()!="SLOOP-NATIVE-1")throw new FormatException("Unknown native pattern file.");
+        if(r.ReadString() is not ("SLOOP-NATIVE-1" or "SLOOP-NATIVE-2"))throw new FormatException("Unknown native pattern file.");
         var id=new Guid(r.ReadBytes(16));var revision=new Guid(r.ReadBytes(16));var tracks=ImmutableArray.CreateBuilder<HardwareTrack>(4);
         int Count(int maximum){int n=r.ReadInt32();if(n<0||n>maximum)throw new FormatException("Invalid native collection size.");return n;}
         for(int track=0;track<4;track++) {

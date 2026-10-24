@@ -36,6 +36,7 @@ static float output[CTL * 2];
 
 void preview_init(void)
 {
+    punch_boot_init();
     uint32_t i, k;
     memset(user_flash, 0xFF, sizeof user_flash);
     for (i = 0; i < G_COUNT; i++) song.g[i] = GP[i].def;
@@ -88,7 +89,7 @@ void preview_step(uint32_t k, uint32_t i)
         memcpy(s, transfer, sizeof *s);
         s->n = (uint8_t)clamp(s->n, 0, 4); s->time %= 3u;
         for (uint32_t j = 0; j < 4; j++) s->note[j] &= 127u;
-        s->vel &= 127u; s->flags &= SF_ACCENT | SF_SLIDE | SF_TIES;
+        s->vel &= 127u; s->flags &= SF_ACCENT | SF_SLIDE | SF_TIES | SF_LEG;
     }
     trk[k].micro[i] = (int8_t)clamp((int8_t)transfer[10], MICRO_MIN, MICRO_MAX);
     uint32_t shift = (i & 3u) * 2u;

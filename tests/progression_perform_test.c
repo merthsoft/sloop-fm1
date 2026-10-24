@@ -65,9 +65,104 @@ static void reset_case(void)
 }
 static void arm(void){knob(0,1);if(!progression.active||!sequence_browser||sequence_page!=4)fprintf(stderr,"arm: active=%u browser=%u page=%u held=%u phys=%u sus=%u ext=%u rec=%u wait=%u play=%u panic=%u lock=%u quiet=%u\n",progression.active,sequence_browser,sequence_page,TSEL->nheld,TSEL->arp_phys,sus_on[0],progression_external_busy(0),song.rec,rec_wait,song.playing,panic_req,ly_lock,ly_quiet());assert(progression.active&&sequence_browser&&sequence_page==4);}
 
+static void modifier_cases(void)
+{
+    static const uint8_t black[11]={1,3,5,8,10,13,15,17,20,22,25};
+    static const uint8_t expect[11][4]={
+        {60,63,67},{60,64,67,71},{60,65,67},{60,64,67,74},{64,67,72},
+        {60,62,67},{60,64,67,81},{60,64,67,71},{60,64,67,70},{55,60,64},{60,67,76}
+    };
+    static const uint8_t count[11]={3,4,3,4,3,3,4,4,4,3,3};
+    static const uint8_t white[16]={0,2,4,6,7,9,11,12,14,16,18,19,21,23,24,26};
+    for(unsigned arp=0;arp<2;arp++) {
+        reset_case();TSEL->p[P_AMODE]=arp?ARP_UP:0;
+        sequence_scale=1;sequence_custom_count=3;
+        sequence_custom_degree[0]=0;sequence_custom_degree[1]=3;sequence_custom_degree[2]=4;
+        arm();
+        for(unsigned pad=0;pad<16;pad++) {
+            static const uint8_t roots[3]={60,65,67}, thirds[3]={64,69,71}, fifths[3]={67,72,74};
+            uint8_t want[3]={(uint8_t)clamp(roots[pad%3]+12*(pad/3),0,127),
+                (uint8_t)clamp(thirds[pad%3]+12*(pad/3),0,127),(uint8_t)clamp(fifths[pad%3]+12*(pad/3),0,127)};
+            keys(1u<<white[pad]);held(want,3);keys(0);
+        }
+        keys(1);
+        for(unsigned m=0;m<11;m++) {
+            uint32_t attacks_before=nattacks;
+            keys(1|(1u<<black[m]));held(expect[m],count[m]);
+            /* C and G stay held when the third changes: no blanket reattack. */
+            if(!arp&&m==0)assert(nattacks==attacks_before+1);
+            keys(1);held((uint8_t[]){60,64,67},3);
+        }
+        keys(1|(1u<<2));held((uint8_t[]){65,69,72},3);
+        keys(1u<<2);held((uint8_t[]){65,69,72},3);keys(0);
+        knob(2,1);keys(1);keys(0);
+        for(unsigned m=0;m<11;m++) {
+            keys(1u<<black[m]);held(expect[m],count[m]);keys(0);held(expect[m],count[m]);
+            keys(1u<<black[m]);held((uint8_t[]){60,64,67},3);keys(0);
+        }
+        /* A later browser edit changes the next pad, not the sounding slot
+         * when its modifier changes. CHROM on SEL does not disable LIVE mods. */
+        TSEL->p[P_QUANT]=3;TSEL->p[P_CHORD]=0;
+        sequence_octave=2;sequence_root=7;sequence_scale=2;
+        keys(1u<<1);held((uint8_t[]){60,63,67},3);keys(0);
+        keys(1u<<1);held((uint8_t[]){60,64,67},3);keys(0);
+        /* Quality alternatives toggle exclusively, as ordinary chord mode. */
+        keys(1u<<5);keys(0);keys(1u<<13);held((uint8_t[]){60,62,67},3);keys(0);
+        assert(!(chord_latch_mods[0]&CM_SUS4) && (chord_latch_mods[0]&CM_SUS2));
+        keys(1u<<13);keys(0);keys(1u<<17);keys(0);keys(1u<<20);
+        held((uint8_t[]){60,64,67,70},4);keys(0);
+        assert(!(chord_latch_mods[0]&CM_MAJ7) && (chord_latch_mods[0]&CM_MIN7));
+        knob(2,-1);assert(!TSEL->nheld&&!TSEL->arp_n);stopped();
+        assert(!chord_latch_mods[0]);
+    }
+    puts("perform: all16 pads with3-slot repeats,11 momentary/toggle modifiers, snapshot and direct/arp ownership PASS");
+    /* Pool-only checks miss shortened live gates. Hold actual generated roots
+     * (including UP8's extra tonic), then alter only the third mid-gate. */
+    static const uint8_t modes[4]={ARP_UP,ARP_UP8,ARP_REPEAT,ARP_PULSE};
+    for(unsigned mode=0;mode<4;mode++) {
+        reset_case();sequence_scale=1;sequence_custom_degree[0]=0;
+        TSEL->p[P_AMODE]=modes[mode];TSEL->p[P_AOCT]=2;TSEL->p[P_AGATE]=127;
+        arm();keys(1);
+        unsigned target=mode==1?84:mode==2?67:60,wait=0;
+        while(!(TSEL->arp_n && TSEL->arp_notes[0]==target) && wait++<10000)advance(1);
+        assert(wait<10000);
+        uint32_t before=nattacks,off_before=noffs,gate=TSEL->arp_off,index=TSEL->arp_idx;
+        keys(1|(1u<<1));
+        assert(sounding[0][target] && TSEL->arp_n && TSEL->arp_off<gate && TSEL->arp_idx==index);
+        assert(nattacks==before && noffs==off_before+(mode==3?2u:0u)); /* PULSE loses E in both octaves. */
+        keys(1);assert(sounding[0][target] && nattacks==before);
+        advance(500);keys(0);stopped();
+    }
+    /* All progression lengths still fill the keyboard at clipped registers,
+     * sparse scales and voice-led modifier changes. */
+    reset_case();TSEL->p[P_AMODE]=0;arm();sequence_root=11;sequence_scale=5;sequence_vlead=1;
+    for(unsigned count=1;count<=8;count++)for(unsigned extreme=0;extreme<2;extreme++) {
+        sequence_custom_count=count;sequence_octave=extreme?3:-3;
+        for(unsigned slot=0;slot<count;slot++)sequence_custom_degree[slot]=(slot*3)%7;
+        for(unsigned pad=0;pad<16;pad++) {
+            keys(1u<<white[pad]);
+            for(unsigned m=0;m<11;m++) {
+                keys((1u<<white[pad])|(1u<<black[m]));
+                assert(TSEL->nheld && TSEL->nheld<=4);
+                for(unsigned i=0;i<TSEL->nheld;i++) {
+                    assert(TSEL->held[i]<128);
+                    if(i)assert(TSEL->held[i]>TSEL->held[i-1]);
+                }
+                keys(1u<<white[pad]);
+            }
+            keys(0);
+            assert(noffs==nattacks);nattacks=noffs=0;
+        }
+    }
+    stopped();
+    puts("perform: unchanged generated gates, UP8 expansion and count1..8 sparse/extreme/VLEAD bounds PASS");
+}
+
 int main(int argc,char **argv)
 {
     outdir=argc>1?argv[1]:"build/host";
+    settings.palette=NPALETTES-1u;palette_set(settings.palette);
+    modifier_cases();
     reset_case();arm();
     keys(1);held((uint8_t[]){67,70,74},3);
     uint32_t phase=TSEL->arp_pos;
@@ -78,13 +173,13 @@ int main(int argc,char **argv)
     keys(1u<<4);held((uint8_t[]){62,65,68},3);keys(0);
     keys(1u<<6);held((uint8_t[]){65,68,72},3);keys(0);
     keys(1u<<7);held((uint8_t[]){79,82,86},3);keys(0);
-    keys(1u<<1);assert(!TSEL->nheld);keys(0); /* black keys deliberately unused in slice 1 */
+    keys(1u<<1);assert(!TSEL->nheld);keys(0); /* modifiers alone do not start a chord */
     knob(2,1);keys(1);keys(0);held((uint8_t[]){67,70,74},3);
     uint8_t old[4];memcpy(old,TSEL->held,3);
     knob(1,1);held(old,3);keys(1);held((uint8_t[]){79,82,86},3);keys(0);
     uint32_t previous=nattacks;keys(1);advance(800);assert(nattacks>previous);keys(0);
     knob(2,-1);assert(!TSEL->nheld&&!TSEL->arp_n);stopped();
-    puts("perform: custom 5-1-2-4, stale release, HOLD, retrigger, next-chord octave and black-key exclusion PASS");
+    puts("perform: custom 5-1-2-4, stale release, HOLD, retrigger, next-chord octave and modifier-only silence PASS");
 
     reset_case();arm();sequence_vlead=1;
     keys(1);uint8_t lower[4];memcpy(lower,TSEL->held,3);keys(0);
@@ -140,9 +235,51 @@ int main(int argc,char **argv)
     reset_case();TSEL->p[P_AMODE]=0;arm();tap(B_REC);drain_output();keys(1);
     assert(song.playing&&song.rec==1&&TSEL->rh_n==3&&TSEL->step[0].n==3);
     advance(1000);assert(nattacks==3&&TSEL->rh_n==3);
+    keys(1|(1u<<1));assert(TSEL->rh_n==3);held((uint8_t[]){67,71,74},3);
+    uint32_t ignored,changed_step=rec_target(TSEL,&ignored)%trk_len(TSEL);step_t changed;
+    note_effective(TSEL,changed_step,&changed);assert(changed.n==3);
+    assert(note_slot(&changed,70)==changed.n);
+    assert(changed.flags&SF_CONT(note_slot(&changed,67)));
+    assert(changed.flags&SF_CONT(note_slot(&changed,74)));
+    assert(!(changed.flags&SF_CONT(note_slot(&changed,71))));
+    advance(400);note_effective(TSEL,changed_step+1,&changed);
+    assert(changed.n==3&&note_slot(&changed,70)==changed.n);
+    keys(1);assert(TSEL->rh_n==3);held((uint8_t[]){67,70,74},3);
     keys(0);assert(!TSEL->rh_n&&!TSEL->arp_n);uint32_t ties=0;
     for(uint32_t i=1;i<16;i++)ties+=TSEL->step[i].time==ST_TIE;
     assert(ties);stopped();
+    /* Recorded NOTE/CONT fields, rather than only runtime held[], must drive
+     * the same modified harmony during ordinary stored-pattern playback. */
+    seq_start();drain_output();uint32_t playback_wait=0;
+    while(TSEL->seq_abs%trk_len(TSEL)!=changed_step && playback_wait++<5000)advance(1);
+    assert(playback_wait<5000 && TSEL->seq_n==3);
+    assert(sounding[0][67]&&sounding[0][71]&&sounding[0][74]&&!sounding[0][70]);
+    while(TSEL->seq_abs%trk_len(TSEL)!=changed_step+1 && playback_wait++<5000)advance(1);
+    assert(playback_wait<5000 && sounding[0][71]&&!sounding[0][70]);stopped();
+    reset_case();TSEL->p[P_AMODE]=0;arm();tap(B_REC);drain_output();keys(1);
+    uint32_t near_wait=0;
+    while(!((rec_target(TSEL,&ignored),ignored)) && near_wait++<500)advance(1);
+    assert(near_wait<500);keys(1|(1u<<1));keys(1);
+    uint32_t sk;for(sk=0;sk<TSEL->rskip_n && TSEL->rskip[sk]!=70;sk++);
+    if(sk==TSEL->rskip_n)fprintf(stderr,"later modifier missing skip70: abs%u n%u [%u %u %u %u]\n",TSEL->rskip_abs,TSEL->rskip_n,TSEL->rskip[0],TSEL->rskip[1],TSEL->rskip[2],TSEL->rskip[3]);
+    assert(sk<TSEL->rskip_n);
+    const step_t *future=&TSEL->step[TSEL->rskip_abs%trk_len(TSEL)];
+    assert(future->n==4 && TSEL->rskip_n==4);
+    for(unsigned j=0;j<future->n;j++) {
+        for(sk=0;sk<TSEL->rskip_n && TSEL->rskip[sk]!=future->note[j];sk++);
+        assert(sk<TSEL->rskip_n);
+    }
+    uint32_t boundary_attacks=nattacks;advance(100);
+    assert(nattacks==boundary_attacks);keys(0);stopped();
+    reset_case();TSEL->p[P_AMODE]=0;TSEL->p[P_SLEN]=4;
+    arm();tap(B_REC);drain_output();keys(1);
+    uint32_t wrap_wait=0;
+    while(rec_target(TSEL,&ignored)<4u && wrap_wait++<1500)advance(1);
+    assert(wrap_wait<1500);uint32_t wrap_before=nattacks;
+    keys(1|(1u<<1));held((uint8_t[]){67,71,74},3);
+    assert(nattacks==wrap_before+1 && TSEL->rh_n==3);
+    for(unsigned s=0;s<4;s++)assert(TSEL->step[s].n<=4);
+    keys(1);held((uint8_t[]){67,70,74},3);keys(0);stopped();
     reset_case();TSEL->p[P_AMODE]=0;arm();keys(1);TSEL->p[P_AMODE]=ARP_UP;advance(1);
     assert(progression.active&&!progression.direct&&TSEL->nheld==3);advance(300);
     TSEL->p[P_AMODE]=0;advance(1);assert(progression.active&&progression.direct&&TSEL->arp_n==3);stopped();

@@ -28,7 +28,7 @@ public sealed record AppNote(Guid Id, Guid PartId, Tick Start, Tick Duration, in
 public sealed record AppPattern(Guid Id, Guid Revision, int TicksPerQuarter, Tick Length,
     ImmutableArray<AppNote> Notes) : Pattern(Id, Revision);
 public enum StepTime { Note, Tie, Rest }
-[Flags] public enum StepFlags { None = 0, Accent = 1, Slide = 2, Continue1 = 8, Continue2 = 16, Continue3 = 32, Continue4 = 64 }
+[Flags] public enum StepFlags { None = 0, Accent = 1, Slide = 2, Continue1 = 8, Continue2 = 16, Continue3 = 32, Continue4 = 64, Legato = 128 }
 public enum HitLevel { Normal, Ghost, Soft, Hard }
 public enum FillCondition { Normal, FillOnly, NoFill, ReservedNormal }
 /// <summary>All four physical slots retained, including inactive slot data. Count on SynthStep selects active slots.</summary>

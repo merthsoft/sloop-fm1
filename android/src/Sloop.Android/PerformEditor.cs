@@ -33,6 +33,7 @@ public sealed partial class MainActivity
         if(state.Workspace!=Sloop.Core.Workspace.Perform||!performOptions.FollowHardwareOctave)return;
         if(performanceRegister is not null)performanceRegister.Text=RegisterDescription;
         playingSurface?.UpdateLabels(PerformanceLabels());
+        UpdateAccessiblePadLabels();
         if(performOptions.Surface==PerformSurface.DrumPads)return;
         RevoicePerformanceRegister();
     }
@@ -41,6 +42,7 @@ public sealed partial class MainActivity
         performOptions=performOptions with{Octave=Math.Clamp(performOptions.Octave+delta,1,6)};
         if(performanceRegister is not null)performanceRegister.Text=RegisterDescription;
         playingSurface?.UpdateLabels(PerformanceLabels());
+        UpdateAccessiblePadLabels();
         if(performOptions.Surface!=PerformSurface.DrumPads)RevoicePerformanceRegister();
     }
     void RevoicePerformanceRegister()
@@ -66,6 +68,7 @@ public sealed partial class MainActivity
     }
     void StopPerformance()
     {
+        try{accessiblePadGesture.Stop();}catch(Exception error){performanceCheck="Accessible note release failed: "+error.Message;}
         ResetMidiInputNotes();
         ClearHardwarePerformanceTouches();
         performFingers.Clear();latchedDegree=null;latchedOctave=null;previousVoicing=null;performShape=ChordShape.Diatonic;
@@ -129,9 +132,11 @@ public sealed partial class MainActivity
         string[] labels=PerformanceLabels();
         int columns=o.Surface switch{PerformSurface.Chords=>4,PerformSurface.DrumPads=>4,PerformSurface.Keyboard=>12,PerformSurface.Ribbon=>24,_=>6};
         playingSurface=new PerformanceSurfaceView(this,labels,columns,o.Surface==PerformSurface.Keyboard,o.Surface==PerformSurface.Ribbon);
+        playingSurface.ImportantForAccessibility=ImportantForAccessibility.No;
         playingSurface.Cancelled+=StopPerformance;
         playingSurface.Play+=(pointer,cell,velocity,held)=>PerformSafely(()=>PlayPerformance(pointer,cell,velocity,held));
         AddPerformanceGestureView(playingSurface,o.Surface==PerformSurface.Ribbon?120:o.Surface==PerformSurface.Chords?80*((labels.Length+3)/4):160);
+        AddAccessiblePerformancePads(labels);
         chordJoystick=null;
         if(o.Surface==PerformSurface.Chords) {
             var joystick=new ChordJoystickView(this,Mapping.Directions);chordJoystick=joystick;joystick.Cancelled+=StopPerformance;joystick.Change+=shape=>PerformSafely(()=> {
@@ -200,22 +205,22 @@ public sealed partial class MainActivity
     {
         StopPerformance();new global::Android.App.AlertDialog.Builder(this)!.SetTitle(title)!.SetSingleChoiceItems(options,selected,(sender,a)=>{choose(a.Which);((global::Android.App.AlertDialog)sender!).Dismiss();ShowWorkspace();})!.SetNegativeButton("Cancel",(_,_)=>{})!.Show();
     }
-    void PlayPerformance(int pointer,int cell,int touchVelocity,bool held,bool freshChord=true)
+    void PlayPerformance(int pointer,int cell,int touchVelocity,bool held,bool freshChord=true,bool accessible=false)
     {
-        var o=performOptions;string owner=$"perform:{pointer}";
-        if(!held){performFingers.Remove(pointer);if(!(o.Latch&&o.Surface==PerformSurface.Chords)){connection.Performer.Release(owner);if(performFingers.Count==0&&performReadout is not null)performReadout.Text="Released · last voicing available in touch preview.";}return;}
+        var o=performOptions;bool latch=o.Latch&&!accessible;string owner=$"perform:{pointer}";
+        if(!held){performFingers.Remove(pointer);if(!(latch&&o.Surface==PerformSurface.Chords)){connection.Performer.Release(owner);if(performFingers.Count==0&&performReadout is not null)performReadout.Text="Released · last voicing available in touch preview.";}return;}
         if(PerformChannel<0){if(performReadout is not null)performReadout.Text="FM1 track MIDI channel is OFF · enable it in GLO > MIDI.";return;}
         if(pointer>=0)performFingers[pointer]=(cell,touchVelocity);
         int velocity=Math.Clamp(o.Velocity*touchVelocity/100,1,127);LiveNote[] notes;LiveNote? bass=null;string name;
-        if(o.Surface==PerformSurface.Chords){if(o.Latch&&pointer>=0&&freshChord)latchedOctave=PerformOctave;var chord=PerformanceHarmony.Chord(o.Key,o.Scale,o.Latch?latchedOctave??PerformOctave:PerformOctave,Mapping.Degree(cell),performShape,o.Inversion,o.VoiceLead,previousVoicing?.Notes,o.PartWriting,previousVoicing,PerformanceBassChannel>=0);previousVoicing=chord;
+        if(o.Surface==PerformSurface.Chords){if(latch&&pointer>=0&&freshChord)latchedOctave=PerformOctave;var chord=PerformanceHarmony.Chord(o.Key,o.Scale,latch?latchedOctave??PerformOctave:PerformOctave,Mapping.Degree(cell),performShape,o.Inversion,o.VoiceLead,previousVoicing?.Notes,o.PartWriting,previousVoicing,PerformanceBassChannel>=0);previousVoicing=chord;
             notes=PerformanceHarmony.Thicken(chord.Notes,o.ExtraOctaves).Select(n=>new LiveNote(PerformChannel,n)).ToArray();name=chord.Name;
             if(PerformanceBassChannel>=0)bass=new(PerformanceBassChannel,chord.Bass);
-            if(o.Latch){owner="perform:latch";latchedDegree=cell;}
+            if(latch){owner="perform:latch";latchedDegree=cell;}
         } else {int pitch=o.Surface==PerformSurface.DrumPads?SlotBuilder.DrumLaneNote(cell):o.Surface==PerformSurface.Keyboard?Math.Clamp(12*(PerformOctave+1)+o.Key+cell,0,127):PerformanceHarmony.ScaleNote(o.Key,o.Scale,PerformOctave,cell);
             notes=[new(PerformChannel,pitch)];name=o.Surface==PerformSurface.DrumPads?$"Drum {cell+1}":PerformanceHarmony.Names[pitch%12];}
         connection.Performer.Hold(owner,notes,velocity,o.Style,o.Tempo,o.Division,o.StrumMs,bass,
-            retrigger:o.Surface==PerformSurface.Chords&&o.Latch&&pointer>=0&&freshChord);
-        if(performReadout is not null)performReadout.Text=$"{(connection.CanPerform?connection.Snapshot.IsGenericMidi?"MIDI":"FM1":"Offline · no audio")} · {name} · {string.Join(" ",notes.Select(n=>n.Pitch))} · velocity {velocity}{(o.Latch&&o.Surface==PerformSurface.Chords?" · LATCHED":"")}";
+            retrigger:o.Surface==PerformSurface.Chords&&latch&&pointer>=0&&freshChord);
+        if(performReadout is not null)performReadout.Text=$"{(connection.CanPerform?connection.Snapshot.IsGenericMidi?"MIDI":"FM1":"Offline · no audio")} · {name} · {string.Join(" ",notes.Select(n=>n.Pitch))} · velocity {velocity}{(latch&&o.Surface==PerformSurface.Chords?" · LATCHED":"")}";
     }
     void PerformanceSettings()
     {

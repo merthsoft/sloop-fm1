@@ -42,7 +42,7 @@ DELAY = {"open": 0.3, "start": 2.0, "reply": 0.01, "loader": 3.0, "reboot": 3.0,
          "wait_loader": 30.0, "wait_reboot": 40.0}
 
 EXIT = {"usage": 2, "badpkg": 2, "notfound": 3, "model": 6, "lost": 4, "stopped": 4, "badreq": 4,
-        "noloader": 5, "noreturn": 5, "mismatch": 6, "foreign": 6}
+        "noloader": 5, "noreturn": 5, "mismatch": 6, "foreign": 6, "ambiguous": 6}
 
 
 class InstallError(Exception):
@@ -251,21 +251,34 @@ class Updater:
         return [n for n in names if PORT_RE.search(n)]
 
     def find(self, want=None, only_port=True):
-        """the first matching port that answers the handshake (and want(identity))"""
+        """Require one responding FM-1; mode filtering must not hide another device."""
         outs = self.backend.output_names()
-        for name in self.candidates(only_port):
-            out = pair_output(name, outs)
-            if not out:
-                continue
-            try:
-                link = self.backend.open(name, out)
-            except Exception:
-                continue
-            ident = handshake(link, 2)
-            if ident and (want is None or want(ident)):
-                return Device(link, ident, name)
-            link.close()
-        return None
+        found = []
+        try:
+            for name in self.candidates(only_port):
+                out = pair_output(name, outs)
+                if not out:
+                    continue
+                try:
+                    link = self.backend.open(name, out)
+                except Exception:
+                    continue
+                try:
+                    ident = handshake(link, 2)
+                    if ident:
+                        found.append(Device(link, ident, name))
+                        link = None
+                finally:
+                    if link is not None:
+                        link.close()
+            if len(found) > 1:
+                raise InstallError("ambiguous", "Disconnect other FM-1 devices before installing")
+            if found and (want is None or want(found[0].id)):
+                return found.pop()
+            return None
+        finally:
+            for dev in found:
+                dev.link.close()
 
     def wait_for(self, want, secs):
         end = time.monotonic() + secs
@@ -307,12 +320,14 @@ class Updater:
 
     def check(self, dev, image, step):
         """step 1: the running firmware checks the package and starts the loader"""
-        step("start", dev.id.text)
-        dev.link.send(UPGRADE)
-        time.sleep(DELAY["start"])
-        served, finished, lost = self.serve(dev.link, image, FINISH_CHECK, DELAY["idle_check"],
-                                            lambda k, end: step("check", k))
-        dev.link.close()
+        try:
+            step("start", dev.id.text)
+            dev.link.send(UPGRADE)
+            time.sleep(DELAY["start"])
+            served, finished, lost = self.serve(dev.link, image, FINISH_CHECK, DELAY["idle_check"],
+                                                lambda k, end: step("check", k))
+        finally:
+            dev.link.close()
         if not finished:
             raise InstallError("lost" if lost else "stopped",
                                f"the FM-1 {'was disconnected' if lost else 'stopped answering'} after "
@@ -327,12 +342,14 @@ class Updater:
 
     def write(self, ota, image, step):
         """step 2: the loader reads and writes the whole package, then restarts"""
-        step("write", 0)
-        ota.link.send(UPGRADE)
-        time.sleep(DELAY["start"])
-        served, finished, lost = self.serve(ota.link, image, FINISH_WRITE, DELAY["idle_write"],
-                                            lambda k, end: step("write", min(99, end * 100 // len(image))))
-        ota.link.close()
+        try:
+            step("write", 0)
+            ota.link.send(UPGRADE)
+            time.sleep(DELAY["start"])
+            served, finished, lost = self.serve(ota.link, image, FINISH_WRITE, DELAY["idle_write"],
+                                                lambda k, end: step("write", min(99, end * 100 // len(image))))
+        finally:
+            ota.link.close()
         if not finished:
             raise InstallError("lost" if lost else "stopped",
                                f"the loader {'was disconnected' if lost else 'stopped answering'} after "
@@ -362,6 +379,9 @@ class Updater:
             raise InstallError("foreign", f"the FM-1 is in the update mode of another firmware ({dev.id.text}): "
                                           "finish that update with its own updater (M-UPGRADE), then install again")
         ota = dev if dev.id.loader else self.check(dev, image, step)
+        if not re.fullmatch(r"ota-FM-1_9\d\d", ota.id.text, re.I):
+            ota.link.close()
+            raise InstallError("foreign", f"unexpected update loader ({ota.id.text}); nothing written")
         self.write(ota, image, step)
         return self.verify(product, step)
 

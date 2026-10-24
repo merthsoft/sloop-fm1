@@ -160,6 +160,7 @@ public sealed partial class Fm1Connection
     {
         _ = CloseHardwarePerformanceAsync();
         ReleasePerformance();
+        performer?.Forget(); // Cleanup obligations belong to the MIDI epoch being discarded.
         StopPlaying();
         soundFingerprints.Clear();
         HardwareOctave = null;

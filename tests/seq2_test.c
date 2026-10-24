@@ -2234,9 +2234,185 @@ static void t_record_snap(void)
     check(1,"independent eighth/quarter recording snap, future/past held notes, chord grouping and loop wrap");
 }
 
+/* SLOOP 2.7.1 (a YouTube comment): several notes held while recording, on a POLY part. Each goes on until its own key is let
+ * go: "hit record, hold a note, play another one on top" used to end the first one with the second */
+typedef struct { uint8_t t; uint8_t n; uint8_t a, b, c; uint8_t cont; } want_t;   /* time, n, notes, CONT bits */
+static int steps_are(const track_t *t, const want_t *w, uint32_t nw)
+{
+    uint32_t i, ok = 1;
+    for (i = 0; i < nw; i++) {
+        const step_t *st = &t->step[i];
+        uint32_t good = st->time == w[i].t;
+        if (good && w[i].t == ST_NOTE)
+            good = st->n == w[i].n && st->note[0] == w[i].a && (w[i].n < 2u || st->note[1] == w[i].b) &&
+                   (w[i].n < 3u || st->note[2] == w[i].c) && ((st->flags & SF_CONT_ALL) / SF_CONT0) == w[i].cont;
+        if (!good) {
+            printf("seq2:   step %u: time %u n %u notes %u %u %u cont %x\n", i + 1, st->time, st->n, st->note[0], st->note[1],
+                   st->note[2], (st->flags & SF_CONT_ALL) / SF_CONT0);
+            ok = 0;
+        }
+    }
+    return (int)ok;
+}
+static void rec_go_to(track_t *t, uint32_t step, double frac)   /* the transport onto step (0-based), frac of it */
+{
+    double sb = (double)FS * 60.0 / 120.0 / 4.0 / CTL;
+    uint32_t into, slen, k;
+    while (trk_grid(t, &into, &slen) != step) run_block();
+    for (k = 0; k < (uint32_t)(sb * frac); k++) run_block();
+}
+static void rec_start16(track_t *t)
+{
+    reset(120);
+    t->p[P_VOICE] = V_POLY;
+    t->p[P_SLEN] = 16;
+    song.sel = 0;
+    song.rec = 1u;
+    transport_req = 1;
+    run_block();
+}
+static void t_hold2(void)
+{
+    track_t *t = &trk[0];
+    int ok;
+    enum { N = ST_NOTE, T = ST_TIE, R = ST_REST };
+    {   /* note 1 held, note 2 on top and let go first: note 1 goes on to its own end */
+        static const want_t W[16] = {{N, 1, 60, 0, 0, 0}, {T}, {T}, {T}, {N, 2, 60, 64, 0, 1}, {T}, {T}, {T},
+                                     {N, 1, 60, 0, 0, 1}, {T}, {T}, {T}, {R}, {R}, {R}, {R}};
+        int32_t a;
+        uint32_t into, slen;
+        rec_start16(t);
+        rec_go_to(t, 0, 0.2); input_on(t, 60, 100);
+        rec_go_to(t, 4, 0.3); input_on(t, 64, 100);
+        rec_go_to(t, 8, 0.3); input_off(t, 64);
+        rec_go_to(t, 12, 0.3); input_off(t, 60);
+        song.rec = 0;
+        ok = steps_are(t, W, 16);
+        while (trk_grid(t, &into, &slen) != 16u + 2u) run_block();
+        a = voice_of(t, 60);
+        rec_go_to(t, 16 + 6, 0.5);
+        ok &= a >= 0 && voice_of(t, 60) == a && voice_of(t, 64) >= 0;
+        rec_go_to(t, 16 + 10, 0.5);
+        ok &= voice_of(t, 60) == a && voice_of(t, 64) < 0;
+        rec_go_to(t, 16 + 13, 0.5);
+        ok &= voice_of(t, 60) < 0;
+        check(ok, "2.7.1 recording: hold a note, play another on top, let it go: the first goes on (one voice) to its own end");
+        transport_req = 2; run_block();
+    }
+    {   /* note 1 let go first: note 2 goes on alone */
+        static const want_t W[12] = {{N, 1, 60, 0, 0, 0}, {T}, {T}, {T}, {N, 2, 60, 64, 0, 1}, {T}, {N, 1, 64, 0, 0, 1}, {T},
+                                     {T}, {T}, {R}, {R}};
+        rec_start16(t);
+        rec_go_to(t, 0, 0.2); input_on(t, 60, 100);
+        rec_go_to(t, 4, 0.3); input_on(t, 64, 100);
+        rec_go_to(t, 6, 0.3); input_off(t, 60);
+        rec_go_to(t, 10, 0.3); input_off(t, 64);
+        song.rec = 0;
+        check(steps_are(t, W, 12), "2.7.1 recording: the first let go first: it ends there, the second goes on to its end");
+        transport_req = 2; run_block();
+    }
+    {   /* a chord built note by note, all let go together */
+        static const want_t W[10] = {{N, 1, 60, 0, 0, 0}, {T}, {N, 2, 60, 64, 0, 1}, {T}, {N, 3, 60, 64, 67, 3}, {T}, {T}, {T},
+                                     {R}, {R}};
+        rec_start16(t);
+        rec_go_to(t, 0, 0.2); input_on(t, 60, 100);
+        rec_go_to(t, 2, 0.3); input_on(t, 64, 100);
+        rec_go_to(t, 4, 0.3); input_on(t, 67, 100);
+        rec_go_to(t, 8, 0.2); input_off(t, 60); input_off(t, 64); input_off(t, 67);
+        song.rec = 0;
+        check(steps_are(t, W, 10), "2.7.1 recording: a chord built note by note: each note starts on its step, all held to the end");
+        transport_req = 2; run_block();
+    }
+    {   /* note 2 played late in a step (it goes into the next one, not tied yet) */
+        static const want_t W[12] = {{N, 1, 60, 0, 0, 0}, {T}, {T}, {T}, {T}, {N, 2, 60, 64, 0, 1}, {T}, {N, 1, 60, 0, 0, 1},
+                                     {T}, {T}, {R}, {R}};
+        rec_start16(t);
+        rec_go_to(t, 0, 0.2); input_on(t, 60, 100);
+        rec_go_to(t, 4, 0.85); input_on(t, 64, 100);
+        rec_go_to(t, 7, 0.3); input_off(t, 64);
+        rec_go_to(t, 10, 0.3); input_off(t, 60);
+        song.rec = 0;
+        check(steps_are(t, W, 12), "2.7.1 recording: the second note played late in a step (into the next): the first goes on");
+        transport_req = 2; run_block();
+    }
+    {   /* 2.7.2: LEGATO, a note played over the one held: recorded legato, played back legato (no new attack) */
+        static const want_t W[10] = {{N, 1, 48, 0, 0, 0}, {T}, {T}, {T}, {N, 1, 55, 0, 0, 0}, {T}, {T}, {T}, {R}, {R}};
+        uint32_t into, slen, st1;
+        rec_start16(t);
+        t->p[P_VOICE] = V_LEGATO;
+        t->p[P_ATK] = 30;                           /* (an attack of some length: a new one shows as stage 1) */
+        t->p[P_SUS] = 100;
+        t->p[P_GLIDE] = 0;
+        rec_go_to(t, 0, 0.1); input_on(t, 48, 100);
+        rec_go_to(t, 3, 0.9); input_on(t, 55, 100);  /* (into step 5: the first still held there) */
+        rec_go_to(t, 5, 0.3); input_off(t, 48);
+        rec_go_to(t, 8, 0.2); input_off(t, 55);
+        song.rec = 0;
+        ok = steps_are(t, W, 10) && (t->step[4].flags & SF_LEG) && !(t->step[0].flags & SF_LEG);
+        check(ok, "2.7.2 recording LEGATO: a note played over the held one is marked legato (SF_LEG), the first is not");
+        while (trk_grid(t, &into, &slen) != 16u + 3u) run_block();
+        rec_go_to(t, 16 + 3, 0.9);
+        st1 = t->v[0].stage;
+        while (trk_grid(t, &into, &slen) != 16u + 4u) run_block();
+        {   /* (a new attack: stage 1 and the envelope up to its peak; legato: it stays at the sustain level) */
+            int32_t e1 = t->v[0].env, emax = 0;
+            int b, att = 0;
+            for (b = 0; b < 6; b++) {
+                run_block();
+                att |= t->v[0].stage == 1u;
+                if (t->v[0].env > emax)
+                    emax = t->v[0].env;
+            }
+            ok = st1 == 2u && !att && emax <= e1 && t->v[0].gate && t->v[0].note == 55 && t->slide_glide == 0;
+        }
+        check(ok, "2.7.2 playback: the legato note takes over, the envelope goes on (no new attack, no glide of its own)");
+        rec_go_to(t, 16 + 9, 0.5);
+        check(!t->v[0].gate, "2.7.2 playback: the legato note ends where it was let go");
+        transport_req = 2; run_block();
+    }
+    {   /* 2.7.2: LEGATO, the second pressed early in a step the first is already held into (a TIE): legato too */
+        rec_start16(t);
+        t->p[P_VOICE] = V_LEGATO;
+        rec_go_to(t, 0, 0.1); input_on(t, 48, 100);
+        rec_go_to(t, 4, 0.2); input_on(t, 55, 100);
+        rec_go_to(t, 5, 0.3); input_off(t, 48);
+        rec_go_to(t, 8, 0.2); input_off(t, 55);
+        song.rec = 0;
+        check(t->step[3].time == ST_TIE && t->step[4].time == ST_NOTE && t->step[4].note[0] == 55 &&
+              (t->step[4].flags & SF_LEG), "2.7.2 recording LEGATO: over the held note early in a step it was tied into: legato");
+        transport_req = 2; run_block();
+    }
+    {   /* 2.7.2: MONO, the first let go before the second: not legato */
+        rec_start16(t);
+        t->p[P_VOICE] = V_MONO;
+        rec_go_to(t, 0, 0.1); input_on(t, 48, 100);
+        rec_go_to(t, 2, 0.3); input_off(t, 48);
+        rec_go_to(t, 4, 0.1); input_on(t, 55, 100);
+        rec_go_to(t, 6, 0.3); input_off(t, 55);
+        song.rec = 0;
+        check(t->step[4].time == ST_NOTE && t->step[4].note[0] == 55 && !(t->step[4].flags & SF_LEG),
+              "2.7.2 recording MONO: a note played after the first was let go is not legato");
+        transport_req = 2; run_block();
+    }
+    {   /* 2.7.2: POLY over a held note: as 2.7.1 (both go on), never SF_LEG */
+        rec_start16(t);
+        rec_go_to(t, 0, 0.1); input_on(t, 48, 100);
+        rec_go_to(t, 4, 0.1); input_on(t, 55, 100);
+        rec_go_to(t, 6, 0.3); input_off(t, 48); input_off(t, 55);
+        song.rec = 0;
+        check(!(t->step[4].flags & SF_LEG) && t->step[4].n == 2, "2.7.2 recording POLY: over a held note, both go on (no SF_LEG)");
+        transport_req = 2; run_block();
+    }
+    song.rec = 0;
+}
+
+/* SLOOP 2.4: parameter locks. A lock on P_E0 at step 3 sets t->p[P_E0] for that step, the base is back at
+ * step 4; a knob turned during the locked step is kept as the new base; STOP restores; a lock on a parameter
+ * that is not lockable is refused */
 int main(void)
 {
     t_record_snap();
+    t_hold2();
     t_arp_modes();
     t_remaining_arp_modes();
     t_arp_pulse();

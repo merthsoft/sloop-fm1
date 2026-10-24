@@ -29,13 +29,19 @@ import re
 import shutil
 import sys
 from pathlib import Path
+import argparse
 
 HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE.parent / 'tools'))
+from web_provenance import PREVIEW_MANIFEST, validate_preview
 ONLINE = "https://merthsoft.github.io/sloop-fm1/"               # (the offline editor's links)
 
 
 def offline_editor(html):
     """editor.html as one file for the disk: the icon font inlined, the download link out, the relative links online"""
+    if html.count('/*OFFLINE-EDITOR*/false') != 1:
+        raise SystemExit('editor.html must contain one offline-editor marker; update make_site.py')
+    html = html.replace('/*OFFLINE-EDITOR*/false', 'true')
     font = base64.b64encode((HERE / "fukiai.ttf").read_bytes()).decode()
     for a, b in (('url("fukiai.ttf")', 'url(data:font/ttf;base64,' + font + ')'),
                  ('href="../installer/"', 'href="' + ONLINE + 'webapp/installer/" target="_blank" rel="noopener"'),
@@ -104,7 +110,7 @@ def product_of(raw):
     return "".join(chr((m - i - 1) & 0xFF) for i in range(BLOCKS) if (m := raw[i * BLK + KEEP]) != 0x7D)
 
 
-def main(pkg, version, out):
+def main(pkg, version, out, preview=None):
     pkg, out = Path(pkg), Path(out)
     raw = pkg.read_bytes()
     product = product_of(raw)
@@ -112,6 +118,10 @@ def main(pkg, version, out):
         raise SystemExit(f"{pkg}: identity {product!r} is not a Felucca package (FM-1_9xx)")
     if b"FELUCCA-LOADER-1" not in raw:              # marker of firmware/loader
         raise SystemExit(f"{pkg}: no Felucca update loader in it")
+    preview = Path(preview) if preview is not None else HERE.parent / 'build/preview'
+    dsp = preview / 'sloop-preview.wasm'
+    if dsp.exists():
+        validate_preview(HERE.parent, preview)  # fail before replacing any published outputs
     html = (HERE / "index_pkg.html").read_text(encoding="utf-8")
     lib = strip_module((HERE / "fm1pkg.js").read_text(encoding="utf-8")) + "\n" + \
         strip_module((HERE / "fm1ota.js").read_text(encoding="utf-8"))
@@ -154,11 +164,13 @@ def main(pkg, version, out):
     # Optional browser DSP, built separately without the hardware toolchain.
     for f in ("preview.js", "preview-worklet.js"):
         shutil.copy(HERE / f, ed / f)
-    dsp = HERE.parent / "build" / "preview" / "sloop-preview.wasm"
     if dsp.exists():
         shutil.copy(dsp, ed / dsp.name)
+        shutil.copy(preview / PREVIEW_MANIFEST, ed / PREVIEW_MANIFEST)
     elif (ed / dsp.name).exists():
         (ed / dsp.name).unlink()  # never serve an old audio build as the current one
+    if not dsp.exists() and (ed / PREVIEW_MANIFEST).exists():
+        (ed / PREVIEW_MANIFEST).unlink()
     app_files(out, version, name)
     (out / "index.html").write_text(
         '<!doctype html><meta charset="utf-8"><title>MerthSloop</title>'
@@ -168,7 +180,12 @@ def main(pkg, version, out):
 
 
 if __name__ == "__main__":
-    args = [a for a in sys.argv[1:] if a not in ("--studio-guide", "--beta")]
-    if len(args) != 3:
-        sys.exit(__doc__)
-    main(*args)
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('package')
+    parser.add_argument('version')
+    parser.add_argument('out')
+    parser.add_argument('--preview-dir', type=Path)
+    parser.add_argument('--studio-guide', action='store_true')
+    parser.add_argument('--beta', action='store_true')
+    args = parser.parse_args()
+    main(args.package, args.version, args.out, args.preview_dir)

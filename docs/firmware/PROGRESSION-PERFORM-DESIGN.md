@@ -14,7 +14,8 @@ queues remain deferred; they are not selectable controls in this build.
 4. Turn SELECT to the fifth browser page, PERFORM. Turn knob 1 LIVE to ON.
 5. White keys from the left select progression positions in order. For a
    5-1-2-4 draft, the first four white keys select those four chords. The next
-   group repeats them one octave higher, within the keyboard's sixteen white keys.
+   group repeats them one octave higher. Groups repeat through all sixteen white
+   keys: a three-slot draft has five complete groups plus its first chord five octaves up.
 6. Turn knob 3 HOLD on to keep the last chord after releasing its pad.
    PLAY runs the other tracks alongside it. REC captures sounded chords or arp
    attacks into ordinary editable sequencer notes.
@@ -32,8 +33,18 @@ control this mode: with ARP ON its rhythm is the track's ARP settings. ARP OFF s
 Stock progressions use their diatonic triad/seventh flag; CUSTOM uses triads.
 Root, scale and octave come from the sequence-browser draft, matching Apply's
 harmonic material. The standalone SEL CHORD shape does not override this first slice.
-Black keys are unused during live pad performance. Ordinary SEL chord mode retains
-its existing modifier behavior outside this mode. Live modifier support is deferred.
+All eleven black keys use the same modifiers as ordinary SEL chord mode: quality
+toggle, seventh, sus4, ninth, inversion up, sus2, thirteenth, major seventh, minor
+seventh, inversion down and open voicing, from left to right. These act on the
+browser's triad/seventh material and its ROOT/SCALE, including when SEL CHORD is
+OFF or its keyboard mapping is CHROM. With HOLD off they are momentary; with HOLD
+on each press toggles its modifier until pressed again. Sus2/sus4 and major/minor
+seventh alternatives are mutually exclusive. A modifier alone does not start a chord.
+The PERFORM page shows **BLACK: MODIFIERS** beside its white-slot footer hint.
+Modifier changes rebuild the sounding slot's captured degree, root, scale and
+octave; editing those draft knobs still affects only the next white-pad press.
+The shared chord modifier policy is called directly, without temporarily changing
+track parameters or copying a second chord builder.
 
 Shared inversion/spread controls from SEL VOICING shape the result without adding
 voices. Sequence-browser VLEAD reuses harmony_voice_lead. Its history stays at the
@@ -47,6 +58,10 @@ pitch traversal without restarting the arp timing or transport. Selection releas
 the prior generated gate, then the existing arp grid controls the next attack.
 With HOLD off, releasing the owning pad ends its source and generated notes.
 Turning HOLD off after the pad is released also ends it.
+Modifier changes preserve unchanged sustained pitches and running arp gates,
+including octave-expanded notes and UP8's extra tonic. Retired pitches end; direct
+output starts only newly added pitches, while ARP waits for its next normal grid
+attack. Modifier changes do not reset arp timing or its traversal position.
 
 ## Ownership and lifecycle
 
@@ -97,10 +112,21 @@ record monitored notes before the downbeat. Existing quantization, velocity, und
 overwrite/overdub and four-notes-per-step limits apply, including expanded PULSE.
 Live state itself is ephemeral. Recorded ordinary notes save through normal songs;
 no project format, upstream parameter IDs or preset layout change is introduced.
+Direct modifier recording carries retained pitches as continuation-flagged notes
+when a new onset step is needed, and terminates only retired continuation chains.
+This uses the existing note-chain and recording helpers; unrelated overdub notes
+and later deliberate reattacks remain intact.
+Ahead-of-grid recording skips are unique pitches, matching the existing four-note
+step capacity. Repeated modifier edits within one target step cannot consume that
+budget with duplicate retained pitches or produce a second boundary attack.
 
 ## Validation and measured cost
 
 Focused actual-engine/UI tests cover custom 5-1-2-4 in C minor, last-pad ownership,
+all sixteen white pads with three-slot groups, all eleven momentary/toggled
+modifiers, counts 1-8 with extreme registers and sparse-scale voice leading,
+unchanged UP/UP8/REPEAT/PULSE gates, exact modifier recording/continuation metadata,
+ordinary playback of those recorded chords, near-boundary skip capacity and loop wrap,
 HOLD, octave-repeat and shared voicing, MIDI/pedal/physical-source takeover, other-track
 input, stopped-source PLAY, stored-pattern preservation/SNOTE isolation, natural-grid
 resume, held-layer suspension, running entry, live draft/page navigation, direct/arp transfer, generated recording, count-in and cleanup. Optimized and UBSan runs pass, including 300 deterministic pad/HOLD/
@@ -122,9 +148,13 @@ never present that private kernel's size as the finished feature cost.
 - Starter-rhythm output: extract shared attack masks and rhythm shaping from Apply,
   drive them from the transport's swung grid, and reuse the normal note/MIDI/recorder
   path. The preview engine is intentionally not a performance scheduler.
-- Shared live chord modifiers/shape selection: parameterize the common chord builder
-  rather than copying its policies or temporarily mutating track parameters in IRQ.
+- Alternative base chord shapes beyond the browser's triad/seventh material.
 - Concurrent MIDI harmony and persistent performance drafts require explicit source
   identity and storage design; neither is implied by current local-pad ownership.
 
 Hardware feel remains user validation after installing the served build.
+
+The integrated **2.7.1.52** target is **582,048 / 584,336 B**, leaving **2,288 B**
+flash. Main static RAM is **86,144 / 98,304 B**; low RAM and the audio pool retain
+their previous allocations. This includes the upstream-controls batch and review
+fixes too; it is not a standalone size estimate for progression performance.

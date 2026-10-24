@@ -29,7 +29,10 @@ int main(int argc,char **argv){
  page_entered();frame();encs[panel.enc[EN_K1]]=-100;frame();
  assert(song.g[G_LTYPE]==0&&!strcmp(ui.big_v[0],"OFF"));
  encs[panel.enc[EN_K1]]=1;frame();assert(song.g[G_LTYPE]==1&&!strcmp(ui.big_v[0],"VINYL"));
- encs[panel.enc[EN_K1]]=100;frame();assert(song.g[G_LTYPE]==5&&!strcmp(ui.big_v[0],"RADIO"));
+ encs[panel.enc[EN_K1]]=100;frame();assert(song.g[G_LTYPE]==6&&!strcmp(ui.big_v[0],"SMPLR"));
+ assert(!strcmp(ui.big_l[1],"RATE")&&!strcmp(ui.big_l[2],"CRUSH")&&!strcmp(ui.big_l[3],"DRIVE"));ppm("lofi-sampler");
+ song.g[G_LTYPE]=2;frame();assert(!strcmp(ui.big_l[1],"WOW")&&!strcmp(ui.big_l[2],"DARK")&&!strcmp(ui.big_l[3],"WEAR"));ppm("lofi-tape");
+ song.g[G_LTYPE]=5;frame();
  assert(!strcmp(ui.big_l[1],"DRIFT")&&!strcmp(ui.big_l[2],"BAND")&&!strcmp(ui.big_l[3],"STATIC"));ppm("lofi-radio");
  for(unsigned p=0;p<NPAGES;p++)if(PAGES[p].scope==SC_GLOBAL&&PAGES[p].id[0]==G_RMODEL)ui.page=p;
  page_entered();song.g[G_RMODEL]=5;ui.force=1;frame();assert(!strcmp(ui.big_v[0],"DARK"));ppm("reverb-dark");

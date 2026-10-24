@@ -106,9 +106,9 @@ const TEXT = {
     warn: "書き込み中は USB を抜かないでください。",
     install: "インストール", other: "English",
     editor: "エディタ（インストール後、パソコンから音色やシーケンスを編集）",
-    edOffline: "エディタをダウンロード（パソコンでインターネットなしで使う：ファイルを Chrome / Edge で開く）",
+    edOffline: "実機編集用エディタをダウンロード（Chrome / Edge）。音声試聴のオフライン利用はインストールしたアプリで。",
     appInstall: "アプリとしてインストール（エディタとインストーラーがオフラインで使える・Android も）",
-    direct: "USB ケーブルはパソコンに直接つないでください。Probe や Transporter などの機材は不要です。",
+    direct: "USB ケーブルはパソコンに直接つないでください。更新中は FM-1 を1台だけ接続してください。Probe や Transporter などの機材は不要です。",
     brick: "万一インストールに失敗して起動しなくなった場合は、復旧に Transporter が必要です:",
     beta: "これはベータ版で、不安定な場合があります。このカスタムファームウェアを使ったことで FM-1 が壊れたり不具合が起きたりしても、作者は一切の責任を負いません。自己責任でお使いください。",
     back: "公式ファームウェアに戻すには、M-VAVE 公式のアップデーター M-UPGRADE（Downloads → PC Software → M-UPGRADE）と公式ファームウェア（PC Firmware → FM-1 V15）が必要です。",
@@ -142,9 +142,9 @@ const TEXT = {
     warn: "Do not unplug the USB cable while writing.",
     install: "Install", other: "日本語",
     editor: "Editor (after installing: edit sounds and sequences from the computer)",
-    edOffline: "Download the editor to use it without internet on a computer (open the file in Chrome or Edge)",
+    edOffline: "Download for offline FM-1 editing (Chrome / Edge). Offline audio preview uses the installed app.",
     appInstall: "Install the app (the editor and the installer offline, Android too)",
-    direct: "Connect the USB cable directly to the computer. No probe or Transporter is needed.",
+    direct: "Connect the USB cable directly to the computer. Keep only one FM-1 connected for the entire update. No probe or Transporter is needed.",
     brick: "If an install fails and the FM-1 no longer starts, recovering it needs a Transporter:",
     beta: "This is a beta and may be unstable. The author accepts no responsibility if your FM-1 is damaged or misbehaves because of this custom firmware. Use it at your own risk.",
     back: "To go back to the official firmware you need M-VAVE's official updater, M-UPGRADE (Downloads → PC Software → M-UPGRADE), and the official firmware (PC Firmware → FM-1 V15).",
@@ -265,7 +265,7 @@ $("go").addEventListener("click", async () => {
   catch (e) { sayK("denied"); lockAll(false); return; }
   try {
     const up = new Updater(midi, log);
-    const ota = await up.find((id) => /^ota-/i.test(id.model));
+    const ota = await up.find((id) => /^ota-/i.test(id.model), true);
     if (ota) {
       ota.link.close();
       sayK((await up.resume(image, step)) ? "done" : "stopped");
@@ -296,7 +296,7 @@ $("stock-go").addEventListener("click", async () => {
   catch (e) { sayK("denied"); lockAll(false); return; }
   try {
     const up = new Updater(midi, log);
-    const ota = await up.find((id) => /^ota-/i.test(id.model));
+    const ota = await up.find((id) => /^ota-/i.test(id.model), true);
     if (ota) {
       ota.link.close();
       if (OUR_LOADER(ota.id)) sayK("stockFinish");    /* SLOOP's loader: finish SLOOP first (Install) */

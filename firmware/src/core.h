@@ -10,6 +10,9 @@
 #include "boot_presets_sizes.h"
 #endif
 /* Keep tiny per-sample DSP helpers inlined when the rest of the image uses -Oz. */
+/* Device settings, shared by DSP and the later panel/settings implementation. */
+static uint8_t drum_preview, step_adv_off, fxfade, flt_reso;
+static int32_t punch_fade_step(void) { return 512 / (1 + 17 * fxfade); }
 #define DSP_INLINE static inline __attribute__((always_inline))
 #define NVOICE 8                 /* voices per part, and the budget shared by all parts */
 #define NPOLY 8
@@ -212,6 +215,7 @@ typedef struct {
 enum { ST_NOTE, ST_TIE, ST_REST };
 #define SF_ACCENT 1u
 #define SF_SLIDE 2u
+#define SF_LEG 0x80u /* incoming mono/legato/unison envelope handoff */
 /* SLOOP 2.7: bits 3..6 of a NOTE step's flags: note k goes on from the step before (not triggered, not released),
  * so notes held in the pattern carry on under a note recorded over them (seq.c rec_note, seq_step_cont). An older
  * SLOOP ignores them (the notes play again there). Bit 2 stays free (the user presets' patterns use 4 for a tie). */
@@ -227,7 +231,7 @@ typedef struct {                 /* a step of a synth part (10 bytes): up to 4 n
     uint8_t note[4];
     uint8_t n;                   /* notes in use, 0 = empty */
     uint8_t time;                /* ST_NOTE / ST_TIE / ST_REST */
-    uint8_t flags;               /* SF_ACCENT | SF_SLIDE | SF_TIE(0..3) */
+    uint8_t flags;               /* SF_ACCENT | SF_SLIDE | SF_TIE(0..3) | SF_LEG */
     uint8_t vel;
     uint8_t lvl;                 /* 2 bits per note (note k: bits 2k..2k+1): LV_* */
     uint8_t rat;                 /* 2 bits per note: the hits it plays in its step - 1 (ratchet x1..x4) */
@@ -312,6 +316,7 @@ typedef struct track {
     uint16_t rskip_lanes;        /* (the drum track: lanes) */
     /* live recording of held notes (seq.c rec_hold): the steps they are held into become TIEs */
     uint8_t rh_n, rh_note[4];    /* recorded notes still held, 0 = none */
+    uint8_t rh_rs, rh_end, rh_offn, rh_off[4]; /* partial-release recording ownership */
     uint8_t rh_start;            /* the step they were recorded into */
     uint8_t rh_ties;             /* TIE steps written after it */
     uint8_t rh_last;             /* the last of them; rh_bak: what it held (an early release puts it back) */

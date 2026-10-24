@@ -55,6 +55,8 @@ public static class HardwarePatterns
         for(int track=0;track<4;track++)
             if(!before.Tracks[track].Parameters.OrderBy(p=>p.Key).SequenceEqual(after.Tracks[track].Parameters.OrderBy(p=>p.Key)))
                 throw new IOException("Native parameter edits require their separate adapter.");
+        if(info.ProtocolVersion<16 && after.Tracks.SelectMany(t=>t.Steps).OfType<SynthStep>().Any(s=>s.Flags.HasFlag(StepFlags.Legato)))
+            throw new IOException("Legato editing requires firmware editor protocol 16 or newer.");
         var fresh=await Read(client,info,before,token);
         if(!fresh.Tracks.Zip(before.Tracks).All(p=>HardwareSteps.ContentEquals(p.First,p.Second)))throw new IOException("Hardware pattern changed since Read. Read again before applying.");
         // Reject unrepresentable writes before sending any part of the transaction.
@@ -66,8 +68,9 @@ public static class HardwarePatterns
             for(byte step=0;step<64;step++) {
                 var old=a.Steps[step];var next=b.Steps[step];var raw=HardwareSteps.Encode(next);
                 if(!HardwareSteps.Encode(old).SequenceEqual(raw)) {
+                    if(track!=3 && info.ProtocolVersion<16)raw[9]&=3;
                     if(track==3) {var r=await client.RequestAsync(33,[step,..raw],f=>f.Arguments.Length==14&&f.Arguments[0]==step,cancellationToken:token);if(!r.Arguments.AsSpan(1).SequenceEqual(raw))throw new IOException("Drum acknowledgment differs.");}
-                    else {var r=await client.RequestAsync(30,[track,step,..raw],f=>f.Arguments.Length==13&&f.Arguments[0]==track&&f.Arguments[1]==step,cancellationToken:token);if(!r.Arguments.AsSpan(2).SequenceEqual(raw))throw new IOException("Step acknowledgment differs.");}
+                    else {var r=await client.RequestAsync(30,[track,step,..raw],f=>f.Arguments.Length==13&&f.Arguments[0]==track&&f.Arguments[1]==step,cancellationToken:token);if(!HardwareSteps.Encode(HardwareSteps.DecodeSynth(r.Arguments.AsSpan(2),(SynthStep)next,next.Micro,next.Fill)).SequenceEqual(HardwareSteps.Encode(next)))throw new IOException("Step acknowledgment differs.");}
                 }
                 if(old.Micro!=next.Micro){var r=await client.RequestAsync(40,[track,step,(byte)(next.Micro.Value+64)],cancellationToken:token);if(!r.Arguments.SequenceEqual(new byte[]{track,step,(byte)(next.Micro.Value+64)}))throw new IOException("Micro acknowledgment differs.");}
                 if(old.Fill!=next.Fill){var r=await client.RequestAsync(42,[track,step,(byte)next.Fill],cancellationToken:token);if(!r.Arguments.SequenceEqual(new byte[]{track,step,(byte)next.Fill}))throw new IOException("Fill acknowledgment differs.");}

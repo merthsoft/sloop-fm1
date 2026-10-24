@@ -11,7 +11,6 @@ public sealed partial class MainActivity
     const int CompositionImportRequest = 7411, CompositionExportRequest = 7412;
     AppPattern? compositionImportSource;
     string? compositionImportRoot;
-    byte[]? compositionExportBytes;
 
     void ImportCompositionArchive(AppPattern source)
     {
@@ -27,31 +26,22 @@ public sealed partial class MainActivity
     void ExportCompositionArchive(CompositionDraft draft, ImmutableArray<CompositionPart> kept, string? name = null)
     {
         try {
-            compositionExportBytes = CompositionDraftArchive.Export(new(Guid.NewGuid(), name ?? $"Composition seed {draft.Intent.Seed}", draft, kept));
-            var intent = new Intent(Intent.ActionCreateDocument);
-            intent.AddCategory(Intent.CategoryOpenable); intent.SetType("application/zip");
-            intent.PutExtra(Intent.ExtraTitle, $"composition-{draft.Intent.Seed}.sloopdraft");
-            StartActivityForResult(intent, CompositionExportRequest);
-        } catch(Exception e) { compositionExportBytes = null; editing.SetStatus("Draft export failed: " + e.Message); }
+            var bytes = CompositionDraftArchive.Export(new(Guid.NewGuid(), name ?? $"Composition seed {draft.Intent.Seed}", draft, kept));
+            ExportBytes(bytes,$"composition-{draft.Intent.Seed}.sloopdraft","application/zip");
+        } catch(Exception e) { editing.SetStatus("Draft export failed: " + e.Message); }
     }
 
     // Parent FileResultAsync must await this method before its own dispatch.
     async Task<bool> TryHandleCompositionFileResultAsync(int requestCode, Result resultCode, Intent? data)
     {
         if(requestCode != CompositionImportRequest && requestCode != CompositionExportRequest) return false;
-        var source = compositionImportSource; var bytes = compositionExportBytes;
+        var source = compositionImportSource;
         var root = compositionImportRoot;
         if(requestCode == CompositionImportRequest) { compositionImportSource = null; compositionImportRoot = null; }
-        else compositionExportBytes = null;
         if(resultCode != Result.Ok || data?.Data is not {} uri) return true;
         try {
             if(requestCode == CompositionExportRequest) {
-                if(bytes is null) throw new InvalidDataException("Export expired; choose Export again.");
-                await Task.Run(() => {
-                    using var output = ContentResolver!.OpenOutputStream(uri, "wt") ?? throw new IOException("Cannot open export destination.");
-                    output.Write(bytes); output.Flush();
-                });
-                editing.SetStatus("Portable composition draft exported.");
+                throw new InvalidDataException("Export expired; choose Export again.");
             } else {
                 if(source is null || root is null) throw new InvalidDataException("Import expired; choose Import again.");
                 void RequireCurrentSource() {

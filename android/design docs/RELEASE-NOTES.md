@@ -1,3 +1,134 @@
+# MerthSloop firmware 2.8.0.58 — sampler drive range
+
+- Corrected above-unity fixed-point gain overflow in SMPLR DRIVE. Squared the control curve so low settings stay gentle and high settings retain heavy clipping.
+- Loud-bus regression checks 20%, 50% and full drive; 20% stays below 3 internal units RMS error on unclipped input.
+- Includes the softer CLARINET onset from the preceding build.
+- Target 583,388 / 584,336 B: 948 B flash free; static RAM unchanged.
+
+# MerthSloop firmware 2.8.0.57 — clarinet articulation
+
+- Softened CLARINET's metallic onset with lower FM index, quicker modulation decay and a gentler attack. Other presets and engine DSP are unchanged.
+- Target remains 583,324 / 584,336 B: 1,012 B flash free; static RAM unchanged.
+
+# MerthSloop firmware 2.8.0.56 — tape/sampler refinement
+
+- Consolidated CASST into TAPE, with stronger wow, flutter and wear. Saved CASST loads as TAPE; saved sampler retains its meaning.
+- SAMPLER now blends RATE, CRUSH and DRIVE progressively. Removed unconditional internal-bus clipping at low settings; maximum settings retain heavy crunch.
+- Target 583,324 / 584,336 B: 1,012 B flash free. Static RAM unchanged.
+
+# MerthSloop firmware 2.8.0.55 — LOFI experiments
+
+- Appended CASST cassette and SMPLR early-digital master characters; old IDs and
+  project tag layout retained. Existing buffer/state reused, no new audio ring.
+- CASST: stronger flutter/wobble and tape wear. SMPLR: rate hold, signed bit
+  quantization and level-compensated input clipping. Selected-mode punch works.
+- Four appended editable LOFI presets: DUST KEYS, WORN PAD, TOY BELL, DUST BASS.
+  171 factory sounds; old browser IDs, sounds and gains retained.
+- Target 583,348 / 584,336 B: 988 B flash free. Low RAM 28,928 B: 568 B free.
+  Main RAM/audio pool unchanged. No feature cuts.
+- 200 golden renders, unchanged previous 196 hashes; preset health, boot/browser,
+  project/section modes, UI, effect mechanisms and 34 native/WASM profiles pass.
+  Hardware listening pending. Docs and local installer updated.
+
+# MerthSloop firmware 2.8.0.54 — selected upstream integration complete
+
+- Ordinary POLY overdub keeps overlapping held notes until each note's release.
+  Non-POLY overlapping transitions record upstream SF_LEG and reproduce the
+  voice mode's envelope handoff without forcing glide. Independent ties remain.
+- Factory/user preset arps follow the next preset while untouched; edited arps
+  and KBD HOLD remain player-owned. Engine changes compare the prior sound.
+- HOME shows the actually running arrangement's themed A–D section badge.
+- Protocol 16 carries legato in the existing STEP hi byte (bit 2 value, bit 3
+  authoritative). Legacy writes preserve bit 7; aware writes set/clear it.
+  Web/preview/native Android snapshots and scene validation retain the marker.
+  Android native files write version 2 and continue reading version 1. No new
+  project format or larger step: upstream FUN6 and ten-byte steps remain.
+- Independently produced upstream 2.8 fixture imports/applies/saves unchanged;
+  staggered releases, early/late recording, independent ties, arp ownership,
+  protocol round-trips and section badge theme checks pass. All 196 previous
+  audio golden renders are unchanged; native/WASM audio and target DSP checks pass.
+- Target 582,968 / 584,336 B, leaving 1,368 B flash. Main static RAM 86,176 B;
+  low RAM 28,784 B and audio pool 332,876 B unchanged from .53.
+- Deliberate MerthSloop UI/content/USB/installer differences remain. This is a
+  selective port, not a Git merge of upstream main. FREE TAKE and MIDI import
+  duration authoring remain separate follow-on improvements. Hardware listening
+  is still needed; no automatic flash or phone installation is performed.
+
+# MerthSloop firmware 2.7.1.53 — instrument preset pack
+
+- Fourteen appended factory sounds: eight NES/Game Boy-inspired CHIP voices and
+  VIOLIN, CLARINET, OBOE, BASSOON, HARPSICHORD and OUD under INST.
+- Existing synthesis engines and editable parameters; no new sample assets,
+  project format or DSP buffers. Original factory browser identities, trims and
+  audio fingerprints are unchanged. Combined user Program Change offsets move
+  after the expanded factory bank; explicit user bank/slot selection is stable.
+- Target 582,424 / 584,336 B: 1,912 B flash free. Low RAM 28,784 / 29,496 B;
+  main static RAM and audio pool unchanged. No feature cuts.
+- 196 audio golden renders, new instrument range/velocity/release/mix checks,
+  canonical browser and boot restoration checks, 32 native/WASM preview profiles,
+  trim generation tests and target DSP checks pass. Hardware listening pending.
+
+# MerthSloop firmware 2.7.1.52 — live progression modifiers
+
+- All sixteen white keys repeat progression slots in successively higher octaves,
+  including partial final groups. MIDI-range clipping remains bounded/deduplicated.
+- Eleven black-key modifiers share ordinary chord-mode pitch/toggle rules, using
+  browser ROOT/SCALE even when SEL CHORD is OFF or its keyboard mapping is CHROM.
+- HOLD toggles modifiers; momentary release restores them. Sounding key/octave
+  snapshots survive draft edits, and unchanged direct/arp gates stay sounding.
+- Recording preserves common continuations and retires changed pitches without
+  ghost thirds. Shared pending-record skip lists deduplicate pitches; same-step
+  common holds do not consume duplicate skip entries before a quantized boundary.
+- FX + SELECT claims fade immediately, before the layer-show threshold; quick
+  release cannot open an unintended FX page. Other layers retain SELECT tempo.
+- Target: 582,048 / 584,336 B, 2,288 B flash free; main static RAM 86,144 / 98,304 B.
+  Existing low RAM/audio pool allocations are unchanged. No project format changes.
+
+# MerthSloop firmware 2.7.1.51 — upstream controls
+
+- MENU → FX adds FILTER RESO and PUNCH FADE; FX held + SELECT adjusts fade too.
+- Fade covers primary/filter/gate engagement and the temporary LOFI punch boost.
+  HALF/DOUBLE remain immediate and saved LOFI amounts are unchanged.
+- MENU → SEQ adds STEP ADVANCE (default ON) and DRUM PREVIEW (default OFF).
+  Repeat entry with advance OFF closes each transaction; explicit audition remains.
+- Noise-drum TUNE shifts noise-filter and enabled high-pass cutoff in the common
+  factory/user path, preserving zero tuning and tonal-drum fingerprints.
+- Device settings use upstream's canonical packed bits without changing project
+  layout, channels, bend, clock output or MRS side settings.
+- Target image 580,748 / 584,336 B; 3,588 B flash free; static RAM unchanged.
+- Upstream SF_LEG complements independent note continuations; it does not replace
+  them. Recording/legato transport integration remains pending.
+
+# MerthSloop firmware 2.7.1.50 — review integration
+
+- Settings restore refuses active/pending transport before touching flash. Side
+  records are read back before committing saves; failed writes remain retryable.
+- Loader completion requires the exact host success body and verified update-record
+  cleanup. Browser/CLI recovery handles generic loader names, rejects ambiguous or
+  incompatible destinations and releases failed transfer links.
+- Live phone step edits reconcile ratchets. Chord modifier revoicing, held-key
+  channel changes and overlapping arp chords retain correct MIDI/pitch ownership.
+- MIDI note zero works in mono/legato/unison. Fine tuning reaches rebuilt oscillator
+  and sample/grain increments; fine=0 output and sample decode caps are preserved.
+  Eight reviewed nonzero-fine golden renders intentionally change.
+- SPRING FREEZE/crossfade products use adequate arithmetic width. Stopped LOFI
+  re-enable cannot revive a stale synthetic-noise envelope.
+- Cold punch initialization, bypassed TRACKS rendering, direct legacy conversion,
+  ragged trims and fixed font metrics recover space without removing features or
+  adding runtime sample decompression. Combined image: 579,744/584,336 B;
+  4,592 B flash free; main static RAM 86,128/98,304 B; low RAM/pool unchanged.
+- Android note-send failures retain cleanup ownership; song refresh retires renewal
+  tasks. UI request descriptors retain import destinations and staged exports across
+  activity recreation; async reviews reject destroyed activities. Accessible timed
+  pad/gesture activation uses bounded owned releases.
+- Pages verifies deterministic generated assets and preview source provenance.
+  Browser regressions use current product names and require their browser dependency.
+  The single-file editor explicitly directs audio preview users to the offline PWA.
+
+See [review synthesis](../../docs/reviews/REVIEW-SYNTHESIS.md) and its linked
+reports for evidence and hardware/emulator validation limits. No new upstream
+filter-resonance/punch-fade controls are included incidentally in this batch.
+
 # MerthSloop firmware 2.7.1.49
 
 - Eleven distinct physical black-key chord modifiers replace octave duplicates.
@@ -180,7 +311,7 @@
 
 # MerthSloop firmware 2.7.1.36
 
-- Selectively adopts upstream 2.8's early OCT− rescue-key power fix, fast-encoder
+- Selectively adopts upstream 2.8's early OCTâˆ’ rescue-key power fix, fast-encoder
   transition handling, macOS USB-audio collection order and descriptor version,
   plus averaged/hysteretic external MIDI-clock tempo estimation.
 - The installer finds generically named Windows update loaders by handshake,
@@ -230,7 +361,7 @@
 - Queued section writes begin once stopped and voices are quiet, without the
   routine settings input-idle delay. Failed startup writes keep the save pending
   and cannot produce a successful-save confirmation.
-- Adds C# minor → G Phrygian cold-NOR/restart regressions for stopped/queued saves,
+- Adds C# minor â†’ G Phrygian cold-NOR/restart regressions for stopped/queued saves,
   plus startup-write failure/retry checks. Assertions explicitly remain enabled
   under optimized host compilers. The old behavior fails the new restart test.
 - Upstream FUN6 compatibility and project-format tests pass; storage object IDs
@@ -333,7 +464,7 @@
 - Native UI overhaul: shared knob cards, NEON colors and four-track overview.
 - Refreshed held maps, drum/groove and progression browsing, and track-local
   modulation displays; existing gestures and musical behavior are retained.
-- Parameter guides and SCREEN → PAGE HELP; existing palettes/custom themes remain.
+- Parameter guides and SCREEN â†’ PAGE HELP; existing palettes/custom themes remain.
 - 578,132 image bytes, 3,432 flash bytes free, main static RAM 82,680; no additional
   framebuffer or audio-pool allocation. The raw factory sample path remains.
 - Real-renderer screen/video captures and host regressions pass. Hardware UI
@@ -354,14 +485,14 @@ Earlier release checkpoints below retain their original historical evidence.
 
 ---
 
-# Latest firmware — MerthSloop 2.7.1.19
+# Latest firmware â€” MerthSloop 2.7.1.19
 
 - Integrates upstream 2.7.1 with canonical song flags, arp IDs and settings. No
   migration of old-fork formats; upstream-produced FUN6 fixture roundtrips exactly.
 - Dual-core safe fallback, drum tune/decay, held sample loops/tails, QUANT OFF and
   recording over held notes, arp modes/KBD HOLD, favorites/themes/acceleration,
   MIDI3 remote/clock and web LIVE/song features join existing fork workflows.
-- INFO protocol 15: upstream SYN 72–76, LIVE 77; companion extensions 85–89. Android validation
+- INFO protocol 15: upstream SYN 72â€“76, LIVE 77; companion extensions 85â€“89. Android validation
   follows upstream continuations/held-loop metadata and guards capability discovery.
 - Fixes HOLD ownership vs chord latch, duplicate timing undo, SELECT navigation
   through custom starter pages, and persistence of side-record-only preferences.
@@ -372,9 +503,9 @@ Earlier release checkpoints below retain their original historical evidence.
 
 ## Previous checkpoint
 
-# Latest firmware — MerthSloop 2.6.0.18
+# Latest firmware â€” MerthSloop 2.6.0.18
 
-- HOME menu → TIMING → SWING GRID selects STEP (existing behavior) or 1/8.
+- HOME menu â†’ TIMING â†’ SWING GRID selects STEP (existing behavior) or 1/8.
   TRACKS shows SWING8 in eighth mode. HALF TIME hats and eighth-note arps can
   shuffle on a 1/16 pattern. The setting survives power-off without a project change.
 - Preview, recording snap, straight SLICER rates and GROOVE markers follow the grid.
@@ -387,9 +518,9 @@ Earlier release checkpoints below retain their original historical evidence.
 - Local/origin main mirror upstream 2.7.1; feature-branch integration remains
   separate. The assessment records flag, arp-ID, settings and memory conflicts.
 
-## Previous integrated checkpoint — MerthSloop 2.6.0.17
+## Previous integrated checkpoint â€” MerthSloop 2.6.0.17
 
-- Native CUSTOM progressions: count 1–8, editable degree per position and 4/8/16-step
+- Native CUSTOM progressions: count 1â€“8, editable degree per position and 4/8/16-step
   span within the 64-step pattern. Shared rhythm/key/voicing/mode controls, preview,
   ADD/REPLACE and undo. Applied notes save with the song; draft lasts until power-off.
 - Shared sequence rendering and compact ROM degrees fit the new page. A 100,000-event
@@ -399,7 +530,7 @@ Earlier release checkpoints below retain their original historical evidence.
   steps. No swing behavior has been changed pending the reported setup details.
 - Target 581,560 bytes (4 free); static RAM 82,116 and pool 332,876 bytes.
 
-## Previous integrated checkpoint — MerthSloop 2.6.0.16
+## Previous integrated checkpoint â€” MerthSloop 2.6.0.16
 
 - STEP renders all tied chord voices, including at bank boundaries. Independent
   continuations connect without gaps; stale rest/tie payload cannot distort range.
@@ -410,7 +541,7 @@ Earlier release checkpoints below retain their original historical evidence.
   editing, move/merge and the 20,000-frame UI fuzz pass. Hardware audition pending.
 - Image 581,512 bytes (52 free); static RAM and pool unchanged from the tie release.
 
-## Previous integrated checkpoint — MerthSloop 2.6.0.15
+## Previous integrated checkpoint â€” MerthSloop 2.6.0.15
 
 - Independent note sustains can cross later note onsets. Hold OCT+ and scrub STEP
   with knob 1; knob 4 chooses ALL or one source pitch. LEN can shorten that
@@ -426,7 +557,7 @@ Earlier release checkpoints below retain their original historical evidence.
 - Native playback/editing, voice identity, MIDI balance, project round-trip,
   icon pixel equivalence and browser/native audio regressions pass.
 
-## Previous integrated checkpoint — MerthSloop 2.6.0.14
+## Previous integrated checkpoint â€” MerthSloop 2.6.0.14
 
 - Wah uses a dedicated, narrower resonant band-pass response: it emphasizes a moving
   vocal-range band and rejects lows/highs instead of only sweeping brightness.
@@ -437,7 +568,7 @@ Earlier release checkpoints below retain their original historical evidence.
 - About retains name, version and attribution; its decorative sail is removed to
   fit the instrument feature. Target image 581,512 bytes (52 free).
 
-## Previous integrated checkpoint — MerthSloop 2.6.0.13
+## Previous integrated checkpoint â€” MerthSloop 2.6.0.13
 
 - Auto-pan uses LFO+FX; ENV+FX remains auto-wah.
 - Ordinary keyboard notes support overlap handoff after an octave switch without
@@ -448,7 +579,7 @@ Earlier release checkpoints below retain their original historical evidence.
   unchanged voice age, final release and a deliberate fresh attack.
 - Target image 581,548 bytes; static RAM and pool unchanged.
 
-## Previous integrated checkpoint — MerthSloop 2.6.0.12
+## Previous integrated checkpoint â€” MerthSloop 2.6.0.12
 
 - Envelope wah responds to typical synth levels: sensitivity gain is corrected and
   defaults favor a pronounced attack/release sweep.
@@ -458,7 +589,7 @@ Earlier release checkpoints below retain their original historical evidence.
   all 182 inactive-effect golden renders remain unchanged.
 - Target image 581,276 bytes (288 free); static RAM and pool unchanged.
 
-## Previous integrated checkpoint — MerthSloop 2.6.0.11
+## Previous integrated checkpoint â€” MerthSloop 2.6.0.11
 
 - ENV+FX: selected-synth auto-wah, free/beat-synced LFO or own-signal envelope follower.
 - SEL+FX: selected-synth auto-pan, waveform/depth and beat sync.
@@ -466,12 +597,12 @@ Earlier release checkpoints below retain their original historical evidence.
   STOP/panic or track change. They do not overwrite saved patch parameters.
 - PR 111 independent memory adaptations: packed MIDI owners, DRAWBAR arena state,
   shared main-loop/OTA scratch and flash XIP preset banks. Dual-core is deferred.
-- STEP OCT+/OCT− help persists while held, with transient warning priority.
+- STEP OCT+/OCTâˆ’ help persists while held, with transient warning priority.
 - MerthSloop startup, About, installer/editor and Android labels. Firmware uses
   upstream major.minor.revision plus independent build number, now 2.6.0.11.
 - Target: image 581,420 bytes, static RAM 82,100 bytes, pool 332,876 bytes.
 
-## Previous integrated checkpoint — 2.6 Merthsoft.10
+## Previous integrated checkpoint â€” 2.6 Merthsoft.10
 
 - Hold LFO or ENV and tap OCT+ to apply vibrato/tremolo parameters to the track's
   saved shared LFO. Rate, waveform and beat division transfer; tremolo depth is

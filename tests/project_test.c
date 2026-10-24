@@ -208,7 +208,7 @@ int main(void)
     v2.sum = proj_hash(&v2, sizeof v2 - 4u);
     bad += check("FUN2 image is 2552 bytes (as stored)", sizeof v2 == 2552u);
     memcpy(&buf, &v2, sizeof v2);
-    memset(&proj_v3_tmp, 0xA5, sizeof proj_v3_tmp); /* NOLOAD scratch may contain old RAM */
+    /* Direct conversion has no intermediate project scratch to poison. */
     ok = proj_import(&q, &buf, (int)sizeof v2);
     bad += check("FUN2 -> FUN6: converted, valid format 6 slot", ok && proj_ok(&q) && q.magic == PROJ_MAGIC);
     ok = q.sel == 2;
@@ -357,7 +357,7 @@ int main(void)
     fill_v2_track(&v1.t, 0);
     v1.sum = proj_hash(&v1, sizeof v1 - 4u);
     memcpy(&buf, &v1, sizeof v1);
-    memset(&proj_v3_tmp, 0x5A, sizeof proj_v3_tmp);
+    /* Direct conversion has no intermediate project scratch to poison. */
     ok = proj_import(&q, &buf, (int)sizeof v1) && proj_ok(&q) && track_ok_v2(&q.t[0], &v1.t, 0) && q.g[5] == 705;
     for (t = 1; t < NTRK; t++)
         ok &= q.t[t].preset == 0xFF && q.t[t].p[P_SLCR] == 0 && q.t[t].p[P_LEVEL] == TP[P_LEVEL].def &&
@@ -616,14 +616,16 @@ int main(void)
     bad += check("VINYL project round trip",song.g[G_VWOW]==37&&song.g[G_VTONE]==89&&song.g[G_VCRACKLE]==127);
     song.g[G_VWOW]=0;proj_apply(&q2,0);
     bad += check("VINYL section round trip",song.g[G_VWOW]==37);
-    for(uint32_t mode=0;mode<6;mode++) {
-        song.g[G_LTYPE]=mode;proj_capture(&q2);song.g[G_LTYPE]=5-mode;proj_apply(&q2,1);
+    for(uint32_t mode=0;mode<7;mode++) {
+        song.g[G_LTYPE]=mode;proj_capture(&q2);song.g[G_LTYPE]=6-mode;proj_apply(&q2,1);
         bad += check("LOFI character project round trip",song.g[G_LTYPE]==mode&&song.g[G_VWOW]==37&&song.g[G_VCRACKLE]==127);
-        song.g[G_LTYPE]=5-mode;proj_apply(&q2,0);
+        song.g[G_LTYPE]=6-mode;proj_apply(&q2,0);
         bad += check("LOFI character section round trip",song.g[G_LTYPE]==mode);
     }
     q2.g[G_ENGGO]=(int16_t)(0x5A00u|(3u<<7)|127u);proj_apply(&q2,1);
     bad += check("earlier four-character tag retains CD",song.g[G_LTYPE]==4);
+    q2.g[G_ENGGO]=(int16_t)(0x5C00u|(6u<<7)|127u);proj_apply(&q2,1);
+    bad += check("retired CASST project migrates to TAPE",song.g[G_LTYPE]==2);
     q2.g[G_ENGGO]=(int16_t)(0x5600u|127u);song.g[G_LTYPE]=3;proj_apply(&q2,1);
     bad += check("old VINYL tag retains amounts and selects VINYL",song.g[G_LTYPE]==1&&song.g[G_VWOW]==37&&song.g[G_VTONE]==89&&song.g[G_VCRACKLE]==127);
     q2.g[G_NAME]=q2.g[G_ENGGO]=0;proj_apply(&q2,1);

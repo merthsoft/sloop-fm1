@@ -11,15 +11,15 @@ enum { MI_COLOR, MI_ZOOM, MI_ACCEL, MI_HELP, MI_LIGHTS, MI_KEYS, MI_NOTES, MI_SC
 #if FELUCCA_CDC
        MI_SERIAL,
 #endif
-       MI_RATE, MI_MIDISCALE, MI_SWING, MI_CPU1, MI_PANEL, MI_LCLEAR, MI_ABOUT, MI_COUNT };
+       MI_RATE, MI_RESO, MI_FADE, MI_MIDISCALE, MI_SWING, MI_ADVANCE, MI_PREVIEW, MI_CPU1, MI_PANEL, MI_LCLEAR, MI_ABOUT, MI_COUNT };
 static const char *const MI_NAME[MI_COUNT] = {"COLOR", "ZOOM", "KNOB ACCEL", "PAGE HELP", "LIGHTS", "KEYS", "NOTES", "SCALE LEVEL", "SPEAKER LOWCUT", "USB AUDIO",
 #if FELUCCA_CDC
                                               "USB SERIAL",
 #endif
-                                              "USB RATE", "MIDI SCALE", "SWING GRID", "2ND CORE", "HARDWARE CALIBRATION", "MIDI LEARN CLEAR", "ABOUT"};
-enum { MS_SCREEN, MS_LIGHTS, MS_AUDIO, MS_MIDI, MS_TIMING, MS_SYSTEM, MS_COUNT };
-static const char *const MS_NAME[MS_COUNT] = {"SCREEN", "LIGHTS", "AUDIO", "MIDI", "TIMING", "SYSTEM"};   /* (AUDIO: and USB) */
-static const uint8_t MS_FIRST[MS_COUNT + 1] = {MI_COLOR, MI_LIGHTS, MI_LOWCUT, MI_MIDISCALE, MI_SWING, MI_CPU1, MI_COUNT};   /* rows of each */
+                                              "USB RATE", "FILTER RESO", "PUNCH FADE", "MIDI SCALE", "SWING GRID", "STEP ADVANCE", "DRUM PREVIEW", "2ND CORE", "HARDWARE CALIBRATION", "MIDI LEARN CLEAR", "ABOUT"};
+enum { MS_SCREEN, MS_LIGHTS, MS_AUDIO, MS_FX, MS_MIDI, MS_TIMING, MS_SEQ, MS_SYSTEM, MS_COUNT };
+static const char *const MS_NAME[MS_COUNT] = {"SCREEN", "LIGHTS", "AUDIO", "FX", "MIDI", "TIMING", "SEQ", "SYSTEM"};
+static const uint8_t MS_FIRST[MS_COUNT + 1] = {MI_COLOR, MI_LIGHTS, MI_LOWCUT, MI_RESO, MI_MIDISCALE, MI_SWING, MI_ADVANCE, MI_CPU1, MI_COUNT};
 
 UI_SMALL static int mi_cpu1_have(void)                      /* the second core is running (cpu1.c; the host tests have no cpu1.c) */
 {
@@ -31,7 +31,7 @@ UI_SMALL static int mi_cpu1_have(void)                      /* the second core i
 }
 static const char *const LIGHTS_NAME[LIGHTS_N] = {"OFF", "LOW", "MID", "HIGH"};   /* every button lit, the labels readable */
 static const char *const KEYS_NAME[KEYS_N] = {"OFF", "C KEYS", "WHITE KEYS", "ALL KEYS"};      /* keys lit too, at the LIGHTS level */
-static const char *const MS_TAB[MS_COUNT] = {"SCR", "LGT", "AUD", "MIDI", "TIME", "SYS"};
+static const char *const MS_TAB[MS_COUNT] = {"SCR", "LGT", "AUD", "FX", "MIDI", "TIME", "SEQ", "SYS"};
 #define MI_Y0 26                                   /* the first row, under the section tabs */
 #define MI_DY 50                                   /* a row: the label, the value in large type */
 
@@ -67,6 +67,14 @@ UI_SMALL static const char *mi_value(uint32_t i, uint16_t *c)
         *c = lights_lvl ? C_HI : C_DIM;               /* (needs LIGHTS) */
         return KEYS_NAME[lights_keys % KEYS_N];
     case MI_SWING: return swing_eighth?"1/8":"STEP";
+    case MI_ADVANCE: return step_adv_off ? "OFF" : "ON";
+    case MI_PREVIEW: return drum_preview ? "ON" : "OFF";
+    case MI_RESO:
+    case MI_FADE: {
+        static char b[4];
+        fmt_int(b, i == MI_RESO ? flt_reso : fxfade);
+        return b;
+    }
     case MI_MIDISCALE: return midi_scale ? "KEYBOARD" : "OFF";
     case MI_NOTES: return lights_notes ? "ON" : "OFF";
     case MI_LOWCUT: return settings.lowcut ? "ON" : "OFF";
@@ -141,7 +149,8 @@ UI_SMALL static void draw_menu(void)
     uint32_t sig = ui.menu * 7u + ui.menu_sel * 131u + settings.palette * 1009u + settings.lowcut * 7919u +
                    settings.zoom * 104729u + lights_lvl * 1299709u + lights_keys * 15485863u + ml_count() * 2654435u +
                    lights_notes * 32452843u + usb_full * 49979687u + usb_serial * 86028121u + usb_rate * 15486719u + theme_shown() * 32452867u + theme.crc + cpu1_off * 122949829u +
-                   ((uint32_t)scale_light_level << 5) + knob_accel_off * 179424673u + midi_scale * 961748941u + swing_eighth * 1234567u;
+                   ((uint32_t)scale_light_level << 5) + knob_accel_off * 179424673u + midi_scale * 961748941u + swing_eighth * 1234567u +
+                   step_adv_off * 193u + drum_preview * 65537u + flt_reso * 8191u + fxfade * 257u;
     if (!ui.force && sig == ui.menu_sig)
         return;
     ui.menu_sig = sig;
@@ -191,13 +200,15 @@ UI_SMALL static void draw_menu(void)
             cv_text(4, 184, &FONT_S, "PHASE: CRISPYZEBRA (GPL)", TE_G4);
             cv_text(4, 200, &FONT_S, "VOICE: REF. KLATTSCH (MIT)", TE_G4);
         } else {
-            int32_t x = 4;
+            int32_t x = 4, total = 0;
+            for (i = 0; i < MS_COUNT; i++) total += text_w(&FONT_S, MS_TAB[i]);
+            int32_t gap = (232 - total) / (MS_COUNT - 1);
             for (i = 0; i < MS_COUNT; i++) {        /* the sections as tabs: this one lit */
                 int32_t w = text_w(&FONT_S, MS_TAB[i]);
                 if (i == sec)
                     cv_rect(x - 2, 3, w + 4, 18, C_LINE);
                 cv_text(x, 4, &FONT_S, MS_TAB[i], i == sec ? C_WHITE : C_DIM);
-                x += w + 10;
+                x += w + gap;
             }
             for (i = MS_FIRST[sec]; i < MS_FIRST[sec + 1u]; i++) {
                 uint32_t r = i - MS_FIRST[sec];
@@ -316,6 +327,19 @@ UI_SMALL static void mi_set(uint32_t i, int32_t s)
     case MI_SWING: {
         uint8_t *v = i == MI_SWING ? &swing_eighth : &midi_scale;
         mi_toggle(v,s);
+        settings_later = 1;
+        break;
+    }
+    case MI_ADVANCE:
+    case MI_PREVIEW:
+        mi_toggle(i == MI_ADVANCE ? &step_adv_off : &drum_preview, i == MI_ADVANCE ? -s : s);
+        settings_later = 1;
+        break;
+    case MI_RESO:
+    case MI_FADE: {
+        uint8_t *v = i == MI_RESO ? &flt_reso : &fxfade;
+        uint32_t max = i == MI_RESO ? 10u : 15u;
+        *v = s ? (uint8_t)clamp((int32_t)*v + (s > 0 ? 1 : -1), 0, (int32_t)max) : (uint8_t)((*v + 1u) % (max + 1u));
         settings_later = 1;
         break;
     }

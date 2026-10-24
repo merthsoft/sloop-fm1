@@ -530,6 +530,14 @@ UI_SMALL static void graph_home(void)
         cv_line(a,ridge[p-1][1],b,ridge[p][1],C_DIM);
         cv_line(a,ridge[p-1][1],b,44,C_LINE);
     }
+#if FELUCCA_ARRANGER
+    if (song.playing && arrangement_clock.running) {
+        unsigned scene=arrangement.entry[arrangement_clock.index % ARR_STEPS].scene & 3u;
+        char badge[2]={(char)('A'+scene),0};
+        cv_rect(218,2,18,20,TE_DIM[scene]);
+        cv_text(222,4,&FONT_S,badge,TE_COL[scene]);
+    }
+#endif
     cv_line(0,44,239,44,C_AMB);
     for(int32_t x=-180;x<=420;x+=60) cv_line(120,44,x,123,C_LINE);
     for(r=0;r<NTRK;r++) {
@@ -785,10 +793,10 @@ UI_SMALL static void draw_parameter_column(uint32_t c,const param_desc_t *d,int3
     if(!home && is_drum(TSEL) && cur_page()->graph==GR_FX && !c)label="LEVEL";
     if(!home && cur_page()->scope==SC_GLOBAL && cur_page()->id[0]==G_DTYPE && (song.g[G_DTYPE]==1 || song.g[G_DTYPE]==3) && c==2)label="TONE";
     if (!home && cur_page()->scope==SC_GLOBAL && cur_page()->id[0]==G_LTYPE && c) {
-        static const char *const labels[5][3] = {
-            {"WOW","DARK","DAMAGE"}, {"FLUTTR","DARK","DRIVE"},
+        static const char *const labels[6][3] = {
+            {"WOW","DARK","DAMAGE"}, {"WOW","DARK","WEAR"},
             {"WARBLE","DARK","DAMAGE"}, {"RATE","LATCH","MIX"},
-            {"DRIFT","BAND","STATIC"}
+            {"DRIFT","BAND","STATIC"}, {"RATE","CRUSH","DRIVE"}
         };
         label=labels[song.g[G_LTYPE]?song.g[G_LTYPE]-1:0][c-1];
     }
@@ -798,7 +806,6 @@ UI_SMALL static void draw_columns(void)
 {
     uint32_t c;
     char val[12];
-    const char *unit;
     if (ui.home) {
         for (c = 0; c < 4u; c++) {
             int16_t *vp;
@@ -810,27 +817,6 @@ UI_SMALL static void draw_columns(void)
     if (is_drum(TSEL) && !page_for_drum(cur_page())) {   /* "DRUM TRACK" (the graph says so) */
         for (c = 0; c < 4u; c++)
             draw_column(c, "", "", "", C_HI, -1);
-        return;
-    }
-    if (cur_page()->scope == SC_TRK) {                 /* TRACK LEVEL LEN PAN of the selected track */
-        const track_t *t = TSEL;
-        uint32_t lvl = trk_level(song.sel);
-        fmt_int(val, (int32_t)song.sel + 1);
-        draw_column(0, "TRACK", val, "/4", VAL(0u), (int32_t)song.sel * 1000 / (NTRK - 1));
-        if (!lvl || t->p[P_MUTE]) {                    /* (MUTE: a turn of KNOB 2 unmutes, tracks_edit) */
-            str_cpy(val, "MUTE", 12);
-            unit = "";
-        } else if (is_drum(t)) {
-            fmt_int(val, (int32_t)lvl);
-            unit = "";
-        } else {
-            param_format(&TP[P_LEVEL], (int32_t)lvl, val, &unit);
-        }
-        draw_column(1, "LEVEL", val, unit, lvl && !t->p[P_MUTE] ? VAL(1u) : C_DIM, (int32_t)lvl * 1000 / 127);
-        param_format(&TP[P_SLEN], t->p[P_SLEN], val, &unit);
-        draw_column(2, "LEN", val, unit, VAL(2u), RATIO(&TP[P_SLEN], t->p[P_SLEN]));
-        param_format(&TP[P_PAN], t->p[P_PAN], val, &unit);
-        draw_column(3, "PAN", val, unit, VAL(3u), RATIO(&TP[P_PAN], t->p[P_PAN]));
         return;
     }
     if (cur_page()->graph == GR_BROWSE) {

@@ -95,6 +95,8 @@ int main(int argc,char **argv)
     encs[panel.enc[EN_SELECT]]=1;sequence_screen_input(0,0);
     assert(sequence_browser&&sequence_page==3);
     encs[panel.enc[EN_SELECT]]=1;sequence_screen_input(0,0);
+    assert(sequence_browser&&sequence_page==4);
+    encs[panel.enc[EN_SELECT]]=1;sequence_screen_input(0,0);
     assert(!sequence_browser&&cur_page()->scope==SC_SONG);
     ui.page=(uint8_t)i;page_entered();assert(sequence_browser);
     encs[panel.enc[EN_SELECT]]=-1;sequence_screen_input(0,0);
@@ -133,6 +135,7 @@ int main(int argc,char **argv)
     assert(song.octave==physical_octave);
     sequence_screen_draw();ppm("live-sequence-pitch");
     encs[panel.enc[EN_SELECT]]=1;frame();assert(sequence_browser&&sequence_page==3);
+    encs[panel.enc[EN_SELECT]]=1;frame();assert(sequence_browser&&sequence_page==4);
     encs[panel.enc[EN_SELECT]]=1;frame();assert(!sequence_browser&&cur_page()->scope==SC_SONG);
     ui.home=0;ui.page=(uint8_t)i;page_entered();
     sequence_screen_close();assert(!sequence_preview_end);

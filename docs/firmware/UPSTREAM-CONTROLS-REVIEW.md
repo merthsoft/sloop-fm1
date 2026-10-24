@@ -1,5 +1,48 @@
 # Remaining upstream controls and visual polish
 
+## Completion follow-up
+
+The selected 2.8 integration now also includes the HOME playing-section badge,
+preset-owned arp policy and ordinary overdub/legato recording. The planning text
+below is historical. See [current integration scope](UPSTREAM-2.8-INTEGRATION.md).
+
+## Implemented controls batch
+
+The first controls batch is integrated as **2.7.1.51**. MENU → FX exposes
+FILTER RESO (knob 1, 0–10) and PUNCH FADE (knob 2, 0–15). A separate FX
+section keeps AUDIO within four rows even in USB-serial builds. FX held + SELECT
+also adjusts fade, with the value on the FX subtitle. MENU → SEQ exposes STEP
+ADVANCE and DRUM PREVIEW (knobs 1 and 2). Defaults are advance ON, browsing
+preview OFF, resonance 0 and fade 0.
+
+Device settings use upstream's canonical MIDI-suffix bits, preserving MIDI
+channels, bend, clock output, MRS settings and project layouts. Noise-only drum
+TUNE now shifts filter/high-pass cutoff in the common factory/user note-on path.
+Tonal drums and factory tuning at zero retain their previous render fingerprints.
+Primary/filter/gate punch engagement and LOFI's temporary boost respect fade;
+gate rhythmic edges and HALF/DOUBLE transport gestures stay immediate. Ordinary
+track filters use the existing resonance-capable stage; wah and the master DJ
+filter keep their own resonance. No new audio buffer or per-sample filter is added.
+
+The target image is **580,748 / 584,336 B**, leaving **3,588 B** flash. This is
+1,004 B above the preceding review build; main static RAM remains **86,128 B**,
+low RAM **28,280 B**, pool **332,876 B**. Target DSP budget/inlining checks pass.
+Focused tests cover mixed panel/MIDI chord release ordering, repeat entry with
+advance OFF, undo/redo, silent browsing versus deliberate audition, bounded
+four-knob menus, packed-settings persistence and fade/resonance paths.
+
+The **2.7.1.52** follow-up claims FX + SELECT in the layer's input handler before
+its show-delay/tap classification. Quick press/turn/release now changes fade
+without touching BPM or opening the normal FX page; other held layers still use
+SELECT for tempo. Both ordinary and USB-serial menu variants pass the gesture
+regression. This follow-up also expands live progression performance; its combined
+target is **582,048 B**, with **2,288 B** flash free and **86,144 B** main static RAM.
+
+The original review below is historical planning. The playing-section badge,
+preset-owned arp policy and recording/legato integration remain separate work.
+See [legato versus independent ties](LEGATO-TIES-COMPARISON.md): upstream itself
+uses both; SF_LEG cannot replace per-note continuation for overlapping sustains.
+
 Source review against upstream `ec9e537` (the firmware source is unchanged from
 `b77bf55`), after MerthSloop commit `9fd9ddc`. This is an integration plan,
 not a claim that the controls below are implemented. The validated production

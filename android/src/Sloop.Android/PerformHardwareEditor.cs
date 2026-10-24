@@ -14,7 +14,11 @@ public sealed partial class MainActivity
         LinearLayout? row = null;
         void Add(string title, HardwareGestureKind kind, byte value, int id)
         {
-            var button = new HardwareGestureButton(this) { Text = title };
+            var button = new HardwareGestureButton(this) {
+                Text = title,
+                AccessibleHoldMilliseconds=kind==HardwareGestureKind.NextBarFill?(int)Math.Ceiling(240000.0/performOptions.Tempo)+150:350,
+                ContentDescription=title+". Activate for a brief hold, then release automatically."
+            };
             button.GesturePressed += () => HardwareAction(() => connection.PressHardwareAsync(id, kind, value));
             button.GestureReleased += () => HardwareAction(() => connection.ReleaseHardwareAsync(id));
             hardwareGestureButtons.Add(button);
@@ -31,7 +35,7 @@ public sealed partial class MainActivity
     }
     async void HardwareAction(Func<Task> action)
     {
-        try { await action(); } catch (Exception error) { Toast.MakeText(this, error.Message, ToastLength.Short)?.Show(); }
+        try { await action(); } catch (Exception error) { if(CanShowUi)Toast.MakeText(this, error.Message, ToastLength.Short)?.Show(); }
     }
     void ClearHardwarePerformanceTouches()
     {
@@ -43,14 +47,17 @@ sealed class HardwareGestureButton(global::Android.Content.Context context) : Bu
 {
     int? pointer;
     bool suppressed;
+    readonly UiBoundedGesture accessibleGesture=new();
+    public int AccessibleHoldMilliseconds {get;init;}=350;
     public event Action? GesturePressed;
     public event Action? GestureReleased;
-    public void ClearTouch() { if (pointer.HasValue) { suppressed = true; GestureReleased?.Invoke(); } }
+    public void ClearTouch() { accessibleGesture.Stop();if (pointer.HasValue) { suppressed = true; GestureReleased?.Invoke(); } }
     public override bool OnTouchEvent(MotionEvent? e)
     {
         if (e is null) return false;
         if (e.ActionMasked == MotionEventActions.Down)
         {
+            accessibleGesture.Stop();
             pointer = e.GetPointerId(e.ActionIndex); suppressed = false;
             Parent?.RequestDisallowInterceptTouchEvent(true); GesturePressed?.Invoke(); return true;
         }
@@ -58,10 +65,21 @@ sealed class HardwareGestureButton(global::Android.Content.Context context) : Bu
             (e.ActionMasked is MotionEventActions.Up or MotionEventActions.PointerUp && pointer == e.GetPointerId(e.ActionIndex)))
         {
             if (pointer.HasValue && !suppressed) GestureReleased?.Invoke();
-            pointer = null; suppressed = false; Parent?.RequestDisallowInterceptTouchEvent(false); PerformClick();
+            pointer = null; suppressed = false; Parent?.RequestDisallowInterceptTouchEvent(false); base.PerformClick();
         }
         return true;
     }
-    public override bool PerformClick() { base.PerformClick(); return true; }
+    public override bool PerformClick()
+    {
+        if(!Enabled||!IsAttachedToWindow||pointer.HasValue)return false;
+        base.PerformClick();_ = ActivateAccessibleAsync();return true;
+    }
+    async Task ActivateAccessibleAsync()
+    {
+        try {
+            await accessibleGesture.ActivateAsync(()=>GesturePressed?.Invoke(),()=>GestureReleased?.Invoke(),
+                ()=>Task.Delay(AccessibleHoldMilliseconds));
+        }catch(Exception error){global::Android.Util.Log.Warn("MerthSloop","Accessible gesture failed: "+error.Message);}
+    }
     protected override void OnDetachedFromWindow() { ClearTouch(); base.OnDetachedFromWindow(); }
 }

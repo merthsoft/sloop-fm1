@@ -36,11 +36,11 @@ All differences below are relative to the same frozen baseline. These rows are a
 | Rank / variant | Image bytes | Delta | Main static RAM | Low RAM / pool | Disposition |
 | --- | ---: | ---: | ---: | --- | --- |
 | Baseline | 581,296 | 0 | 89,128 | 28,280 / 332,876 | Reproduces current source |
-| 1. Both punch objects to BSS + boot assignments | **579,808** | **−1,488** | **89,112** | unchanged | Recommended focused candidate, host startup contract needed |
-| Diagnostic: `punch_filter` alone | 580,076 | −1,220 | 89,128 | unchanged | Strong global-layout interaction; not separately additive |
-| Diagnostic: `punch` alone | 581,140 | −156 | 89,112 | unchanged | Predictable small data saving; not separately additive |
-| 2. `-fdata-sections` | 581,288 | −8 | 89,128 | unchanged | Reject as an optimization project: insignificant gain and broad code-layout change |
-| `-fdata-sections` + `--gc-sections` | 581,288 | −8 | 89,128 | unchanged | Exactly the preceding image; GC contributes zero |
+| 1. Both punch objects to BSS + boot assignments | **579,808** | **âˆ’1,488** | **89,112** | unchanged | Recommended focused candidate, host startup contract needed |
+| Diagnostic: `punch_filter` alone | 580,076 | âˆ’1,220 | 89,128 | unchanged | Strong global-layout interaction; not separately additive |
+| Diagnostic: `punch` alone | 581,140 | âˆ’156 | 89,112 | unchanged | Predictable small data saving; not separately additive |
+| 2. `-fdata-sections` | 581,288 | âˆ’8 | 89,128 | unchanged | Reject as an optimization project: insignificant gain and broad code-layout change |
+| `-fdata-sections` + `--gc-sections` | 581,288 | âˆ’8 | 89,128 | unchanged | Exactly the preceding image; GC contributes zero |
 | `--gc-sections` | 581,296 | 0 | 89,128 | unchanged | Byte-identical baseline |
 | `--relax` | 581,296 | 0 | 89,128 | unchanged | Byte-identical baseline |
 | `--sort-section=alignment` | 581,296 | 0 | 89,128 | unchanged | Changes image bytes without reducing size; reject |
@@ -59,10 +59,10 @@ The candidate removes those two declaration initializers. `fm1_cstart()` assigns
 
 | Combined candidate section | Baseline bytes | Candidate bytes | Delta |
 | --- | ---: | ---: | ---: |
-| `.text` (code and constants) | 577,756 | 576,492 | −1,264 |
-| `.data` load payload | 524 | 300 | −224 |
+| `.text` (code and constants) | 577,756 | 576,492 | âˆ’1,264 |
+| `.data` load payload | 524 | 300 | âˆ’224 |
 | `.bss` | 88,600 | 88,808 | +208 |
-| Main region extent | 89,128 | 89,112 | −16 |
+| Main region extent | 89,128 | 89,112 | âˆ’16 |
 | `.ram_text` | 2,956 | 2,956 | 0 |
 | `.c1_text` | 60 | 60 | 0 |
 | `.lowram` | 28,280 | 28,280 | 0 |
@@ -91,7 +91,7 @@ The exact startup values, golden audio and static loop budgets are established. 
 
 The single translation unit and static definitions let the compiler remove many unreachable routines before linking. The object relocation inventory finds only four nonempty C function sections lacking incoming references *within that C object*: `fm1_fault_c`, `fm1_alnk0_irq`, `fm1_timer5_irq`, `fm1_cstart`. All four have incoming assembly references, recorded by the link map/cross-reference table: fatal common, audio wrapper, timer wrapper and entry stub respectively. They are required, not dead.
 
-The fatal-vector table is **768 bytes** of assembly stubs: 128 × 6. `fm1_irq_init()` computes each vector as `fm1_fatal_stubs + 6*n`, and the common handler recovers the vector from the saved return address. Only one symbol appears for all stubs. Counting unnamed stub instructions as unreachable or removing unassigned vectors loses the exception contract. No vector reduction is recommended.
+The fatal-vector table is **768 bytes** of assembly stubs: 128 Ã— 6. `fm1_irq_init()` computes each vector as `fm1_fatal_stubs + 6*n`, and the common handler recovers the vector from the saved return address. Only one symbol appears for all stubs. Counting unnamed stub instructions as unreachable or removing unassigned vectors loses the exception contract. No vector reduction is recommended.
 
 Thirty-two C functions receive references from non-code object sections, principally engine descriptors' note-on/render/block/done/description callbacks. `inventory.json` lists every such function and relocation source. Direct-call searches would incorrectly label these unused. The active engine menu, preset application and voice rendering consume these descriptors. Generic callback dispatch already exists at engine/block boundaries; no new per-sample dispatch is proposed.
 
@@ -125,4 +125,3 @@ The installed linker advertises GC, relaxation, section alignment sorting, maps/
 ## Integration recommendation
 
 Take the **two-object punch startup candidate** as the only worthwhile measured new result from this audit. Make its host/target initialization contract explicit, repeat the final integrated same-version target and behavior checks, and retain a hardware boot/deadline gate. Budget **1,488 bytes only for this frozen combination**; rebuild when combining other specialists' work. Keep map/cross-reference diagnostics available for future audits, but do not adopt linker/ABI flags for speculative savings. No large dead retained section, padding windfall or duplicate-helper pool was found.
-

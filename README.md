@@ -17,7 +17,7 @@ Free and open source (GPL-3.0), based on <a href="https://github.com/hugelton/Fe
 
 ---
 
-SLOOP turns the FM-1 into a four-track groovebox you play live: **three synths and a drum machine** with 16 sounds on the white keys, twelve synthesis engines, 153 sounds, 37 drum kits, your own samples, a song mode you play with your hands, USB audio, MIDI in on the jack and MIDI clock — and now **physical models** (guitars, sitar, bells, hand drums), a **noise** engine, **six-operator FM with DX7 patches**, **parameter locks**, **micro timing**, **fills**, a **quick chain** of sections and the **sequencer to MIDI out**. House, techno, hip-hop, trap, drum & bass, amapiano, synthwave, lo-fi, ambient, chiptune — it does not pick a style for you. Start from your own playing or optional native drum grooves and musical sequence starters.
+SLOOP turns the FM-1 into a four-track groovebox you play live: **three synths and a drum machine** with 16 sounds on the white keys, twelve synthesis engines, 171 sounds, 37 drum kits, your own samples, a song mode you play with your hands, USB audio, MIDI in on the jack and MIDI clock — and now **physical models** (guitars, sitar, bells, hand drums), a **noise** engine, **six-operator FM with DX7 patches**, **parameter locks**, **micro timing**, **fills**, a **quick chain** of sections and the **sequencer to MIDI out**. House, techno, hip-hop, trap, drum & bass, amapiano, synthwave, lo-fi, ambient, chiptune — it does not pick a style for you. Start from your own playing or optional native drum grooves and musical sequence starters.
 
 > **Status:** beta. Please [report](../../issues) what you find. Projects, presets, samples and settings are kept during updates; see [Going back](#going-back) before downgrading.
 
@@ -100,6 +100,8 @@ and section. Its inactive controls show the retained WOW/DARK/DAMAGE amounts.
 
 On the drum track, **FX page 1** provides LEVEL / PAN / DELAY / REVERB, and page 2 provides its filter. INSERT 2 groups MIX, TYPE and the first two insert controls. MIDI CC11 expression and CC0 bank selection extend external-controller support without replacing saved track levels.
 
+**MENU → FX** adds **FILTER RESO** for synth and drum track filters and **PUNCH FADE** for effect entry/exit. You can also hold **FX** and turn **SELECT** to adjust fade. HALF/DOUBLE remain immediate; the LOFI punch fades its temporary boost without changing your saved sound. **MENU → SEQ** controls automatic step advance and drum browsing preview. Noise-based drums respond to **TUNE** by shifting their filter brightness.
+
 | Selected-note editor | Note actions | LOFI characters |
 | --- | --- | --- |
 | <img src="assets/screens/merthsoft/neon/notes.png" width="240" alt="Native NOTES editor selecting one sustained chord member"> | <img src="assets/screens/merthsoft/neon/note-actions.png" width="240" alt="Native note action sheet with a staged destination"> | <img src="assets/screens/merthsoft/neon/lofi-vinyl.png" width="240" alt="LOFI character selector and Vinyl controls"> |
@@ -178,6 +180,9 @@ These are the implemented MerthSloop additions; the upstream engine, preset and 
 - **New project from SAVE:** the SAVE-held song menu includes **NEW**, with confirmation while stopped, so starting over does not require overwriting a saved slot.
 - **Remote performance controls:** the phone can trigger held/next-bar fills and the negotiated punch-effect bank. Leases, panel priority, STOP and disconnect cleanup prevent abandoned remote controls from sticking.
 - **Companion protocol and safe exchange:** hardware octave reporting, FM6/native-pattern editing, sample backup/upload/readback, persistent FM6 base-voice bank saving, and canonical drum-library discovery support the Android workstation below. INFO 15 keeps upstream SYN kit commands at 72–76 and LIVE at 77; remote performance uses 86 and the drum bank uses 87. Android and the web editor negotiate the supported mapping. Atomic live hardware scene switching remains future work.
+- **Faithful live recording:** overlapping POLY notes end at their own releases; mono/legato/unison transitions preserve the recorded envelope handoff. Independent ties still support sustained notes under later attacks. Untouched factory/user arps follow a new preset; your edited arp stays. HOME identifies the A–D section currently playing.
+- **More LOFI experiments:** TAPE combines cassette wobble, flutter and wear in one character; SMPLR blends old-digital rate reduction, bit crushing and compensated drive from subtle grit to heavy destruction. DUST KEYS, WORN PAD, TOY BELL and DUST BASS add four editable instrument presets in the LOFI bank. [Controls and details](docs/firmware/LOFI-MASTER-DESIGN.md).
+- **More playable instruments:** fourteen extra factory sounds under CHIP and INST: NES-inspired pulse, pluck and triangle; Game Boy-inspired wave bass, hollow lead, organ and arpeggio; violin, clarinet, oboe, bassoon, harpsichord and oud. These reuse existing engines and remain fully editable. [Preset pack](docs/firmware/INSTRUMENT-PRESET-PACK.md).
 - **Compact firmware storage:** packed bold fonts and a lossless factory-drum dictionary leave more room for instruments and workflows. Factory drum sounds keep their exact parameters; only a new hit decodes its sound. Startup shows the firmware title instead of the bitmap splash.
 - **Track settings stay put:** changing instruments preserves POLY/MONO/LEGATO/UNISON, glide amount/mode, note priority/allocation, drive, chorus, delay/reverb sends, insert, slicer and track filter. On a normal FX page, press **OCT− and OCT+ together** to reset the selected track’s effects; playing preferences stay intact. Song loads still restore the saved song.
 - **Swing eighth-note grooves:** hold HOME → TIMING → SWING GRID → 1/8, then use SWING8 on TRACKS. HALF TIME hats and sequenced eighth-note arps can shuffle on a 1/16 pattern; STEP retains the existing swing mode. [Controls and screenshots](docs/firmware/SWING-GRID-DESIGN.md).
@@ -185,6 +190,7 @@ These are the implemented MerthSloop additions; the upstream engine, preset and 
 - **Adjustable scale lights:** choose DIM/LOW/MID/HIGH in the main menu’s LIGHTS section; played notes stay bright. SEL shows the normal key guide with CHORD off and a black-key modifier legend with CHORD on.
 - **Edit without stopping the groove:** adjust note pitch/length, move a mistimed note, use note actions, and undo/redo pattern edits during playback. Progression LIVE supports running transport, draft changes for the next chord, page navigation, and switching sustained chords to arp output.
 - **Write your own progression:** choose CUSTOM in SEQUENCES, then turn SELECT to the CUSTOM page. Set 1–8 chord positions and their scale degrees, with adjustable duration. Use the same rhythm, voicing, preview and CHORD/BASS/ARP NOTES controls; applied notes save with the song.
+- **Perform progressions live:** SEQUENCES → PERFORM maps your progression across all sixteen white keys, repeating each group another octave higher. Black keys use the ordinary chord modifiers; HOLD makes them toggles. Play sustained chords with ARP OFF or rhythmic output with ARP ON, alongside the other tracks, and record the result as editable notes.
 - **Layer starter sequences:** in SEQUENCES, turn **ALGORITHM** to **ADD** instead of REPLACE. Existing timing, locks and fill survive; duplicates are skipped and a fifth distinct note rejects the operation without changing the track. EDIT undo/redo covers the complete change.
 - **Three additional visualizers:** Note Trails, Groove and Song Journey show pitches, timing and song order. Seven styles are available, including Oscilloscope, Spectrum, Spectrogram and VU Meters; see the [complete gallery](docs/firmware/VISUALIZERS.md).
 
@@ -245,6 +251,10 @@ selected octaves take priority. FM1 polyphony limits still apply to dense chords
 
 The companion also offers external MIDI device/output-port input in Perform (literal keys or bounded scale-root chords, sustain and lifecycle cleanup). FM1 arp output preserves incoming/sequenced velocities. See the [current feature status](<android/design docs/STATUS.md>) and [release evidence](<android/design docs/VERIFICATION.md>).
 
+Perform also offers an **Accessible pads** section with named buttons that play
+brief notes or chords and release automatically. Hardware gesture buttons support
+bounded accessible activation too, alongside their normal touch controls.
+
 The app has five workspaces:
 
 | Playable sound | FM1 song library |
@@ -276,7 +286,7 @@ Build and install from [`android/src`](android/src/README.md) using .NET 10 and 
 ## Upstream capabilities
 
 SLOOP supplies the groovebox foundation: twelve synth engines including PHYS,
-NOISE and six-operator FM, 153 factory sounds, sampled and synthesised drum kits,
+NOISE and six-operator FM, 171 factory sounds, sampled and synthesised drum kits,
 DX7 patch exchange, parameter locks, microtiming, fills, song chains, MIDI and USB
 audio. The [features below](#features) describe the current controls; the
 [manual](SLOOP.md) retains upstream history and deeper reference material.
@@ -350,7 +360,7 @@ Every function button is a **layer**: hold it and the 16 white keys and the four
 
 | Hold | Keyboard controls | KNOB 1 · 2 · 3 · 4 |
 | --- | --- | --- |
-| **FX** — punch | 27 punch-in effects on the whole mix. White keys: loops 1/4–1/32, stutter, reverse, tape stop, half speed, filter sweeps, phone, bit crush, alias, gate, echo, tape wobble. Black keys: kill low / mid / high, rewind, octave down, flanger, auto-pan, freeze, loop 1/8T, mono, fade out | FILTER · DUST · DUCK · the track's filter |
+| **FX** — punch | 27 punch-in effects on the whole mix. White keys: loops 1/4–1/32, stutter, reverse, tape stop, half speed, filter sweeps, phone, bit crush, alias, gate, echo, tape wobble. Black keys: kill low / mid / high, rewind, double time, flanger, auto-pan, freeze, loop 1/8T, LOFI, fade out | FILTER · DUST · DUCK · the track's filter |
 | **LFO / ENV** — modulation | playable keyboard, track-only vibrato / tremolo waveform panel | Hz · DEPTH · WAVE · SYNC |
 | **EDIT** — erase | erase a sound or a note as the loop plays (stopped: from the whole pattern); a black key: live drum mutes | SHIFT · LENGTH ×2 / ½ · TRANSPOSE · OCTAVE |
 | **ARP** — roll | note repeat on the grid, recorded as ratchets | RATE (1/8 … 1/64) |
@@ -371,7 +381,7 @@ Keys 1, 5, 9 and 13 glow dimly while a layer is held: the first key of each row 
 ### Synths and sounds
 
 - **Twelve engines:** analog, 4-op FM, **6-op FM with DX7 patches (FM6)**, phase distortion, three-oscillator, tonewheel organ, formant voice, granular, lo-fi chip, sampler, **physical models (PHYS)**, **noise (NOISE)**.
-- **153 sounds, browsed by kind** — basses (sliding 808s, acid 303, reese, FM, bass guitar), guitars, sitar and koto (physical models), keys (Rhodes, a real Steinway grand, house and afro keys), organs and accordion, pads (string machine, granular clouds), leads (supersaw, talkbox, pan flute, harmonica), plucks and bells (harp, steel drum, glockenspiel, celesta, xylophone), stabs and dub chords — every one level-matched. **32 slots** for your own presets.
+- **171 sounds, browsed by kind** — basses (sliding 808s, acid 303, reese, FM, bass guitar), guitars, sitar and koto (physical models), keys (Rhodes, a real Steinway grand, house and afro keys), organs and accordion, pads (string machine, granular clouds), leads (supersaw, talkbox, pan flute, harmonica), plucks and bells (harp, steel drum, glockenspiel, celesta, xylophone), stabs and dub chords — every one level-matched. **32 slots** for your own presets.
 - Envelopes (with a pitch punch for 808s; in note values with ENV SYNC), LFO (tempo-synced, free-running or unipolar), arpeggiator, glide and voice modes (POLY, MONO, LEGATO, UNISON), per-track drive, **INSERT effect** (soft / hard clip, wavefolder, fuzz, bit crush, phaser, flanger, chorus) and slicer, ANALOG's filter as LP, BP or HP, sends to a **stereo chorus**, a **tempo delay** (dotted 1/8 and 1/16 too) and a **stereo reverb**.
 - **Key and chords (SEL):** the key of the song for all synths, 16 scales, one-key chords (triad, 7th, 9th, sus4, power), keys snapped to the scale or the scale on the white keys.
 
@@ -660,7 +670,7 @@ Something else? [Open an issue](../../issues): what you did, what you expected, 
 | | |
 | --- | --- |
 | Tracks | 3 synth parts (8 voices shared) + drums (16 sounds, 6 voices) |
-| Sounds | 153 presets on 12 engines (browsed by kind, level-matched), 6-op FM with DX7 SysEx import and a 27-patch bank, 8 sampled sets (CC0), 4 slots for your own samples (USR1–USR4), 32 user presets |
+| Sounds | 171 presets on 12 engines (browsed by kind, level-matched), 6-op FM with DX7 SysEx import and a 27-patch bank, 8 sampled sets (CC0), 4 slots for your own samples (USR1–USR4), 32 user presets |
 | Drum kits | 37 (5 sampled, 32 synthesised, 16 sounds each), level-matched, plus your own: USR1–USR4 and USR3+4 (about 15 s) |
 | Sequencer | 64 steps per track, own length and division each (1/32 to two bars); chords with a level and ratchet per note; drums with a level and ratchet per sound; ties, slide; per-step parameter locks (24 per track), micro timing (±½ step in 1/64) and fill conditions; swing 0 (straight) to 100 (MPC 75 %); one sample-accurate clock (no drift) |
 | Recording | live, quantised as heard (latency-compensated), overdub; free take (the tempo follows you) or the tempo set; start on the first note or a one-bar count-in; 1, 2 or 4 bars |

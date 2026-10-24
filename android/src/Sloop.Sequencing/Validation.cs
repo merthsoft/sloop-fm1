@@ -33,7 +33,7 @@ public static class PatternValidation
                         if (step.Micro.Value is < -32 or > 31 || (int)step.Fill is < 0 or > 3) throw new EditException("Invalid native micro timing or fill condition.");
                         if (step is SynthStep s && !track.IsDrum)
                         {
-                            if (s.Slots.IsDefault || s.Slots.Length != 4 || s.Count is < 0 or > 4 || (int)s.Time is < 0 or > 2 || ((int)s.Flags & ~0x7b) != 0 || s.Velocity is < 0 or > 127)
+                            if (s.Slots.IsDefault || s.Slots.Length != 4 || s.Count is < 0 or > 4 || (int)s.Time is < 0 or > 2 || ((int)s.Flags & ~0xfb) != 0 || s.Velocity is < 0 or > 127)
                                 throw new EditException("Invalid synth step.");
                             foreach (var slot in s.Slots) { Identity(slot.Id); if (slot.Pitch is < 0 or > 127) throw new EditException("Pitch out of range."); Hit(slot.Level, slot.Ratchet); }
                         }

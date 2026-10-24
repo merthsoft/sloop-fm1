@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><TargetFramework>net10.0</TargetFramework><OutputType>Exe</OutputType></PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../Sloop.Android/UiRequests.cs" Link="UiRequests.cs" />
+    <Compile Include="../Sloop.Android/PerformHardwareEditor.cs" Link="PerformHardwareEditor.cs" />
+    <Compile Include="../Sloop.Android/MainActivity.UiRequests.cs" Link="MainActivity.UiRequests.cs" />
+    <Compile Include="../Sloop.Android/MainActivity.Accessibility.cs" Link="MainActivity.Accessibility.cs" />
+  </ItemGroup>
+</Project>

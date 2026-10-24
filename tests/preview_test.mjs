@@ -10,7 +10,7 @@ const html = readFileSync('web/editor.html', 'utf8');
 const proto = html.slice(html.indexOf('/*PROTO-BEGIN*/'), html.indexOf('/*PROTO-END*/'));
 const E = vm.runInNewContext(proto + ';({makeMockDevice, previewSnapshot, previewToggleStep, previewSetStepNotes, previewToggleDrum, CMD, req, frame, unframe, FM6, buildSlot})',
   { setTimeout, clearTimeout, setInterval, clearInterval, console, TextEncoder, TextDecoder, Blob, Response, DecompressionStream });
-const module = await WebAssembly.compile(readFileSync('build/preview/sloop-preview.wasm'));
+const module = await WebAssembly.compile(readFileSync(process.env.PREVIEW_WASM || 'build/preview/sloop-preview.wasm'));
 assert.equal(WebAssembly.Module.imports(module).length, 0, 'DSP must have no hardware or runtime imports');
 function device(options = {}) { return E.makeMockDevice({ auto: false, ...options }); }
 function render(dsp, frames = 8192) {
@@ -23,9 +23,9 @@ async function request(m, [cmd, a]) {
   const inp = [...m.access.inputs.values()][0], out = [...m.access.outputs.values()][0];
   return new Promise((resolve) => { inp.onmidimessage = ({data}) => resolve(E.unframe(data)); out.send(E.frame(cmd, a)); });
 }
-for (let probe = 0; probe < 32; probe++) {
+for (let probe = 0; probe < 33; probe++) {
   const engine = probe < 12 ? probe : 0, reverb = probe===29 ? 5 : probe >=12 && probe<17 ? probe-12 : null;
-  const lofi = probe===30 ? 5 : probe>=17 && probe<22 ? probe-17 : null;
+  const lofi = probe>=32 ? 6 : probe===30 ? 5 : probe>=17 && probe<22 ? probe-17 : null;
   const delay = probe===31 ? 3 : probe>=22 && probe<29 ? (probe<25?probe-22:probe<27?1:2) : null;
   const m = device();
   await request(m, E.req.set(1, 20, engine));
@@ -41,7 +41,7 @@ for (let probe = 0; probe < 32; probe++) {
   }
   if (lofi !== null) {
     while(state.g.length<55)state.g.push(0);
-    state.g[50]=127;state.g[51]=100;state.g[52]=80;state.g[54]=probe===30 ? 5 : (lofi+1)%5;
+    state.g[50]=127;state.g[51]=100;state.g[52]=80;state.g[54]=probe>=32 ? 6 : probe===30 ? 5 : (lofi+1)%5;
     state.tracks[0].p[34]=state.tracks[0].p[35]=state.tracks[0].p[36]=0;
   }
   if (delay !== null) {
@@ -57,7 +57,7 @@ for (let probe = 0; probe < 32; probe++) {
   const dsp = new FirmwareAudio(module); dsp.sync(state);
   const t = state.tracks[0], frames = reverb === null && lofi === null && delay === null ? 8192 : 44160;
   const cfg = Int32Array.from([engine, t.preset, 60, frames, state.g.length, ...t.p, ...state.g]);
-  const raw = execFileSync(process.platform === 'win32' ? 'build/host/preview_native.exe' : 'build/host/preview_native', { input: Buffer.concat([Buffer.from(cfg.buffer), Buffer.from(t.fm6)]) });
+  const raw = execFileSync(process.env.PREVIEW_NATIVE || (process.platform === 'win32' ? 'build/host/preview_native.exe' : 'build/host/preview_native'), { input: Buffer.concat([Buffer.from(cfg.buffer), Buffer.from(t.fm6)]) });
   const native = new Float32Array(raw.buffer.slice(raw.byteOffset, raw.byteOffset + raw.byteLength));
   dsp.w.preview_note(0, 60, 1);
   const a = render(dsp, frames/2);

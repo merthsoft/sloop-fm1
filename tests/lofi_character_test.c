@@ -20,7 +20,7 @@ static void check_punch_characters(void)
         uint64_t hash[2]={0};
         for(unsigned punched=0;punched<2;punched++) {
             reset(mode);
-            song.g[G_LTYPE]=mode==VINYL_MODE_OFF?0:mode==VINYL_MODE_RADIO?5:mode+1;
+            song.g[G_LTYPE]=mode==VINYL_MODE_OFF?0:mode>=VINYL_MODE_RADIO?mode:mode+1;
             song.g[G_VWOW]=strong?127:punched?25:96;
             song.g[G_VTONE]=strong?121:punched?35:90;
             song.g[G_VCRACKLE]=strong?115:punched?45:100;

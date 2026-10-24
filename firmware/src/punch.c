@@ -47,7 +47,7 @@ static struct {
     uint32_t fv;                  /* FADE OUT: level Q23 */
     int32_t mabs;                 /* the mix's mean level, |l| + |r| (FREEZE's target), ~0.2 s */
     int32_t fg;                   /* FREEZE: the held reverb's gain, Q10 */
-} punch = {.req = -1, .cur = -1, .fg = 8192};
+} punch;
 
 /* Independent holds: a source release cannot cancel another source's key.
  * Compact ranks (1..81) avoid timestamp wrap and retain last-press fallback. */
@@ -56,8 +56,16 @@ static int8_t punch_rate_req = -1;
 static uint8_t punch_local;
 static int8_t punch_filter_req = -1;
 static uint8_t punch_gate_req;
-static struct { int8_t cur; int32_t gain, cut, z[6]; } punch_filter = {.cur=-1};
+static struct { int8_t cur; int32_t gain, cut, z[6]; } punch_filter;
 static struct { int32_t gain; uint32_t phase; } punch_gate;
+/* Once after BSS/data initialization, before any render or event processing.
+ * Keep the large, mostly-zero states out of the flash data load image. */
+static __attribute__((noinline)) void punch_boot_init(void)
+{
+    punch.req = punch.cur = -1;
+    punch.fg = 8192;
+    punch_filter.cur = -1;
+}
 static int punch_family(int fx)
 { return (fx == PX_HALF || fx == PX_DOUBLE) ? 3 : fx == PX_GATE ? 2 : fx >= PX_LPF && fx <= PX_TEL ? 1 : 0; }
 static uint32_t punch_key_of_fx(uint32_t fx);
@@ -291,6 +299,7 @@ static void punch_freeze_feed(int32_t *rev, const int32_t *l, const int32_t *r, 
 /* l, r: the mix before the master (fx.c mix_block), n samples, in place */
 static void punch_primary(int32_t *l, int32_t *r, uint32_t n)
 {
+    int32_t fade = punch_fade_step();
     uint32_t i;
     int32_t want = punch.req >= 0 ? punch.req : punch_local ? -1 : perf_punch(fm1_ms);
     if (want == PX_HALF || want == PX_DOUBLE || want == PX_VINYL) want = -1; /* Transport/upstream gestures never replay audio. */
@@ -438,9 +447,12 @@ static void punch_primary(int32_t *l, int32_t *r, uint32_t n)
         }
         case PX_FREEZE: {                               /* the held reverb (rev_l / rev_r), the dry mix fading under it */
             int32_t c = punch.t < PX_FRZ_CAP ? (int32_t)(punch.t << 2) : 32767;   /* PX_FRZ_CAP << 2 = 32768 */
-            int32_t fl = (rev_l[i & (CTL - 1u)] * punch.fg) >> 10, fr = (rev_r[i & (CTL - 1u)] * punch.fg) >> 10;
-            wl = x + ((((fl - x) >> 3) * (c >> 3)) >> 9);
-            wr = y + ((((fr - y) >> 3) * (c >> 3)) >> 9);
+            /* SPRING's six-times-int16 pickup can exceed the old FDN range.
+             * Widen products, retaining the original preshifts and rounding. */
+            int32_t fl = (int32_t)(((int64_t)rev_l[i & (CTL - 1u)] * punch.fg) >> 10),
+                    fr = (int32_t)(((int64_t)rev_r[i & (CTL - 1u)] * punch.fg) >> 10);
+            wl = x + (int32_t)(((int64_t)((fl - x) >> 3) * (c >> 3)) >> 9);
+            wr = y + (int32_t)(((int64_t)((fr - y) >> 3) * (c >> 3)) >> 9);
             break;
         }
         case PX_FADE: {
@@ -473,11 +485,12 @@ static void punch_primary(int32_t *l, int32_t *r, uint32_t n)
             break;
         }
         if ((uint32_t)punch.g < target)
-            punch.g = punch.g + 512 > 32767 ? 32767 : punch.g + 512;
+            punch.g = punch.g + fade > 32767 ? 32767 : punch.g + fade;
         else if ((uint32_t)punch.g > target)
-            punch.g = punch.g < 512 ? 0 : punch.g - 512;
-        l[i] = x + ((((wl - x) >> 3) * (punch.g >> 3)) >> 9);   /* (no 32-bit overflow) */
-        r[i] = y + ((((wr - y) >> 3) * (punch.g >> 3)) >> 9);
+            punch.g = punch.g < fade ? 0 : punch.g - fade;
+        /* Opposite-polarity dry/held material can span the full bus headroom. */
+        l[i] = x + (int32_t)(((int64_t)((wl - x) >> 3) * (punch.g >> 3)) >> 9);
+        r[i] = y + (int32_t)(((int64_t)((wr - y) >> 3) * (punch.g >> 3)) >> 9);
         punch.w++;
         punch.t++;
         if (punch.g == 0 && want != fx)                 /* faded out: none until the next block, which starts the
@@ -491,6 +504,7 @@ static void punch_primary(int32_t *l, int32_t *r, uint32_t n)
  * Capture/write the shared dry ring exactly once, inside punch_primary. */
 static void punch_process(int32_t *l,int32_t *r,uint32_t n)
 {
+    int32_t fade = punch_fade_step();
     punch_primary(l,r,n);
     int filter=punch.req==PX_FREEZE||punch.cur==PX_FREEZE?-1:punch_filter_req;
     int gate=punch.req!=PX_FREEZE&&punch.cur!=PX_FREEZE&&punch_gate_req;
@@ -514,9 +528,9 @@ static void punch_process(int32_t *l,int32_t *r,uint32_t n)
                 int32_t b=(wl+wr)>>2;
                 b-=tsvf_lp(&c2,b,&z[4],&z[5]); wl=wr=softclip(b<<2)>>1;
             }
-            punch_filter.gain=clamp(punch_filter.gain+(filter==fx?512:-512),0,32767);
-            l[i]=x+((((wl-x)>>3)*(punch_filter.gain>>3))>>9);
-            r[i]=y+((((wr-y)>>3)*(punch_filter.gain>>3))>>9);
+            punch_filter.gain=clamp(punch_filter.gain+(filter==fx?fade:-fade),0,32767);
+            l[i]=x+(int32_t)(((int64_t)((wl-x)>>3)*(punch_filter.gain>>3))>>9);
+            r[i]=y+(int32_t)(((int64_t)((wr-y)>>3)*(punch_filter.gain>>3))>>9);
         }
         if(!punch_filter.gain&&filter!=fx)punch_filter.cur=-1;
     }
@@ -529,7 +543,7 @@ static void punch_process(int32_t *l,int32_t *r,uint32_t n)
             if(p<64u)gg=(int32_t)p*512;
             else if(p>=step/2u&&p<step/2u+64u)gg=32767-(int32_t)(p-step/2u)*512;
             punch_gate.phase=p+1u>=step?0u:p+1u;
-            punch_gate.gain=clamp(punch_gate.gain+(gate?512:-512),0,32767);
+            punch_gate.gain=clamp(punch_gate.gain+(gate?fade:-fade),0,32767);
             int32_t g=32767-mulq15(32767-gg,punch_gate.gain);
             l[i]=mulq16(l[i],(uint32_t)g<<1); r[i]=mulq16(r[i],(uint32_t)g<<1);
         }

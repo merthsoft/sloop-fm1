@@ -4,27 +4,28 @@
 
 `firmware/src/vinyl.c` remains an include-style DSP module. Its explicit entry is
 `vinyl_process_mode(int32_t *l, int32_t *r, uint32_t n, unsigned mode)`.
-Modes, in stable DSP/persistence order: `VINYL_MODE_VINYL=0`, `VINYL_MODE_TAPE=1`,
-`VINYL_MODE_VHS=2`, `VINYL_MODE_CD=3`, `VINYL_MODE_OFF=4`, `VINYL_MODE_RADIO=5`, `VINYL_MODE_COUNT=6`. OFF remains a bypass selector; its stored ID is unchanged.
+Internal DSP modes: `VINYL_MODE_VINYL=0`, `VINYL_MODE_TAPE=1`,
+`VINYL_MODE_VHS=2`, `VINYL_MODE_CD=3`, `VINYL_MODE_OFF=4`, `VINYL_MODE_RADIO=5`, `VINYL_MODE_SAMPLER=6`, `VINYL_MODE_COUNT=7`. OFF remains a bypass selector; its stored ID is unchanged.
 Values at or above COUNT select VINYL. Legacy `vinyl_process(l,r,n)` explicitly selects
 VINYL. The LOFI punch retains the selected character, falling back to VINYL
 only for OFF. It floors the three local amounts at 96/90/100 without reducing
 stronger saved values;
 saved globals are untouched. Parent integration now adds G_LTYPE, the native LOFI selector, mode-specific labels and the single mixer call. FUN6 stores mode in an optional 0x5C00 tag (three bits, including OFF); the earlier 0x5A00 four-character tag remains readable. It is stored alongside the old amounts; absent tags select OFF; explicit old 0x5600 VINYL tags select VINYL. Project/section tests cover every character and old tags. Shared project sizes and default upstream bytes remain unchanged.
 
-The native G_LTYPE selector is OFF=0, VINYL=1, TAPE=2, VHS=3, CD=4, RADIO=5.
+The native G_LTYPE selector is OFF=0, VINYL=1, TAPE=2, VHS=3, CD=4, RADIO=5, SMPLR=6.
 OFF is both the first option and the default. lofi_mode maps it to the stable
-DSP/storage IDs above. Missing or invalid tags select OFF; explicit saved
+DSP IDs above; storage retains its separate legacy mapping. Missing or invalid tags select OFF; explicit saved
 characters, including old VINYL tags, retain their intent. The three amounts
 are preserved while OFF. There is one master processing call.
 
 | Character | G_VWOW / knob 2 | G_VTONE / knob 3 | G_VCRACKLE / knob 4 |
 | --- | --- | --- | --- |
 | VINYL | WOW | DARK | DAMAGE |
-| TAPE | FLUTTER | DARK | DRIVE |
+| TAPE | WOW | DARK | WEAR |
 | VHS | WARBLE | DARK | DAMAGE |
 | CD | RATE | LATCH | MIX |
 | RADIO | DRIFT | BAND | STATIC |
+| SMPLR (sampler) | RATE | CRUSH | DRIVE |
 
 Amounts remain 0..127. All three zero is bit-exact bypass after the existing
 control release settles. Mode alone does not activate processing. Control
@@ -65,9 +66,7 @@ RMS, -8.6dBFS peak, crest factor 31.29, and 98.32% samples below magnitude 100.
 Original RMS/peak audibility bounds remain; new sparsity/crest assertions were
 added instead of weakening those bounds.
 
-TAPE reduces slow excursion, adds ~17.9Hz flutter, darkens and blends a bounded
-odd soft knee. Its tiny hiss is 1/64 of the VINYL surface signal. The saturation
-uses fixed-point multiplies and clamps, with no per-sample 64-bit divide.
+TAPE combines slow wow, stronger flutter, darkness, saturation and brief wear dips/hiss in a single character. The saturation uses fixed-point multiplies and clamps, with no per-sample 64-bit divide.
 VHS runs the phase three times faster, darkens and creates decaying partial
 signal dropouts, with surface noise at 1/128 VINYL level. Both are lightweight
 character effects, not physical transport models or oversampled saturation.
@@ -121,9 +120,56 @@ the fully integrated firmware before shipping.
 
 ## Integrated validation
 
-Native/WASM audio matches exactly across all four characters. Actual framebuffer tests check all character labels and forced/incremental redraw parity. The native short label FLUTTR fits the six-character knob card. Host-only abs calls were replaced by equivalent bounded integer operations for the freestanding target. Wet-color TAPE/CRUSH remains a separately tested foundation for the queued delay/reverb expansion; it is not an extra active master mode.
+Native/WASM audio matches exactly across all four characters. Actual framebuffer tests check all character labels and forced/incremental redraw parity. The native labels fit the knob cards. Host-only abs calls were replaced by equivalent bounded integer operations for the freestanding target. Wet-color TAPE/CRUSH remains a separately tested foundation for the queued delay/reverb expansion; it is not an extra active master mode.
 
 LOFI TYPE also offers **OFF**: it fades to dry without changing the three stored
 amounts. Selecting a character restores those amounts; LOFI punch remains
 momentary over OFF and returns to dry on release. OFF is saved with the project
 and section. Its inactive controls show the retained WOW/DARK/DAMAGE amounts.
+
+## Tape and early-digital coloration
+
+TAPE incorporates the former cassette character: slower wow, stronger flutter,
+the shared soft knee, wear dips and hiss. A separate cassette selector duplicated
+that role and has been removed. Controls are WOW / DARK / WEAR.
+
+SMPLR is a sample-and-hold ADC character, not sample loading or a new engine.
+RATE blends toward power-of-two holds down to about 1.38 kHz. CRUSH blends
+signed quantization down to a 4096-unit step. DRIVE blends compensated clipping
+in the internal mix-bus domain. The previous unconditional 16-bit clamp clipped
+loud input even at low settings; it is removed. Each control now blends its own
+processing progressively. DRIVE uses a squared control curve, with clean lower
+travel and full destruction at maximum. Gain above unity is split into integer
+and fractional components: the shared mulq16 helper overflows fractional
+products when misused for above-unity gain. The 20% drive test now preserves
+unclipped loud-bus input to less than 3 internal units RMS error.
+Both channels retain independent audio and share
+timing. Coefficients are calculated per block only while entering/using SMPLR.
+No new audio buffer or persistent DSP state is added.
+
+Stored IDs remain VINYL=0, TAPE=1, VHS=2, CD=3, OFF=4, RADIO=5, SAMPLER=7.
+Retired cassette ID 6 loads as TAPE. Sampler UI/DSP ID 6 saves as stored ID 7,
+so existing sampler sections keep their meaning. All-zero controls still settle
+to exact dry bypass. Punch boosts the chosen mode and restores saved controls.
+
+Four appended LOFI-bank presets use the existing LOFI engine: DUST KEYS,
+WORN PAD, TOY BELL and DUST BASS. They do not change master effects, so they can
+be played clean or combined with any LOFI character. Existing factory IDs,
+favourites and trim values are retained; combined user offsets move after the
+expanded factory bank as in the previous pack. There are 171 factory sounds.
+
+The integrated image is **583,388 / 584,336 B**, leaving **948 B flash**.
+The addition costs **420 B flash** and **144 B low RAM** versus the preceding
+build. Low RAM is **28,928 / 29,496 B** (568 B free); main static RAM and the
+audio pool are unchanged. No features or sample content were removed.
+
+Validation: 200 golden renders, all 196 existing hashes unchanged; eighteen
+appended-preset range/velocity/release and mixed-playback checks; 171 raw versus
+boot-restored records; browser identities; all seven project/section modes and retired cassette migration;
+mode labels; all-character punch/release, overload, exact bypass and silence;
+actual 32-frame hold and signed four-bit quantization; level-compensated drive;
+33 native/WASM profiles; target render budgets and inlining. Low/mid/full control tests use loud mix-bus input, individually and in all seven combinations, and catch unintended low-setting clipping. Hardware listening
+remains the subjective sound-quality check.
+
+![Tape controls](../../assets/screens/merthsoft/neon/lofi-tape.png)
+![Sampler controls](../../assets/screens/merthsoft/neon/lofi-sampler.png)

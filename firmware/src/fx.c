@@ -784,7 +784,7 @@ static void mix_part_run(track_t *t, uint32_t n, mixacc_t *mx, int32_t *b)
         {
             tsvf_t fc;                                  /* the track's FILTER (P_TFLT), after the SLICER */
             djf_t *f = &tflt[(uint32_t)(t - trk) % NTRK];
-            if (djf_block_res(f, filter, &fc, live_mod[2].on && live_mod[2].part == (uint32_t)(t-trk) ? 116 : 40))
+            if (djf_block_res(f, filter, &fc, live_mod[2].on && live_mod[2].part == (uint32_t)(t-trk) ? 116 : 40 + 7 * flt_reso))
                 tflt_run(f, &fc, b, n, 0);
         }
         int32_t lvl0, dl, gl0, dgl, gr0, dgr;          /* (2.7) LEVEL (and a new sound's trim) and PAN glide (drums.c
@@ -922,7 +922,7 @@ static void mix_drums(uint32_t n, mixacc_t *mx)
     int flt;
     drums.a0 = TDRUM->att;                              /* the drum track's mute / solo fade */
     drums.a1 = 32767 - gain_next(TDRUM);
-    flt = n <= CTL && djf_block(f, TDRUM->p[P_TFLT], &fc);   /* the drum track's FILTER */
+    flt = n <= CTL && djf_block_res(f, TDRUM->p[P_TFLT], &fc, 40 + 7 * flt_reso);   /* the drum track's FILTER */
     if (flt || (n <= CTL && (TDRUM->p[P_ITYPE] | TDRUM->ins_run))) {   /* .. or its INSERT: left, right, the sends */
         int32_t *dl = drum_buf[0], *dr = drum_buf[1], *dv = drum_buf[2], *dd = drum_buf[3];
         for (i = 0; i < n; i++)

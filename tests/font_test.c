@@ -16,6 +16,8 @@ static void lcd_sync(void) {}
 static void lcd_blit(uint32_t x, uint32_t y, uint32_t w, uint32_t h, const uint16_t *p) { (void)x; (void)y; (void)w; (void)h; (void)p; }
 #define __attribute__(x)         /* (as tests/hostsim.c: gfx.c puts its canvas in the pool section, which clang on
                                  * macOS refuses for a host build; sloop-lab, 11/10/2026) */
+static unsigned str_len(const char *s) { return (unsigned)strlen(s); }
+static void str_cpy(char *d, const char *s, unsigned n) { if (n) { strncpy(d,s,n-1); d[n-1]=0; } }
 #include "../firmware/src/gfx.c"
 static int bad;
 static void check(int ok, const char *what) { printf("font: %-70s %s\n", what, ok ? "ok" : "FAIL"); bad += !ok; }
@@ -70,8 +72,8 @@ static uint32_t capital(uint32_t c) { return (c >= 'a' && c <= 'z') || (c >= 0xE
 int main(int argc, char **argv)
 {
     uint32_t hs = render_all(&FONT_S, 255u), hl = render_all(&FONT_L, 95u), wsum = 0, c;
-    for (c = 0; c < 224u; c++) wsum = wsum * 31u + FONT_S.adv[c] * 7u + FONT_S.bw[c];
-    for (c = 0; c < 64u; c++) wsum = wsum * 31u + FONT_L.adv[c] * 7u + FONT_L.bw[c];
+    for (c = 0; c < 224u; c++) wsum = wsum * 31u + font_advance(&FONT_S, c) * 7u + font_bitmap_width(&FONT_S, c);
+    for (c = 0; c < 64u; c++) wsum = wsum * 31u + font_advance(&FONT_L, c) * 7u + font_bitmap_width(&FONT_L, c);
     if (argc > 1) {
         printf("%08x %08x %08x %u\n", hs, hl, wsum, (unsigned)sizeof FONT_S_DATA);
         return 0;
@@ -108,7 +110,7 @@ int main(int argc, char **argv)
         felucca_font_t s4 = FONT_S, l4 = FONT_L;
         uint32_t g, n = 0, y, xx;
         for (g = 0; g < 224u; g++) {
-            uint32_t w = FONT_S.bw[g], bpr = (w + 1u) / 2u;
+            uint32_t w = font_bitmap_width(&FONT_S, g), bpr = (w + 1u) / 2u;
             off4[g] = (uint16_t)n;
             for (y = 0; y < FONT_S.h; y++)
                 for (xx = 0; xx < w; xx++) {

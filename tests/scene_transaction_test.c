@@ -24,7 +24,7 @@ static void payload(void)
     memset(data,0,sizeof data); data[0]=1; put(data+1,120,2); data[3]=7;
     for(t=0;t<3;t++) {
         o+=142; data[o]=64; data[o+1]=2; o+=2;
-        for(i=0;i<64;i++,o+=11) { data[o+8]=255; data[o+9]=255; data[o+10]=32; }
+        for(i=0;i<64;i++,o+=11) { data[o+6]=0x80; data[o+8]=255; data[o+9]=255; data[o+10]=32; }
         o+=16; for(i=0;i<24;i++,o+=5) data[o]=255;
     }
     assert(o==sizeof data); assert(sc_tx_schema_valid(data,sizeof data));

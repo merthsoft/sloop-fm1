@@ -2,6 +2,13 @@
 
 Assessment: 2026-10-21. Recommendation: integrate selected fixes in stages after the active reverb work settles; do not merge the release wholesale into MerthSloop yet. Difficulty below is a source-review estimate, not a measured implementation schedule.
 
+## Current resolution
+
+The selected candidates are implemented through the 2.8-based build. Conflicting
+navigation, sample cuts, stock-return removal and USB playback are intentionally
+not adopted. See [integration completion](UPSTREAM-2.8-INTEGRATION.md); the rest
+of this assessment is the original planning record.
+
 ## Mirror and ancestry
 
 - Previous mirror and last common upstream integration: `4ec1ac829fd2bdf2c571ea215fb3d62477d01220` (SLOOP 2.7.1), an ancestor of MerthSloop.

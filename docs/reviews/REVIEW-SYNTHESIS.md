@@ -1,5 +1,44 @@
 # Review synthesis and integration order
 
+## Implementation status
+
+The approved integration is implemented as build **2.7.1.50**. All 25 tracked
+findings have corresponding source fixes and targeted regressions or documented
+platform-level validation limits. The original assessment and proposed ordering
+below remain historical context, not a list of unapplied patches. No new upstream
+effects controls or experimental RAM-for-flash metadata tables were folded in.
+
+| Area | Integrated result | Evidence / remaining limit |
+| --- | --- | --- |
+| PERSIST-1/2 | Stop-only restore guard; side readback before commit; retry/dirty state retained | Actual editor/settings/storage NOR harness, 42,000 legacy conversion/rejection cases and unchanged converted bytes |
+| UPDATE-1/2 | Exact success body; cleanup errors/readback block successful completion | Fault-injected real loader, fresh package upgrade/resume and OTA staging tests |
+| SEQ-1..4 | Wire edits reconcile ratchets; raw MIDI retains/reconciles channel/pitch identity; shared arp tones retain remaining owners | Actual phone-command and physical-event tests with per-channel/pitch balances before STOP |
+| AUDIO-1/2 | Wide FREEZE/crossfade products; stopped bypass clears stale LOFI noise envelope | Wide reference, real spring stress, all LOFI transitions and safe-render parity |
+| ENGINE-1/2 | MIDI zero ownership; fine-factor propagation and direct TRIO fine reuse | 14,838 focused checks; 153 fine=0 preset and 192 TRIO fingerprints unchanged; eight deliberate golden corrections |
+| APP-1/2 | Retryable note cleanup across ambiguous I/O; retirement/join of renewal tasks | 42 new checks plus relevant existing protocol/performance/domain runners |
+| UI-1..4 | Captured import/export request identity, staged export retry/cleanup, guarded async UI, bounded named accessible controls | 70 ownership/activity-shell checks and full Android-reference compilation; APK packaging needs the Android workload, actual recreation/provider/TalkBack acceptance remains pending |
+| WEB-1..7 | Deep page recovery, loader-family/ambiguity policy, connection-owned busy state, link cleanup, artifact provenance, repaired PWA tests and explicit single-file preview limitation | Simulated browser/CLI recovery, 13 deployment-gate cases, real Chromium offline/cache tests and fresh native/WASM parity |
+
+The measured combined target is **579,744/584,336 B**, with **4,592 B flash free**,
+**86,128/98,304 B main static RAM**, unchanged **28,280/29,496 B low RAM** and
+**332,876/344,064 B audio pool**. The existing pool reserve remains intact.
+This includes fixes as well as optimizations; do not sum isolated audit deltas.
+
+Parent checks: 47 focused firmware test programs (all delay characters exercised),
+182 golden renders with zero remaining mismatches/health/voice failures, 40,000
+mixed UI/audio stress frames, all monitored target DSP/ISR budgets and inlining
+caps, package capacity, actual package loader/OTA, 32 native/WASM profiles and
+fresh generated-site/provenance verification. Of 113 baseline captures, 110 are
+byte-identical; the three sampled-audio visualizers reflect the corrected pitch
+output. The old tie-display regression was updated to the current roll geometry
+and retains its full editing/undo checks.
+
+Private parent evidence: `build/integration-51/`. The local updater serves .50
+and its downloaded package hash matches `build/felucca.fwsc`. No physical flash,
+hardware deadline measurement or Android emulator/TalkBack acceptance is claimed.
+See the individual reports' implementation follow-ups for detailed changes and
+failure-before evidence.
+
 This consolidates four isolated headroom audits and eight code reviews of the
 working source based on `9fd9ddc`, including the icon cleanup subsequently
 committed as `43d4a6f`. The reports were committed in `96affc0`. This document

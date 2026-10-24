@@ -12,7 +12,7 @@ public static class HardwareSteps
     static byte[] EncodeSynth(SynthStep s)
     {
         uint level=0,rat=0;for(int i=0;i<4;i++){level|=(uint)s.Slots[i].Level<<(i*2);rat|=(uint)(s.Slots[i].Ratchet-1)<<(i*2);}
-        return [(byte)s.Count,..s.Slots.Select(n=>(byte)n.Pitch),(byte)s.Time,(byte)s.Flags,(byte)s.Velocity,(byte)(level&127),(byte)((level>>7)|((rat>>7)<<1)),(byte)(rat&127)];
+        return [(byte)s.Count,..s.Slots.Select(n=>(byte)n.Pitch),(byte)s.Time,(byte)((int)s.Flags&127),(byte)s.Velocity,(byte)(level&127),(byte)((level>>7)|((rat>>7)<<1)|(((int)s.Flags&128)!=0?4u:0u)|8u),(byte)(rat&127)];
     }
     static byte[] EncodeDrum(DrumStep d)
     {
@@ -21,10 +21,10 @@ public static class HardwareSteps
     }
     public static SynthStep DecodeSynth(ReadOnlySpan<byte> bytes,SynthStep identity,MicroOffset micro,FillCondition fill)
     {
-        if(bytes.Length!=11||bytes[0]>4||bytes[5]>2||(bytes[6]&~0x7b)!=0||bytes[9]>3)throw new FormatException("Invalid native synth step.");
-        uint level=(uint)(bytes[8]|(bytes[9]&1)<<7),rat=(uint)(bytes[10]|(bytes[9]>>1)<<7);
+        if(bytes.Length!=11||bytes[0]>4||bytes[5]>2||(bytes[6]&~0x7b)!=0||bytes[9]>15)throw new FormatException("Invalid native synth step.");
+        uint level=(uint)(bytes[8]|(bytes[9]&1)<<7),rat=(uint)(bytes[10]|((bytes[9]>>1)&1)<<7);
         var raw=bytes.ToArray();
-        return identity with {Count=bytes[0],Time=(StepTime)bytes[5],Flags=(StepFlags)bytes[6],Velocity=bytes[7],Micro=micro,Fill=fill,
+        return identity with {Count=bytes[0],Time=(StepTime)bytes[5],Flags=(StepFlags)(bytes[6]|((bytes[9]&4)<<5)),Velocity=bytes[7],Micro=micro,Fill=fill,
             Slots=Enumerable.Range(0,4).Select(i=>identity.Slots[i] with{Pitch=raw[i+1],Level=(HitLevel)((level>>(2*i))&3),Ratchet=1+(int)((rat>>(2*i))&3)}).ToImmutableArray()};
     }
     public static DrumStep DecodeDrum(ReadOnlySpan<byte> bytes,DrumStep identity,MicroOffset micro,FillCondition fill)

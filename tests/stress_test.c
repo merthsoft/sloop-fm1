@@ -35,7 +35,7 @@ static void font_ref_build(void)
 {
     uint32_t gi, o = 0;
     for (gi = 0; gi < 64u; gi++) {
-        uint32_t ws = FONT_S.bw[gi], wb = FONT_L.bw[gi], bs = (ws + 1u) / 2u, bb = (wb + 1u) / 2u, x, y;
+        uint32_t ws = font_bitmap_width(&FONT_S, gi), wb = font_bitmap_width(&FONT_L, gi), bs = (ws + 1u) / 2u, bb = (wb + 1u) / 2u, x, y;
         const uint8_t *s = FONT_S.data + FONT_S.off[gi];
         big_off[gi] = (uint16_t)o;
         for (y = 0; y < 32u; y++)

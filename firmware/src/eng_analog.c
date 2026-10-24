@@ -47,7 +47,7 @@ DSP_INLINE __attribute__((always_inline)) void analog_body(track_t *t, voice_t *
     /* DTN in cents: whole 1/16 semitones from the table, the rest as a fine factor */
     int32_t d16 = det * 16 / 100, rem = det * 16 - d16 * 100;            /* rem: 1/1600 semitone */
     uint32_t inc2 = pitch_inc(clamp(m->pitch16 + d16, 0, 2047));
-    inc2 += (uint32_t)((int32_t)(inc2 >> 12) * (rem * 2367 / 16000));
+    inc2 += (uint32_t)((int32_t)(inc2 >> 12) * (rem * 2367 / 16000 + m->fine));
     uint32_t pw = 0x80000000u + (uint32_t)((m->shape - (64 << 8)) << 15);
     int32_t m2 = mix * 258, m1 = 32767 - m2;                    /* osc mix Q15 */
     int32_t nz = noise * 200, drv = p[P_E6];

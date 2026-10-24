@@ -206,6 +206,10 @@ UI_SMALL static int st_save3(uint32_t obj, const void *src, uint32_t len, const 
             sb[off] = ((const uint8_t *)st_side)[off];      /* (RAM source) */
         if ((rc = st_prog(base + ST_SIDE_OFF, sb, st_side_len)) != 0)
             return rc;
+        /* Verify before the header commits this copy: side bytes are outside
+         * both header and payload CRCs, and a ready part can still misprogram. */
+        if (st_read(base + ST_SIDE_OFF, sb, st_side_len) || memcmp(sb, st_side, st_side_len))
+            return -7;
     }
     h.magic = ST_MAGIC;
     h.type = (uint16_t)obj;

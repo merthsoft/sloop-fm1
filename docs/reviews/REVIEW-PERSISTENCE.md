@@ -74,3 +74,59 @@ No hardware flash, power-cut rig, USB transport timing, target-size build or fir
 ### Completion note
 
 All eight freshly compiled current-source tests passed: storage, arranger, upreset, project, section_save, upstream_project, chord_voicing_storage and delay_storage. Both private reproductions also demonstrated the reported behavior. The test runner's final log-summary `tail` initially encountered a CRLF line-ending issue after all eight tests had completed successfully; the private script was normalized to LF. This affected summary display only, not compilation or test exit checks. Individual logs above retain the actual test outcomes.
+
+## Authorized integration follow-up (2026-10-23)
+
+The user approved implementation through the parent chat. This section supersedes the original review-only recommendation for PERSIST-1/PERSIST-2; the earlier findings and evidence above describe the pre-fix source. Changes are uncommitted in the shared working tree; no target build, package, version bump, flash or publication was performed.
+
+### Implemented changes
+
+- **PERSIST-1 fixed:** `settings_restore()` rejects any playing/pending transport before parsing or mutating settings, irrespective of song-order equality. Replaces the old arrangement-only guard; protocol rc remains 3. No editor source change was needed.
+- **PERSIST-2 fixed:** `st_save3()` reads and compares side bytes before programming the header. A read error or silent misprogram returns failure while the old A/B commit remains current. Uses the existing 192-byte local side buffer; no extra persistent buffer, wire-layout change or settings bit reinterpretation.
+- **Direct legacy conversion integrated:** applied only `build/headroom-storage-51/direct.patch`, not the larger helper batch. FUN1/FUN2 convert directly through a count-aware track reader shared with FUN3. Compile-time field-offset assertions protect the shared field order; the last eight parameters remain engine parameters, and missing common parameters use defaults. Removed `proj_v3_tmp` (2,584 bytes by its asserted old struct size). Target linker placement and final flash/RAM budgets remain parent-owned; no new target saving is claimed here.
+- Existing `project_test.c` only drops the two references that poisoned the removed intermediate scratch. Production edits are limited to `project.c` and `storage.c`; `project_save.c` and `upreset.c` were inspected but did not need changes.
+
+### New regressions and before/after evidence
+
+`tests/persistence_commit_test.c` compiles the actual non-PROJ_HOST `project.c`, real `storage.c`, real `panel.c`/side-record helpers and full `editor.c`. Hardware/NOR access is modeled, but settings structs, serializer, editor backup begin/data/commit, restore, dirty bookkeeping, deferred main-loop retry and cold-boot settings adoption are production code. Unused editor commands have platform declarations only; they are not the exercised boundary.
+
+The test covers matching and changed arrangements while playing, pending start and pending stop; every rejected restore returns rc 3 with no erase/program or settings mutation. Stopped restore cold-loads the requested palette/panel/arrangement and preserves local fork preferences. Side fault cases model a successful-return dropped program, an unexpected extra cleared NOR bit, explicit program error and side read error. Each failure retains the old committed payload and side bytes, writes no new header, and preserves dirty/retry bookkeeping. The real `sections_flush()` retry then commits the intended state, and `persist_boot()` cold-loads the favourites/theme/fork preferences. A no-side legacy object still saves normally.
+
+Both new failure tests fail against private pre-fix source snapshots (`270c0e3` project/storage as applicable), at the intended transport/dirty-durability assertions. See `build/code-review-persistence-51/failing-before.json`, its script and individual logs. There was no temporary rollback of shared production files.
+
+`tests/project_legacy_conversion_test.c` freezes the pre-direct-codec corpus: 1,000 deterministic records per FUN1..FUN6, with valid/magic/size/hash/length variants (42,000 import/output/rejection cases). Its expected aggregate is `8b386c47`. All 6,000 accepted converted records were also compared **byte-for-byte** with the frozen independent pre-integration converter output (`build/headroom-storage-51/equivalence/baseline/oracle.bin`). Both 22,896,000-byte streams have SHA-256 `ee86b1c847589098f7056e6bca29b2d1d151b4945a09059beb92406939d94774`. Existing targeted project tests separately explain count mapping, swing/default conversion and step semantics; the frozen corpus supplements those readable invariants rather than replacing them.
+
+### Validation completed
+
+Private commands/scripts/logs live under `build/code-review-persistence-51/`; compiler is the existing Zig 0.13 `optimization-cc`, with `-UNDEBUG -O1`, generated-header/source include paths and `-lm`.
+
+Eleven focused current-source tests passed:
+
+1. `persistence_commit_test`
+2. `project_legacy_conversion_test` (including exact byte comparison above)
+3. `storage_test`
+4. `arranger_test`
+5. `upreset_test`
+6. `project_test`
+7. `section_save_test`
+8. `upstream_project_test`
+9. `chord_voicing_storage_test`
+10. `delay_storage_test`
+11. `seq_note_ties_test`
+
+Both new tests also passed `-fsanitize=undefined -fno-sanitize-recover=undefined`. `git diff --check` passes for the touched tracked source/test files. Native renders, hardware timing and final linked target size remain the parent's integration checks.
+
+**Separate existing failure:** `note_ties_ui_test` fails at `tests/note_ties_ui_test.c:21` in `roll_pixel`, asserting a highlighted graph pixel. The same test/line/assertion fails when freshly compiled from the frozen pre-integration source at `build/headroom-storage-51/source`, without these persistence edits. This test uses UI project stubs rather than the real project codec. Do not mark it passed; parent should triage the UI geometry expectation independently. Evidence executables are `note_ties_ui_integrated` and `note_ties_ui_frozen`; no out-of-scope UI fix was attempted.
+
+### Required parent hooks / limits
+
+`tests/run_tests.sh` is parent-owned and was deliberately not edited. Add both new tests to its normal regression sequence using the same pattern as `section_save_test`:
+
+```sh
+$CC -UNDEBUG -O1 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal tests/persistence_commit_test.c -o "$OUT/persistence_commit_test" -lm
+run "settings restore transport guard, side commit readback and durable retry" "$OUT/persistence_commit_test"
+$CC -UNDEBUG -O1 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal tests/project_legacy_conversion_test.c -o "$OUT/project_legacy_conversion_test" -lm
+run "legacy project conversion frozen output and rejection corpus" "$OUT/project_legacy_conversion_test"
+```
+
+The optional `LEGACY_DUMP` environment variable emits converted bytes for a fresh exact comparison; the committed regression normally checks its frozen aggregate and rejection outcomes without needing private evidence files. Rebuild/remeasure the actual target after combining concurrent batches. Hardware power interruption, electrical flash faults and audio deadline timing were modeled or inspected, not physically measured.

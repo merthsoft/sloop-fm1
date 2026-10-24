@@ -53,7 +53,7 @@ static const param_desc_t *noise_desc(const track_t *t, uint32_t k)
 }
 
 /* phase increment of pitch p (1/16 semitone) past the table's top, up to one step a sample */
-static uint32_t noise_inc(int32_t p)
+static uint32_t noise_inc(int32_t p, int32_t fine)
 {
     uint32_t sh = 0, inc;
     while (p > 2047) {
@@ -61,6 +61,7 @@ static uint32_t noise_inc(int32_t p)
         sh++;
     }
     inc = pitch_inc((uint32_t)clamp(p, 0, 2047));
+    inc += (uint32_t)((int32_t)(inc >> 12) * fine);   /* before octave shifts and clock saturation */
     return sh && inc >= 0x80000000u >> (sh - 1u) ? 0xFFFFFFFFu : inc << sh;
 }
 
@@ -149,7 +150,7 @@ static void noise_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const
     }
     if (mode == NZ_LFSR) {
         uint32_t mask = taps;                         /* the register's own bits (MODE / LEN changes) */
-        inc = noise_inc(m->pitch16 + p[P_E7] * 16 + d16);
+        inc = noise_inc(m->pitch16 + p[P_E7] * 16 + d16, m->fine);
         mask |= mask >> 1;
         mask |= mask >> 2;
         mask |= mask >> 4;
@@ -159,7 +160,7 @@ static void noise_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const
             reg = (uint32_t)rng | 1u;
         reg &= mask;
     } else if (mode == NZ_META) {
-        inc = p[P_E7] || d16 ? noise_inc(m->pitch16 + p[P_E7] * 16 + d16) : m->inc;
+        inc = p[P_E7] || d16 ? noise_inc(m->pitch16 + p[P_E7] * 16 + d16, m->fine) : m->inc;
     }
     for (i = 0; i < n; i++) {
         int32_t w, x, v1, v2, v3, y;

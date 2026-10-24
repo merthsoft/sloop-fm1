@@ -156,6 +156,14 @@ static const struct {unsigned engine;const char *name;} expected[]={
     {11,"BITCRUSH"},
     {11,"RADIO"},
     {3,"CHIP NOISE"},
+#if FELUCCA_SLICE
+    {12,"BREAK 16"}, {12,"CHOP 8"}, {12,"REVERSE"}, {12,"USR SLICE"},
+#endif
+    {3,"NES PLS12"}, {3,"NES PLS50"}, {3,"NES PLUCK"}, {3,"NES TRI"},
+    {3,"GB WAVE BS"}, {3,"GB HOLLOW"}, {3,"GB ORGAN"}, {3,"GB ARP"},
+    {2,"VIOLIN"}, {1,"CLARINET"}, {2,"OBOE"}, {1,"BASSOON"},
+    {10,"HARPSICHORD"}, {10,"OUD"},
+    {3,"DUST KEYS"}, {3,"WORN PAD"}, {3,"TOY BELL"}, {3,"DUST BASS"},
 };
 int main(void){
  host_tracks_init();assert(NBANK==NELEM(expected));
@@ -166,5 +174,5 @@ int main(void){
   TSEL->eng_req=e;TSEL->preset=k;TSEL->user=0;
   assert(base_pos(&total)==i && fav_key()==i);
  }
- puts("preset browser: all 153 canonical names, engines, positions and favourite keys PASS");return 0;
+ puts("preset browser: canonical prefix, appended instruments, engines, positions and favourite keys PASS");return 0;
 }

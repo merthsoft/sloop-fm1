@@ -751,8 +751,11 @@ UI_SMALL static void seq_entry(uint32_t pressed)
         }
         last_note = (uint8_t)note;
     }
-    if (ui.entry_open && !fm1_in.notes && !midi_held())
-        cursor_set(ui.cursor + 1);
+    if (ui.entry_open && !fm1_in.notes && !midi_held()) {
+        /* Close the transaction even when the player wants to enter again here. */
+        if (!step_adv_off) cursor_set(ui.cursor + 1);
+        else ui.entry_open = 0;
+    }
 }
 
 /* HOME: tap on release, hold 0.7 s fires once. t0 = press time | 1,
@@ -1260,7 +1263,7 @@ UI_SMALL static void ui_input(void)
     holds_input(pressed, fm1_ms);
     pressed &= ~((on_song_page() ? 0u : 1u << panel.btn[B_REC]) | (1u << panel.btn[B_SAVE]));
     if (layered || ui.hold_kind) {                      /* a layer / a hold: the rest waits */
-        if ((s = panel_enc(EN_SELECT)) != 0) {           /* (the tempo always) */
+        if ((s = panel_enc(EN_SELECT)) != 0) {           /* FX consumes SELECT in layer_knobs; other holds keep tempo. */
             song.g[G_BPM] = (int16_t)clamp(song.g[G_BPM] + accel(EN_SELECT, s, 200), GP[G_BPM].min, GP[G_BPM].max);
             ui.bpm_t = 40;
         }

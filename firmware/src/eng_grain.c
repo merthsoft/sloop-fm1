@@ -233,6 +233,7 @@ static void gr_spawn(gr_part_t *P, const track_t *t, uint32_t vi, uint32_t zl, u
     amt = p[P_E6] * p[P_E6] * 192 / (127 * 127);
     d16 = m->pitch16 - z->root16 + p[P_E4] * 16 + (((int32_t)(r1 & 0xFFFFu) - 32768) * amt >> 15);
     step = (pow2_q16(clamp(d16, -1536, 576)) >> 8) * (z->rate >> 8);
+    step = sample_fine_step(step, m->fine);
     step = step > GR_STEP_MAX ? GR_STEP_MAX : step < 256u ? 256u : step;
     rev = ((r1 >> 16) & 255u) < (uint32_t)p[P_E6];  /* RAND 127: half of them */
     span = (len * step) >> 16;                      /* source samples the grain reads */

@@ -87,19 +87,28 @@ static int ldr_chip_key(uint32_t *key)
 #define LDR_EBADPKG (-12)                       /* flash.bin as served does not match the package's CRC16 */
 #define LDR_ENOFIN (-13)                        /* no "success" from the host */
 #define LDR_EFLASH (-14)                        /* another flash chip: nothing written, the records dropped */
+#define LDR_ERECORD (-15)                       /* update records could not be read/erased/verified: stay for retry */
 
-/* the update records (RAM, and flash: a 4K boundary - 256) go: the SPL boots the app */
-static void ldr_records_drop(void)
+/* Drop persistent records first; do not report completion or clear the RAM
+ * record when cleanup fails. A completed erase cannot be undone if its readback
+ * fails, but the verified app (or untouched old app) is already safe to boot. */
+static int ldr_records_drop(void)
 {
-    uint32_t s;
-    ldr_record_clear();
+    uint32_t s, i;
     for (s = LDR_REC_HI; s > LDR_REC_LO; s -= 0x1000u) {
         uint8_t r[80];
         if (ldr_fread(s - 0x100u, r, 80))
-            break;
-        if (ota_rd16(r + 6) == 0x5441u && ota_rd16(r) && ota_rd16(r) == ota_crc16(r + 2, 78, 0))
-            ldr_erase(s - 0x1000u);
+            return LDR_ERECORD;
+        if (ota_rd16(r + 6) == 0x5441u && ota_rd16(r) && ota_rd16(r) == ota_crc16(r + 2, 78, 0)) {
+            if (ldr_erase(s - 0x1000u) || ldr_fread(s - 0x100u, r, 80))
+                return LDR_ERECORD;
+            for (i = 0; i < 80u; i++)
+                if (r[i] != 0xFFu)
+                    return LDR_ERECORD;
+        }
     }
+    ldr_record_clear();
+    return 0;
 }
 
 static int ldr_pass(void)
@@ -121,8 +130,8 @@ static int ldr_pass(void)
     if (ota_crc16(sec + 2, 30, 0) != ota_rd16(sec))
         return -6;                                       /* package for another chip key */
     if (!ldr_flash_known()) {                            /* SLOOP would run without its storage and could not */
-        ldr_records_drop();                              /* be updated again: keep the firmware there is */
-        return LDR_EFLASH;
+        rc = ldr_records_drop();                         /* be updated again: keep the firmware there is */
+        return rc ? rc : LDR_EFLASH;
     }
     /* the head of flash.bin is never written, but it is part of the package's CRC */
     for (s = 0; s < LDR_APP_LO; s += 512u) {
@@ -168,12 +177,11 @@ static int ldr_pass(void)
     if (crc != want)
         return LDR_EBADPKG;
     for (i = 0; i < 4u; i++)
-        if (!ota_read(0xF0000000u, sec, 8))
+        if (!ota_read(0xF0000000u, sec, 8) && ota_memeq(sec, (const uint8_t *)"success", 8))
             break;
     if (i == 4u)
         return LDR_ENOFIN;
-    ldr_records_drop();
-    return 0;
+    return ldr_records_drop();
 }
 
 /* a pass that does not add up (a byte damaged on the way) is run again: the host answers any read, so it

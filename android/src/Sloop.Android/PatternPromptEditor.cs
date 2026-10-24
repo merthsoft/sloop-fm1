@@ -101,8 +101,8 @@ public sealed partial class MainActivity
         new global::Android.App.AlertDialog.Builder(this)!.SetTitle("Compose offline loop")!.SetView(scroll)!
 
             .SetNegativeButton("Cancel",(_,_)=>{})!.SetPositiveButton("Generate draft",async (_,_)=> {
-
-                try{var text=string.Join(" ",(prompt.Text??"").Split((char[]?)null,StringSplitOptions.RemoveEmptyEntries).Where(f=>!new[]{"tempo","progression","rhythm"}.Contains(f.Split('=')[0].ToLowerInvariant())))+$" tempo={tempo.Text} progression={progressions[progression.SelectedItemPosition]} rhythm={rhythms[rhythm.SelectedItemPosition]}";var draft=await Task.Run(()=>OfflineComposition.Generate(text,source.TicksPerQuarter));ReviewCompositionDraft(source,draft);}
+                long request=compositionUiRequest.Begin();string root=EffectiveWorkspaceRoot;
+                try{var text=string.Join(" ",(prompt.Text??"").Split((char[]?)null,StringSplitOptions.RemoveEmptyEntries).Where(f=>!new[]{"tempo","progression","rhythm"}.Contains(f.Split('=')[0].ToLowerInvariant())))+$" tempo={tempo.Text} progression={progressions[progression.SelectedItemPosition]} rhythm={rhythms[rhythm.SelectedItemPosition]}";var draft=await Task.Run(()=>OfflineComposition.Generate(text,source.TicksPerQuarter));if(CurrentCompositionRequest(request,source,root))ReviewCompositionDraft(source,draft);}
 
                 catch(Exception e){editing.SetStatus(e.Message);}
 
@@ -115,7 +115,7 @@ public sealed partial class MainActivity
     void ReviewCompositionDraft(AppPattern source,CompositionDraft draft,ImmutableHashSet<CompositionPart>? kept=null)
 
     {
-
+        if(!CanShowUi)return;
         var panel=new LinearLayout(this){Orientation=Orientation.Vertical};
 
         panel.AddView(Label($"Seed {draft.Intent.Seed} · {PerformanceHarmony.Names[draft.Intent.Key]} {draft.Intent.Scale} · {draft.Intent.Bars} bars · {draft.Intent.Density}\n{draft.Pattern.Notes.Length} editable notes. Apply is one local undo step; normal hardware Send stays separate.",14));
@@ -140,9 +140,10 @@ public sealed partial class MainActivity
 
             var preserved=keep.Where(p=>p.Value.Checked).Select(p=>p.Key).ToImmutableHashSet();
 
-            try{var next=await Task.Run(()=>OfflineComposition.Regenerate(draft,preserved));ReviewCompositionDraft(source,next,preserved);}
+            long request=compositionUiRequest.Begin();string root=EffectiveWorkspaceRoot;
+            try{var next=await Task.Run(()=>OfflineComposition.Regenerate(draft,preserved));if(CurrentCompositionRequest(request,source,root))ReviewCompositionDraft(source,next,preserved);}
 
-            catch(Exception e){editing.SetStatus(e.Message);ReviewCompositionDraft(source,draft,preserved);}
+            catch(Exception e){editing.SetStatus(e.Message);if(CurrentCompositionRequest(request,source,root))ReviewCompositionDraft(source,draft,preserved);}
 
         });
 

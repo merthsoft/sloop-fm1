@@ -14,10 +14,20 @@ public sealed partial class MainActivity
             content.AddView(gain);content.AddView(tune);content.AddView(root);
             var detect=new Button(this){Text="Estimate pitch / root",Enabled=!samples.Busy};
             detect.Click+=async(_,_)=> {
+                long request=sampleUiRequest.Begin(),revision=doc.Revision;string workspace=EffectiveWorkspaceRoot;
+                bool Current()=>CurrentSampleRequest(request,doc,workspace)&&doc.Revision==revision&&
+                    state.Workspace==Sloop.Core.Workspace.Sample&&selectedSampleSlice==index&&
+                    (ChopAudioSettings.Find(samples.ChopOptions,slice.Start,slice.End)??new ChopAudio(slice.Start,slice.End))==edit;
+                try {
                 var estimate=await samples.EstimateChopAsync(index);if(estimate is null) return;
+                if(!Current())return;
                 new global::Android.App.AlertDialog.Builder(this)!.SetTitle("Review root estimate")!
                     .SetMessage($"{SampleKitPlan.NoteName(estimate.RootNote)} · {estimate.Hertz:0.0} Hz · confidence {estimate.Confidence:P0}\nRaw source pitch; tuning remains separate. Applying changes this zone's MIDI root and mapping.")!
-                    .SetPositiveButton("Apply root",(_,_)=>samples.SetChopAudio(edit with {RootNote=estimate.RootNote}))!.SetNegativeButton("Cancel",(_,_)=>{})!.Show();
+                    .SetPositiveButton("Apply root",(_,_)=> {
+                        try {if(!Current())throw new IOException("Chop changed. Estimate its pitch again.");samples.SetChopAudio(edit with {RootNote=estimate.RootNote});}
+                        catch(Exception error){editing.SetStatus("Root estimate expired: "+error.Message);}
+                    })!.SetNegativeButton("Cancel",(_,_)=>{})!.Show();
+                }catch(Exception error){editing.SetStatus("Pitch review failed: "+error.Message);}
             };content.AddView(detect);
             var save=new Button(this){Text="Save chop gain, tuning & root",Enabled=!samples.Busy};
             save.Click+=(_,_)=> {

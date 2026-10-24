@@ -1,5 +1,54 @@
 # Audio review — current working tree
 
+## Implementation follow-up — 2026-10-23
+
+The authorized audio batch is implemented in the shared working tree, based on HEAD `270c0e3`. The original review below is retained as historical evidence; its review-only restrictions and “no production changes” statement describe the earlier review pass.
+
+**AUDIO-1 fixed:** `punch.c` widens the two SPRING return/gain products, both FREEZE capture crossfades, the primary wet/dry crossfades, and the simultaneous filter wet/dry crossfades. Original operand preshifts, arithmetic right shifts and narrowing points are retained. Safe products therefore keep their old rounding/output, while products spanning opposite-polarity bus headroom no longer wrap. No clipping or audible-character change was introduced to conceal the error. `spring.c` and `fx.c` were not changed.
+
+**AUDIO-2 fixed:** settled LOFI bypass clears `vinyl.bed` only while stopped. Playing bypass retains its previous behavior, and active STOP still slews the noise envelope. The stored TYPE/amounts are unchanged.
+
+**Punch BSS optimization integrated:** the 188-byte punch and 36-byte punch-filter objects now use BSS. One explicit cold `punch_boot_init()` assigns the original nonzero defaults after hardware data initialization. `tests/hostsim.c` calls that same helper once at its first track bootstrap, rather than resetting effect state every time a test reloads track defaults. The helper is deliberately not a general reset function and assumes the normal zero-initialized cold state. Main startup's only edit is the helper call. The parent separately added the equivalent call at the start of `firmware/host/preview.c:preview_init()`; that file was not edited by this audio batch.
+
+### New regression evidence
+
+All evidence is private under `build/code-review-audio-51/`; no shared build outputs, package, version, Git ref, or runner registration was changed.
+
+| Test | Before | After |
+| --- | --- | --- |
+| `tests/audio_freeze_range_test.c` | Fails: dry +4000000, return -196608, gain 1024 yields 8192000/-8192009 instead of -194560/194551. This specifically catches the crossfade failure even when the gain product itself is safe. | 41,472 stereo samples match a wide arithmetic oracle across both polarities, gains and dry headroom. Real SPRING capture/hold/release chains pass for both signs, each checking 55,232 return products outside int32 range. Also passes Zig signed-integer-overflow trap instrumentation. |
+| `tests/audio_lofi_stop_test.c` | Fails: stopped VINYL re-enable emits absolute sum 180066 through the direct effect path. | Every character passes both zero-amount and OFF bypass transitions. PLAY resumes noise where the character generates noise; active STOP retains its fade. A separate saved-TYPE/events/real-mixer/master-chain sequence passes with at most the permitted two-LSB master DC tail. CD damages content and is not incorrectly required to generate noise on silence. |
+| `tests/audio_punch_boot_test.c` | Original source used data initializers rather than this BSS/startup contract. | Verifies initial BSS, common nonzero defaults, untouched first dry block and that repeated host track setup does not reinitialize held effects. |
+
+Existing `effects_plan`, `punch`, `reverb_types`, `vinyl`, `lofi_character`, `fx251` and `mix_split` suites pass against the isolated final audio source. Split checks cover seven scenes × eleven splits in CORES=1 and seven scenes × three splits in CORES=2, both with and without timeout injection. An instrumented private copy of the existing punch test produces **17 identical before/after full-render hashes**, covering safe filters/kills, ring effects, pan, freeze and fade renders (`integration-before-parity.log`, `integration-after-parity.log`). Production tests were not rewritten to accept new audio hashes.
+
+The first post-change snapshot caught another chat's preset header mid-transition (ragged header with the old matrix consumer) and could not compile. It was discarded for measurement: paired snapshots use the same complete pre-change source, with only this batch's owned files overlaid for the after case. The later parent message confirms the shared trim header/consumer pair is now integrated. Also, an initially over-strict new test asserted a fixed noise loudness on all characters; it was corrected to check the actual lifecycle contract and not require synthetic noise from CD. Final logs contain the passing corrected tests. These were test/snapshot issues, not additional production edits.
+
+### Private target measurement and limits
+
+Both paired JieLi Clang 4.0.1 `-Oz` target builds succeed and pass `build.check()` and the existing target instruction-budget suite. Only the application was compiled/linked in private outputs; no firmware package was generated.
+
+| Quantity | Before | After | Difference |
+| --- | ---: | ---: | ---: |
+| Application load bytes | 580,704 | 579,312 | **−1,392 B** |
+| Main .data + .bss | 86,544 | 86,528 | −16 B |
+| .data load payload | 524 | 300 | −224 B |
+| Low RAM | 28,280 | 28,280 | 0 |
+| Pool | 332,876 | 332,876 | 0 |
+| mix_block symbol bytes (effects inlined here) | 15,616 | 15,620 | +4 B |
+| mix_block disassembled instructions | 5,058 | 5,070 | +12 |
+| mix_block loop calls / divides, static | 24 / 19 | 24 / 19 | unchanged |
+
+This **combined** BSS/startup plus correctness delta is a paired measurement, not a promise to add the earlier 1,488-byte experiment to any independent savings. The before image already includes unrelated source work present when the snapshot was taken; parent must measure the final combined target independently. Link/global-layout effects account for savings beyond the 224-byte data payload, as in the original headroom audit. The cold initializer emits 40 target bytes.
+
+`mix-block-target-cost.json` also records the target-budget parser's whole-function loop metric (42,472 → 41,929). Branch layout changes overlap its backward-branch spans; this is **not** a measured runtime speedup or per-FREEZE-cycle count. Widened arithmetic adds no new multiplication library symbol, loop call or divide in the paired target, but ordinary instruction scheduling and register pressure can still change. Actual hardware worst-case ISR duration and audio deadlines remain a required parent/hardware check. No hardware timing claim is made.
+
+### Parent integration hooks
+
+The preview startup hook is already supplied by the parent; no further production hook is required for this batch. Register the three new tests in `tests/run_tests.sh` from the parent-owned runner, using the ordinary host flags (`-O2 -UNDEBUG -Ibuild/gen -Ifirmware/src -Ifirmware/hal`, `-lm`). Consider retaining signed-overflow trap coverage for the range regression. The audio chat intentionally did not edit that runner. Parent still owns the combined target build, full integrated golden/UI/persistence checks and hardware deadline validation. No commit, push, flash or publication was performed.
+
+## Original review
+
 Reviewed 2026-10-23 on `merthsloop`, HEAD `9fd9ddc2f45d57ed0647270d757c2ead7ba30a0a`; the reviewed source is the working tree, including uncommitted changes, not HEAD alone. No production files, shared generated outputs, refs, or other reports were changed. Evidence and the source snapshot are exclusively in `build/code-review-audio-51/`. No repository AGENTS.md was found in the searched repository/ancestor locations.
 
 ## Integration recommendation

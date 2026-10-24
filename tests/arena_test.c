@@ -140,6 +140,8 @@ static uint64_t after(uint32_t di, uint32_t ci)
         t->p[P_E0] = CFG[ci].model;
     for (guard = 0; guard < 20000u && (t->engine != CFG[ci].e || t->xf_on); guard++) {
         engine_block(t);
+        if (t->engine == CFG[ci].e && !t->xf_on)
+            break; /* match fresh(): exactly 8000 blocks of the target engine */
         track_render(t, out, CTL);
     }
     for (k = 0; k < 4u; k++)

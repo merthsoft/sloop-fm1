@@ -74,6 +74,7 @@ static void section_store(uint32_t s) { sec_stores++; live_sec = (int8_t)s; }
 static void section_load(uint32_t s) { sec_loads++; live_sec = (int8_t)s; }
 #ifndef UI_REAL_UPRESET
 static int up_used(uint32_t k) { return k < 2; }
+static int up_arp_of(uint32_t k, int16_t *a) { (void)k; (void)a; return 1; }
 static int up_load(uint32_t k) { (void)k; return 0; }
 static int up_load_to(track_t *t, uint32_t k) { (void)t; (void)k; return 0; }
 static uint32_t up_count(void) { return 2; }
@@ -1189,6 +1190,8 @@ int main(int argc, char **argv)
         encs[panel.enc[EN_SELECT]] = 1; frame(); ui.force = 1; frame(); ppm("menu-audio");
         check(mi_sec(ui.menu_sel) == MS_AUDIO, "menu: SELECT right: AUDIO (LOWCUT, USB AUDIO, USB SERIAL)");
         encs[panel.enc[EN_SELECT]] = 1; frame();
+        check(mi_sec(ui.menu_sel) == MS_FX, "menu: dedicated FX preferences keep AUDIO within four knobs");
+        encs[panel.enc[EN_SELECT]] = 1; frame();
         check(mi_sec(ui.menu_sel) == MS_MIDI, "menu: dedicated MIDI SCALE section retains fork setting");
         encs[panel.enc[EN_K1]] = 1; frame();
         check(midi_scale && ui.menu_sel == MI_MIDISCALE, "MIDI SCALE knob1 enables keyboard-scale input");
@@ -1196,6 +1199,8 @@ int main(int argc, char **argv)
         check(!midi_scale, "MIDI SCALE knob1 disables mapping");
         encs[panel.enc[EN_SELECT]] = 1; frame();
         check(mi_sec(ui.menu_sel) == MS_TIMING, "menu: SELECT right: TIMING");
+        encs[panel.enc[EN_SELECT]] = 1; frame();
+        check(mi_sec(ui.menu_sel) == MS_SEQ, "menu: dedicated SEQ preferences");
         encs[panel.enc[EN_SELECT]] = 5; frame();
         sec = mi_sec(ui.menu_sel);
         check(sec == MS_SYSTEM, "menu: SELECT stops at the last section, SYSTEM");
@@ -1267,7 +1272,7 @@ int main(int argc, char **argv)
         check(!strcmp(PT(), "LOFI"), "SELECT on FX: on to the last page, LOFI");
         encs[panel.enc[EN_K1]]=200;frames(2);
         for(uint32_t k=0;k<3;k++){encs[panel.enc[EN_K2+k]]=200;frames(2);}
-        check(song.g[G_LTYPE]==5 && song.g[G_VWOW]==127 && song.g[G_VTONE]==127 && song.g[G_VCRACKLE]==127,
+        check(song.g[G_LTYPE]==6 && song.g[G_VWOW]==127 && song.g[G_VTONE]==127 && song.g[G_VCRACKLE]==127,
               "LOFI selector and amounts reach the master-bus parameters");
         encs[panel.enc[EN_K1]]=-200;frames(2);
         check(song.g[G_LTYPE]==0 && !strcmp(ui.big_v[0],"OFF"),"LOFI OFF is the first choice, retaining its stored amounts");
@@ -1357,6 +1362,8 @@ int main(int argc, char **argv)
         check(dstep_has(&TDRUM->dstep[16], 0), "grid: ... and the white keys are its steps (step 17)");
         key(8);                                                     /* (C#4: the fourth: steps 49-64, none) */
         check(drum_cursor / 16u == 1u, "grid: a page past LENGTH is not picked");
+        check(!drum_preview, "drum browsing preview defaults OFF");
+        mi_set(MI_PREVIEW, 1);
         memset(pad_lit, 0, sizeof pad_lit);
         encs[panel.enc[EN_K1]] = 3; frames(2);
         check(drum_lane == 3 && pad_lit[3], "grid: KNOB 1 picks the sound and plays it");
@@ -1686,7 +1693,7 @@ int main(int argc, char **argv)
             ui.force = 1; frame(); ppm("layer-fx-throw");
             fm1_in.buttons &= ~BT(B_OCTDN); frame();
             fm1_in.buttons |= BT(B_OCTUP); edges_btn |= BT(B_OCTUP); frame(); frame();
-            check(k == 1u && thr_req == 2u && !strcmp(sub_line(), "echo throw"), "FX + OCT-: REV THROW while held, FX + OCT+: ECHO THROW");
+            check(k == 1u && thr_req == 2u && !strcmp(sub_line(), "echo throw fade 0"), "FX + OCT-: REV THROW while held, FX + OCT+: ECHO THROW; fade shown");
             fm1_in.buttons &= ~BT(B_OCTUP); frame();
             release(B_FX); frames(4);
             check(thr_req == 0u && song.octave == octave0, "  let go: no THROW, the octave untouched");
@@ -1772,7 +1779,7 @@ int main(int argc, char **argv)
         check(trk[0].p[P_DIST] == TP[P_DIST].max, "CC 74 (any channel): track 1's DIST to its top");
         trk[0].p[P_DIST] = 0;
         ui.menu = 1; ui.menu_sel = 0; ui.force = 1; frame();
-        for (j = 0; j < 6u; j++) { encs[panel.enc[EN_SELECT]] = 1; frame(); }
+        for (j = 0; j < MS_COUNT; j++) { encs[panel.enc[EN_SELECT]] = 1; frame(); }
         encs[panel.enc[EN_K3]] = 1; frame();          /* (dualcore: row 3, after 2ND CORE) */
         tap(B_OCTUP);
         check(ui.menu_sel == MI_LCLEAR && ml_count() == 0u, "menu SYSTEM > MIDI LEARN CLEAR, OCT+: nothing learned any more");

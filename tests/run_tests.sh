@@ -39,6 +39,7 @@ mkdir -p build/gen
 # Font packing uses the original BDF pixels as its oracle, then exercises the
 # actual C renderer with both packed assets and the four-bit per-font format.
 python3 tests/font_asset_test.py
+run "font metrics and preset trims: generated bounds, fallback and unchanged values" python3 tests/font_generation_test.py
 $CC -Ibuild/host/font-assets -Ifirmware/src -o "$OUT/font_render_test" tests/font_render_test.c
 run "packed font: identical pixels, metrics, scaling and clipping" "$OUT/font_render_test"
 $CC -Ibuild/host/font-assets/legacy -Ibuild/host/font-assets -Ifirmware/src -o "$OUT/font_render_legacy_test" tests/font_render_test.c
@@ -68,6 +69,12 @@ run "song screen: commands, load (OCT+ twice), display bounds" "$OUT/song_ui_tes
 
 $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/studio_drums_test" tests/studio_drums_test.c -lm
 run "drum lanes, kit audio, metronome, record arm, free take" "$OUT/studio_drums_test" "$OUT/drum-styles.wav"
+$CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/drum_noise_tune_test" tests/drum_noise_tune_test.c -lm
+run "noise drum tuning: brightness, bounds, factory/user parity and unchanged defaults" "$OUT/drum_noise_tune_test"
+$CC -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/lofi_sampler_test" tests/lofi_sampler_test.c -lm
+run "sampler LOFI: rate hold, signed quantization, stereo and compensated drive" "$OUT/lofi_sampler_test"
+$CC -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/instrument_pack_test" tests/instrument_pack_test.c -lm
+run "instrument pack: fourteen new voices, playable range, velocity and clean releases" "$OUT/instrument_pack_test"
 $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/seq2_test" tests/seq2_test.c -lm
 run "sequencer 2.0: no drift, ratchets, roll, erase / undo, ghost / hard, chords, mute / solo, nudge, locks" "$OUT/seq2_test"
 $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/seq_note_ties_test" tests/seq_note_ties_test.c -lm
@@ -152,6 +159,12 @@ run "inactive harmony foundation: shared-owner note transitions" "$OUT/harmony_o
 
 $CC -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/ui_pages_test" tests/ui_pages_test.c -lm
 run "live UI: pages, layers (punch, steps, erase, roll, key, mix), holds, drums, REC, fuzz" "$OUT/ui_pages_test" "$OUT"
+$CC -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/upstream_controls_ui_test" tests/upstream_controls_ui_test.c -lm
+run "upstream controls: entry ownership, preview preferences and four-knob menus" "$OUT/upstream_controls_ui_test"
+$CC -O2 -w -DFELUCCA_CDC=1 -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/upstream_controls_cdc_test" tests/upstream_controls_ui_test.c -lm
+run "upstream controls: USB-serial variant keeps all menu rows accessible" "$OUT/upstream_controls_cdc_test"
+$CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/upstream_effect_controls_test" tests/upstream_effect_controls_test.c -lm
+run "upstream effects: settings-independent fades, LOFI boost and resonant filters" "$OUT/upstream_effect_controls_test"
 $CC -UNDEBUG -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/piano_roll_test" tests/piano_roll_test.c -lm
 run "piano roll: zoom, clipped sustains, held tools, redraw parity and immutable music" "$OUT/piano_roll_test" "$OUT"
 $CC -UNDEBUG -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/piano_note_selection_test" tests/piano_note_selection_test.c -lm
@@ -293,6 +306,12 @@ $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/regress" tests/regress.c -lm
 # SKIP_CPU_VALGRIND=1 to time instead, which is only a rough check)
 if [ -z "$SKIP_CPU_VALGRIND" ] && command -v valgrind >/dev/null 2>&1; then export CPU_VALGRIND=1; fi
 run "regression: golden renders, health, voices, CPU budget" "$OUT/regress" tests/golden.txt tests/cpu_baseline.txt
+# Review regressions exercise failure boundaries in actual production paths.
+for review_case in audio_punch_boot audio_freeze_range audio_lofi_stop engine_pitch_ownership persistence_commit project_legacy_conversion sequencing_ownership sequencing_phone_step; do
+    $CC -O2 -fwrapv -fno-strict-aliasing -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/$review_case" "tests/${review_case}_test.c" -lm -pthread
+    run "review regression: $review_case" "$OUT/$review_case"
+done
+
 # SLICE (tests/slice_test.c) needs a FELUCCA_SLICE=1 build; the engine is not built by default
 
 run "regression: target cost of the render loops" python3 tests/target_budget.py \
@@ -314,12 +333,14 @@ run "factory presets: original and restored names/fields byte-identical" cmp "$O
 run "target DSP: preserve per-sample helper inlining" python3 tests/target_inlining_test.py build/felucca.dis
 
 run "installer CLI (fm1_install.py) against a simulated FM-1" python3 tests/install_test.py
+run "installer ownership, ambiguity and failure cleanup" python3 tests/web_installer_lifetime_test.py
 run "the offline editor (one file, nothing next to it); the offline site (sw.js, manifest)" python3 tests/site_test.py
 
 if command -v node >/dev/null 2>&1; then
     run "web pages: editor protocol, samples, packages, update protocol" node web/test_web.mjs
+    run "installer page routing, loader policy and reconnect lifetime" node tests/web_recovery_test.mjs
     rm -rf "$OUT/pwa-site" && python3 web/make_site.py build/felucca.fwsc 2.7 "$OUT/pwa-site" >/dev/null &&
-        run "the site without internet in Chromium (skipped without Playwright)" node tests/pwa_test.mjs "$OUT/pwa-site"
+        run "the site without internet in Chromium (Playwright required; missing dependency exits 77)" node tests/pwa_test.mjs "$OUT/pwa-site"
 else
     echo "== skip web tests (no node)"
 fi

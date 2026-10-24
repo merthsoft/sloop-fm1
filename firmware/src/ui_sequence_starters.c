@@ -3,6 +3,8 @@
 static uint8_t sequence_browser, sequence_page, sequence_confirm, sequence_initialized;
 static uint8_t sequence_add, sequence_custom_slot;
 static uint32_t sequence_hold_t0;
+/* A sounding slot keeps its draft snapshot while knobs edit the next chord. */
+static struct { uint8_t notes[4], n, root, scale; int8_t octave; } progression_draft;
 /* Read the locked browser draft; literal pitches never pass through kb_map twice. */
 static uint32_t progression_chord(uint32_t key,uint8_t *out)
 {
@@ -10,15 +12,22 @@ static uint32_t progression_chord(uint32_t key,uint8_t *out)
     if(pad<0)return 0;
     uint32_t slot=(uint32_t)pad;
     uint32_t count=sequence_sel==NSEQUENCE_STARTERS?sequence_custom_count:4u;
-    if(slot>=2u*count)return 0;
-    int32_t octave=sequence_octave+(int32_t)(slot/count);
-    uint32_t degree=sequence_degree(sequence_sel,slot%count);
-    uint32_t n=sequence_sel!=NSEQUENCE_STARTERS && (SEQUENCE_STARTERS[sequence_sel].degrees&4096u)?4u:3u;
-    uint32_t actual=0;
-    for(uint32_t i=0;i<n;i++) {
-        uint8_t note=(uint8_t)sequence_degree_note(degree+2u*i,sequence_root,sequence_scale,0);
-        if(!actual || note>out[actual-1])out[actual++]=note;
+    if(!progression.revoice) {
+        progression_draft.octave=(int8_t)(sequence_octave+(int32_t)(slot/count));
+        progression_draft.root=sequence_root;progression_draft.scale=sequence_scale;
+        uint32_t degree=sequence_degree(sequence_sel,slot%count);
+        uint32_t n=sequence_sel!=NSEQUENCE_STARTERS && (SEQUENCE_STARTERS[sequence_sel].degrees&4096u)?4u:3u;
+        progression_draft.n=0;
+        for(uint32_t i=0;i<n;i++) {
+            uint8_t note=(uint8_t)sequence_degree_note(degree+2u*i,sequence_root,sequence_scale,0);
+            if(!progression_draft.n || note>progression_draft.notes[progression_draft.n-1])
+                progression_draft.notes[progression_draft.n++]=note;
+        }
     }
+    uint32_t actual=progression_draft.n,mods=chord_mods(progression.part);
+    memcpy(out,progression_draft.notes,actual);
+    actual=chord_modify_notes(out,actual,out[0],mods,actual==4u?CH_SEVENTH:CH_TRIAD,
+                             progression_draft.root,progression_draft.scale);
     track_t *t=&trk[progression.part];
     /* History stays at the reference register: octave pads and manual octave changes
      * cannot be cancelled by nearest-voice search or compound explicit inversions. */
@@ -27,10 +36,11 @@ static uint32_t progression_chord(uint32_t key,uint8_t *out)
     memcpy(vl_prev[progression.part],out,actual);vl_n[progression.part]=(uint8_t)actual;
     uint32_t kept=0;
     for(uint32_t i=0;i<actual;i++) {
-        uint8_t note=(uint8_t)clamp((int32_t)out[i]+12*octave,0,127);
+        uint8_t note=(uint8_t)clamp((int32_t)out[i]+12*progression_draft.octave,0,127);
         if(!kept || note>out[kept-1u]) out[kept++]=note;
     }
     actual=kept;
+    harmony_shape(out,actual,!!(mods&CM_INV)-!!(mods&CM_DOWN),(mods&CM_OPEN)?1u:0u);
     harmony_shape(out,actual,t->chord_inv,t->chord_spread);
     return actual;
 }
@@ -109,7 +119,7 @@ UI_SMALL static void sequence_screen_draw(void)
     cv_text(4,62,&FONT_S,sequence_page==4?(TSEL->p[P_AMODE]?"RHYTHM: ARP / NOW":"OUTPUT: CHORD / NOW"):sequence_add?"ALGO: MERGE":"ALGO: REPLACE",TE_G4);
     cv_text(4,82,&FONT_S,sequence_page==4?N_NOTE[sequence_root]:"RHY:",TE_G4);
     cv_text(40,82,&FONT_S,sequence_page==4?N_SCALE[sequence_scale]:SEQUENCE_RHYTHMS[sequence_rhythm].name,C_WHITE);
-    cv_text(4,102,&FONT_S,sequence_page==4?(song.rec?"REC: PLAYED NOTES":"WHITE KEYS: CHORD SLOTS"):sequence_preview.active?"PREVIEW PLAYING":"PRESETS: RHYTHM",TE_COL[song.sel]);
+    cv_text(4,102,&FONT_S,sequence_page==4?"BLACK: MODIFIERS":sequence_preview.active?"PREVIEW PLAYING":"PRESETS: RHYTHM",TE_COL[song.sel]);
     cv_blit(0,74);
     cv_begin(240,38,C_BLACK);
     str_cpy(b,sequence_page==4?"PERFORM ":sequence_page==3?"CUSTOM ":"SEQUENCES ",sizeof b);

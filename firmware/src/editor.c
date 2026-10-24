@@ -36,7 +36,7 @@ enum { ED_INFO = 1, ED_GET, ED_SET, ED_DUMP, ED_DESC, ED_STEP_GET, ED_STEP_SET, 
 /* v10 (SLOOP 2.5): DSYN_LIST .. DSYN_PLAY = 72..76, editor_dsyn.c; backup object 9 = the SYN kits */
 /* v11 (SLOOP 2.7): backup object 11 = your theme (gfx.c theme_t), the editor's Theme page */
 /* v12 (SLOOP 2.7): LIVE = 77, editor_live.c: the LIVE page (transport, sections, mix keys, punch-in FX, REC, undo) */
-#define ED_PROTO 15u                                   /* the protocol version INFO ends with */
+#define ED_PROTO 16u                                   /* the protocol version INFO ends with */
 
 static uint8_t ed_out[600];
 static uint32_t ed_n;
@@ -245,7 +245,7 @@ UI_SMALL static void ed_step_out(const track_t *t, uint32_t i)
         ed_b(st->flags);
         ed_b(st->vel);
         ed_b(st->lvl);                                   /* v5 (7 bits each: 4 x 2-bit fields, the top 1 below) */
-        ed_b(st->lvl >> 7 | (st->rat >> 7) << 1);
+        ed_b(st->lvl >> 7 | (st->rat >> 7) << 1 | ((st->flags & SF_LEG) ? 4u : 0u) | 8u);
         ed_b(st->rat);
     }
 }
@@ -263,7 +263,9 @@ UI_SMALL static void ed_step_in(track_t *t, uint32_t i, const uint8_t *a, uint32
         for (k = 0; k < 4u; k++)
             st->note[k] = a[1 + k] & 0x7Fu;
         st->time = (uint8_t)(a[5] > ST_REST ? ST_REST : a[5]);
-        st->flags = a[6] & (SF_ACCENT | SF_SLIDE | SF_TIES);
+        uint8_t leg = st->flags & SF_LEG;
+        if (na >= 11u && (a[9] & 8u)) leg = (a[9] & 4u) ? SF_LEG : 0;
+        st->flags = (a[6] & (SF_ACCENT | SF_SLIDE | SF_TIES)) | leg;
         st->vel = a[7] & 0x7Fu;
         if (na >= 11u) {
             st->lvl = (uint8_t)((a[8] & 0x7Fu) | (a[9] & 1u) << 7);
@@ -271,6 +273,7 @@ UI_SMALL static void ed_step_in(track_t *t, uint32_t i, const uint8_t *a, uint32
         } else {
             st->lvl = st->rat = 0;
         }
+        seq_edit_changed(t);                         /* phone writes obey the native live-ratchet policy */
     }
 }
 UI_SMALL static void ed_shadow(void)                              /* the editor is in sync */

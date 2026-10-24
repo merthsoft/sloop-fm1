@@ -108,6 +108,8 @@ int main(void)
     tap(B_ENV);tap(B_OCTUP);assert(song.octave==octave+1);
     tap(B_SEQ);expect_page("STEP");
     paint->p[P_SLEN]=16;cursor_set(0);
+    select_turn(1);expect_page("NOTES");
+    select_turn(1);expect_page("NOTE ACTIONS");
     select_turn(1);expect_page("PATTERN");
     select_turn(1);expect_page("RECORD");
     encs[panel.enc[EN_K1]]=1;frame();assert(rec_snap[1]==REC_SNAP_EIGHTH);
@@ -117,14 +119,17 @@ int main(void)
     select_turn(1);expect_page("SEQUENCES"); /* shaping subpage */
     select_turn(1);expect_page("SEQUENCES"); /* pitch subpage */
     select_turn(1);expect_page("SEQUENCES");assert(sequence_page==3);
+    select_turn(1);expect_page("SEQUENCES");assert(sequence_page==4);
     select_turn(1);expect_page("SONG");assert(!sequence_browser);
     select_turn(-1);expect_page("SEQUENCES");
     select_turn(-1);expect_page("RECORD");
     select_turn(-1);expect_page("PATTERN");
+    select_turn(-1);expect_page("NOTE ACTIONS");
+    select_turn(-1);expect_page("NOTES");
     select_turn(-1);expect_page("STEP");
     go_home();frame();
-    static const char *const order[]={"STEP","PATTERN","RECORD","SEQUENCES","SONG","STEP"};
-    for(uint32_t i=0;i<6;i++) {tap(B_SEQ);expect_page(order[i]);assert(song.sel==1);}
+    static const char *const order[]={"STEP","NOTES","NOTE ACTIONS","PATTERN","RECORD","SEQUENCES","SONG","STEP"};
+    for(uint32_t i=0;i<NELEM(order);i++) {tap(B_SEQ);expect_page(order[i]);assert(song.sel==1);}
     select_turn(9);expect_page("SONG");tap(B_ENV);expect_page("ENV");
     tap(B_ENV);expect_page("ENV DEST");
     tap(B_SEQ);select_turn(9);expect_page("SONG");tap(B_LFO);expect_page("LFO");

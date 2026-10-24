@@ -208,38 +208,36 @@ UI_SMALL static void proj_trk_plain(proj_trk_t *d)
     }
 }
 
-/* a track of format 3 -> today's (by id up to P_SLDEPTH; P_E0.. moved) */
-UI_SMALL static void proj_trk_from_v3(proj_trk_t *d, const proj_trk_v3_t *s, int drum)
+/* Formats 2/3 have the same field order; only their parameter count differs.
+ * Read either directly after its whole-record validation. */
+_Static_assert(__builtin_offsetof(proj_trk_v2_t, engine) == 2u * PROJ_NP_V2 &&
+               __builtin_offsetof(proj_trk_v3_t, engine) == 2u * PROJ_NP_V3 &&
+               __builtin_offsetof(proj_trk_v2_t, preset) == 2u * PROJ_NP_V2 + 1u &&
+               __builtin_offsetof(proj_trk_v3_t, preset) == 2u * PROJ_NP_V3 + 1u &&
+               __builtin_offsetof(proj_trk_v2_t, step) == 2u * PROJ_NP_V2 + 2u &&
+               __builtin_offsetof(proj_trk_v3_t, step) == 2u * PROJ_NP_V3 + 2u,
+               "legacy track field order");
+UI_SMALL static void proj_trk_from_old(proj_trk_t *d, const void *raw, uint32_t np, int drum)
 {
-    uint32_t k, nc = PROJ_NP_V3 - 8u;
+    const int16_t *p = raw;
+    const uint8_t *b = raw;
+    const step8_t *step = (const step8_t *)(const void *)(b + 2u * np + 2u);
+    uint32_t k, nc = np - 8u;
     proj_trk_plain(d);
     for (k = 0; k < PROJ_NC6; k++)
-        d->p[k] = k < nc ? s->p[k] : TP[k].def;
+        d->p[k] = k < nc ? p[k] : TP[k].def;
     for (k = 0; k < 8u; k++)
-        d->e[k] = s->p[nc + k];
+        d->e[k] = p[nc + k];
     d->p[P_SSWING] = swing_from_v3(d->p[P_SSWING]);
     d->p[P_ASWING] = swing_from_v3(d->p[P_ASWING]);
-    d->engine = drum ? 0u : s->engine;
-    d->preset = drum ? 0u : s->preset;
+    d->engine = drum ? 0u : b[2u * np];
+    d->preset = drum ? 0u : b[2u * np + 1u];
     for (k = 0; k < NSTEP; k++) {
         if (drum)
-            dstep_from8(&d->dstep[k], &s->step[k]);
+            dstep_from8(&d->dstep[k], &step[k]);
         else
-            step_from8(&d->step[k], &s->step[k]);
+            step_from8(&d->step[k], &step[k]);
     }
-}
-
-/* a track of formats 1 and 2 -> format 3 (mapped by count, see the top) */
-UI_SMALL static void proj_trk_v2_to_v3(proj_trk_v3_t *d, const proj_trk_v2_t *s, int drum)
-{
-    uint32_t k, nc = PROJ_NP_V2 - 8u;
-    for (k = 0; k < PROJ_NP_V3 - 8u; k++)
-        d->p[k] = k < nc ? s->p[k] : TP[k].def;
-    for (k = 0; k < 8u; k++)
-        d->p[PROJ_NP_V3 - 8u + k] = s->p[nc + k];
-    d->engine = drum ? 0u : s->engine;          /* (indices 0..7 as they were) */
-    d->preset = drum ? 0u : s->preset;
-    memcpy(d->step, s->step, sizeof d->step);
 }
 
 /* a format 4 project (n bytes in *v4) -> slot q as format 6: the same, no nudge, no lock, no condition, no FILTER */
@@ -316,7 +314,7 @@ UI_SMALL static void proj_from_v3_ok(project_t *q, const project_v3_t *v3)
     proj_g_from_old(q->g, v3->g);
     q->sel = v3->sel;
     for (i = 0; i < NTRK; i++)
-        proj_trk_from_v3(&q->t[i], &v3->t[i], i == TRK_DRUM);
+        proj_trk_from_old(&q->t[i], &v3->t[i], PROJ_NP_V3, i == TRK_DRUM);
     q->sum = proj_sum(q);
 }
 UI_SMALL static int proj_from_v3(project_t *q, const project_v3_t *v3, int n)
@@ -328,22 +326,21 @@ UI_SMALL static int proj_from_v3(project_t *q, const project_v3_t *v3, int n)
     return 1;
 }
 
-/* Conversion always clears this scratch before use. */
-static project_v3_t proj_v3_tmp __attribute__((section(".scratch")));               /* (formats 1, 2: through format 3) */
 /* a format 2 project (n bytes in *v2) -> slot q as format 5 */
 UI_SMALL static int proj_from_v2(project_t *q, const project_v2_t *v2, int n)
 {
-    project_v3_t *v3 = &proj_v3_tmp;
     uint32_t i;
     if (n != (int)sizeof *v2 || v2->magic != PROJ_MAGIC_V2 || v2->size != sizeof *v2 ||
         v2->sum != proj_hash(v2, sizeof *v2 - 4u))
         return 0;
-    memset(v3, 0, sizeof *v3);
-    memcpy(v3->g, v2->g, sizeof v3->g);
-    v3->sel = v2->sel;
+    memset(q, 0, sizeof *q);
+    q->magic = PROJ_MAGIC;
+    q->size = sizeof *q;
+    proj_g_from_old(q->g, v2->g);
+    q->sel = v2->sel;
     for (i = 0; i < NTRK; i++)
-        proj_trk_v2_to_v3(&v3->t[i], &v2->t[i], i == TRK_DRUM);
-    proj_from_v3_ok(q, v3);
+        proj_trk_from_old(&q->t[i], &v2->t[i], PROJ_NP_V2, i == TRK_DRUM);
+    q->sum = proj_sum(q);
     return 1;
 }
 
@@ -351,15 +348,15 @@ UI_SMALL static int proj_from_v2(project_t *q, const project_v2_t *v2, int n)
  * tracks 2..4 start empty (their sounds as at power-on) */
 UI_SMALL static int proj_from_v1(project_t *q, const project_v1_t *v1, int n)
 {
-    project_v3_t *v3 = &proj_v3_tmp;
     uint32_t i;
     if (n != (int)sizeof *v1 || v1->magic != PROJ_MAGIC_V1 || v1->size != sizeof *v1 ||
         v1->sum != proj_hash(v1, sizeof *v1 - 4u))
         return 0;
-    memset(v3, 0, sizeof *v3);
-    memcpy(v3->g, v1->g, sizeof v3->g);
-    proj_trk_v2_to_v3(&v3->t[0], &v1->t, 0);
-    proj_from_v3_ok(q, v3);
+    memset(q, 0, sizeof *q);
+    q->magic = PROJ_MAGIC;
+    q->size = sizeof *q;
+    proj_g_from_old(q->g, v1->g);
+    proj_trk_from_old(&q->t[0], &v1->t, PROJ_NP_V2, 0);
     for (i = 1; i < NTRK; i++) {               /* the other tracks: their defaults, no steps */
         uint32_t k;
         for (k = 0; k < P_COUNT; k++)
@@ -478,7 +475,7 @@ UI_SMALL static void proj_capture(project_t *p)        /* what is playing now, a
      * keep the on-disk format unchanged, including song section storage. */
     if (song.g[G_LTYPE] || song.g[G_VWOW] || song.g[G_VTONE] || song.g[G_VCRACKLE]) {
         p->g[G_NAME] = (int16_t)(0x8000u | (song.g[G_VWOW] & 127) | (song.g[G_VTONE] & 127) << 7);
-        p->g[G_ENGGO] = (int16_t)(0x5C00u | (lofi_mode((uint32_t)song.g[G_LTYPE]) & 7) << 7 | (song.g[G_VCRACKLE] & 127));
+        p->g[G_ENGGO] = (int16_t)(0x5C00u | ((song.g[G_LTYPE]==6u?7u:lofi_mode((uint32_t)song.g[G_LTYPE])) & 7) << 7 | (song.g[G_VCRACKLE] & 127));
     }
     p->g[G_NEWPRJ]=0; /* optional voicing metadata, never the live NEW action */
     for (i = 0; i < NTRK; i++) {
@@ -540,7 +537,7 @@ static void proj_apply(const project_t *p, int all)
         song.g[G_VTONE] = present ? ((uint16_t)p->g[G_NAME] >> 7) & 127 : 0;
         song.g[G_VCRACKLE] = present ? p->g[G_ENGGO] & 127 : 0;
         uint32_t mode=typed?(tag>>7)&(extended?7:3):0;
-        song.g[G_LTYPE] = present ? (mode<4 ? mode+1 : mode==5 ? 5 : 0) : 0;
+        song.g[G_LTYPE] = present ? (mode<4 ? mode+1 : mode==5 ? 5 : mode==6 ? 2 : mode==7 ? 6 : 0) : 0;
     }
     proj_tx_get(p);                                     /* GLO > TEXTURE (2.6): a load and a section */
     drum_tw_get(p);                                     /* (2.7) the drum sounds' TUNE and DECAY: a load and a section */
@@ -957,10 +954,10 @@ UI_SMALL static void midi_part_fill(uint8_t *b)
     for (k = 0; k < ML_N; k++)
         b[2u * k] = (uint8_t)ml_tab[k], b[2u * k + 1u] = (uint8_t)(ml_tab[k] >> 8);
     b[2u * ML_N] = midi_set[0], b[2u * ML_N + 1u] = midi_set[1], b[2u * ML_N + 2u] = midi_set[2];
-    b[2u * ML_N + 3u] = (uint8_t)(midi_set[3] | midi_set[4] << 7);
-    b[2u * ML_N + 4u] = midi_set[5];
+    b[2u * ML_N + 3u] = (uint8_t)(midi_set[3] | (drum_preview != 0u) << 5 | (step_adv_off != 0u) << 6 | midi_set[4] << 7);
+    b[2u * ML_N + 4u] = (uint8_t)(midi_set[5] | (fxfade > 15u ? 15u : fxfade) << 4);
     b[2u * ML_N + 5u] = midi_set[6];                /* (2.7) GLO > MIDI 3: FX CH (2.6 read this spare byte as nothing) */
-    b[2u * ML_N + 6u] = (uint8_t)(midi_set[7] | midi_set[9] << 1);   /* (2.7) GLO > MIDI 3: DR MAP, bit 1 CLK OUT (a spare
+    b[2u * ML_N + 6u] = (uint8_t)(midi_set[7] | midi_set[9] << 1 | (flt_reso > 10u ? 10u : flt_reso) << 2);   /* (2.7) GLO > MIDI 3: DR MAP, bit 1 CLK OUT (a spare
                                                                       * byte to 2.6) */
     b[2u * ML_N + 7u] = midi_set[8];                /* (2.7) GLO > MIDI 3: REMOTE (the last spare byte) */
 }
@@ -981,6 +978,7 @@ UI_SMALL static void midi_part_read(const uint8_t *b, uint32_t n)
 {
     uint32_t k, e;
     fm1_irq_off();                                  /* (the ISR reads the map and the channels: never half of them) */
+    drum_preview = step_adv_off = fxfade = flt_reso = 0;
     for (k = 0; k < ML_N; k++) {
         e = (uint32_t)b[2u * k] | (uint32_t)b[2u * k + 1u] << 8;
         ml_tab[k] = (uint16_t)((e >> 9) && ml_free_cc(e & 127u) && ml_id(e >> 9) < P_COUNT ? e : 0u);
@@ -990,16 +988,21 @@ UI_SMALL static void midi_part_read(const uint8_t *b, uint32_t n)
             midi_set[k] = (uint8_t)(b[2u * ML_N + k] <= 16u ? b[2u * ML_N + k] : k + 1u);
         midi_set[3] = (uint8_t)((b[2u * ML_N + 3u] & 31u) <= 16u ? b[2u * ML_N + 3u] & 31u : 10u);
         midi_set[4] = (uint8_t)(b[2u * ML_N + 3u] >> 7);
+        drum_preview = (b[2u * ML_N + 3u] >> 5) & 1u;
+        step_adv_off = (b[2u * ML_N + 3u] >> 6) & 1u;
         song.g[G_CH1] = midi_set[0], song.g[G_CH2] = midi_set[1], song.g[G_CH3] = midi_set[2];
         song.g[G_DRCH] = midi_set[3], song.g[G_CHOTH] = midi_set[4];
     }
     if (n >= MIDI_PART) {
-        midi_set[5] = (uint8_t)(b[2u * ML_N + 4u] >= 1u && b[2u * ML_N + 4u] <= 12u ? b[2u * ML_N + 4u] : 2u);
+        midi_set[5] = (uint8_t)((b[2u * ML_N + 4u] & 15u) >= 1u && (b[2u * ML_N + 4u] & 15u) <= 12u ? b[2u * ML_N + 4u] & 15u : 2u);
         song.g[G_BEND] = midi_set[5];
+        fxfade = b[2u * ML_N + 4u] >> 4;
         midi_set[6] = (uint8_t)(b[2u * ML_N + 5u] <= 16u ? b[2u * ML_N + 5u] : 0u);   /* (2.7) FX CH */
         song.g[G_FXCH] = midi_set[6];
-        midi_set[7] = (uint8_t)(b[2u * ML_N + 6u] <= 3u ? b[2u * ML_N + 6u] & 1u : 0u);   /* (2.7) DR MAP */
-        midi_set[9] = (uint8_t)(b[2u * ML_N + 6u] <= 3u ? b[2u * ML_N + 6u] >> 1 : 0u);   /* (2.7) CLK OUT */
+        midi_set[7] = (uint8_t)(b[2u * ML_N + 6u] & 1u);   /* (2.7) DR MAP */
+        midi_set[9] = (uint8_t)((b[2u * ML_N + 6u] >> 1) & 1u);   /* (2.7) CLK OUT */
+        flt_reso = (b[2u * ML_N + 6u] >> 2) & 15u;
+        if (flt_reso > 10u) flt_reso = 10u;
         song.g[G_DRMAP] = midi_set[7];
         song.g[G_CLKOUT] = midi_set[9];
         midi_set[8] = (uint8_t)(b[2u * ML_N + 7u] <= 16u ? b[2u * ML_N + 7u] : 0u);   /* (2.7) REMOTE */
@@ -1034,6 +1037,7 @@ static void dsu_boot(void)                          /* the SYN kits (and the MID
     st_hdr_t h;
     uint32_t len = sizeof(persist_t) + sizeof(dsu_bank_t), k;
     dsu_defaults();
+    drum_preview = step_adv_off = fxfade = flt_reso = 0;
     for (k = 0; k < ML_N; k++)
         ml_tab[k] = 0;
     if (st_current(OBJ_SETTINGS, &h) >= 0 &&
@@ -1112,6 +1116,8 @@ UI_SMALL static int panel_valid(const panel_t *q)           /* a permutation of 
 UI_SMALL static uint32_t settings_restore(const void *raw, uint32_t n)
 {
     persist_t p;
+    if (song.playing || transport_req)
+        return 3;                                    /* every restore writes flash, even with the same song order */
     if (n != sizeof p && n != PERSIST_SIZE_V22)
         return 2;
     memset(&p, 0, sizeof p);
@@ -1121,8 +1127,6 @@ UI_SMALL static uint32_t settings_restore(const void *raw, uint32_t n)
 #if FELUCCA_ARRANGER
     if (!arr_valid(&p.arrangement, 15u))
         return 2;
-    if ((song.playing || transport_req) && memcmp(&p.arrangement, &arrangement, sizeof arrangement))
-        return 3;                                    /* SLOOP 2.5: a new song order only when stopped (as on the SONG screen) */
 #endif
     if (!flash_ok)
         return 4;

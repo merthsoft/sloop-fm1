@@ -27,6 +27,7 @@ public sealed partial class MainActivity : Activity
     protected override void OnCreate(Bundle? savedInstanceState)
     {
         base.OnCreate(savedInstanceState);
+        RestoreUiRequests(savedInstanceState);
         connection = Fm1Connection.Get(this);
         samples = SampleWorkspace.Get(this);
         editing=EditingWorkspace.Get(this);
@@ -143,7 +144,7 @@ public sealed partial class MainActivity : Activity
 
     protected override void OnDestroy()
     {
-
+        activityDestroyed=true;sampleUiRequest.Stop();compositionUiRequest.Stop();
         StopCompositionAudition();
         DisposeScenes();
         DisposeMidiInput();
@@ -154,12 +155,18 @@ public sealed partial class MainActivity : Activity
         editing.Changed-=OnEditingChanged;
         samples.StopPreview();
         samples.CancelConversion();
+        if(IsFinishing) {
+            try {
+                if(soundImportRequest is {} import)FileRequests.Complete(import);
+                if(fileExportRequest is {} export)FileRequests.Complete(export);
+            }catch(IOException error){global::Android.Util.Log.Warn("MerthSloop","Picker cleanup deferred: "+error.Message);}
+        }
         base.OnDestroy();
     }
 
     protected override void OnStop()
     {
-
+        activityStopped=true;sampleUiRequest.Invalidate();compositionUiRequest.Invalidate();
         CloseMidiInput();
         StopCompositionAudition();
         StopPerformance();
@@ -179,11 +186,13 @@ public sealed partial class MainActivity : Activity
     protected override void OnStart()
     {
         base.OnStart();
+        activityStopped=false;
         recordingForeground = true;
     }
 
     protected override void OnSaveInstanceState(Bundle outState)
     {
+        SaveUiRequests(outState);
         outState.PutInt("workspace", (int)state.Workspace);
         outState.PutInt("track", state.SelectedTrack);
         outState.PutBoolean("quick-sound",quickSound);outState.PutBoolean("sample-advanced",sampleAdvanced);
@@ -200,6 +209,7 @@ public sealed partial class MainActivity : Activity
 
     private void ShowWorkspace()
     {
+        if(activityDestroyed)return;
         if(playingSurface is not null)StopPerformance();
         bool perform=state.Workspace==Workspace.Perform;
         trackStrip.Visibility=state.Workspace is Workspace.Sample or Workspace.Library?ViewStates.Gone:ViewStates.Visible;

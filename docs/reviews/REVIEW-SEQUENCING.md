@@ -1,8 +1,8 @@
-# Sequencing review — current working tree
+# Sequencing review â€” current working tree
 
 Reviewed 2026-10-23, branch `merthsloop`, HEAD `9fd9ddc`, including the working tree rather than HEAD alone. Production files were not changed. Evidence and a frozen source/test/generated-header snapshot are exclusively under `build/code-review-sequencing-51/`. No target image, shared generated file, Git ref, or other review report was written. No repository AGENTS.md was found in the workspace or its inspected ancestors.
 
-## Integration recommendation
+## Original review integration recommendation
 
 Fix the four confirmed ownership/reconciliation defects below before treating the sequencing review as complete. The existing scheduler and test harnesses provide suitable foundations; a scheduler rewrite or generic ownership framework is unnecessary for the editor notification and arp MIDI fixes. Keep fixes separate and target-build each accepted change. This review establishes no additional flash headroom and does not re-count work in OPTIMIZATION.md, ARCHITECTURAL-HEADROOM.md or REDUNDANCY-AUDIT.md.
 
@@ -86,3 +86,45 @@ No additional pair of duplicate control primitives was proven interchangeable. W
 This is a focused source and host-behavior review, not proof of absence of other bugs. No JieLi target rebuild, target byte delta, ISR latency measurement, electrical MIDI/USB timing test, flash operation, publication or hardware audition was performed. Hostsim disables target attributes and its IRQ stubs cannot reproduce actual interrupt races. Mutation transactions were traced for exclusion/notification, but volatile/source ordering and real concurrent interrupt behavior were not proven. Factory content and persistence compatibility were not changed. The complete repository suite, audio goldens and sanitizers were not rerun. Recommendations must preserve the existing sample representation, partition boundaries, saved formats, protocol behavior and audio deadlines.
 
 
+
+## Implementation follow-up â€” SEQ-1 through SEQ-4
+
+Implemented in the authorized shared working tree after parent approval on 2026-10-23. This implementation edited only `firmware/src/seq.c`, `firmware/src/editor.c`, the exclusive sequencing tests/runner, and this report. No commits, version bumps, shared generated/build outputs, publication, firmware packages or hardware writes were performed. The findings above remain the historical diagnosis; the four assigned fixes are now implemented.
+
+### Changes
+
+- **SEQ-1:** The shared synth `ed_step_in` decoder calls `seq_edit_changed` inside its callers' existing IRQ-excluded transaction. Both selected-track STEP_SET and explicit TRACK_STEP now use the native policy: finish the in-flight pitches, suppress rereading an edited cell for ratchets, and adopt new content at the normal playback boundary. Drum semantics are unchanged.
+- **SEQ-2:** Arp revoice emits raw MIDI offs for lost physical-key tones and ons for gained tones before overwriting their release list. The latch-only arp entry emits no raw MIDI because its physical release already ended that stream.
+- **SEQ-3:** Raw synth/drum keys remember their press channel; direct chord latches inherit it. Revoices, key/drum releases, KBD HOLD transfer, direct latch cleanup and preset-fade latch cleanup use the remembered channel. The existing route/channel-change transaction retires physical note/drum owners through their original release path before panic clears audio/latch state. Later physical releases are inert. This includes channel OFF and prevents unmatched offs on a newly selected channel.
+- **SEQ-4:** Before deleting a deduplicated live arp pitch, `arp_remove` checks remaining physical note owners. If one still owns it, the pitch stays and its `held_key`/`held_dt` provenance moves to the survivor, preserving press octave and subsequent scale/root remapping. Revoice supplies the existing `in_key` context to exclude the replaced owner. The aggregate physical count still decrements once per removed press; HOLD retains its existing latch policy. No generic owner pool, persistence/protocol field or audio buffer was introduced.
+
+The added ownership check runs on note-removal/revoice events, scanning the existing bounded 27 physical owners (at most four tones each) and existing 16-tone live pool. It is not in a per-sample render path. No measured hardware ISR latency claim is made.
+
+### Regression evidence
+
+`tests/sequencing_ownership_test.c` uses real `events_block` edges, modifiers, preset changes, progression takeover, direct/arp transitions and outgoing MIDI packets. The oracle indexes channel/pitch and rejects unmatched offs. Coverage includes all eleven modifiers; both root/modifier release orders; direct/arp, HOLD on/off and raw-only/generated output; synth/drum/chord/KBD HOLD channel changes including OFF; C+G/C+E shared-tone release orders; retained press octave and scale/root remap; overlapping modifier edits; preset panic and progression direct/arp takeover. Assertions occur at release boundaries before STOP. Original-source cases 2, 3 and 4 each aborted on the expected balance/shared-pitch assertion; all cases pass after the fixes.
+
+`tests/sequencing_phone_step_test.c` compiles the full production editor and calls actual `ed_handle` STEP_SET/TRACK_STEP dispatch, rather than extracting the helper. Flash writes and unrelated editor musical hooks assert if invoked. It edits each of four occupied slots while ratchets run and lookahead ties keep four old pitches owned, verifies no edited pitch appears in-flight, then verifies REST release, next-loop playback and another track's held tone. The original editor aborts at the intermediate channel/pitch assertion; the fixed editor passes all eight command/slot cases. This tests command dispatch/decoding, not USB SysEx byte transport.
+
+The first phone-test draft allowed its gate to expire before the ratchet and did not expose full capacity. The final test keeps four tied pitches owned and fails on the original editor. That earlier draft is not counted as reproduction evidence.
+
+Logs are in `build/code-review-sequencing-51/SEQ-{1,2,3,4}-before.log`, `SEQ-{1,2,3,4,5}-after.log`, and `current-working-tree-tests.log`. Both new tests also passed against the **current shared production sources**, not only a frozen snapshot. `tests/run_sequencing_ownership.sh` runs both tests with outputs defaulting to the private sequencing directory. The parent owns wiring the shared runner; `tests/run_tests.sh` was not edited here.
+
+### Existing tests and target validation
+
+All twelve existing focused tests passed with the fixes: seq_note_ties_test, seq_arp_test, seq_arp_modes_test, seq_arp_expression_test, seq2_test, note_chain_actions_test, sequence_starters_test, performance_engine_test, chord_modifiers_test, progression_perform_test, live_note_editing_test and swing_grid_test. Logs are `fixed-*.log`. They used a consistent frozen source/header tree with current assigned seq.c/editor.c overlaid. An initial live-tree compile caught a transient concurrent preset-trim source/header mismatch; the private tree avoided interference. Both new tests subsequently passed against the live shared tree once its representation was consistent.
+
+Private before/after application-only links used pinned JieLi Clang 4.0.1, normal `-Oz` build_app flags, private preset-generated data and unchanged baseline sources outside the assigned files. Package generation was not invoked. Both links pass `build.check`, including placement, RAM/pool budgets, RAM-code calls and ROM-reference checks:
+
+| Metric | Before | After | Delta |
+| --- | ---: | ---: | ---: |
+| Application image | 581,296 B | 580,784 B | âˆ’512 B |
+| Main RAM data+BSS | 89,128 B | 89,160 B | +32 B |
+| Low RAM | 28,280 B | 28,280 B | 0 |
+| Audio pool | 332,876 B | 332,876 B | 0 |
+
+Explicit new state is 30 bytes (27 key channels plus three latch channels), with alignment accounting for the linked 32-byte RAM increase. The image reduction is a measured whole-link compiler/layout result, not an independently additive optimization promise. Concurrent changes can alter it; parent must use the final combined target result. Evidence: `target-results.json`, `target-measure.log`, `target-{before,after}-symbols.txt` and private `target/` sources/outputs.
+
+### Handoff and limits
+
+All four assigned fixes are ready for parent integration. No production hook outside this ownership is required. Parent should include both new tests in the normal runner and validate the final combined target. Host IRQ stubs cannot prove races/deadlines; no hardware MIDI audition occurred. The full repository suite, audio-golden set and sanitizers were not rerun by this implementation. The physical shared-pitch repair does not replace or prove every legacy live MIDI/sustain same-pitch policy. Factory content, saved formats and upstream interfaces are preserved.

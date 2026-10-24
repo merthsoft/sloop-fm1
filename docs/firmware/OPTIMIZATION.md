@@ -533,3 +533,75 @@ This is primarily a MerthSloop cleanup: upstream still draws parameter icons,
 so deleting their mappings there would remove visible behavior. The generally
 useful lesson is to trace retained assets through their actual draw calls;
 the same 3,040-byte saving is not claimed for upstream.
+
+## Combined review integration
+
+The versioned 2.7.1.50 image measures **579,744/584,336 B**, leaving **4,592 B**
+flash free. Main static RAM is **86,128/98,304 B**, low RAM **28,280/29,496 B**,
+and pool **332,876/344,064 B** with the existing 8,192-byte reserve. This is
+**1,552 fewer image bytes and 3,000 fewer main RAM bytes** than the 581,296-byte
+post-icon baseline, despite the additional correctness fixes. It is a real
+combined build, not the sum of independent audit deltas.
+
+Accepted structural changes are explicit cold punch-state initialization,
+deletion of the bypassed pre-NEON TRACKS columns, direct legacy project conversion,
+generator-backed ragged preset trims and scalar uniform font metrics with
+proportional fallback. Legacy formats, original trim values, all font pixels,
+factory samples, saved format IDs and direct playback remain supported.
+The additional boot-expanded sample-zone/numeric-table experiments remain out.
+
+The shared punch startup helper is called after target BSS/data initialization,
+once in the common host bootstrap, and by preview initialization. It is not a
+per-block lazy initializer. Target RAM-code placement, all 24 monitored DSP/ISR
+budgets and hot-helper call caps pass. The audio fixes deliberately widen active
+FREEZE/crossfade arithmetic; they are not claimed to have zero instruction cost.
+The audio specialist's paired target has unchanged mix-loop calls/divides and
+12 additional disassembled mix instructions. Hardware deadlines are unmeasured.
+
+Parent integration evidence is in ignored `build/integration-51/`: versioned
+target/loader build, 47 focused firmware cases, 182 audio goldens after eight
+explicit fine-pitch corrections, 40,000-frame mixed UI/audio stress, native/WASM
+parity, actual package loader/OTA and maximum-capacity checks. Of 113 baseline
+screen captures, 110 remain byte-identical; the three sampled-audio visualizers
+change with the corrected pitch output. The stale independent-tie display test
+now asserts all four connected note bars over the current piano-roll viewport,
+plus its existing native editing/undo invariants, rather than old graph geometry.
+See [review synthesis](../reviews/REVIEW-SYNTHESIS.md) and the specialist reports
+for individual tests, isolated measurements and remaining physical validation.
+
+## Controls and live progression follow-up
+
+The combined 2.7.1.52 target is 582,048 / 584,336 B (2,288 B flash free), with
+86,144 / 98,304 B main static RAM, 28,280 / 29,496 B low RAM and
+332,876 / 344,064 B audio pool. Compared with the combined review .50 image,
+these controls/correctness/performance additions consume 2,304 B of application
+space and 16 B of main static RAM. No audio buffer, sample-content cut or runtime
+sample decompression was added. Shared chord pitch/modifier rules are reused by
+ordinary chords and progression performance instead of maintaining a second
+implementation. Existing recording and note-chain helpers carry the continuations.
+
+Final validation: 50 focused firmware programs pass; the corrected sequencing
+cases were recompiled/rerun after the quantized-record skip fix. The expanded
+progression suite also passes optimized/UBSan tests. All 182 golden renders are
+unchanged, with no health, voice/routing, CPU-budget or crash failures. All 24
+monitored target DSP loops/inlining checks pass, and 32 native/WASM audio profiles
+match exactly. These checks do not measure physical deadline/stack high-water or
+replace hardware feel/sound validation.
+
+## Appended instrument preset pack
+
+Fourteen data-only factory presets increase the preceding 582,048 B target to 582,424 B: **376 B flash** and **504 B low RAM**. Flash free is 1,912 B; low RAM free is 712 B. Main static RAM and the audio pool are unchanged. No feature removals or new render paths were required. See [preset pack measurements and validation](INSTRUMENT-PRESET-PACK.md).
+
+## Selected upstream integration completion
+
+Partial held-note recording, SF_LEG playback/STEP transport, preset arp ownership and the HOME section badge add **544 B flash** and **32 B main RAM** to the instrument-pack build. Target: **582,968 / 584,336 B**, leaving **1,368 B**. Main static RAM is 86,176 B; low RAM and pool remain unchanged. Existing render algorithms and all 196 audio golden hashes are unchanged.
+
+## LOFI experiments
+
+CASST/SMPLR reuse the existing stereo history, filter state and shared coloration code. Four additional presets cost 144 B low RAM. Combined target increase: **380 B flash**, leaving **988 B**. Main static RAM/audio pool do not grow. Sampler coefficients, including drive compensation, are calculated per block only while entering/using that mode. No features were removed.
+
+### Tape/sampler refinement
+
+Consolidating cassette into TAPE and blending sampler controls progressively recovers 24 B net: **583,324 / 584,336 B**, **1,012 B free**. Static RAM totals are unchanged. Sampler bypass/low-control tests now use loud internal bus input to catch unintended clipping.
+
+The sampler drive follow-up fixes above-unity fixed-point gain and squares its control curve: **583,388 B**, leaving **948 B flash**; RAM unchanged. This is a correctness/range fix costing 64 B, not an optimization saving.

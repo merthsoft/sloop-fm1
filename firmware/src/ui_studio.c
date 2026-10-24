@@ -539,12 +539,12 @@ UI_SMALL static void drum_screen_input(uint32_t pressed, uint32_t home, uint32_t
             dstep_t *st = &TDRUM->dstep[drum_cursor];
             if (k == 0) {                              /* the sound: heard */
                 uint8_t l = (uint8_t)clamp(drum_lane + s, 0, DRUM_LANES - 1);
-                if (l != drum_lane) audition_lane(l);
+                if (drum_preview && l != drum_lane) audition_lane(l);
                 drum_lane = l;
             }
             if (k == 1) {                              /* the step: what it holds, heard */
                 uint8_t c = (uint8_t)clamp(drum_cursor + s, 0, TDRUM->p[P_SLEN] - 1);
-                if (c != drum_cursor) audition_step(&TDRUM->dstep[c]);
+                if (drum_preview && c != drum_cursor) audition_step(&TDRUM->dstep[c]);
                 drum_cursor = c;
             }
             if (k >= 2) {
@@ -564,7 +564,7 @@ UI_SMALL static void drum_screen_input(uint32_t pressed, uint32_t home, uint32_t
         } else if (drum_page == 2u) {                  /* SOUND (2.7) */
             if (k == 0) {
                 uint8_t l = (uint8_t)clamp(drum_lane + s, 0, DRUM_LANES - 1);
-                if (l != drum_lane) audition_lane(l);
+                if (drum_preview && l != drum_lane) audition_lane(l);
                 drum_lane = l;
             }
             if (k == 1 || k == 2) {                    /* TUNE, DECAY: the next hit has them (heard at once) */

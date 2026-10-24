@@ -78,19 +78,37 @@ public sealed class LiveNotes(Action<byte[]> send)
 {
     readonly Dictionary<string,HashSet<LiveNote>> owners=[];
     readonly Dictionary<LiveNote,int> counts=[];
-    public int Count=>counts.Count;
+    readonly Dictionary<LiveNote,int> velocities=[];
+    // False: not attempted yet. True: the sender may have accepted the message before throwing.
+    readonly Dictionary<LiveNote,bool> pending=[];
+    public int Count {get {int total=counts.Count;foreach(var n in pending.Keys)if(!counts.ContainsKey(n))total++;return total;}}
     public void Set(string owner,IEnumerable<LiveNote> notes,int velocity) {
         if(velocity is <1 or >127)throw new ArgumentOutOfRangeException(nameof(velocity));
         var next=notes.ToHashSet();if(next.Any(n=>n.Channel is <0 or >15||n.Pitch is <0 or >127))throw new ArgumentOutOfRangeException(nameof(notes));
         owners.TryGetValue(owner,out var old);old??=[];
-        foreach(var n in old.Except(next).ToArray()){if(--counts[n]==0){counts.Remove(n);send([(byte)(0x80+n.Channel),(byte)n.Pitch,0]);}}
-        foreach(var n in next.Except(old).ToArray()){counts.TryGetValue(n,out var count);counts[n]=count+1;if(count==0)send([(byte)(0x90+n.Channel),(byte)n.Pitch,(byte)velocity]);}
+        // Commit desired ownership before I/O; each wire transition stays pending until the sender returns successfully.
+        foreach(var n in old.Except(next).ToArray())if(--counts[n]==0){counts.Remove(n);velocities.Remove(n);pending.TryAdd(n,false);}
+        foreach(var n in next.Except(old).ToArray()){counts.TryGetValue(n,out var count);counts[n]=count+1;if(count==0){velocities[n]=velocity;pending.TryAdd(n,false);}}
         if(next.Count==0)owners.Remove(owner);else owners[owner]=next;
+        Flush();
+    }
+    void Flush() {
+        foreach(var (n,ambiguous) in pending.OrderBy(p=>counts.ContainsKey(p.Key)).ToArray()) {
+            // An ambiguous on/off must be reconciled before restoring the desired shared pitch.
+            pending[n]=true;
+            if(ambiguous||!counts.ContainsKey(n))send([(byte)(0x80+n.Channel),(byte)n.Pitch,0]);
+            if(counts.ContainsKey(n))send([(byte)(0x90+n.Channel),(byte)n.Pitch,(byte)velocities[n]]);
+            pending.Remove(n);
+        }
+        pending.Clear(); // Reset insertion order for the next ordinary release-before-attack batch.
     }
     public void Panic() {
-        var active=counts.Keys.ToArray();owners.Clear();counts.Clear();
-        foreach(var n in active)try{send([(byte)(0x80+n.Channel),(byte)n.Pitch,0]);}catch(Exception){}
+        foreach(var n in counts.Keys)pending.TryAdd(n,false);
+        owners.Clear();counts.Clear();velocities.Clear();
+        foreach(var n in pending.Keys.ToArray())try{pending[n]=true;send([(byte)(0x80+n.Channel),(byte)n.Pitch,0]);pending.Remove(n);}catch(Exception){}
     }
+    /// <summary>Discard obligations only when their MIDI connection epoch has ended.</summary>
+    public void Forget(){owners.Clear();counts.Clear();velocities.Clear();pending.Clear();}
 }
 
 /// <summary>Generations cancel pending strums and repeats. Timed modes run off the UI thread.</summary>
@@ -126,5 +144,6 @@ public sealed class PerformancePlayer(Action<byte[]> send):IDisposable
     void Cancel(string owner){if(jobs.Remove(owner,out var cts))cts.Cancel();}
     public void Release(string owner){lock(sync){Cancel(owner);notes.Set(owner,[],100);}}
     public void Panic(){lock(sync){foreach(var cts in jobs.Values)cts.Cancel();jobs.Clear();notes.Panic();}}
+    public void Forget(){lock(sync){foreach(var cts in jobs.Values)cts.Cancel();jobs.Clear();notes.Forget();}}
     public void Dispose()=>Panic();
 }

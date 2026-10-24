@@ -114,7 +114,13 @@ public sealed partial class MainActivity
     }
     private async Task PrepareAndSendQuickSample()
     {
+        if(samples.Document is not {} doc)return;
+        long request=sampleUiRequest.Begin(),revision=doc.Revision;string root=EffectiveWorkspaceRoot;
+        bool mode=quickSound;
+        bool Current()=>CurrentSampleRequest(request,doc,root)&&doc.Revision==revision&&quickSound==mode&&state.Workspace==Sloop.Core.Workspace.Sample;
+        try {
         var result=await samples.PrepareQuickAsync(quickSound,quickName);if(result is null)return;
+        if(!Current()||!ReferenceEquals(samples.QuickConverted?.Artifact,result.Artifact))return;
         if(connection.Snapshot.Device is null||connection.Snapshot.IsSimulated||connection.Snapshot.IsGenericMidi){
             new global::Android.App.AlertDialog.Builder(this)!.SetTitle("Ready for your FM1")!.SetMessage("Your samples are prepared and the original is kept. Connect the FM1, then tap Send to FM1 again.")!.SetPositiveButton("Connect",(_,_)=>ShowConnectionMenu())!.SetNegativeButton("Later",(_,_)=>{})!.Show();return;
         }
@@ -123,8 +129,15 @@ public sealed partial class MainActivity
         var slots=new Spinner(this);slots.Adapter=new ArrayAdapter<string>(this,global::Android.Resource.Layout.SimpleSpinnerDropDownItem,new[]{"Slot 1 · USR1","Slot 2 · USR2","Slot 3 · USR3","Slot 4 · USR4"});slots.SetSelection(proposedSampleSlot??0);panel.AddView(slots);
         panel.AddView(Label("Play on synth · replaces its instrument, keeps its sequence",13));
         var synth=new Spinner(this);synth.Adapter=new ArrayAdapter<string>(this,global::Android.Resource.Layout.SimpleSpinnerDropDownItem,new[]{"Synth 1","Synth 2","Synth 3"});synth.SetSelection(Math.Min(state.SelectedTrack,2));panel.AddView(synth);
+        var destination=connection.MidiDestinationSession;
         new global::Android.App.AlertDialog.Builder(this)!.SetTitle(quickSound?"Send playable sound":"Send chopped loop")!.SetView(panel)!
             .SetMessage(quickSound?"Middle C plays the original. The other piano keys change its pitch.":$"{result.Artifact.Preview.Count} chops play on consecutive keys starting at C3.")!
-            .SetPositiveButton("Send & play",async(_,_)=>{StopPerformance();proposedSampleSlot=slots.SelectedItemPosition;await SendSampleKitAsync(result.Artifact,slots.SelectedItemPosition,true,synth.SelectedItemPosition);})!.SetNegativeButton("Cancel",(_,_)=>{})!.Show();
+            .SetPositiveButton("Send & play",async(_,_)=> {
+                try {
+                    if(!Current()||!ReferenceEquals(destination,connection.MidiDestinationSession))throw new IOException("Sample or destination changed. Choose Send again.");
+                    StopPerformance();proposedSampleSlot=slots.SelectedItemPosition;await SendSampleKitAsync(result.Artifact,slots.SelectedItemPosition,true,synth.SelectedItemPosition);
+                }catch(Exception error){editing.SetStatus("Sample send failed: "+error.Message);}
+            })!.SetNegativeButton("Cancel",(_,_)=>{})!.Show();
+        }catch(Exception error){editing.SetStatus("Sample review failed: "+error.Message);}
     }
 }

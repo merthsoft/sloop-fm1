@@ -99,5 +99,5 @@ _Static_assert(ENGI_GRAIN == 8u && ENGI_PHYS == 10u && ENGI_NOISE == 11u && ENGI
 #include "preset_trim.h"
 static int16_t preset_trim(uint32_t e, uint32_t pi)
 {
-    return e < PT_ENGINES && pi < PT_MAX ? PRESET_TRIM[e][pi] : 0;
+    return preset_trim_value(e, pi);
 }

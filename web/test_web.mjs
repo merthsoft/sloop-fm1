@@ -669,7 +669,7 @@ async function editorV5() {
     && names.indexOf("ED_MICRO_GET") + 1 === C.MICRO_GET && names.indexOf("ED_MICRO_SET") + 1 === C.MICRO_SET
     && names.indexOf("ED_FILL_GET") + 1 === C.FILL_GET && names.indexOf("ED_FILL_SET") + 1 === C.FILL_SET
     && /ED_FM6_GET = 68, ED_FM6_PUT, ED_FM6_LIST, ED_FM6_ERASE/.test(ec) && C.FM6_GET === 68 && C.FM6_ERASE === 71
-    && /#define ED_PROTO 15u/.test(ec) && /ed_b\(ED_PROTO\);/.test(ec)
+    && /#define ED_PROTO 16u/.test(ec) && /ed_b\(ED_PROTO\);/.test(ec)
     && /enum \{ ED_DSYN_LIST = 72, ED_DSYN_GET, ED_DSYN_PUT, ED_DSYN_STORE, ED_DSYN_PLAY \};/.test(readFileSync(join(HERE, "../firmware/src/editor_dsyn.c"), "utf8"))
     && C.DSYN_LIST === 72 && C.DSYN_PLAY === 76, "v5..v12: command numbers and INFO == editor.c / editor_dsyn.c");
   const enumNames = (id) => (new RegExp(`${id}\\[\\] = \\{([^}]*)\\}`).exec(pc) || [])[1].split(",").map((x) => x.trim().replace(/"/g, ""));
@@ -1014,7 +1014,7 @@ sys.stdout.buffer.write(hd+t1+b'MTrk'+struct.pack('>I',len(tr))+tr)`);
   const pc = readFileSync(join(HERE, "../firmware/src/project.c"), "utf8"), ah = readFileSync(join(HERE, "../firmware/src/arranger.h"), "utf8");
   const pt = (/typedef struct \{([^}]*)\} persist_t;/.exec(pc) || [, ""])[1];
   ok(/PERSIST_MAGIC 0x50455233u/.test(pc) && /arr_config_t arrangement;/.test(pt) && /ARR_STEPS 16u/.test(ah)
-    && /if \(\(song\.playing \|\| transport_req\) && memcmp\(&p\.arrangement, &arrangement, sizeof arrangement\)\)\s*return 3;/.test(pc),
+    && /if \(song\.playing \|\| transport_req\)\s*return 3;/.test(pc),
     "song: PER3, persist_t has the arrangement, 16 steps; a new order refused while playing (project.c)");
   /* read and send it through the backup objects, as the Song page does */
   const { m, rq, done } = attachMock({});
@@ -1032,9 +1032,9 @@ sys.stdout.buffer.write(hd+t1+b'MTrk'+struct.pack('>I',len(tr))+tr)`);
   const rc2 = await put1(bad);
   m.sim.play(true);
   const rc3 = await put1(ARR.encode(cur, { loop: false, entries: [{ scene: 1, bars: 1 }] }));
-  const rc4 = await put1(now);                                 /* the same order while playing: fine */
+  const rc4 = await put1(now);                                 /* native object writes refuse playback, even the same order */
   m.sim.play(false);
-  ok(ARR.ok(cur) && rc1 === 0 && js(ARR.decode(now)) === js({ loop: true, entries: [{ scene: 2, bars: 8 }, { scene: 3, bars: 2 }] }) && rc2 === 2 && rc3 === 3 && rc4 === 0
+  ok(ARR.ok(cur) && rc1 === 0 && js(ARR.decode(now)) === js({ loop: true, entries: [{ scene: 2, bars: 8 }, { scene: 3, bars: 2 }] }) && rc2 === 2 && rc3 === 3 && rc4 === 3
     && js(ARR.decode(await get1())) === js(ARR.decode(now)), "song: mock: read, send (rc 0), a bad one (rc 2), a new one while playing (rc 3)");
   done();
   /* the page */
@@ -1859,5 +1859,22 @@ samplesMatch();
 chopTests();
 await packages();
 await updater();
+
+{
+  const {rq,done}=attachMock({v16:true});
+  await rq(E.req.info());
+  const st={n:2,notes:[60,64,0,0],time:0,flags:0x89,vel:100,lvl:255,rat:255};
+  const cmd=E.req.stepSet(2,st);
+  const written=E.parse[E.CMD.STEP_SET](await rq(cmd));
+  const read=E.parse[E.CMD.STEP_GET](await rq(E.req.stepGet(2)));
+  ok(cmd[1].every(x=>x<128)&&written.flags===0x89&&read.flags===0x89&&read.lvl===255&&read.rat===255,
+     "v16: legato/continuations and top level/ratchet bits round-trip in seven-bit-safe STEP bytes");
+  const legacy=cmd[1].slice();legacy[10]=3;
+  const preserved=E.parse[E.CMD.STEP_SET](await rq([E.CMD.STEP_SET,legacy]));
+  const cleared=E.parse[E.CMD.STEP_SET](await rq(E.req.stepSet(2,{...st,flags:9})));
+  ok(preserved.flags===0x89&&cleared.flags===9,"v16: legacy writers preserve legato; aware writers can clear it");
+  done();
+}
+
 console.log(failed ? `WEB TESTS FAILED (${failed})` : "web tests passed");
 process.exit(failed ? 1 : 0);

@@ -9,7 +9,7 @@ static void fresh(void)
 {
     seq_stop();fm1_in.buttons=fm1_in.notes=0;frames(20);
     song.sel=0;t=&trk[0];steps_clear(t);t->p[P_SLEN]=16;t->p[P_VOICE]=V_POLY;
-    go_home();open_family(FAM_SEQ);cursor_set(0);frame();
+    go_home();open_family(FAM_SEQ);ui.roll_zoom=0;cursor_set(0);frame();
 }
 static void roll_draw(void)
 {
@@ -17,7 +17,9 @@ static void roll_draw(void)
 }
 static void roll_pixel(uint32_t x,uint32_t pitch,uint32_t low)
 {
-    uint32_t y=80-(pitch-low)*74/12;
+    /* C4..B4 spans rows B3..C5 in the current roll: 14 rows, 7px high.
+     * Sample the interior, away from grid lines and selection outlines. */
+    uint32_t y=118-(pitch-low+2)*7+2;
     assert(cv_px[y*240+x]==swap16(C_HI));
 }
 static void display_audit(void)
@@ -30,14 +32,14 @@ static void display_audit(void)
     t->step[31]=(step_t){.note={1},.n=1,.time=ST_REST};
     roll_draw();
     for(uint32_t k=0;k<4;k++) {
-        roll_pixel(18,t->step[0].note[k],60);
-        for(uint32_t x=12;x<30;x++) roll_pixel(x,t->step[0].note[k],60);
+        roll_pixel(24,t->step[0].note[k],60);
+        for(uint32_t x=23;x<237;x++) roll_pixel(x,t->step[0].note[k],60);
     }
     cursor_set(16);roll_draw();
-    for(uint32_t k=0;k<4;k++) roll_pixel(0,t->step[0].note[k],60);
+    for(uint32_t k=0;k<4;k++) roll_pixel(22,t->step[0].note[k],60);
     /* Mixed independent continuations share exactly the same connected geometry. */
     t->step[17]=(step_t){.note={60,64,67,71},.n=4,.flags=SF_TIES};
-    roll_draw();for(uint32_t k=0;k<4;k++) roll_pixel(18,t->step[0].note[k],60);
+    roll_draw();for(uint32_t k=0;k<4;k++) roll_pixel(40,t->step[0].note[k],60);
     /* Every chord slot invalidates cached graph pixels, without forcing a redraw. */
     settings.zoom=0;ui.force=1;draw_graph();
     uint16_t before[240*240];memcpy(before,screen,sizeof before);
@@ -51,8 +53,8 @@ static void display_audit(void)
     assert(!memcmp(before,screen,sizeof before));
     /* Knob zoom must not temporarily hide the upper voices of the STEP roll. */
     settings.zoom=1;ui.hot_t=30;ui.hot_col=1;ui.force=1;draw_columns();draw_graph();
-    uint32_t y=Y_GRAPH+G_OY+80-(71-60)*74/12;
-    assert(screen[y*240]==swap16(TE_COL[0]));
+    uint32_t y=Y_GRAPH+118-(71-60+2)*7+2;
+    assert(screen[y*240+24]==swap16(TE_COL[0]));
     settings.zoom=0;
 }
 int main(void)

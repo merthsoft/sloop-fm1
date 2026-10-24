@@ -538,6 +538,14 @@ UI_SMALL static void layer_knobs(uint32_t layer)
     uint32_t k;
     int32_t s;
     track_t *t = TSEL;
+    /* Claim SELECT before show-delay/tap classification: FX owns fade even on
+     * the first held frame, and the turn makes this a used gesture. */
+    if (layer == LY_FX && (s = panel_enc(EN_SELECT)) != 0) {
+        fxfade = (uint8_t)clamp(fxfade + s, 0, 15);
+        settings_later = 1;
+        ui.layer_used = 1;
+        ui.force = 1;
+    }
     if (layer == LY_STEP && ui.step_held) {              /* a step held: PRESETS the lock's value, ALGORITHM its parameter
                                                           * (neither browses a sound nor selects a track meanwhile) */
         if ((s = panel_enc(EN_PRESET)) != 0) {
@@ -893,8 +901,13 @@ UI_SMALL static void layer_screen_draw(void)
     }
     case LY_FX:                                         /* the 27 punch-in effects: 16 white keys, 11 black */
         col = TE_DRUM;
-        str_cpy(sub, punch_rate_requested() && song.g[G_SYNC] ? "RATE: INT only" : musical_half == 2 ? "DOUBLE TIME" : musical_half == 1 ? "HALF" : thr_req == 3u ? "rev + echo throw" : thr_req == 2u ? "echo throw" : thr_req ? "rev throw" : "hold + key",
+        str_cpy(sub, punch_rate_requested() && song.g[G_SYNC] ? "RATE: INT only" : musical_half == 2 ? "DOUBLE TIME" : musical_half == 1 ? "HALF" : thr_req == 3u ? "rev+echo" : thr_req == 2u ? "echo throw" : thr_req ? "rev throw" : "hold + key",
                 sizeof sub);
+        { uint32_t len = str_len(sub); char value[8];
+          fmt_int(value, fxfade);
+          str_cpy(sub + len, " fade ", sizeof sub - len);
+          len = str_len(sub); str_cpy(sub + len, value, sizeof sub - len);
+        }
         for (i = 0; i < PUNCH_NFX; i++) {
             static const char *const PSHORT[PUNCH_NFX] = {"loop 4", "loop 8", "loop16", "loop32", "stutt", "rev", "stop",
                                                           "half", "low", "high", "phone", "crush", "alias", "gate", "echo",
