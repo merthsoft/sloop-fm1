@@ -605,3 +605,36 @@ CASST/SMPLR reuse the existing stereo history, filter state and shared coloratio
 Consolidating cassette into TAPE and blending sampler controls progressively recovers 24 B net: **583,324 / 584,336 B**, **1,012 B free**. Static RAM totals are unchanged. Sampler bypass/low-control tests now use loud internal bus input to catch unintended clipping.
 
 The sampler drive follow-up fixes above-unity fixed-point gain and squares its control curve: **583,388 B**, leaving **948 B flash**; RAM unchanged. This is a correctness/range fix costing 64 B, not an optimization saving.
+
+### First ambient headroom integration
+
+Integrated the insert-state union, upload/backup decode staging in main scratch,
+and FFT imaginary vector in the existing second scratch vector. Used the portable
+C constant-bound clamp specialization with original dynamic/inverted fallback.
+Moved the exact GR_HANN/FM6_STATICS literals into the normal table generator and
+boot decoder list; factory preset fields now pack by per-column bit width before
+existing LZ4. The dedicated zero preset fallback moves to BSS.
+
+Combined target: **581,996 / 584,336 B**, **2,340 B flash free**; a measured
+**1,392 B reduction** from the 583,388 B baseline. Main static RAM is
+**86,320 / 98,304 B** (144 B more overall, 11,984 B free). Low RAM remains
+**28,928 / 29,496 B** (568 B free). Pool is **331,852 / 344,064 B**: 1,024 B
+recovered, 4,020 B above the unchanged 8,192 B reserve. No playback decoder,
+new samples, removed functionality, saved-format change or analog loop sharing.
+The boot table list now restores 22,032 bytes from 7,969 payload bytes, plus
+its existing separately packed FIR; restored factory payload remains 6,156 B.
+Individual audit deltas were not additive; these are actual combined-link values.
+
+Validation: 200 unchanged goldens in each raw and boot-restored build; 171
+complete raw/restored presets; 22,032 byte-exact restored table bytes; 2,003,375
+clamp contract comparisons; frozen 160,000-block insert transition oracle;
+poisoned upload/backup staging with eight uploads across all slots and invalid
+header refusal; FFT scratch poisoning/waveform preservation; UI redraw parity
+and 20,000-frame fuzz; delayed two-core rendering across seven scenes and eleven
+splits; arena switching, sampler mechanisms and native/WASM parity. Target budgets
+and 24 hot-loop call caps pass unchanged. Host evidence does not establish
+hardware stack high-water, boot time or worst-case audio deadlines.
+
+Assembly clamps, shared analog rendering, preset relocation, larger startup
+packing and cold-state initialization remain separate audit candidates.
+See [the reconciliation](AMBIENT-HEADROOM-SYNTHESIS.md).

@@ -1,8 +1,13 @@
 # Latest native firmware integration
 
+The first ambient headroom batch shares temporary/state storage and improves
+startup-only table/preset packing. It recovers 1,392 B flash and 1,024 B pool,
+with no new render-time decoder or sound changes. See the
+[combined measurements](../../docs/firmware/AMBIENT-HEADROOM-SYNTHESIS.md).
+
 LOFI now also offers stronger TAPE and progressive SMPLR early-digital coloration, with
 four appended dusty/warm presets (171 factory sounds total). No new audio
-buffer or feature cuts; current target has 948 B flash and 568 B low RAM free.
+buffer or feature cuts; current target has 2,340 B flash and 568 B low RAM free.
 See [LOFI controls and validation](../../docs/firmware/LOFI-MASTER-DESIGN.md).
 
 The selected SLOOP 2.8 integration is complete: partial held-note recording,

@@ -43,7 +43,8 @@ static up_bank_t up_bank[UP_SLOTS / UP_PER_BANK];
 UI_SMALL static up_rec_t *up_rec(uint32_t k) { return &up_bank[k / UP_PER_BANK].r[k % UP_PER_BANK]; }
 #else
 static const up_bank_t *up_bank_xip[UP_SLOTS / UP_PER_BANK];   /* each bank's current copy in the window, 0 = none */
-static const up_rec_t up_rec_none;                              /* an empty slot (up_valid says no) */
+/* Dedicated zeroed empty-slot fallback, read only through up_rec(). */
+static up_rec_t up_rec_none;                              /* an empty slot (up_valid says no) */
 UI_SMALL static const up_rec_t *up_rec(uint32_t k)
 {
     const up_bank_t *bk = up_bank_xip[(k / UP_PER_BANK) % NELEM(up_bank_xip)];

@@ -519,7 +519,7 @@ static void tflt_run(djf_t *f, const tsvf_t *c, int32_t *b, uint32_t n, uint32_t
  * as before (nothing runs). MIX glides (2.9 ms, SL_SLOPE); a TYPE change fades the old one out, clears the state,
  * fades the new one in; so does a start from MIX 0 (no stale line or filter).
  * The drum track (SLOOP): its left, right, reverb send and delay send each through their own state, the same settings
- * (fx.c mix_block). State in RAM (.bss): 580 B a channel; noinline, its own loops */
+ * (fx.c mix_block). State in RAM (.bss): 528 B a channel; noinline, its own loops */
 enum { IT_OFF, IT_SOFT, IT_HARD, IT_FOLD, IT_FUZZ, IT_CRUSH, IT_PHASER, IT_FLANGER, IT_CHORUS, IT_N };
 _Static_assert(IT_N == sizeof N_ITYPE / sizeof N_ITYPE[0], "the INSERT's types as params.c names them");
 #define IL_LEN 256u                     /* FLANG / CHOR: the line, samples (a power of 2: masked) */
@@ -537,9 +537,14 @@ typedef struct {
     uint8_t cnt;                        /* CRUSH: samples left of the held one */
     uint16_t wp;                        /* FLANG / CHOR: the line's next write */
     uint32_t ph;                        /* the sweep's phase */
-    int32_t hp, lp1, lp2, dc, hold;     /* low cut (Q8), the two low-passes, DC blocker (Q8), CRUSH's held sample */
-    int32_t px[PH_ST], py[PH_ST], fb;   /* PHASR: each stage's last input and output, the fed back */
-    int16_t line[IL_LEN];               /* FLANG / CHOR, at a quarter (headroom) */
+    int32_t dc;
+    /* ins_run fades the old type to zero, then clears before selecting a new
+     * type. These private histories never render concurrently. */
+    union {
+        struct { int32_t hp, lp1, lp2, hold; };
+        struct { int32_t px[PH_ST], py[PH_ST], fb; };
+        int16_t line[IL_LEN];
+    };
 } ins_t;
 /* (in .bss, not the pool: tools/build.py keeps 8 KiB of the pool spare; RAM has room) */
 static ins_t ins[NPART + 4u];                    /* the parts; the drum track's L, R, REV, DLY */

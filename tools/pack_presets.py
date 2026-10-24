@@ -48,10 +48,18 @@ def read_presets(path):
 
 def pack(path,gen):
     gen=Path(gen);e=read_presets(path);stream=bytearray();names=[]
+    # Bit widths are per table/field; each column starts on a byte boundary.
+    # Preserve all 32 target payload bytes, including signed fields and padding.
     for table in e:
-        for row,name in zip(table['fields'],table['names']):
-            mask=sum(1<<j for j,v in enumerate(row) if v)
-            stream+=struct.pack('<I',mask)+bytes(v for v in row if v);names.append(name)
+        names.extend(table['names'])
+        for j in range(32):
+            vs=[row[j] for row in table['fields']];width=max(vs).bit_length()
+            stream.append(width)
+            acc=used=0
+            for v in vs:
+                acc|=v<<used;used+=width
+                while used>=8:stream.append(acc&255);acc>>=8;used-=8
+            if used:stream.append(acc&255)
     blob=lz4blk.compress(bytes(stream));assert lz4blk.decompress(blob)==stream
     sizes=['/* Generated from the raw target object. */','#pragma once']
     sizes += ['#define BP_N_'+t['name']+' '+str(t['count']) for t in e]
@@ -66,15 +74,20 @@ uint8_t *work=scratch;
 const boot_table_t table={work,BP_DATA,sizeof BP_DATA,%d,1,0,1,0};
 if(!boot_table_unpack(&table)) return 0;
 const uint8_t *src=work,*end=work+%d;const char *name=BP_NAMES;
-for(uint32_t a=0;a<sizeof BP_COUNT;a++) for(uint32_t i=0;i<BP_COUNT[a];i++) {
- if(end-src<4) return 0;
- preset_t *out=&BP_ARRAYS[a][i];uint32_t mask=boot_load(src,4);src+=4;
- uint8_t *dst=(uint8_t *)out+sizeof out->name;
+for(uint32_t a=0;a<sizeof BP_COUNT;a++) {
  for(uint32_t j=0;j<32;j++) {
-   if((mask>>j)&1u) { if(src==end)return 0;dst[j]=*src++; } else dst[j]=0;
+  if(src==end) return 0;
+  uint32_t width=*src++,acc=0,used=0;if(width>8) return 0;
+  for(uint32_t i=0;i<BP_COUNT[a];i++) {
+   if(used<width){if(src==end)return 0;acc|=(uint32_t)*src++<<used;used+=8;}
+   ((uint8_t *)&BP_ARRAYS[a][i]+sizeof BP_ARRAYS[a][i].name)[j]=(uint8_t)(acc&((1u<<width)-1u));
+   acc>>=width;used-=width;
+  }
  }
- if(name>=BP_NAMES+sizeof BP_NAMES) return 0;
- out->name=name;while(*name++) {if(name==BP_NAMES+sizeof BP_NAMES)return 0;}
+ for(uint32_t i=0;i<BP_COUNT[a];i++) {
+  if(name>=BP_NAMES+sizeof BP_NAMES)return 0;
+  BP_ARRAYS[a][i].name=name;while(*name++){if(name==BP_NAMES+sizeof BP_NAMES)return 0;}
+ }
 }
 return src==end;
 }'''%(len(stream),len(stream),len(stream))]

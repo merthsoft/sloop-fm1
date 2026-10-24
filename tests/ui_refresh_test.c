@@ -94,8 +94,8 @@ static void polish_checks(void)
     ppm("polish-fx");ui.layer=LY_PLAY;
     for(uint32_t p=0;p<NPAGES;p++)if(PAGES[p].scope==SC_GLOBAL&&PAGES[p].id[0]==G_LTYPE)ui.page=p;
     ui.home=0;ui.hot_t=0;
-    static const char *const lofi_controls[5][3]={{"WOW","DARK","DAMAGE"},{"WOW","DARK","DAMAGE"},{"FLUTTR","DARK","DRIVE"},{"WARBLE","DARK","DAMAGE"},{"RATE","LATCH","MIX"}};
-    for(uint32_t mode=0;mode<5;mode++) {
+    static const char *const lofi_controls[7][3]={{"WOW","DARK","DAMAGE"},{"WOW","DARK","DAMAGE"},{"WOW","DARK","WEAR"},{"WARBLE","DARK","DAMAGE"},{"RATE","LATCH","MIX"},{"DRIFT","BAND","STATIC"},{"RATE","CRUSH","DRIVE"}};
+    for(uint32_t mode=0;mode<7;mode++) {
         song.g[G_LTYPE]=mode;regular();same_as_full(regular,"LOFI mode and label change");
         for(uint32_t k=0;k<3;k++)text_visible(lofi_controls[mode][k],TE_G4,Y_LABEL,Y_GRAPH);
         char name[24];snprintf(name,sizeof name,"lofi-%u",mode);ppm(name);
@@ -103,10 +103,28 @@ static void polish_checks(void)
     song.g[G_LTYPE]=0;
     ui.force=1;tracks();ppm("polish-header");
 }
+/* Spectral analysis may destroy scratch, but never the persistent waveform.
+ * Poison scratch between analyses as storage/sample commands do between frames. */
+static void fft_scratch_lifetime(void)
+{
+    int16_t waveform[VIS_FFT], real[VIS_FFT], imag[VIS_FFT];
+    for(unsigned trial=0;trial<16;trial++) {
+        for(unsigned i=0;i<VIS_FFT;i++) waveform[i]=(int16_t)((i*997u+trial*7919u)^(i<<7));
+        memcpy(vis_l,waveform,sizeof waveform);
+        memset(&main_scratch,0xa5,sizeof main_scratch);vis_fft();
+        assert(!memcmp(vis_l,waveform,sizeof waveform));
+        memcpy(real,vis_re,sizeof real);memcpy(imag,vis_im,sizeof imag);
+        memset(&main_scratch,0x5a,sizeof main_scratch);vis_fft();
+        assert(!memcmp(real,vis_re,sizeof real) && !memcmp(imag,vis_im,sizeof imag));
+        assert(!memcmp(vis_l,waveform,sizeof waveform));
+    }
+}
+
 int main(int argc,char **argv)
 {
     outdir=argc>1?argv[1]:"build/neon-ui";
     panel=PANEL_DEFAULT;layers_init();host_tracks_init();
+    fft_scratch_lifetime();
     settings.palette=NPALETTES-1u;palette_set(settings.palette);
     assert(!strcmp(PALETTES[settings.palette].name,"NEON"));
     song.sel=1;

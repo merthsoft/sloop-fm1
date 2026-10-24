@@ -55,7 +55,10 @@ static void ota_wire_send(const uint8_t *p,uint32_t n) {}
 static void fm1_wdt_feed(void) {}
 static void fl_inval(uint32_t off,uint32_t n) {}
 static int fl_erase4k_quiet(uint32_t off,uint32_t *took) {return st_erase(off);}
-static int fl_write(uint32_t off,const uint8_t *p,uint32_t n) {return st_prog(off,p,n);}
+static int fl_write(uint32_t off,const uint8_t *p,uint32_t n) {
+    while(n) {uint32_t k=256u-(off&255u);if(k>n)k=n;
+        int rc=st_prog(off,p,k);if(rc)return rc;off+=k;p+=k;n-=k;}return 0;
+}
 /* Unused editor commands need their platform declarations at compile time. */
 static uint32_t so_w,so_r;
 #define SXQ 2048u
@@ -70,6 +73,15 @@ static void pattern_length(track_t *t,int32_t delta);
 static void pattern_transpose(track_t *t,int32_t delta);
 static int ota_frame_get(const uint8_t **p,uint32_t *n);
 static void ota_frame_done(void);
+static void layer_key(uint32_t b,uint32_t k,uint32_t down) {assert(0);}
+static uint32_t key_of_white(uint32_t k) {assert(0);return 0;}
+static void rec_toggle(void) {assert(0);}
+static void pattern_rotate(track_t *t,int32_t d) {assert(0);}
+static void pattern_length(track_t *t,int32_t d) {assert(0);}
+static void pattern_transpose(track_t *t,int32_t d) {assert(0);}
+static int ota_frame_get(const uint8_t **p,uint32_t *n) {return 0;}
+static void ota_frame_done(void) {}
+static void sequence_screen_close(void) {assert(0);}
 #include "../firmware/src/editor.c"
 static void setup(void) {
     memset(nor,255,sizeof nor);host_tracks_init();panel=PANEL_DEFAULT;
@@ -178,7 +190,29 @@ static void upstream_settings_test(void) {
     assert(!drum_preview && !step_adv_off && !fxfade && !flt_reso);
     puts("upstream suffix: packed bits, old defaults, invalid clamp, restart, backup retention PASS");
 }
+static unsigned packed(const void *p,unsigned n,uint8_t *dst){ed_n=0;ed_pack7(p,n);unsigned z=ed_n;memcpy(dst,ed_out,z);return z;}
+static void request(unsigned cmd,const uint8_t *a,unsigned n){uint8_t f[640]={ED_HDR0,ED_HDR1,ED_HDR2};f[3]=cmd;memcpy(f+4,a,n);memset(main_scratch.st,0xa5,sizeof main_scratch.st);ed_handle(f,n+4);}
+static void sample_scratch_test(void){
+ setup();
+ for(unsigned slot=0;slot<4;slot++)for(unsigned zones=1;zones<=16;zones+=15){
+  uint8_t data[256],a[620]={0};smp_user_hdr_t h={0};
+  for(unsigned i=0;i<sizeof data;i++)data[i]=(uint8_t)(i*37+slot+zones);
+  a[0]=slot;request(ED_SMP_BEGIN,a,1);assert(ed_smp_open[slot] && !usr_nz[slot]);
+  a[0]=slot;a[1]=0;a[2]=4;a[3]=0;unsigned np=packed(data,sizeof data,a+4);
+  request(ED_SMP_WRITE,a,4+np);assert(!memcmp(nor+SMP_USER_OFF(slot)+512,data,256));
+  h.magic=SMP_USER_MAGIC;h.version=1;h.nz=zones;h.data_len=256;h.crc=st_crc32(data,sizeof data);memcpy(h.name,"AUDIT",5);
+  for(unsigned i=0;i<zones;i++){h.zone[i].n=512;h.zone[i].le=511;h.zone[i].rate=65536;h.zone[i].root16=960;h.zone[i].hi=127;}
+  a[0]=slot;h.nz=17;np=packed(&h,sizeof h,a+1);request(ED_SMP_END,a,np+1);assert(ed_smp_open[slot] && !usr_nz[slot]);
+  h.nz=zones;np=packed(&h,sizeof h,a+1);request(ED_SMP_END,a,np+1);
+  assert(!ed_smp_open[slot] && usr_nz[slot]==zones && !memcmp(nor+SMP_USER_OFF(slot),&h,sizeof h));
+  memset(main_scratch.st,0x5a,sizeof main_scratch.st);smp_user_scan(slot);assert(usr_nz[slot]==zones);
+ }
+ persist_t p;persist_fill(&p);assert(!restore_settings(&p));
+ puts("sample scratch: 8 uploads, all four slots, 1/16 zones, malformed header refusal, scratch poisoning, header/data bytes and backup restore PASS");
+}
+
 int main(int argc,char **argv) {
+    if(argc==1 || !strcmp(argv[1],"samples"))sample_scratch_test();
     if(argc==1 || !strcmp(argv[1],"upstream"))upstream_settings_test();
     if(argc==1 || !strcmp(argv[1],"transport"))transport_test();
     if(argc==1 || !strcmp(argv[1],"side"))side_retry_test();

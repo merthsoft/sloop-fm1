@@ -1,6 +1,6 @@
 #!/bin/sh
 # SPDX-License-Identifier: GPL-3.0-only
-# Copyright (C) 2026 Leo Kuroshita (@kurogedelic), HÃ¼gelton Instruments
+# Copyright (C) 2026 Leo Kuroshita (@kurogedelic), HÃƒÂ¼gelton Instruments
 # Host tests (no hardware). Run from the repo root after ./build.sh:
 #   tests/run_tests.sh
 #
@@ -307,7 +307,7 @@ $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/regress" tests/regress.c -lm
 if [ -z "$SKIP_CPU_VALGRIND" ] && command -v valgrind >/dev/null 2>&1; then export CPU_VALGRIND=1; fi
 run "regression: golden renders, health, voices, CPU budget" "$OUT/regress" tests/golden.txt tests/cpu_baseline.txt
 # Review regressions exercise failure boundaries in actual production paths.
-for review_case in audio_punch_boot audio_freeze_range audio_lofi_stop engine_pitch_ownership persistence_commit project_legacy_conversion sequencing_ownership sequencing_phone_step; do
+for review_case in clamp_contract insert_state audio_punch_boot audio_freeze_range audio_lofi_stop engine_pitch_ownership persistence_commit project_legacy_conversion sequencing_ownership sequencing_phone_step; do
     $CC -O2 -fwrapv -fno-strict-aliasing -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/$review_case" "tests/${review_case}_test.c" -lm -pthread
     run "review regression: $review_case" "$OUT/$review_case"
 done

@@ -34,6 +34,7 @@ the website installer references the current MerthSloop package.
 - [USB playback](USB-PLAYBACK-IMPLEMENTATION.md)
 - [Lossless font packing](FONT-PACKING-DESIGN.md)
 - [Measured branch optimization](OPTIMIZATION.md)
+- [Ambient headroom audit synthesis and first integrated batch](AMBIENT-HEADROOM-SYNTHESIS.md)
 - [Architectural headroom investigation and ranked next steps](ARCHITECTURAL-HEADROOM.md)
 - [Measured MerthSloop/main flash and RAM headroom](HEADROOM-COMPARISON.md)
 - [Duplicated-code audit and measured UI consolidation](REDUNDANCY-AUDIT.md)

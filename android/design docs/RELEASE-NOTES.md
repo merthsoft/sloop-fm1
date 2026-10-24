@@ -1,3 +1,15 @@
+# MerthSloop firmware 2.8.0.59 — headroom integration
+
+- Shared exclusive insert state, sample-upload decoding scratch and FFT scratch.
+- Portable C clamp specialization preserves dynamic/inverted bounds.
+- Exact grain window and FM6 envelope tables restore once at boot; preset field
+  packing improves without changing any factory values or user save formats.
+- Application 581,996 / 584,336 B: **2,340 B free**, **1,392 B recovered**.
+  Main RAM 86,320 B; low RAM 28,928 B; pool 331,852 B (1,024 B recovered).
+- Raw/boot audio goldens, boot bytes/presets, state lifetime, UI/fuzz and split-core
+  checks pass. Hardware timing/stack validation remains pending.
+- Assembly and shared analog-renderer alternatives are not included.
+
 # MerthSloop firmware 2.8.0.58 — sampler drive range
 
 - Corrected above-unity fixed-point gain overflow in SMPLR DRIVE. Squared the control curve so low settings stay gentle and high settings retain heavy clipping.

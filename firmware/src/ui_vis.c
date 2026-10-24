@@ -16,8 +16,11 @@ static const char *const VIS_NAME[VIS_N] = {"OSCILLOSCOPE", "SPECTRUM", "SPECTRO
 #define VIS_SG_W 48u                                /* spectrogram: 48 columns of 5 px, 72 rows of 3 px */
 #define VIS_SG_H 72u
 _Static_assert(SCOPE_N == VIS_FFT, "shared scope/FFT snapshot size");
-#define vis_re ui_scope_snap
-static int16_t vis_im[VIS_FFT] __attribute__((section(".pool")));
+/* Both vectors are consumed within vis_update; no storage/editor callbacks
+ * occur during the FFT. Waveform/trail history remains separate. */
+#define vis_re (main_scratch.vis[0])
+#define vis_im (main_scratch.vis[1])
+_Static_assert(sizeof vis_im == VIS_FFT * sizeof(int16_t), "FFT scratch size");
 /* Waveform and trail histories share storage; clear trails on entry. */
 static union {
     struct { int16_t l[VIS_FFT]; } scope;

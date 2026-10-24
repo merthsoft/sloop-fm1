@@ -103,7 +103,9 @@ UI_SMALL static void ed_pack7(const uint8_t *p, uint32_t n)      /* pack7: a top
         n -= k;
     }
 }
-static uint8_t ed_smp_buf[512] __attribute__((aligned(4)));
+#include "scratch.h"
+#define ed_smp_buf (main_scratch.smp)
+_Static_assert(sizeof ed_smp_buf >= sizeof(smp_user_hdr_t), "sample header staging");
 static uint8_t ed_smp_open[SMP_USER_SLOTS];        /* SMP_BEGIN done, END not yet: WRITE / END may act */
 UI_SMALL static uint32_t ed_smp_slot(uint32_t k) { return SMP_USER_OFF(k); }
 UI_SMALL static void ed_smp_inval(uint32_t k)

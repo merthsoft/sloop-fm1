@@ -173,3 +173,6 @@ remains the subjective sound-quality check.
 
 ![Tape controls](../../assets/screens/merthsoft/neon/lofi-tape.png)
 ![Sampler controls](../../assets/screens/merthsoft/neon/lofi-sampler.png)
+
+The subsequent headroom batch preserves this DSP and all sampler mechanism tests;
+see [current combined memory measurements](HEADROOM-COMPARISON.md).

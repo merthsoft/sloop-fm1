@@ -5,6 +5,7 @@
 #include "version.h"
 /* Shared cold clamp: audio DSP keeps its inline version. */
 UI_SMALL static int32_t ui_clamp(int32_t v,int32_t lo,int32_t hi) {return clamp(v,lo,hi);}
+#undef clamp
 #define clamp ui_clamp
 
 static void project_save(uint32_t slot);
