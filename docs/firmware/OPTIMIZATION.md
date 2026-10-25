@@ -635,6 +635,65 @@ splits; arena switching, sampler mechanisms and native/WASM parity. Target budge
 and 24 hot-loop call caps pass unchanged. Host evidence does not establish
 hardware stack high-water, boot time or worst-case audio deadlines.
 
-Assembly clamps, shared analog rendering, preset relocation, larger startup
-packing and cold-state initialization remain separate audit candidates.
+Assembly clamps, shared analog rendering and preset relocation remain separate
+audit candidates. Larger zone/name startup packing is now integrated; the
+current cold-state conversion regresses flash and is rejected.
 See [the reconciliation](AMBIENT-HEADROOM-SYNTHESIS.md).
+
+## Extended metadata startup packing
+
+The next measured batch reaches **582,804 / 584,336 B**: **1,532 B free**,
+1,196 B below .63 including the requested independent REV HOLD removal. The
+retained data/code optimizations add 2,976 B main RAM, leaving 8,896 B there,
+with low RAM and pool unchanged. They restore zone metadata and compact factory
+names at startup, share chord scale-walking code and remove a duplicate UI
+dispatch. No new work is added to sample playback. The old cold-state candidate
+is rejected after a current-source A/B grows flash by 64 B. See the
+[measurements and checks](AMBIENT-HEADROOM-SYNTHESIS.md#second-integration-metadata-packing-and-small-source-sharing).
+
+## Broader build-time LZ4 match search
+
+Startup-table and preset metadata packers now use `compress_best`: a bounded
+64-candidate hash-chain search indexes positions skipped by earlier matches,
+with one-position lazy matching. Each block falls back to the original fast
+compressor if that output is smaller. This changes only the Python build step;
+the device's existing LZ4 decoder, bootstrap order and restored destinations
+remain unchanged. Loader compression still uses the original compressor.
+
+Same-version target A/B: **582,980 → 582,212 B**, recovering **768 B flash**.
+The final .66 also removes opaque HOME lane backgrounds and has the same size:
+**2,124 B flash free**, main static 89,408 B, low 28,928 B, pool 331,852 B.
+Startup-table payload falls 7,969 → 7,338 B; preset fields 2,625 → 2,542 B;
+zone metadata 854 → 798 B. These gross payload deltas are not individually
+additive linked savings. No additional playback decoding or sample compression.
+
+Validation: identical pre/post original table and zone oracles, 22,032 restored
+table bytes plus FIR, all 171 full raw/restored preset records/names, startup
+state/zone byte comparison and decoder boundary guards. All 200 audio goldens
+are unchanged with no health/voice/routing/CPU-budget failures. UI tests verify
+full/incremental redraw parity, palette rendering, intact track numbers/notes,
+and visible beat-driven grid pixels inside former opaque lane panels. Target
+DSP budgets and all 24 inlining caps pass. Python tests exercise deterministic
+output, actual improvement over the fast compressor, fallback size guarantees,
+overlapping matches, offsets/window edges, literal/match extension boundaries
+and the standard LZ4 terminal-literal constraints. Build-time search increases
+Python work; hardware boot timing is unmeasured.
+
+### Minimum-cost startup block parsing
+
+The next isolated audit finds a further **112 B** net at the frozen .67 baseline
+by choosing a minimum-byte LZ4 parse for metadata blocks up to 8 KiB. It retains
+the old lazy/fast fallback, block decoder and restored bytes. The tradeoff is
+more Python work during generation (about twelve seconds in the audit), with
+no playback decoding or target RAM cost. The candidate is integrated in .68;
+the combined sustain/synced-EVOLVE image is **584,064 B**, leaving **272 B**, with
+main static RAM 89,616 B. Individual audit deltas are not additive substitutes
+for this complete link. See [evidence and patch](SUSTAIN-HEADROOM-AUDIT.md).
+
+### Cold sharing and voice admission integration
+
+The actual .68 → .69 combined target shrinks **584,064 → 583,776 B**, recovering **288 B** and leaving **560 B free**. Main static 89,616 B, low RAM 28,928 B and pool 331,852 B remain unchanged. This includes project/settings/storage/editor cold sharing, weighted admission, FM6 eight and a new steal-fade retrigger admission fix. Do not substitute isolated audit deltas for this link. Startup strings remain in flash; no new playback decoder or sample packing. The maintained `headroom_commit_test` exercises real writes/restores, malformed records, A/B fault recovery, busy guards and WATCH updates. `voice_budget_test` proves capacity and catches fading-slot readmission bypasses.
+
+### Sustain characters within the remaining budget
+
+PIANO/STRINGS/LOFI, DAMP and AMOUNT add **428 B flash** and **320 B main static RAM** after the cold-sharing/weighted-voice build: final **584,204 B**, **132 B flash free**, main static **89,936 B**. Per-voice tail tone state avoids borrowing engine state; one 128-byte per-render stack block isolates released-note processing from clean new attacks. No persistent history buffer, sample decoder or saved-format change. Counting admission per track reduces repeated engine-cost lookups without changing the final linked size. Hardware stack/deadline measurements remain open.

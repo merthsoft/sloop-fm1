@@ -22,6 +22,7 @@
 #include "engines.c"
 #include "drums.c"
 #include "params.c"
+#include "ambient.c"
 #include "voice.c"
 #include "slicer.c"          /* per-track SLICER insert, used by fx.c */
 #include "fx.c"

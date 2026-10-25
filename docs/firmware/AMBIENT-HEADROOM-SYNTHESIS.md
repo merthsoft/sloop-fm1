@@ -9,7 +9,7 @@ Pool occupancy is 332,876 / 344,064 B. Retaining its 8,192 B reserve leaves
 2,996 B above that reserve. Static margins do not establish stack high-water.
 
 The audits themselves changed no production firmware. The first integration now
-implements the RAM-state combination, portable C clamp and focused boot packing: 
+implements the RAM-state combination, portable C clamp and focused boot packing:
 **1,392 B flash recovered**, leaving **2,340 B**. Main RAM uses **86,320 B**,
 low RAM **28,928 B**, pool **331,852 B**. These measured combined results supersede
 the planning arithmetic below; the individual audit measurements remain frozen.
@@ -127,3 +127,60 @@ claiming the original suite passed or weakening its redraw assertions.
 - [Boot packing](AMBIENT-HEADROOM-BOOT-PACKING.md)
 - [RAM state](AMBIENT-HEADROOM-RAM-STATE.md)
 - [RAM buffers](AMBIENT-HEADROOM-RAM-BUFFERS.md)
+
+## Second integration: metadata packing and small source sharing
+
+The current build integrates the previously deferred zone metadata and six-bit
+factory-name packing. The generator extracts target-compiled zone bytes from
+the existing raw ELF probe, checks that they contain no relocations, and emits
+startup data and a byte oracle. It reuses the existing boot decoder; restored
+arrays and string pointers are accessed directly during playback. Factory names
+outside the compact uppercase/punctuation alphabet fall back to ordinary LZ4
+without changing their spelling. Sample payloads and standard ADPCM playback
+are unchanged; no new render-time decompression is introduced.
+
+The duplicate TRACKS dispatch in draw_graph is removed: ui_draw already handles
+that screen. The two bounded chord scale-walking loops share one helper with
+an exhaustive 786,432-case reference check. Independent REV HOLD was removed
+at the user's request; upstream's FREEZE punch-in remains intact.
+
+| Actual target link | App B | Flash free B | Main static RAM B |
+| --- | ---: | ---: | ---: |
+| Prior .63, including native REV HOLD | 584,000 | 336 | 86,432 |
+| Metadata/name packing, before HOLD removal and tiny cleanups | 583,156 | 1,180 | 89,408 |
+| Retained .64: packing, HOLD removal, shared chord walk and dead dispatch cleanup | **582,804** | **1,532** | **89,408** |
+| Same .64 candidate with experimental cold-state conversion | 582,868 | 1,468 | 89,392 |
+
+Net recovery is **1,196 B flash** versus .63. Restored metadata/names consume
+**2,976 B additional main RAM** including alignment, leaving **8,896 B**.
+Low RAM remains **28,928 / 29,496 B** (568 B free); pool remains
+**331,852 / 344,064 B**, 4,020 B above its unchanged 8,192 B reserve.
+Individual source/data savings must not be summed instead of these combined
+links. No audio buffer, voice, instrument, preset ID, file or protocol format
+was removed or changed, apart from the explicitly removed independent HOLD UI.
+
+The old cold-state result does not carry forward: its actual current A/B costs
+**64 B more flash**, recovering only 16 B main RAM. It is rejected, and original
+declaration defaults are retained in every bootstrap. No experimental cold-state
+flag/helper remains. Shared analog rendering and ASM remain deferred because
+they change hot-path code and need target performance evidence. Preset relocation
+buys low RAM rather than flash; the UI bitfield candidate primarily buys RAM.
+Neither belongs in this flash-only batch.
+
+Validation: byte-identical restored 1,428-byte zone table, 96-byte startup-state
+oracle and all 171 complete presets/names; name alphabet/fallback and bit-boundary
+tests; **200 unchanged audio goldens in each raw and boot-restored build**;
+shared chord-walk reference, UI redraw/fuzz, legacy scale/latch and progression,
+drone ownership, original punch-FREEZE, delayed two-core splits, native/WASM
+parity, linker placement and hot-loop budget checks. Original decoder bounds,
+repeat restore and guarded preset scratch tests remain. Hardware cold/recovery
+boot latency, stack and deadlines have not been measured for this batch.
+
+## Third integration: build-time compressor search
+
+The existing metadata decoder is retained; improved Python-side match selection
+recovers **768 B** on a same-source/version A/B. The .66 HOME lane visibility
+fix leaves the same final size: **582,212 B**, **2,124 B flash free**, with main,
+low and pool RAM unchanged from .65. Raw/restored byte oracles, all 171 presets,
+200 audio goldens, UI redraw/foreground checks and target budgets pass. See
+[implementation and evidence](OPTIMIZATION.md#broader-build-time-lz4-match-search).

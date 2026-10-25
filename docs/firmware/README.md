@@ -6,6 +6,8 @@ the website installer references the current MerthSloop package.
 
 - [Illustrated guide to all MerthSloop firmware additions](MERTHSOFT-FEATURES.md)
 - [Native UI refresh, actual screen gallery and design](UI-REFRESH-DESIGN.md)
+- [Ambient DRIFT, DRONE, note EVOLVE and sustained starters](AMBIENT-PERFORMANCE-DESIGN.md)
+- [Track sustain: pedal, piano, strings and LOFI](SUSTAIN-DESIGN.md)
 - [Musical sequence starters](SEQUENCE-STARTERS-DESIGN.md)
 - [Custom progressions](CUSTOM-PROGRESSIONS-DESIGN.md)
 - [Phone musical starter protocol](MUSICAL-STARTER-PROTOCOL.md)
@@ -56,3 +58,6 @@ Use the [player guide](../../GUIDE.md) for controls and the
 - [Screen-by-screen UI polish audit](UI-POLISH-AUDIT.md) — findings, changes and verification.
 
 - [DOUBLE TIME transport and VINYL punch routing](DOUBLE-TIME-DESIGN.md).
+
+- [Measured voice-budget options and hardware qualification](VOICE-BUDGET-AUDIT.md) — audit candidates only.
+- [Additional build-time compression audit](SUSTAIN-HEADROOM-AUDIT.md).

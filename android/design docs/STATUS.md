@@ -1,5 +1,38 @@
 # Latest native firmware integration
 
+**ENV → SUSTAIN** ships PEDAL/PIANO/STRINGS/LOFI with 0.5S–32S/HOLD, DAMP and AMOUNT.
+Logical gates/MIDI/recording remain unchanged; released tails yield to held notes.
+Settings remain runtime-only; saving/persistence is future work. **EVOLVE** now has
+1–160-second cycles plus eleven transport-synced divisions and a live cycle bar.
+Combined target: 584,204 B, 132 B flash free, main static 89,936 B (8,368 B free). Cold persistence/editor sharing, weighted admission (12 LOFI/WHEEL or 8 normal voices shared) and FM6 eight are integrated. Eight slots per track and existing overload shedding remain. Hardware deadline qualification is pending. Startup-string packing remains excluded.
+
+Native **LFO → EVOLVE** now changes at most one DRONE/BOTH pitch per cycle,
+with timed/synced cycles, chance and 1–7 scale-step range. Other held notes
+do not retrigger; input collisions are skipped. Runtime-only; REC captures
+ordinary notes. Adds 752 B flash and 48 B main RAM.
+
+Build-time startup compression recovers another 768 B without a new runtime
+decoder or RAM cost. HOME lanes now leave the wireframe visible between notes.
+
+HOME now has sparse stars, a pulsing horizon glow and a beat-driven grid accent.
+The OCT + knob 3 move brush accepts silent steps with leftover note/timing data;
+parameter locks remain protected. Regression tests include undo/redo and lock guards.
+
+Extended startup packing restores factory sample-zone metadata and compact
+preset names once at boot; shared chord walking and dead UI dispatch cleanup
+recover flash without new sample-playback decoding. The retained build has
+**132 B flash** and **8,368 B main static RAM** free. Independent REV HOLD
+is removed by request; upstream FREEZE is retained. The old cold-initialization
+candidate was measured again and rejected because it grows current flash.
+
+Native **LFO → DRIFT** now adds smooth per-track tone/shape/pan movement over
+5–160 seconds, with fading OFF/target changes. STILL WATER, WIDE SKY and DUSK
+bring the musical starter count to 27. DRIFT now has a doubled depth range,
+a live movement/cycle display, and bipolar LOFI tone response. DRIFT is runtime-only, default OFF;
+DRONE/BOTH now adds native tap-toggle note holding with octave/track snapshots,
+key lights and shared MIDI/sequence ownership. Mode/notes reset at power-off.
+See [ambient scope](../../docs/firmware/AMBIENT-PERFORMANCE-DESIGN.md).
+
 The first ambient headroom batch shares temporary/state storage and improves
 startup-only table/preset packing. It recovers 1,392 B flash and 1,024 B pool,
 with no new render-time decoder or sound changes. See the
@@ -7,7 +40,7 @@ with no new render-time decoder or sound changes. See the
 
 LOFI now also offers stronger TAPE and progressive SMPLR early-digital coloration, with
 four appended dusty/warm presets (171 factory sounds total). No new audio
-buffer or feature cuts; current target has 2,340 B flash and 568 B low RAM free.
+buffer or feature cuts; current target has 132 B flash and 568 B low RAM free.
 See [LOFI controls and validation](../../docs/firmware/LOFI-MASTER-DESIGN.md).
 
 The selected SLOOP 2.8 integration is complete: partial held-note recording,

@@ -21,7 +21,7 @@ def pack(gen):
             unit=int(re.search(r'\d+',typ)[0])//8;mask=(1<<(unit*8))-1
             raw=b''.join((v&mask).to_bytes(unit,'little') for v in values)
             if len(raw)<200:return m[0]
-            candidates=[(lz4blk.compress(raw),0,unit,raw,0)]
+            candidates=[(lz4blk.compress_best(raw),0,unit,raw,0)]
             for order in range(1,5):
                 if len(values)<=order:continue
                 d=values
@@ -30,7 +30,7 @@ def pack(gen):
                 for width in {unit,1}:
                     if width==1 and unit>1 and not all(-128<=v<=127 for v in d):continue
                     encoded=prefix+b''.join((v&((1<<(width*8))-1)).to_bytes(width,'little') for v in d)
-                    candidates.append((lz4blk.compress(encoded),order,width,encoded,0))
+                    candidates.append((lz4blk.compress_best(encoded),order,width,encoded,0))
             for order in range(5):
                 if len(values)<=order:continue
                 d=values

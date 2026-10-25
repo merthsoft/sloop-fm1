@@ -309,6 +309,15 @@ static const int8_t CHORD_DEG[CH_OCTAVE][4] = {
     {0, 2, 4, 5},                        /* 6TH: 1 3 5 6 */
     {0, 2, 6, -1},                       /* SHELL: 1 3 7 */
 };
+__attribute__((noinline)) static uint32_t chord_walk(uint32_t n, uint32_t degree, uint32_t mask, int32_t root)
+{
+    int32_t m=(int32_t)n,guard=48;
+    while(degree && guard--) {
+        m++;
+        if((mask>>(uint32_t)((m-root+120)%12))&1u) degree--;
+    }
+    return (uint32_t)m;
+}
 static uint32_t chord_notes_type(const track_t *t, uint32_t n, uint8_t *c, uint32_t type)
 {
     uint32_t mask = t->p[P_SCALE] ? scale_mask(t) : SCALE_MASK[2];
@@ -331,12 +340,7 @@ static uint32_t chord_notes_type(const track_t *t, uint32_t n, uint8_t *c, uint3
         return k;
     }
     for (j = 0; j < 4u && CHORD_DEG[type][j] >= 0; j++) {
-        int32_t m = (int32_t)n, d = CHORD_DEG[type][j], guard = 48;
-        while (d > 0 && guard--) {                       /* d scale degrees up */
-            m++;
-            if ((mask >> (uint32_t)((m - scale_root + 120) % 12)) & 1u)
-                d--;
-        }
+        uint32_t m=chord_walk(n,CHORD_DEG[type][j],mask,scale_root);
         if (m < 128)
             c[k++] = (uint8_t)m;
     }
@@ -360,13 +364,7 @@ static uint8_t vl_prev[NPART][4], vl_n[NPART];          /* the last chord played
 static uint32_t chord_scale_up(uint32_t n, uint32_t deg, uint32_t root, uint32_t scale)
 {
     uint32_t mask = SCALE_MASK[scale ? clamp(scale,0,NSCALES-1) : 2];
-    int32_t m = (int32_t)n, guard = 48;
-    while (deg > 0 && guard--) {
-        m++;
-        if ((mask >> (uint32_t)((m - (int32_t)root + 120) % 12)) & 1u)
-            deg--;
-    }
-    return (uint32_t)m;
+    return chord_walk(n,deg,mask,(int32_t)root);
 }
 /* the chord of white key n with the modifiers held, voiced (VLEAD); its notes (<= 4) into c[] */
 #include "harmony_voicing.h"
@@ -1725,10 +1723,26 @@ static uint32_t kh_set[NTRK][4];                   /* the notes held (bit per MI
 static uint32_t kh_mo[NTRK][4];                    /* .. of them, a key's: its MIDI note-off waits */
 static uint8_t kh_mc[NTRK];                        /* .. on this channel */
 static uint8_t kh_phys[NTRK];                      /* note-ons still down (a chord key: one per note) */
-static int kh_on(const track_t *t) { return !t->p[P_AMODE] && !t->p[P_CHORD] && t->p[P_AHOLD] && !is_drum(t); }
+/* Drone is a runtime physical-key source, using the existing held-note storage. */
+static uint8_t drone_was;
+static struct {uint32_t left;int32_t rng;uint8_t rate,running;} evolve[NPART];
+static int midi_scale_owner(uint32_t part, uint32_t note);
+static int drone_on(const track_t *t)
+{
+    uint32_t p=trk_index(t);
+    return p<NPART && (drift_p[p][0]&2) && !t->p[P_AMODE] && !t->p[P_CHORD];
+}
+static int kh_on(const track_t *t) { return !t->p[P_AMODE] && !t->p[P_CHORD] && (t->p[P_AHOLD] || drone_on(t)) && !is_drum(t); }
 static int kh_has(const track_t *t, uint32_t note)
 {
     return (kh_set[trk_index(t) % NTRK][(note >> 5) & 3u] >> (note & 31u)) & 1u;
+}
+static int drone_held(const track_t *t,uint32_t note) { return drone_on(t) && kh_has(t,note); }
+static int drone_shared(const track_t *t,uint32_t note)
+{
+    if(midi_scale_owner(trk_index(t),note))return 1;
+    for(uint32_t i=0;i<t->seq_n;i++)if(t->seq_notes[i]==note)return 1;
+    return 0;
 }
 static int kh_any(const track_t *t)
 {
@@ -1744,14 +1758,15 @@ static void kh_release(track_t *t)                  /* every held note ends */
                 uint32_t n = w * 32u + b;
                 if (ft_on && t == &trk[ft_trk % NTRK])
                     ft_note_off(n);
-                rec_release(t, n);
-                trk_note_off(t, n);
+                kh_set[ti][w]&=~(1u<<b);
+                if(!drone_shared(t,n)) {rec_release(t,n);trk_note_off(t,n);}
                 if ((kh_mo[ti][w] >> b) & 1u)
                     midi_out_note(kh_mc[ti], n, 0);
             }
     memset(kh_set[ti], 0, sizeof kh_set[ti]);
     memset(kh_mo[ti], 0, sizeof kh_mo[ti]);
     kh_phys[ti] = 0;
+    if(ti<NPART){evolve[ti].left=0;evolve[ti].running=0;}
 }
 static void input_on(track_t *t, uint32_t note, uint32_t vel)
 {
@@ -1761,6 +1776,7 @@ static void input_on(track_t *t, uint32_t note, uint32_t vel)
         return;
     }
     if(progression.active && t==&trk[progression.part]) return;
+    if(drone_on(t) && kh_has(t,note))return; /* MIDI cannot retrigger a held drone. */
     last_note = (uint8_t)note;
     {   /* (2.6) played again under the pedal: the note-off it waited with first (the arp's key count, a recording's
          * note end), then this one held by its key */
@@ -1771,7 +1787,7 @@ static void input_on(track_t *t, uint32_t note, uint32_t vel)
         }
     }
     arm_start(t);
-    if (kh_on(t)) {                               /* (2.7) KBD HOLD (before the free take's note: the held notes end
+    if (kh_on(t) && !drone_on(t)) {                               /* (2.7) KBD HOLD (before the free take's note: the held notes end
                                                    * there first, then this one starts) */
         uint32_t ti = trk_index(t) % NTRK;
         if (!kh_phys[ti])
@@ -2262,6 +2278,71 @@ static int key_note_owner(uint32_t part, uint32_t note, uint32_t except)
     return 0;
 }
 
+/* One drone toggle path for physical taps and slow evolution. */
+static void drone_toggle(track_t *t,uint32_t n,uint32_t except)
+{
+    uint32_t part=trk_index(t),w=n>>5,bit=1u<<(n&31u);
+    if(kh_has(t,n)) {
+        kh_set[part][w]&=~bit;
+        if(!drone_shared(t,n) && !key_note_owner(part,n,except))input_off_now(t,n);
+        if(kh_mo[part][w]&bit)midi_out_note(kh_mc[part],n,0);
+        kh_mo[part][w]&=~bit;
+    } else {
+        if(!drone_shared(t,n) && !key_note_owner(part,n,except))input_on(t,n,100);
+        kh_set[part][w]|=bit;kh_mo[part][w]|=bit;
+        kh_mc[part]=(uint8_t)trk_midi_ch(part);
+        midi_out_note(kh_mc[part],n,100);
+    }
+}
+/* One clock shared by scheduling and its UI phase, including external sync. */
+static uint32_t evolve_clock(void) {return clk_beat*96u+clk_pos*96u/BEAT_U;}
+static uint32_t evolve_phase(uint32_t part)
+{
+    uint32_t rate=(uint32_t)evolve_p[part][1];
+    if(!evolve_p[part][0] || !drone_on(&trk[part]) || !kh_any(&trk[part]))return 0;
+    if(rate>=8u)return song.playing?(evolve_clock()%EVOLVE_UNITS[rate-8u])*128u/EVOLVE_UNITS[rate-8u]:0;
+    uint32_t period=EVOLVE_SECONDS[rate]*FS;
+    return (period-clamp(evolve[part].left,0,period))*128u/period;
+}
+static void evolve_tick(uint32_t frames)
+{
+    for(uint32_t part=0;part<NPART;part++) {
+        track_t *t=&trk[part];int16_t *p=evolve_p[part];
+        uint32_t rate=(uint32_t)clamp(p[1],0,NELEM(N_EVOLVE_CYCLE)-1);
+        uint32_t sync=rate>=8u,period=sync?evolve_clock()/EVOLVE_UNITS[rate-8u]:EVOLVE_SECONDS[rate]*FS;
+        uint32_t active=p[0] && drone_on(t) && kh_any(t);
+        if(!active || evolve[part].rate!=rate || (sync && !evolve[part].running)) {
+            evolve[part].left=period;evolve[part].rate=(uint8_t)rate;evolve[part].running=(uint8_t)active;continue;
+        }
+        evolve[part].running=1;
+        if(sync) {if(!song.playing || evolve[part].left==period){evolve[part].left=period;continue;}}
+        else {
+            if(!evolve[part].left)evolve[part].left=period;
+            if(evolve[part].left>frames){evolve[part].left-=frames;continue;}
+        }
+        evolve[part].left=period;
+        if(!p[2])continue;
+        if(!evolve[part].rng)evolve[part].rng=(int32_t)(0x45564f4cu+part);
+        uint32_t r=noise32(&evolve[part].rng);
+        if(p[2]<127 && (r>>25)>=(uint32_t)p[2])continue;
+        uint32_t count=0;
+        for(uint32_t n=0;n<128;n++)count+=(uint32_t)kh_has(t,n);
+        uint32_t pick=(r&127u)%count,source=0;
+        for(;source<128;source++)if(kh_has(t,source) && !pick--)break;
+        int32_t target=(int32_t)source,dir=(r&128u)?1:-1;
+        uint32_t steps=1u+((r>>8)%((uint32_t)clamp(p[3],1,7))),mask=scale_mask(t);
+        while(steps) {
+            target+=dir;
+            if(target<0 || target>127)break;
+            if(mask&(1u<<((target-t->p[P_ROOT]+120)%12)))steps--;
+        }
+        if(steps || kh_has(t,(uint32_t)target) || drone_shared(t,source) ||
+           drone_shared(t,(uint32_t)target) || key_note_owner(part,source,27) ||
+           key_note_owner(part,(uint32_t)target,27))continue;
+        drone_toggle(t,source,27);drone_toggle(t,(uint32_t)target,27);
+    }
+}
+
 static void key_down(uint32_t k)
 {
     uint32_t layer = layer_now(), sel = song.sel % NTRK, i, mc;
@@ -2372,6 +2453,10 @@ static void key_down(uint32_t k)
             kb_n[k] = 1;
             roll_start(k, t, n, LV_NORM);
             return;
+        }
+        if(drone_on(t) && layer==LY_PLAY) {
+            drone_toggle(t,n,k);
+            return; /* no physical key-up owner: another tap removes this pitch */
         }
         chord_latch_release(sel);                   /* next root replaces the sustained chord */
         if (sel < NPART) arp_chord_latch_n[sel] = 0;
@@ -2557,6 +2642,17 @@ static void keyboard_block(void)
     for (k = 0; k < NPART; k++) {
         if (!trk[k].p[P_AMODE]) arp_chord_latch_n[k] = 0;
         if (trk[k].p[P_QUANT] == 3 && !(progression.active && progression.part==k)) chord_latch_mods[k] = 0;
+    }
+    for(k=0;k<NPART;k++) {
+        uint32_t bit=1u<<k;
+        if((drift_p[k][0]&2) && !(drone_was&bit)) {
+            if(progression.active && progression.part==k)progression_stop();
+            progression_takeover(k); /* reuse the existing audio-owned live-source handoff */
+            trk[k].p[P_AMODE]=trk[k].p[P_CHORD]=0;
+        }
+        uint32_t on=(uint32_t)drone_on(&trk[k]);
+        if((drone_was&bit) && !on) {kh_release(&trk[k]);drift_p[k][0]&=1;}
+        drone_was=(uint8_t)((drone_was&~bit)|(on<<k));
     }
     audition_block();
     /* (2.7: MUTE mode stays when EDIT is let go, until a black key again: the mutes at hand, live; 2.6 went back to
@@ -2791,6 +2887,7 @@ static void seq_stop(void)
         kh_release(&trk[i]);
         chord_latch_release(i);
         arp_release(&trk[i]);
+        sustain_clear(&trk[i]); /* STOP retires acoustic tails, not physically held keys. */
         if (i < NPART) { chord_latch_mods[i] = 0; arp_chord_latch_n[i] = 0; }
         trk[i].arp_pos = 0;
         trk[i].arp_new = 0;
@@ -3845,6 +3942,7 @@ static void events_block(uint32_t n)
     if (sequence_preview_tick) sequence_preview_tick(n);
     if (pr) arp_keep_req = 0;
     keyboard_block();
+    evolve_tick(n);
     drum_audition_poll();                             /* (the editor's DRUM SYNTH page) */
     strum_block(n);                                   /* (voice.c: the strummed notes due) */
     while (mi_r != mi_w) {                            /* USB-MIDI (and TRS) in */

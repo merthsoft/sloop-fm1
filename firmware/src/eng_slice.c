@@ -340,7 +340,7 @@ static void slice_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const
     const int16_t *p = t->p;
     uint32_t pk = (uint32_t)v->s[4], i, frac = v->ph[1], rev = (pk >> 6) & 1u, stepq, rem;
     int32_t lp = 4000 + ((clamp((p[P_E7] << 8) + m->cutoff, 0, 127 << 8) * 28767) >> 15), x;
-    int loop = p[P_E4] == SLC_LOOP && v->gate;
+    int loop = p[P_E4] == SLC_LOOP && voice_engine_held(v);
     const slc_src_t *s = v->s[6] == 2 ? 0 : slc_get(pk & 3u);
     int16_t *rb = slc_rb(t, v);
     slc_dec_t d;

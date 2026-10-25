@@ -528,7 +528,7 @@ static void voices(void)
     track_render(&trk[0], b, CTL);
     for (i = 0; i < NVOICE; i++)
         n += trk[0].v[i].active;
-    check("voices: 8 keys in POLY: 6 voices (the engine's cap)", n == FM6_POLY && ENG_FM6.poly == FM6_POLY);
+    check("voices: 8 keys in POLY reach the engine cap", n == FM6_POLY && ENG_FM6.poly == FM6_POLY);
     for (i = 0; i < 8u; i++)
         trk_note_off(&trk[0], 48 + 2 * i);
     for (i = 0; i < FS * 8u / CTL; i++)

@@ -45,7 +45,8 @@ existing saved colors and editor-created themes remain available. Four knob card
 follow the physical controls across ordinary editing, held-button maps, live
 modulation and native library screens. The overview shows four track lanes, with
 selected/muted tracks and sequencer position; the striped sun pulses gently
-with the transport beat while playing. Page footers identify track/global
+with the transport beat while playing. Sparse stars, a pulsing horizon glow and a
+beat-driven wireframe highlight add movement without a new animation buffer. Page footers identify track/global
 scope and the action available now. Existing shortcuts, scale-key LEDs, independent
 ties, preview, merge and replacement behavior are retained.
 
@@ -134,7 +135,7 @@ the arrangement order; REC stores its selected section.
 | <img src="../../assets/screens/merthsoft/guide/feature-groove-main.png" width="240" alt="FOUR FLOOR drum groove browser"> | <img src="../../assets/screens/merthsoft/guide/feature-starter-main.png" width="240" alt="POP FOUR progression in the native sequence browser"> |
 
 There are **24 grooves**, including funk, broken house, electro, Afro clave,
-boom bap and a four-bar Amen break, and **24 musical starters**, including standard
+boom bap and a four-bar Amen break, and **27 musical starters**, including standard
 progressions, soul sevenths, gospel turns, disco, garage, Latin and unusual pockets.
 The libraries preserve your kit/preset, tempo and other tracks. Applied material
 replaces the selected track's pattern and timing metadata; **EDIT + OCT−** undoes
@@ -639,3 +640,51 @@ All three zero bypasses the effect; OFF remains first and retains saved amounts.
 Near the end of PRESETS, the **LOFI** bank adds **DUST KEYS, WORN PAD, TOY BELL
 and DUST BASS**. These are editable instrument sounds and leave the master LOFI
 choice alone. Combine the warm presets with TAPE, or try SMPLR on drums.
+
+### Slow ambient motion and sustained starters
+
+**LFO → DRIFT** offers MODE (OFF / DRIFT / DRONE / BOTH), CYCLE (5–160 seconds), AMOUNT and TARGET
+(TONE / SHAPE / PAN). Each synth track has independent smooth random motion,
+with fading amount/OFF/target changes, a live bipolar motion meter and cycle
+progress. Full amount spans roughly ±64 control units; LOFI TONE responds in
+both directions. Fresh defaults are OFF, 10S, about 50% amount. It layers over the edited sound and
+regular LFO without changing their parameters. These runtime controls reset
+at power-on and are unavailable on drums.
+
+![Native DRIFT controls](../../assets/screens/merthsoft/neon/ambient-drift.png)
+
+**STILL WATER**, **WIDE SKY** and **DUSK** append sustained progressions to
+SEQUENCES. Try CHORD, VLEAD and a slow attack/release; existing key, rhythm,
+preview and layer controls still apply. DRONE/BOTH adds tap-toggle pitches without retriggering the other held notes.
+Selected-note lights follow octave changes; track changes preserve the notes.
+Use POLY and a sustaining envelope for a chord bed. STOP clears all holds;
+MIDI/sequence releases cannot cut a pitch still owned by DRONE. DRONE entry
+takes over live ARP/chord input without stopping transport. Mode and notes
+reset at power-off.
+
+![Native DRONE mode](../../assets/screens/merthsoft/neon/ambient-drone.png)
+ See [scope and validation](AMBIENT-PERFORMANCE-DESIGN.md).
+
+### Slow drone-note evolution
+
+**LFO → EVOLVE** replaces at most one drone pitch per timed or tempo-synced cycle,
+with a live cycle bar. Seconds range 1–160; synced choices span sixteenth-note
+triplets to 16 bars and pause with transport. Following ROOT/SCALE, CHANCE controls how often; RANGE allows 1–7
+scale steps per change. Other held voices do not retrigger. OFF keeps the current
+chord; STOP clears it. Changes skip duplicates, MIDI limits and pitches shared
+with other producers. Use DRONE/BOTH, POLY and a sustaining envelope. Normal REC
+captures sounded notes; otherwise stored patterns and patches are untouched.
+Runtime-only, with no new saved-format fields. Try 5S / 100% / RANGE 1 first.
+
+![EVOLVE controls](../../assets/screens/merthsoft/neon/ambient-evolve.png)
+
+### Track sustain
+
+**ENV → SUSTAIN** offers OFF/PEDAL/PIANO/STRINGS/LOFI, DECAY 0.5S–32S/HOLD, DAMP and AMOUNT. Released notes
+can ring beneath new POLY attacks, retaining their engine/envelope behavior with
+an independent tail fade. Logical gates, MIDI releases, recording and independent
+ties stay intact; tails yield voices before held notes. OFF hands tails to normal
+release, STOP clears tail ownership. Runtime-only; drums excluded. Naturally
+ending sources still end. PIANO fades treble faster and darkens more; STRINGS darkens gently; LOFI reduces sample rate/resolution of released tails. New attacks stay clean. DAMP controls darkening and LOFI coarseness; AMOUNT sets extension level, zero restores ordinary release. Settings reset at power-off.
+
+![Sustain foundation](../../assets/screens/merthsoft/neon/track-sustain.png)

@@ -363,7 +363,7 @@ class Builder:
         if not blob:
             L.append("    0,")
         L.append("};")
-        L.append("static const smp_zone_t SMP_ZONES[] = {")
+        L.extend(["#if FELUCCA_BOOT_ZONES", f"static smp_zone_t SMP_ZONES[{max(1,len(zones))}];", "#else", "static const smp_zone_t SMP_ZONES[] = {"])
         for e in zones:
             rate = int(round(e["sr"] / 44100 * 65536))
             L.append(f"    {{{e['off']}, {e['n']}, {e['ls']}, {e['le']}, {rate}, {e['root16']}, {e['pred']}, "
@@ -371,6 +371,7 @@ class Builder:
         if not zones:
             L.append("    {0, 0, 0, 0, 65536, 960, 0, 0, 0, 127, 0},")
         L.append("};")
+        L.append("#endif")
         L.append("static const smp_set_t SMP_SETS[] = {")
         for name, z0, nz in sets:
             L.append(f'    {{"{name}", {z0}, {nz}}},')

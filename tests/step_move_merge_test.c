@@ -39,5 +39,21 @@ int main(void)
     step_move(-1);assert(!memcmp(before,t->step,sizeof before)&&ui.cursor==4);
     fresh();t=TSEL;t->step[3]=(step_t){.time=ST_NOTE,.n=1,.note={60}};t->step[4]=(step_t){.time=ST_NOTE,.n=1,.note={67}};lock_set(t,4,P_DIST,20);
     memcpy(before,t->step,sizeof before);step_move(-1);assert(!memcmp(before,t->step,sizeof before)&&lock_find(t,4,P_DIST,0)>=0);
+    /* The REST brush changes time only; stale note fields are deliberately retained. */
+    fresh();t=TSEL;
+    t->step[3]=(step_t){.time=ST_REST,.n=2,.note={60,64},.vel=90,.flags=3,.lvl=7,.rat=2};
+    t->step[4]=(step_t){.time=ST_NOTE,.n=1,.note={67},.vel=80};
+    t->micro[3]=-9;step_fill_set(t,3,FC_FILL);
+    memcpy(before,t->step,sizeof before);
+    step_move(-1);assert(!t->micro[3]&&!step_fill(t,3));assert(ui.cursor==3&&t->step[3].time==ST_NOTE&&t->step[3].note[0]==67&&t->step[4].time==ST_REST);
+    assert(undo_swap(0)&&!memcmp(before,t->step,sizeof before));
+    assert(undo_swap(1)&&t->step[3].note[0]==67);
+    /* Silent cells with deliberate automation must still survive failed moves. */
+    for(uint32_t guard=0;guard<1;guard++) {
+        fresh();t=TSEL;t->step[4]=(step_t){.time=ST_NOTE,.n=1,.note={67}};
+        lock_set(t,3,P_DIST,20);
+        memcpy(before,t->step,sizeof before);session=undo.sess;
+        step_move(-1);assert(ui.cursor==4&&!memcmp(before,t->step,sizeof before)&&undo.sess==session);
+    }
     puts("STEP help: held lifetime, warning priority and release/navigation clearing PASS\nmove merge: chord union, duplicate/full rejection, destination metadata, complete undo/redo, ties and lock guards PASS");return 0;
 }

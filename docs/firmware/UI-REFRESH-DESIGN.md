@@ -373,3 +373,24 @@ installation or audio-engine change is requested by this design document.
 - [Skiff UI source](https://github.com/illuminus5/skiff/blob/main/firmware/src/ui.c)
 - [Current MerthSloop feature guide](MERTHSOFT-FEATURES.md)
 - [Current measured firmware budgets](OPTIMIZATION.md)
+
+## HOME scene accents
+
+Eight fixed stars add a sparse sky; two brighten in turn every two beats.
+The horizon glow follows the existing sun pulse, and one wireframe spoke advances
+on beats during playback. Stopped restores a fixed scene. These read the existing
+transport clock and HOME redraw cache, with no new timer, RNG, framebuffer or
+persistent animation state. Track numbers and note marks remain intact; the scene is visible between notes.
+
+![Playing HOME scene](../../assets/screens/merthsoft/neon/neon-scene-moving.png)
+
+The scene alone adds 256 B flash versus the metadata-packing build. The combined
+scene and empty-step move correction uses 582,980 / 584,336 B (1,356 B free),
+with unchanged static RAM. UI refresh tests verify card/footer isolation,
+full/incremental redraw parity, stopped stability and unchanged global RNG.
+The full UI navigation and 20,000-frame fuzz also pass. The follow-up removes
+opaque gray lane fills, retaining black number badges, so the traveling grid
+remains visible within the lanes. Tests now explicitly check number/note
+foreground invariance and changing background pixels in those exposed areas.
+Hardware rendering cost
+has not been measured.

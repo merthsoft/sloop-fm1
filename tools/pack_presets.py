@@ -6,7 +6,7 @@ from pathlib import Path
 import struct,re,json
 import lz4blk
 
-def read_presets(path):
+def read_presets(path, zones=None):
     data=Path(path).read_bytes()
     if data[:7]!=b'\x7fELF\x01\x01\x01':raise ValueError('expected little-endian ELF32')
     h=struct.unpack_from('<16sHHIIIIIHHHHHH',data)
@@ -33,6 +33,13 @@ def read_presets(path):
                 reloc[rel[7],off]=(info&255,symbols[info>>8],addend)
         for sym in symbols:
             name=string(strings,sym[0])
+            if name=='SMP_ZONES' and zones is not None:
+                if not sym[2] or sym[2]%28:raise ValueError('sample zone ABI')
+                if any(k==sym[5] and sym[1]<=off<sym[1]+sym[2] for k,off in reloc):
+                    raise ValueError('sample zone relocation')
+                raw=content(sections[sym[5]])[sym[1]:sym[1]+sym[2]]
+                if len(raw)!=sym[2]:raise ValueError('truncated sample zones')
+                zones.append(raw)
             if not re.fullmatch(r'\w+_PRESETS|SMP_PRESET_TABLE',name):continue
             if not sym[2] or sym[2]%36:raise ValueError('preset record size')
             raw=content(sections[sym[5]])[sym[1]:sym[1]+sym[2]]
@@ -46,8 +53,20 @@ def read_presets(path):
     if not entries:raise ValueError('no factory records')
     return entries
 
+def pack_names(names):
+    """Six-bit uppercase/punctuation alphabet; preserve other ASCII via LZ4."""
+    raw=('\0'.join(names)+'\0\0').encode('ascii')
+    if not all(v==0 or 32<=v<=63 or 65<=v<=90 for v in raw):
+        return raw,lz4blk.compress_best(raw),0
+    packed=bytearray(4);acc=used=0
+    for v in raw:
+        acc|=(v&63)<<used;used+=6
+        while used>=8:packed.append(acc&255);acc>>=8;used-=8
+    if used:packed.append(acc&255)
+    return raw,bytes(packed),6
+
 def pack(path,gen):
-    gen=Path(gen);e=read_presets(path);stream=bytearray();names=[]
+    gen=Path(gen);zones=[];e=read_presets(path,zones);stream=bytearray();names=[]
     # Bit widths are per table/field; each column starts on a byte boundary.
     # Preserve all 32 target payload bytes, including signed fields and padding.
     for table in e:
@@ -60,16 +79,21 @@ def pack(path,gen):
                 acc|=v<<used;used+=width
                 while used>=8:stream.append(acc&255);acc>>=8;used-=8
             if used:stream.append(acc&255)
-    blob=lz4blk.compress(bytes(stream));assert lz4blk.decompress(blob)==stream
+    blob=lz4blk.compress_best(bytes(stream));assert lz4blk.decompress(blob)==stream
     sizes=['/* Generated from the raw target object. */','#pragma once']
     sizes += ['#define BP_N_'+t['name']+' '+str(t['count']) for t in e]
     (gen/'boot_presets_sizes.h').write_text('\n'.join(sizes)+'\n')
-    code=['/* Generated from the raw target object. */','static const uint8_t BP_DATA[]={'+','.join(map(str,blob))+'};','static const char BP_NAMES[]=']
-    code += [json.dumps(name)+' "\\0"' for name in names];code[-1]+=';'
+    names_raw,names_blob,name_bits=pack_names(names)
+    code=['/* Generated from the raw target object. */','static const uint8_t BP_DATA[]={'+','.join(map(str,blob))+'};',
+          'static char BP_NAMES['+str(len(names_raw))+'];',
+          'static const uint8_t BP_NAME_DATA[]={'+','.join(map(str,names_blob))+'};']
     code+=['static preset_t *const BP_ARRAYS[]={'+','.join(t['name'] for t in e)+'};','static const uint8_t BP_COUNT[]={'+','.join(str(t['count']) for t in e)+'};']
     code+=['''static int boot_presets_init(void *scratch, uint32_t capacity) {
 _Static_assert(sizeof(preset_t)==sizeof(((preset_t *)0)->name)+32,"preset payload ABI");
 if(capacity < %d) return 0;
+const boot_table_t nt={BP_NAMES,BP_NAME_DATA,sizeof BP_NAME_DATA,sizeof BP_NAMES,1,0,1,%d};
+if(!boot_table_unpack(&nt))return 0;
+%s
 uint8_t *work=scratch;
 const boot_table_t table={work,BP_DATA,sizeof BP_DATA,%d,1,0,1,0};
 if(!boot_table_unpack(&table)) return 0;
@@ -90,9 +114,20 @@ for(uint32_t a=0;a<sizeof BP_COUNT;a++) {
  }
 }
 return src==end;
-}'''%(len(stream),len(stream),len(stream))]
+}'''%(len(stream),name_bits,'for(uint32_t i=0;i<sizeof BP_NAMES;i++)if(BP_NAMES[i]>0 && BP_NAMES[i]<32)BP_NAMES[i]|=64;' if name_bits else '',len(stream),len(stream))]
     (gen/'boot_presets.h').write_text('\n'.join(code)+'\n')
     (gen/'boot_presets_oracle.json').write_text(json.dumps(e,indent=2))
+    if len(zones)!=1:raise ValueError('expected one sample zone table')
+    zone=zones[0];packed=lz4blk.compress_best(zone)
+    if lz4blk.decompress(packed)!=zone:raise ValueError('zone round trip')
+    (gen/'boot_zones_oracle.bin').write_bytes(zone)
+    (gen/'boot_zones.h').write_text(
+        '/* Generated from raw target-compiled sample-zone metadata. */\n'
+        'static const uint8_t BOOT_ZONES[]={'+','.join(map(str,packed))+'};\n'
+        'static int boot_zones_init(void) {\n'
+        '_Static_assert(sizeof SMP_ZONES=='+str(len(zone))+',"zone ABI");\n'
+        'const boot_table_t t={SMP_ZONES,BOOT_ZONES,sizeof BOOT_ZONES,sizeof SMP_ZONES,1,0,1,0};\n'
+        'return boot_table_unpack(&t);\n}\n',encoding='utf-8',newline='\n')
     return e,len(stream),len(blob)
 
 if __name__=='__main__':

@@ -28,7 +28,19 @@ static uint16_t screen[240*240];
 static void lcd_sync(void) {}
 static void lcd_blit(uint32_t x, uint32_t y, uint32_t w, uint32_t h, const uint16_t *p)
 { uint32_t i,j; assert(x+w<=240 && y+h<=240); for(j=0;j<h;j++) for(i=0;i<w;i++) screen[(y+j)*240+x+i]=p[j*w+i]; }
+/* hostsim restores audio tables only. Keep the UI font's original data here;
+ * standalone boot_tables_test checks its restored bytes against that original.
+ * Otherwise BOOT_TABLES would declare zeroed glyphs that this bootstrap never fills. */
+#if FELUCCA_BOOT_TABLES
+#define UI_HOST_BOOT_TABLES 1
+#undef FELUCCA_BOOT_TABLES
+#define FELUCCA_BOOT_TABLES 0
+#endif
 #include "../firmware/src/gfx.c"
+#if UI_HOST_BOOT_TABLES
+#undef FELUCCA_BOOT_TABLES
+#define FELUCCA_BOOT_TABLES 1
+#endif
 static void lcd_fill(uint32_t x,uint32_t y,uint32_t w,uint32_t h,uint16_t c)
 { uint32_t i,j; assert(x+w<=240&&y+h<=240); for(j=0;j<h;j++)for(i=0;i<w;i++)screen[(y+j)*240+x+i]=swap16(c); }
 static int32_t encs[7];
@@ -1250,7 +1262,15 @@ int main(int argc, char **argv)
         SEL(1);
         check(!strcmp(PT(), "LFO DEST") && song.g[G_BPM] == bpm, "SELECT: then LFO DEST");
         SEL(1);
-        check(!strcmp(PT(), "LFO DEST") && song.g[G_BPM] == bpm, "SELECT: stops at the last page of the family");
+        check(!strcmp(PT(), "DRIFT") && song.g[G_BPM] == bpm, "SELECT: then DRIFT");
+        SEL(1);
+        check(!strcmp(PT(), "EVOLVE") && song.g[G_BPM] == bpm, "SELECT: then EVOLVE");
+        SEL(1);
+        check(!strcmp(PT(), "EVOLVE") && song.g[G_BPM] == bpm, "SELECT: stops at the last page of the family");
+        SEL(-1);
+        check(!strcmp(PT(), "DRIFT"), "SELECT left: DRIFT");
+        SEL(-1);
+        check(!strcmp(PT(), "LFO DEST"), "SELECT left: LFO DEST");
         SEL(-1);
         check(!strcmp(PT(), "LFO 2"), "SELECT left: the page before");
         SEL(-1);

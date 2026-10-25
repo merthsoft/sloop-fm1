@@ -8,6 +8,8 @@
  * CHIP = STEP: a 4-bit stepped volume envelope with a frame-clock divider replaces the
  * ADSR curve (lofi_amp), the triangle becomes a 32-step 4-bit staircase, the pulse
  * duties are 12.5 / 25 / 50 / 75 %; CRSH then sets the envelope (shown as "DCY"). */
+/* Keep legacy unipolar envelope/LFO tone response; DRIFT is bipolar. */
+static int32_t drift_mod(const track_t *t, uint32_t target);
 static const char *const N_CHIP[] = {"4BIT", "4B/2", "8BIT", "1BIT", "STEP"};
 static const char *const N_RWAVE[] = {"PLS", "TRI", "SAW", "NOIS", "WRAM"};
 /* Keep values 0..3 unchanged for saved songs/presets; append SEL chord shapes. */
@@ -137,7 +139,9 @@ static void lofi_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const 
     int32_t crush = stepc ? 0 : p[P_E3];                /* STEP: CRSH is the envelope */
     int32_t bits = chip == CHIP_8BIT ? 8 : chip == CHIP_1BIT ? 1 : 4;
     int32_t hold = 1 + crush / 8 + (chip == 1u ? 1 : 0);
-    int32_t lpk = 3000 + (p[P_E7] << 8) + (m->cutoff > 0 ? m->cutoff : 0);
+    int32_t motion=drift_mod(t,0), legacy=m->cutoff-motion;
+    int32_t lpk = 3000 + (p[P_E7] << 8) + (legacy > 0 ? legacy : 0) + motion;
+    if(lpk<256)lpk=256;
     int32_t pitch, held = v->s[0], cnt = v->s[1], lp = v->s[4];   /* state in locals: out[] may alias v->s[] */
     uint32_t inc, ph0 = v->ph[0], lfsr = (uint32_t)v->s[2];
     const uint8_t *wr = WRAM[((uint32_t)p[P_E2] >> 3) & 15u];

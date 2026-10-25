@@ -111,10 +111,13 @@ UI_SMALL static uint32_t home_sun_light(void)
     return song.playing ? 16u-(clk_pos>>19) : 16u;
 }
 
+/* Scene accents advance only on beats already redrawn by the sun pulse. */
+UI_SMALL static uint32_t home_scene_step(void) { return song.playing?clk_beat:0u; }
+
 UI_SMALL static void studio_tracks_draw(void)
 {
     static uint32_t body,footer;
-    uint32_t sig=song.sel+song.solo*7u+song.rec*31u+home_sun_light()*7919u;
+    uint32_t sig=song.sel+song.solo*7u+song.rec*31u+home_sun_light()*7919u+home_scene_step()*104729u;
     char name[16];
     if(ui.force) draw_frame();
     draw_head();

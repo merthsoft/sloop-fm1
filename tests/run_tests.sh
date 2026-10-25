@@ -1,6 +1,6 @@
 #!/bin/sh
 # SPDX-License-Identifier: GPL-3.0-only
-# Copyright (C) 2026 Leo Kuroshita (@kurogedelic), HÃƒÂ¼gelton Instruments
+# Copyright (C) 2026 Leo Kuroshita (@kurogedelic), HÃƒÆ’Ã‚Â¼gelton Instruments
 # Host tests (no hardware). Run from the repo root after ./build.sh:
 #   tests/run_tests.sh
 #
@@ -12,11 +12,11 @@
 #                   +25 %; counted by the kernel or under callgrind, else timed at +35 %), ns printed;
 #                   target: loop instructions of the render functions in build/felucca.dis
 #                   (tests/target_budget.txt, +10 %; exact, static).
-#   voices          the budget of 8, steal fades, MONO / LEGATO / UNISON keep their note, the VOICE cap,
+#   voices          weighted shared admission, steal fades, MONO / LEGATO / UNISON keep their note, the VOICE cap,
 #                   no hanging notes on any MIDI / key routing.
 # FM6 (tests/fm6_test.c): the 6-operator FM engine (firmware/src/eng_fm6.c, fm6_core.c, fm6_bank.c): the 32
 #                   algorithms' carriers, the operator envelopes ending the voice, retrigger, DC / clipping, the
-#                   eight macros, the patch formats (packed, SysEx), the 6-voice cap, the patch bank on a
+#                   eight macros, the patch formats (packed, SysEx), the 8-voice cap, the patch bank on a
 #                   simulated NOR; demos in build/fm6_demo/.
 # After an intended change of the sound: GOLDEN_UPDATE=1 sh tests/run_tests.sh, review the diff
 # of tests/golden.txt, commit it with the change. After an intended change of the cost (or a new
@@ -307,7 +307,7 @@ $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/regress" tests/regress.c -lm
 if [ -z "$SKIP_CPU_VALGRIND" ] && command -v valgrind >/dev/null 2>&1; then export CPU_VALGRIND=1; fi
 run "regression: golden renders, health, voices, CPU budget" "$OUT/regress" tests/golden.txt tests/cpu_baseline.txt
 # Review regressions exercise failure boundaries in actual production paths.
-for review_case in clamp_contract insert_state audio_punch_boot audio_freeze_range audio_lofi_stop engine_pitch_ownership persistence_commit project_legacy_conversion sequencing_ownership sequencing_phone_step; do
+for review_case in chord_walk ambient_drift clamp_contract insert_state audio_punch_boot audio_freeze_range audio_lofi_stop engine_pitch_ownership persistence_commit project_legacy_conversion sequencing_ownership sequencing_phone_step; do
     $CC -O2 -fwrapv -fno-strict-aliasing -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/$review_case" "tests/${review_case}_test.c" -lm -pthread
     run "review regression: $review_case" "$OUT/$review_case"
 done
@@ -321,13 +321,38 @@ run "regression: target cost of the render loops" python3 tests/target_budget.py
 # split of the units against none) under every mode of the host double of core 1, and under ThreadSanitizer
 run "the render split over the two cores: every mode of the second core's host double (tests/cpu1_modes.sh)" sh tests/cpu1_modes.sh
 
+$CC -UNDEBUG -O2 -fwrapv -fno-strict-aliasing -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal tests/ambient_drone_test.c -o "$OUT/ambient_drone_test" -lm -pthread
+run "ambient drone: tap ownership and MIDI lifecycle" "$OUT/ambient_drone_test" "$OUT"
+$CC -UNDEBUG -O2 -fwrapv -fno-strict-aliasing -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal tests/ambient_drift_ui_test.c -o "$OUT/ambient_drift_ui_test" -lm -pthread
+run "ambient drift: native page and knob ownership" "$OUT/ambient_drift_ui_test" "$OUT"
+$CC -UNDEBUG -O2 -fwrapv -fno-strict-aliasing -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal tests/ambient_evolve_test.c -o "$OUT/ambient_evolve_test" -lm -pthread
+run "ambient evolution: scale bounds, ownership, recorder and native UI" "$OUT/ambient_evolve_test" "$OUT"
+$CC -UNDEBUG -O2 -fwrapv -fno-strict-aliasing -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal tests/track_sustain_test.c -o "$OUT/track_sustain_test" -lm -pthread
+run "track sustain: tails, lifecycle, budget priority and engine gates" "$OUT/track_sustain_test" "$OUT"
+$CC -UNDEBUG -O2 -fwrapv -fno-strict-aliasing -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal tests/voice_budget_test.c -o "$OUT/voice_budget_test" -lm -pthread
+run "weighted voices: capacity, FM6, sustain and steal-fade retrigger" "$OUT/voice_budget_test"
+$CC -UNDEBUG -O2 -fwrapv -fno-strict-aliasing -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal tests/sustain_character_test.c -o "$OUT/sustain_character_test" -lm -pthread
+run "sustain characters: clean attacks, released-tail color and controls" "$OUT/sustain_character_test" "$OUT"
+$CC -UNDEBUG -O2 -fwrapv -fno-strict-aliasing -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal tests/headroom_commit_test.c -o "$OUT/headroom_commit_test" -lm -pthread
+run "cold persistence sharing: fault recovery and editor notifications" "$OUT/headroom_commit_test"
 $CC -O1 -w -Ibuild/gen -Ifirmware/src -o "$OUT/boot_tables_test" tests/boot_tables_test.c
 run "startup tables: original bytes and decoder bounds" "$OUT/boot_tables_test" build/gen/boot_tables_oracle.bin
 $CC -UNDEBUG -O2 -w -Ibuild/gen -Ifirmware/src tests/boot_presets_test.c -o "$OUT/presets_raw" -lm
 run "factory preset oracle: original C definitions" "$OUT/presets_raw" "$OUT/presets-raw.bin"
-$CC -UNDEBUG -O2 -w -DFELUCCA_BOOT_TABLES=1 -DFELUCCA_BOOT_PRESETS=1 -Ibuild/gen -Ifirmware/src tests/boot_presets_test.c -o "$OUT/presets_boot" -lm
+$CC -UNDEBUG -O2 -w -DFELUCCA_BOOT_TABLES=1 -DFELUCCA_BOOT_PRESETS=1 -DFELUCCA_BOOT_ZONES=1 -Ibuild/gen -Ifirmware/src tests/boot_presets_test.c -o "$OUT/presets_boot" -lm
 run "factory presets: actual startup restore and scratch bounds" "$OUT/presets_boot" "$OUT/presets-boot.bin"
 run "factory presets: original and restored names/fields byte-identical" cmp "$OUT/presets-raw.bin" "$OUT/presets-boot.bin"
+run "factory name alphabet and fallback" python3 tests/preset_names_test.py
+run "startup compressor: block compatibility, boundaries and fallback" python3 tests/lz4_best_test.py
+$CC -UNDEBUG -O2 -w -Ibuild/gen -Ifirmware/src tests/startup_state_test.c -o "$OUT/startup_raw" -lm -pthread
+run "startup declaration and raw zone oracle" "$OUT/startup_raw" "$OUT/startup-raw.bin"
+$CC -UNDEBUG -O2 -w -DFELUCCA_BOOT_TABLES=1 -DFELUCCA_BOOT_PRESETS=1 -DFELUCCA_BOOT_ZONES=1 -Ibuild/gen -Ifirmware/src tests/startup_state_test.c -o "$OUT/startup_boot" -lm -pthread
+run "cold startup restored state and zones" "$OUT/startup_boot" "$OUT/startup-boot.bin"
+run "startup state and zones are byte-identical" cmp "$OUT/startup-raw.bin" "$OUT/startup-boot.bin"
+$CC -UNDEBUG -O2 -w -DFELUCCA_BOOT_TABLES=1 -DFELUCCA_BOOT_PRESETS=1 -DFELUCCA_BOOT_ZONES=1 -Ibuild/gen -Ifirmware/src -Ifirmware/hal tests/ui_refresh_test.c -o "$OUT/ui_refresh_boot" -lm -pthread
+run "UI redraw with boot-restored factory metadata" "$OUT/ui_refresh_boot" "$OUT"
+
+
 
 
 run "target DSP: preserve per-sample helper inlining" python3 tests/target_inlining_test.py build/felucca.dis

@@ -25,16 +25,11 @@ UI_SMALL static void ed_dsyn_name(const char *n8)
 UI_SMALL static uint32_t ed_dsyn_store(void)
 {
 #if FELUCCA_FLASH
-    persist_t p;
     if (ed_flash_busy())
         return 3;
     if (!flash_ok || ed_bk_put)
         return 4;
-    persist_fill(&p);
-    if (settings_write(&p))
-        return 4;
-    persist_saved = p;
-    return 0;
+    return settings_commit_current();
 #else
     return 4;
 #endif

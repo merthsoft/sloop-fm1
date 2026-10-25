@@ -162,8 +162,8 @@ UI_SMALL static uint32_t keys_lit(void)
         return m | fm1_in.notes;
     }
     m = fm1_in.notes;
-    if (!is_drum(t) && !lights_notes)
-        for (i=0;i<27u;i++) if (key_note_owner(trk_index(t), kb_map(t,i), 27u)) m |= 1u << i;
+    if (!is_drum(t) && (!lights_notes || drone_on(t)))
+        for (i=0;i<27u;i++) if (key_note_owner(trk_index(t), kb_map(t,i), 27u) || drone_held(t,kb_map(t,i))) m |= 1u << i;
     if (is_drum(t) || lights_notes)                /* the drum track: each hit lights its key; NOTES: the synths too */
         m |= keys_sounding(t);
     return m;
@@ -567,6 +567,7 @@ UI_SMALL static void edit_param(uint32_t slot, int32_t steps)
     v = d->names == ESYNC_NAMES || d->names == N_IBITS || d->names == N_IRATE ? names_turn(d, *vp, steps)   /* (a name a detent) */
                                     : clamp(*vp + accel(EN_K1 + slot, steps, d->names ? 0 : d->max - d->min), d->min, d->max);
     *vp = (int16_t)v;
+    if(pg->scope==SC_DRIFT || pg->scope==SC_EVOLVE || pg->scope==SC_SUSTAIN)return; /* runtime values are neither MIDI-learn IDs nor locks */
     if(pg->scope==SC_VOICING && slot<2u) {
         sync_reload=1; /* next played chord, without retuning held notes */
         return;

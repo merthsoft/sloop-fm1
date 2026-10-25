@@ -92,9 +92,14 @@ UI_SMALL static void step_move(int32_t delta)
     for (i = (uint32_t)dest; i < (uint32_t)dest + end - first; i++) {
         const step_t *s = &t->step[i];
         if (i >= first && i < end) continue;
-        if (s->time != ST_REST || s->n || s->flags || s->vel || s->lvl || s->rat ||
-            t->micro[i] || step_fill(t, i) || step_locked(t, i)) {
+        /* A rest may retain its former pitch/velocity for later editing.
+         * Those fields, timing and conditions are inert without a note.
+         * Parameter locks still act on empty steps and must be protected. */
+        if (s->time != ST_REST) {
             ui_message("STEP OCCUPIED"); return;
+        }
+        for (uint32_t k=0;k<NLOCK;k++) if (t->lock[k].step==i) {
+            ui_message("STEP HAS LOCKS"); return;
         }
     }
     fm1_irq_off();

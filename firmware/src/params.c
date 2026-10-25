@@ -399,7 +399,30 @@ static void param_format(const param_desc_t *d, int32_t v, char *val, const char
 /* ------------------------------------------------------------ pages --- */
 enum { FAM_HOME, FAM_ENV, FAM_LFO, FAM_FX, FAM_SCL, FAM_EDIT, FAM_GLO, FAM_SAVE, FAM_ARP, FAM_SEQ, FAM_TRK,
        FAM_COUNT };
-enum { SC_TRACK, SC_GLOBAL, SC_ENGINE, SC_STEP, SC_TRK, SC_SONG, SC_DRUM, SC_STARTER, SC_RECORD, SC_ACTION, SC_VOICING };
+enum { SC_TRACK, SC_GLOBAL, SC_ENGINE, SC_STEP, SC_TRK, SC_SONG, SC_DRUM, SC_STARTER, SC_RECORD, SC_ACTION, SC_VOICING, SC_DRIFT, SC_EVOLVE, SC_SUSTAIN };
+/* Native runtime performance controls, outside upstream saved parameter IDs. */
+static int16_t drift_p[NPART][4]={{0,1,64,0},{0,1,64,0},{0,1,64,0}};
+static const char *const N_AMBIENT_MODE[]={"OFF","DRIFT","DRONE","BOTH"};
+static const char *const N_DRIFT_CYCLE[]={"5S","10S","20S","40S","80S","160S"};
+static const char *const N_DRIFT_TARGET[]={"TONE","SHAPE","PAN"};
+static const param_desc_t DRIFT_DESC[]={
+    PE("MODE",N_AMBIENT_MODE,0), PE("CYCLE",N_DRIFT_CYCLE,1),
+    PD("AMOUNT",F_PCT,0,127,64), PE("TARGET",N_DRIFT_TARGET,0)
+};
+static const char *const N_EVOLVE_CYCLE[]={"1S","2S","5S","10S","20S","40S","80S","160S",
+ "16BAR","8BAR","4BAR","2BAR","1BAR","1/2","1/4","1/8","8T","1/16","16T"};
+static const uint16_t EVOLVE_SECONDS[]={1,2,5,10,20,40,80,160};
+static const uint16_t EVOLVE_UNITS[]={6144,3072,1536,768,384,192,96,48,32,24,16};
+static int16_t evolve_p[NPART][4]={{0,3,64,1},{0,3,64,1},{0,3,64,1}};
+static const param_desc_t EVOLVE_DESC[]={
+    PE("MODE",N_ONOFF,0), PE("CYCLE",N_EVOLVE_CYCLE,3),
+    PD("CHANCE",F_PCT,0,127,64), PD("RANGE",F_INT,1,7,1)
+};
+/* Track-local runtime sustain; no upstream saved IDs. */
+static int16_t sustain_p[NPART][4]={{0,4,0,127},{0,4,0,127},{0,4,0,127}};
+static const char *const N_SUSTAIN[]={"OFF","PEDAL","PIANO","STRINGS","LOFI"};
+static const char *const N_TAIL_TIME[]={"0.5S","1S","2S","4S","8S","16S","32S","HOLD"};
+static const param_desc_t SUSTAIN_DESC[]={PE("TYPE",N_SUSTAIN,0),PE("DECAY",N_TAIL_TIME,4),PD("DAMP",F_PCT,0,127,0),PD("AMOUNT",F_PCT,0,127,127)};
 static const char *const N_SPREAD[]={"CLOSE","OPEN","WIDE"};
 static const param_desc_t VOICE_INVERT=PD("INVERT",F_INT,-3,3,0);
 static const param_desc_t VOICE_SPREAD=PE("SPREAD",N_SPREAD,0);
@@ -418,9 +441,12 @@ static const page_t PAGES[] = {
     {"ENV", FAM_ENV, SC_TRACK, GR_ADSR, {P_ATK, P_DEC, P_SUS, P_REL}},
     {"ENV DEST", FAM_ENV, SC_TRACK, GR_DEST, {P_ED_FLT, P_ED_PIT, P_ED_SHP, P_ESYNC}},   /* (P_ED_FX: the level trim, no
                                                                        * page); 2.6: ESYNC, ENV's times as note values */
+    {"SUSTAIN",FAM_ENV,SC_SUSTAIN,GR_NONE,{0,1,2,3}},
     {"LFO", FAM_LFO, SC_TRACK, GR_LFO, {P_LRATE, P_LWAVE, P_LPHASE, P_LFADE}},
     {"LFO 2", FAM_LFO, SC_TRACK, GR_LFO, {P_LSYNC, P_LTRIG, P_LPOL, 0xFF}},   /* 2.6 (Felucca 1.4): SYNC TRIG POL */
     {"LFO DEST", FAM_LFO, SC_TRACK, GR_DEST, {P_LD_PIT, P_LD_FLT, P_LD_SHP, P_LD_AMP}},
+    {"DRIFT", FAM_LFO, SC_DRIFT, GR_NONE, {0,1,2,3}},
+    {"EVOLVE", FAM_LFO, SC_EVOLVE, GR_NONE, {0,1,2,3}},
     {"FX", FAM_FX, SC_TRACK, GR_FX, {P_DIST, P_CHOR, P_DLY, P_REV}},
     {"FILTER", FAM_FX, SC_TRACK, GR_FILTER, {P_TFLT, 0xFF, 0xFF, 0xFF}},   /* the track's filter (drum track too) */
     {"SLICER", FAM_FX, SC_TRACK, GR_SLCR, {P_SLCR, P_SLPAT, P_SLRATE, P_SLDEPTH}},   /* drum track too */
@@ -474,7 +500,7 @@ static const page_t PAGES[] = {
  * shows "DRUM TRACK" */
 static int page_for_drum(const page_t *pg)
 {
-    if(pg->scope==SC_VOICING)return 0;
+    if(pg->scope==SC_VOICING || pg->scope==SC_DRIFT || pg->scope==SC_EVOLVE || pg->scope==SC_SUSTAIN)return 0;
     if (pg->scope == SC_STEP || pg->scope==SC_ACTION) /* synth roll/actions; drums have their own grid */
         return 0;                                   /* by ALGO from a synth track, it drew the drum steps as notes */
     if (pg->scope == SC_GLOBAL)
@@ -491,6 +517,15 @@ static int page_shown(const page_t *pg)
 static const param_desc_t *page_desc(const page_t *pg, uint32_t slot, int16_t **valp)
 {
     uint32_t id = pg->id[slot];
+    if(pg->scope==SC_SUSTAIN) {
+        if(is_drum(TSEL)){*valp=0;return 0;}
+        *valp=&sustain_p[song.sel%NPART][slot];return &SUSTAIN_DESC[slot];
+    }
+    if(pg->scope==SC_DRIFT || pg->scope==SC_EVOLVE) {
+        if(is_drum(TSEL)){*valp=0;return 0;}
+        *valp=pg->scope==SC_DRIFT?&drift_p[song.sel%NPART][slot]:&evolve_p[song.sel%NPART][slot];
+        return pg->scope==SC_DRIFT?&DRIFT_DESC[slot]:&EVOLVE_DESC[slot];
+    }
     if(pg->scope==SC_VOICING && slot<2u) {
         if(is_drum(TSEL)){*valp=0;return 0;}
         *valp=slot?&TSEL->chord_spread:&TSEL->chord_inv;

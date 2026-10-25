@@ -92,34 +92,8 @@ UI_SMALL static int st_body(uint32_t obj, uint32_t copy, const st_hdr_t *h)   /*
 /* the current copy: the valid one with the highest seq (A on a tie), -1 when
  * neither is valid. Headers first, so only the winner's payload is read (it
  * is left in st_buf); *h gets its header. */
-UI_SMALL static int st_current(uint32_t obj, st_hdr_t *h)
-{
-    st_hdr_t a, b;
-    int va = st_head(obj, 0, &a) == 0, vb = st_head(obj, 1, &b) == 0;
-    if (vb && (!va || b.seq > a.seq)) {
-        if (st_body(obj, 1, &b) == 0) {
-            *h = b;
-            return 1;
-        }
-        vb = 0;
-    }
-    if (va && st_body(obj, 0, &a) == 0) {
-        *h = a;
-        return 0;
-    }
-    if (vb && st_body(obj, 1, &b) == 0) {
-        *h = b;
-        return 1;
-    }
-    return -1;
-}
-
-#ifdef ST_XIP_PTR                                  /* sloop-lab: the firmware (felucca.c); the host tests have no XIP */
-/* the current copy's payload where it is, in the flash's plain XIP window (fm1_flash.h fl_plain_window_init; the
- * driver drops the cache lines it erases and programs, so a save is seen at once): its CRC is checked through the
- * window, nothing is copied. 0 = no valid copy, else *len = the payload's length. The copy is the one st_current
- * would take: the valid header with the highest seq, A on a tie, the other when its payload fails. */
-UI_SMALL static const void *st_xip(uint32_t obj, uint32_t *len)
+/* Shared A/B ordering; RAM loads and XIP retain their own body access. */
+UI_SMALL static int st_select(uint32_t obj, st_hdr_t *out, int xip)
 {
     st_hdr_t h[2];
     int v[2], i, first;
@@ -128,13 +102,30 @@ UI_SMALL static const void *st_xip(uint32_t obj, uint32_t *len)
     first = v[1] && (!v[0] || h[1].seq > h[0].seq) ? 1 : 0;
     for (i = 0; i < 2; i++) {
         uint32_t c = (uint32_t)(first ^ i);
-        const uint8_t *p = ST_XIP_PTR(st_sector(obj, c) + ST_PAYLOAD_OFF);
-        if (v[c] && st_crc32(p, h[c].len) == h[c].crc) {
-            *len = h[c].len;
-            return p;
-        }
+        int ok;
+        if (!v[c]) continue;
+#ifdef ST_XIP_PTR
+        if (xip) {
+            const uint8_t *p = ST_XIP_PTR(st_sector(obj, c) + ST_PAYLOAD_OFF);
+            ok = st_crc32(p, h[c].len) == h[c].crc;
+        } else
+#else
+        (void)xip;
+#endif
+            ok = st_body(obj, c, &h[c]) == 0;
+        if (ok) { *out = h[c]; return (int)c; }
     }
-    return 0;
+    return -1;
+}
+UI_SMALL static int st_current(uint32_t obj, st_hdr_t *h) { return st_select(obj, h, 0); }
+#ifdef ST_XIP_PTR
+UI_SMALL static const void *st_xip(uint32_t obj, uint32_t *len)
+{
+    st_hdr_t h;
+    int c = st_select(obj, &h, 1);
+    if (c < 0) return 0;
+    *len = h.len;
+    return ST_XIP_PTR(st_sector(obj, (uint32_t)c) + ST_PAYLOAD_OFF);
 }
 #endif
 

@@ -1,3 +1,149 @@
+# MerthSloop firmware 2.8.0.70 — sustain characters
+
+- ENV → SUSTAIN adds PIANO (faster treble loss), STRINGS (gentler darkening) and LOFI (released-tail sample hold/reduced resolution). PEDAL stays unchanged at default DAMP 0 / AMOUNT 100%. Held/new attacks remain clean.
+- Knob 3 DAMP and knob 4 AMOUNT; zero amount gives ordinary release. All settings remain per-track/runtime-only and reset at power-off.
+- 128-byte per-render stack scratch and private voice tone state; no feedback/history buffer or saved-format change.
+- Final image 584,204 / 584,336 B: 132 B flash free. Main static 89,936 / 98,304 B (8,368 B free), +320 B versus .69. Low RAM/pool unchanged.
+- Render comparisons cover distinct tails, identical held attacks, amount/damping response, decay/HOLD, engine matrix and UBSan. Final ownership, multi-core, UI, golden and browser checks accompany the build. Hardware listening/deadline/stack qualification remains pending.
+
+# MerthSloop firmware 2.8.0.69 — voice admission and cold-code sharing
+
+- Shared weighted admission: up to twelve LOFI/WHEEL voices, eight normal voices, intermediate mixed populations; retain eight slots per track and existing engine caps, except FM6 now eight. Drum voices remain separate.
+- Fix a steal-fade same-note retrigger bypass: fading slots must reacquire admission before restarting.
+- Share project validation/initialization, settings commit, A/B storage selection and editor notifications without changing saved formats or factory data. Startup-string packing remains excluded.
+- Final target 583,776 / 584,336 B: 560 B flash free, 288 B recovered versus .68. All static RAM totals unchanged.
+- Assertions-enabled capacity, sustain, storage fault injection, sanitizers and browser/native parity cover integration. Expanded-polyphony device deadlines remain unqualified.
+
+# MerthSloop firmware 2.8.0.68 — sustain foundation and synced evolution
+
+- ENV → SUSTAIN: TYPE OFF/PEDAL, DECAY 0.5S–32S or HOLD. Engine-held tails
+  retain natural envelopes/loops while logical gates remain released. New notes
+  and voice stealing retain priority; no added voices or audio buffers.
+- OFF/STOP/panic/retrigger cleanup, MIDI note-off timing and independent ties
+  are covered. PIANO/STRINGS/LOFI, damping/amount and persistence remain later work.
+- EVOLVE adds 1S/2S and eleven synced divisions from sixteenth-note triplets to
+  16 bars. Its live cycle bar follows the scheduler; synced cycles pause with
+  transport and consume each boundary once, including external-clock phase.
+- Integrate the isolated minimum-cost build-time LZ4 parser audit; retain the
+  original decoder, factory bytes and fallback for inputs above 8 KiB.
+- Final target **584,064 / 584,336 B**, **272 B flash free**. Main static
+  **89,616 / 98,304 B**, 8,688 B free; low RAM/pool unchanged. Combined delta
+  versus .67: +1,100 B flash, +160 B main RAM.
+- Decay durations, engine/source ownership, MIDI packets, ties, STOP, allocator,
+  synced boundaries and native UI pass; sanitizer/two-core, unchanged goldens,
+  full UI/fuzz, restored-data, target and browser checks cover the integration.
+  Hardware listening/deadline/stack testing remains pending. Voice-budget audit
+  candidates remain uninstalled.
+
+# MerthSloop firmware 2.8.0.67 — slow drone-note evolution
+
+- LFO → EVOLVE: MODE / CYCLE / CHANCE / RANGE. With DRONE/BOTH, replace at
+  most one held pitch per 5–160-second cycle, using ROOT/SCALE and 1–7 scale
+  steps per change. OFF keeps the reached harmony; STOP clears held notes.
+- Shared drone toggle path preserves MIDI channel/ownership and other voices;
+  skip duplicates, pitch limits and shared physical/MIDI/sequencer pitches.
+  Normal REC stores sounded notes; otherwise no pattern/patch writes. Runtime-only.
+- Target **582,964 / 584,336 B**, **1,372 B flash free**. Adds 752 B flash and
+  48 B main static RAM; low RAM/pool unchanged, no new audio buffer.
+- All 200 audio goldens unchanged. Scale/root/bounds, timing/chance/OFF,
+  retained-voice bytes, MIDI balance, recording, independent tracks/RNG, real UI,
+  UBSan, existing drone/progression, redraw and 20,000-frame fuzz checks pass.
+  Hardware listening/deadline/stack measurements remain pending.
+
+# MerthSloop firmware 2.8.0.66 — startup compression and open HOME lanes
+
+- Search up to 64 earlier matches and use lazy matching when building startup
+  LZ4 data; retain the fast compressor's output whenever it is smaller.
+- Same firmware block decoder and restored bytes; no new playback processing,
+  buffers, RAM allocation or file/protocol changes. Loader compression is unchanged.
+- Remove the opaque gray HOME lane panels so the grid and traveling highlight
+  remain visible between notes. Track-number badges retain black backing.
+- Target **582,212 / 584,336 B**, **2,124 B flash free**: **768 B recovered**
+  versus .65. Main static RAM remains 89,408 B; low RAM/pool are unchanged.
+- All 200 audio goldens unchanged; restored tables/zones and 171 presets match
+  raw originals. Compressor format/window/tail/fallback tests, UI redraw/foreground
+  isolation and target hot-loop checks pass. Hardware validation remains pending.
+
+# MerthSloop firmware 2.8.0.65 — HOME accents and empty-step moves
+
+- HOME adds eight fixed stars, a pulsing horizon glow and a beat-driven wireframe
+  highlight using the existing redraw clock; no new animation state or buffer.
+- OCT + knob 3 can move into silent steps containing stale note data or timing
+  left by recording/deletion. Actual note/tie collision rules and parameter-lock
+  protection remain; undo/redo restores the original steps.
+- UI refresh/card isolation and 20,000-frame navigation fuzz pass; move regression
+  covers stale rests, timing/condition leftovers, lock rejection and undo/redo.
+- Target 582,980 / 584,336 B: **1,356 B flash free**, static RAM unchanged.
+  Hardware validation remains pending.
+
+# MerthSloop firmware 2.8.0.64 — extended startup packing
+
+- Removed the independent REV HOLD page and processing by request. Upstream's
+  existing FREEZE punch-in is retained.
+- Restore sample-zone metadata and compact preset names at cold startup using
+  the existing decoder; direct access during playback, unchanged sample bytes.
+- Share the two bounded chord scale walks; remove duplicate TRACKS dispatch.
+- Current cold-state conversion was tested and rejected: +64 B flash.
+- Target **582,804 / 584,336 B**, **1,532 B flash free**: 1,196 B recovered
+  against .63. Main static RAM **89,408 / 98,304 B** (8,896 B free); low and
+  audio pool remain unchanged. No file/protocol or factory-ID changes.
+- Raw/boot byte oracles, name fallback and 200 audio goldens in each data
+  configuration pass. UI/fuzz, ownership, split-core, native/WASM and target
+  checks cover the retained behavior. Hardware cold-boot checks remain pending.
+
+# MerthSloop firmware 2.8.0.63 — independent reverb tail HOLD
+
+- Native FX → REV HOLD: FREEZE / TYPE / SIZE / DAMP. Captures the existing
+  reverb tail and blocks new input while preserving dry playing.
+- Uses existing reverb buffers; exact FDN line replay avoids frozen-tail
+  decay from interpolation/rounding. SPRING uses its existing held path.
+- FREEZE OFF/STOP/full project panic releases it. Track/sound browsing keeps
+  it; TYPE changes wait until release. Runtime-only, no saved-format change.
+- All six ten-second holds stay within 2% energy drift; new-input isolation,
+  unchanged FDN bytes/dry samples, UI routing and lifecycle checks pass.
+- Upstream punch-in FREEZE remains separate; existing audio/UI/reverb/split-core
+  and native/WASM checks pass. Hardware listening is pending.
+- Target 584,000 / 584,336 B: **336 B flash free**, RAM unchanged from .62.
+
+# MerthSloop firmware 2.8.0.62 — tap-toggle DRONE
+
+- LFO → DRIFT knob 1: OFF / DRIFT / DRONE / BOTH. Tap pitches to add/remove
+  them without reattacking the others. Existing held-note storage is reused.
+- Pitches and outgoing MIDI channels survive octave/track changes; selected-note
+  lights follow the mapped octave. STOP and source/preset/route changes clean up.
+- Selecting DRONE takes over live ARP/chord input without stopping transport or
+  overwriting sequences. MIDI and sequencer gates cannot cut a held drone pitch.
+- Use POLY and an ENV sustain level for a sustained chord bed; ordinary voice
+  budgets remain. Mode/notes are runtime-only, no project/protocol format change.
+- Target 583,716 / 584,336 B: **620 B flash free**, static RAM unchanged.
+- Drone source/ownership tests, unchanged audio goldens, native/WASM, legacy
+  latch/scale/progression, UI/fuzz and split-core checks pass; hardware pending.
+
+# MerthSloop firmware 2.8.0.61 — audible and visible DRIFT
+
+- Doubled full-scale depth to approximately ±64 control units; fresh defaults
+  are OFF, 10 seconds and about 50% amount. Smooth fades remain.
+- Live audio-owned movement meter and cycle progress replace duplicated values.
+- LOFI responds to negative and positive DRIFT around TONE while retaining
+  existing envelope/LFO behavior and a stable minimum filter coefficient.
+- 200 unchanged default-off goldens; signed LOFI/manual-tone equivalence,
+  motion bounds, live redraw, UI fuzz, split-core and native/WASM checks pass.
+- Target 583,180 / 584,336 B: **1,156 B free**; static RAM unchanged from .60.
+  Hardware listening remains pending.
+
+# MerthSloop firmware 2.8.0.60 — first ambient slice
+
+- New native LFO → DRIFT page: independent smooth random TONE/SHAPE/PAN motion,
+  5–160-second cycles, bounded depth and fading amount/OFF/target transitions.
+  Default OFF; runtime-only, no project-format or Android protocol change.
+- Appended sustained STILL WATER, WIDE SKY and DUSK starters (27 total).
+- DRONE tap-toggle mode remains planned, pending physical/MIDI note ownership.
+- Application 582,660 / 584,336 B: **1,676 B free**, 664 B above .59.
+  Main static RAM 86,432 B; low RAM 28,928 B; pool 331,852 B.
+- 200 unchanged audio goldens, actual DRIFT audio/UI tests, starter fingerprints,
+  UI/fuzz, split-core, native/WASM parity and target budget checks pass.
+  Hardware listening and timing remain pending.
+
 # MerthSloop firmware 2.8.0.59 — headroom integration
 
 - Shared exclusive insert state, sample-upload decoding scratch and FFT scratch.

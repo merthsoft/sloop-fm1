@@ -38,6 +38,7 @@ static void fm1_irq_on(void) {}
 #include "../firmware/src/engines.c"
 #include "../firmware/src/drums.c"
 #include "../firmware/src/params.c"
+#include "../firmware/src/ambient.c"
 #include "../firmware/src/voice.c"
 #include "../firmware/src/slicer.c"
 #include "../firmware/src/fx.c"
@@ -80,6 +81,9 @@ static uint64_t now_ns(void)
 #define FELUCCA_BOOT_AUDIO_ONLY 1
 #include "boot_tables_init.h"
 #endif
+#if FELUCCA_BOOT_ZONES
+#include "boot_zones.h"
+#endif
 #if FELUCCA_BOOT_PRESETS
 #include "boot_presets.h"
 static uint8_t preset_boot_scratch[3816]; /* Host-only counterpart of proj_tmp. */
@@ -90,6 +94,9 @@ static void host_tracks_init(void)                /* as felucca_init: defaults, 
     if (!booted) { punch_boot_init(); booted = 1; } /* Match the target's one cold startup. */
 #if FELUCCA_BOOT_TABLES
     if (!boot_tables_init()) abort();
+#endif
+#if FELUCCA_BOOT_ZONES
+    if(!boot_zones_init())abort();
 #endif
 #if FELUCCA_BOOT_PRESETS
     if (!boot_presets_init(preset_boot_scratch,sizeof preset_boot_scratch)) abort();

@@ -171,14 +171,26 @@ int main(int argc,char **argv)
     TDRUM->p[P_E0]=kit;song.sel=selected;tracks();
 
     /* Pulse invalidates HOME even if no sequencer step advances (long notes).
-     * Only the sun changes; track lanes and footer retain identical pixels. */
+     * Only background accents change; track numbers, notes and footer stay identical. */
     song.playing=1;clk_pos=0;tracks();
     assert(home_sun_light()==16);ppm("neon-sun-bright");
     memcpy(incremental,screen,sizeof screen);
     clk_pos=BEAT_U*3u/4u;tracks();
     assert(home_sun_light()<16);
     assert(memcmp(incremental+74*240,screen+74*240,44*240*sizeof *screen));
-    assert(!memcmp(incremental+118*240,screen+118*240,(240-118)*240*sizeof *screen));
+    for(unsigned lane=0;lane<NTRK;lane++) {
+        unsigned row=74+48+lane*19;
+        for(unsigned y=row;y<row+18;y++)
+            assert(!memcmp(incremental+y*240+2,screen+y*240+2,24*sizeof *screen));
+        for(unsigned cell=0;cell<16;cell++) {
+            unsigned at=(trk[lane].seq_idx/16u)*16u+cell;
+            if(at>=(unsigned)trk[lane].p[P_SLEN])continue;
+            unsigned height=trk_step_on(&trk[lane],at)?8:2;
+            for(unsigned y=row+7;y<row+7+height;y++)
+                assert(!memcmp(incremental+y*240+32+cell*11,screen+y*240+32+cell*11,9*sizeof *screen));
+        }
+    }
+    assert(!memcmp(incremental+198*240,screen+198*240,(240-198)*240*sizeof *screen));
     ppm("neon-sun-dim");same_as_full(tracks,"sun pulse with stationary notes");
     uint32_t light=16;
     for(uint32_t tick=0;tick<16;tick++) {
@@ -189,6 +201,34 @@ int main(int argc,char **argv)
     same_as_full(tracks,"sun beat resets");
     song.playing=0;clk_pos=BEAT_U/2u;tracks();assert(home_sun_light()==16);
     same_as_full(tracks,"sun stops");
+    /* Beat-bound accents redraw with stationary notes, without changing lane foregrounds,
+     * instrument labels, RNG, or the stopped scene. */
+    uint32_t saved_rng=rng_state;
+    song.playing=1;clk_pos=0;clk_beat=0;tracks();
+    memcpy(incremental,screen,sizeof screen);
+    clk_beat=4;tracks();assert(home_scene_step()==4);
+    assert(memcmp(incremental+74*240,screen+74*240,44*240*sizeof *screen));
+    for(unsigned lane=0;lane<NTRK;lane++) {
+        unsigned row=74+48+lane*19;
+        for(unsigned y=row;y<row+18;y++)
+            assert(!memcmp(incremental+y*240+2,screen+y*240+2,24*sizeof *screen));
+        for(unsigned cell=0;cell<16;cell++) {
+            unsigned at=(trk[lane].seq_idx/16u)*16u+cell;
+            if(at>=(unsigned)trk[lane].p[P_SLEN])continue;
+            unsigned height=trk_step_on(&trk[lane],at)?8:2;
+            for(unsigned y=row+7;y<row+7+height;y++)
+                assert(!memcmp(incremental+y*240+32+cell*11,screen+y*240+32+cell*11,9*sizeof *screen));
+        }
+    }
+    unsigned exposed=0;
+    for(unsigned y=122;y<198;y++)for(unsigned x=28;x<216;x++)
+        exposed+=incremental[y*240+x]!=screen[y*240+x];
+    assert(exposed>10); /* Former gray cards must not hide the moving wireframe. */
+    ppm("neon-scene-moving");same_as_full(tracks,"beat-bound scene accents");
+    song.playing=0;tracks();assert(!home_scene_step());
+    memcpy(incremental,screen,sizeof screen);clk_beat=11;clk_pos=BEAT_U/2u;tracks();
+    assert(!memcmp(incremental+74*240,screen+74*240,124*240*sizeof *screen));
+    assert(saved_rng==rng_state);ppm("neon-scene-stopped");same_as_full(tracks,"scene stops");
     TDRUM->dstep[5].on[0]^=1;tracks();same_as_full(tracks,"drum edit invalidates HOME");
     trk[1].p[P_MUTE]=1;tracks();same_as_full(tracks,"mute invalidates HOME");
     trk[1].p[P_MUTE]=0;

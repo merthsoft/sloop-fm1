@@ -91,4 +91,3 @@ Evidence under `build/headroom-ambient/sequencing/`:
 - `*-target_budget.log`, `*-target_inlining_test.log`, `static-validation.json`.
 
 From the private `source/` directory, `python3 run.py <label>` rebuilds its currently selected candidate. For baseline, copy **private** `../seq.original.c` to `firmware/src/seq.c`; for the optional candidate copy **private** `../seq.candidate.c`. Keep original `note_ties.c` for both. Never run these copy commands against the production root. Host runner from the repository root: `python3 build/headroom-ambient/sequencing/test.py <label> <test names...>`; it selects the private tree, compiles with isolated caches and supplies a private screenshot directory. Re-run target checks and tests if rebasing onto newer sources; do not subtract this delta from an unrelated build and call it a measured final image.
-

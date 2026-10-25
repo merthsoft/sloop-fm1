@@ -162,6 +162,27 @@ UI_SMALL static uint32_t proj_hash(const void *p, uint32_t n)   /* FNV-1a over n
 UI_SMALL static uint32_t proj_sum(const project_t *p) { return proj_hash(p, sizeof *p - 4u); }
 UI_SMALL static int proj_ok(const project_t *q) { return q->magic == PROJ_MAGIC && q->size == sizeof *q && q->sum == proj_sum(q); }
 
+/* All historical project records have two leading words and a trailing hash.
+ * Copy words to avoid introducing alignment or effective-type assumptions. */
+UI_SMALL static int proj_record_ok(const void *raw, int n, uint32_t size, uint32_t magic)
+{
+    uint32_t head[2], sum;
+    const uint8_t *b = raw;
+    if (n != (int)size) return 0;
+    memcpy(head, b, sizeof head);
+    if (head[0] != magic || head[1] != size) return 0;
+    memcpy(&sum, b + size - 4u, sizeof sum);
+    return sum == proj_hash(b, size - 4u);
+}
+
+
+UI_SMALL static void proj_init(project_t *q)
+{
+    memset(q, 0, sizeof *q);
+    q->magic = PROJ_MAGIC;
+    q->size = sizeof *q;
+}
+
 /* ---- old formats -> format 5 */
 /* an old step into a synth step (no level, no ratchet) */
 UI_SMALL static void step_from8(step_t *d, const step8_t *s)
@@ -244,12 +265,9 @@ UI_SMALL static void proj_trk_from_old(proj_trk_t *d, const void *raw, uint32_t 
 UI_SMALL static int proj_from_v4(project_t *q, const project_v4_t *v4, int n)
 {
     uint32_t i;
-    if (n != (int)sizeof *v4 || v4->magic != PROJ_MAGIC_V4 || v4->size != sizeof *v4 ||
-        v4->sum != proj_hash(v4, sizeof *v4 - 4u))
+    if (!proj_record_ok(v4, n, sizeof *v4, PROJ_MAGIC_V4))
         return 0;
-    memset(q, 0, sizeof *q);
-    q->magic = PROJ_MAGIC;
-    q->size = sizeof *q;
+    proj_init(q);
     memcpy(q->g, v4->g, sizeof q->g);
     q->sel = v4->sel;
     for (i = 0; i < NTRK; i++) {
@@ -272,12 +290,9 @@ UI_SMALL static int proj_from_v4(project_t *q, const project_v4_t *v4, int n)
 UI_SMALL static int proj_from_v5(project_t *q, const project_v5_t *v5, int n)
 {
     uint32_t i, k;
-    if (n != (int)sizeof *v5 || v5->magic != PROJ_MAGIC_V5 || v5->size != sizeof *v5 ||
-        v5->sum != proj_hash(v5, sizeof *v5 - 4u))
+    if (!proj_record_ok(v5, n, sizeof *v5, PROJ_MAGIC_V5))
         return 0;
-    memset(q, 0, sizeof *q);
-    q->magic = PROJ_MAGIC;
-    q->size = sizeof *q;
+    proj_init(q);
     memcpy(q->g, v5->g, sizeof q->g);
     q->sel = v5->sel;
     q->drdly = v5->drdly;
@@ -308,9 +323,7 @@ UI_SMALL static int proj_from_v5(project_t *q, const project_v5_t *v5, int n)
 UI_SMALL static void proj_from_v3_ok(project_t *q, const project_v3_t *v3)
 {
     uint32_t i;
-    memset(q, 0, sizeof *q);
-    q->magic = PROJ_MAGIC;
-    q->size = sizeof *q;
+    proj_init(q);
     proj_g_from_old(q->g, v3->g);
     q->sel = v3->sel;
     for (i = 0; i < NTRK; i++)
@@ -319,8 +332,7 @@ UI_SMALL static void proj_from_v3_ok(project_t *q, const project_v3_t *v3)
 }
 UI_SMALL static int proj_from_v3(project_t *q, const project_v3_t *v3, int n)
 {
-    if (n != (int)sizeof *v3 || v3->magic != PROJ_MAGIC_V3 || v3->size != sizeof *v3 ||
-        v3->sum != proj_hash(v3, sizeof *v3 - 4u))
+    if (!proj_record_ok(v3, n, sizeof *v3, PROJ_MAGIC_V3))
         return 0;
     proj_from_v3_ok(q, v3);
     return 1;
@@ -330,12 +342,9 @@ UI_SMALL static int proj_from_v3(project_t *q, const project_v3_t *v3, int n)
 UI_SMALL static int proj_from_v2(project_t *q, const project_v2_t *v2, int n)
 {
     uint32_t i;
-    if (n != (int)sizeof *v2 || v2->magic != PROJ_MAGIC_V2 || v2->size != sizeof *v2 ||
-        v2->sum != proj_hash(v2, sizeof *v2 - 4u))
+    if (!proj_record_ok(v2, n, sizeof *v2, PROJ_MAGIC_V2))
         return 0;
-    memset(q, 0, sizeof *q);
-    q->magic = PROJ_MAGIC;
-    q->size = sizeof *q;
+    proj_init(q);
     proj_g_from_old(q->g, v2->g);
     q->sel = v2->sel;
     for (i = 0; i < NTRK; i++)
@@ -349,12 +358,9 @@ UI_SMALL static int proj_from_v2(project_t *q, const project_v2_t *v2, int n)
 UI_SMALL static int proj_from_v1(project_t *q, const project_v1_t *v1, int n)
 {
     uint32_t i;
-    if (n != (int)sizeof *v1 || v1->magic != PROJ_MAGIC_V1 || v1->size != sizeof *v1 ||
-        v1->sum != proj_hash(v1, sizeof *v1 - 4u))
+    if (!proj_record_ok(v1, n, sizeof *v1, PROJ_MAGIC_V1))
         return 0;
-    memset(q, 0, sizeof *q);
-    q->magic = PROJ_MAGIC;
-    q->size = sizeof *q;
+    proj_init(q);
     proj_g_from_old(q->g, v1->g);
     proj_trk_from_old(&q->t[0], &v1->t, PROJ_NP_V2, 0);
     for (i = 1; i < NTRK; i++) {               /* the other tracks: their defaults, no steps */
@@ -1030,6 +1036,15 @@ UI_SMALL static int settings_write(const persist_t *p)
     fav_dirty = 0;
     fork_settings_saved = side_out.fork_flags;
     memcpy(midi_saved, mp, sizeof midi_saved);
+    return 0;
+}
+static void persist_fill(persist_t *p);
+UI_SMALL static uint32_t settings_commit_current(void)
+{
+    persist_t p;
+    persist_fill(&p);
+    if (!flash_ok || settings_write(&p)) return 4;
+    persist_saved = p;
     return 0;
 }
 static void dsu_boot(void)                          /* the SYN kits (and the MIDI part) from the settings object, else */

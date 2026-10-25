@@ -195,6 +195,7 @@ def build_app():
     from pack_presets import pack as pack_presets
     tc("cc", *flags, "-DFELUCCA_BOOT_PRESETS=0", "-c", FW / "src" / "felucca.c", "-o", OUT / "preset-probe.o")
     pack_presets(OUT / "preset-probe.o", GEN)
+    flags.append("-DFELUCCA_BOOT_ZONES=1")
     flags.append("-DFELUCCA_BOOT_PRESETS=1")
     tc_all(("cc", "-c", FW / "crt0.S", "-o", OUT / "crt0.o"),
            ("cc", "-c", FW / "hal" / "fm1_vec.S", "-o", OUT / "fm1_vec.o"),

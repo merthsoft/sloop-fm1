@@ -28,7 +28,7 @@ int main(void)
 {
     uint32_t g,i,j,mode,scale; rhythm_shape_t shape={0,0,0,255,0};
     track_t untouched;
-    assert(NSEQUENCE_STARTERS==24);
+    assert(NSEQUENCE_STARTERS==27);
     /* Frozen before the custom renderer refactor: 100k deterministic ROM events.
      * Covers shaped rhythms, all modes, voicing and saturated register bounds. */
     uint32_t seed=1234567,hash=2166136261u;

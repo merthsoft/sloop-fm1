@@ -241,7 +241,7 @@ static void drawbar_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, con
     }
     V->perc = perc1;
     /* key click: high-passed noise, at the key contact and (half) at the release */
-    if (V->gate && !v->gate) {
+    if (V->gate && !voice_engine_held(v)) {
         V->gate = 0;
         V->clk = 16384;
     }

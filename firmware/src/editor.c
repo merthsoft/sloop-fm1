@@ -375,6 +375,12 @@ UI_SMALL static void ed_sync(void)                                /* main loop *
     }
 }
 
+UI_SMALL static void ed_step_edited(track_t *t, uint32_t step)
+{
+    ui.force = 1;
+    if (t == TSEL) ed_w.st[step] = ed_step_sig(t, step);
+}
+
 /* descriptor of parameter id of track t: the engine parameters of the engine it asked for
  * (t->engine follows in the audio ISR, after a short fade) */
 UI_SMALL static const param_desc_t *ed_tdesc(const track_t *t, uint32_t id)   /* the static ones: an engine's */
@@ -493,7 +499,7 @@ UI_SMALL static uint32_t ed_bk_commit(void)
         const up_bank_t *b = (const up_bank_t *)raw;
         if (ed_flash_busy())
             return 3;
-        if (n && (n != sizeof *b || b->magic != UP_BANK_MAGIC || b->rsize != sizeof(up_rec_t) || b->nslot != UP_PER_BANK))
+        if (n && (!up_bank_ok(b, (int)n)))
             return 2;
         if (!flash_ok || st_save(OBJ_UPRESET0 + id - 6u, raw, n))
             return 4;
@@ -513,7 +519,6 @@ UI_SMALL static uint32_t ed_bk_commit(void)
         return 0;
     }
     if (id == 9u) {                                       /* SLOOP 2.5: the SYN drum kits, written with the settings */
-        persist_t p;
         uint32_t k;
         if (ed_flash_busy())
             return 3;
@@ -522,28 +527,18 @@ UI_SMALL static uint32_t ed_bk_commit(void)
         memcpy(&dsu, raw, sizeof dsu);
         for (k = 0; k < DSU_N; k++)
             dsu_fix_kit(&dsu.k[k]);
-        persist_fill(&p);
-        if (!flash_ok || settings_write(&p))
-            return 4;
-        persist_saved = p;
-        return 0;
+        return settings_commit_current();
     }
     if (id == 10u) {                                      /* SLOOP 2.6: the MIDI part, written with the settings */
-        persist_t p;
         if (ed_flash_busy())
             return 3;
         if (n != MIDI_PART && n != 2u * ML_N && n != 2u * ML_N + 4u)
             return 2;
         midi_part_read(raw, n);                           /* (every entry and channel checked) */
-        persist_fill(&p);
-        if (!flash_ok || settings_write(&p))
-            return 4;
-        persist_saved = p;
-        return 0;
+        return settings_commit_current();
     }
     if (id == 11u) {                                      /* SLOOP 2.7: your theme (n 0: none), written with the settings;
                                                          * sent, it is shown (MENU > COLOR on it) */
-        persist_t p;
         if (ed_flash_busy())
             return 3;
         theme_t t;
@@ -563,11 +558,7 @@ UI_SMALL static uint32_t ed_bk_commit(void)
             theme_on = 0;
         }
         palette_set(settings.palette);
-        persist_fill(&p);
-        if (!flash_ok || settings_write(&p))
-            return 4;
-        persist_saved = p;
-        return 0;
+        return settings_commit_current();
     }
     return 1;
 }
@@ -1068,9 +1059,7 @@ UI_SMALL static void ed_handle(const uint8_t *f, uint32_t n)   /* f: the bytes b
                 if ((on >> i) & 1u)
                     dstep_set(d, i, (lv >> (2u * i)) & 3u, (rt >> (2u * i)) & 3u);
             fm1_irq_on();
-            ui.force = 1;
-            if (song.sel == TRK_DRUM)
-                ed_w.st[a[0]] = ed_step_sig(TDRUM, a[0]);
+            ed_step_edited(TDRUM, a[0]);
         }
         on = dstep_mask(d);
         lv = (uint32_t)d->lvl[0] | (uint32_t)d->lvl[1] << 8 | (uint32_t)d->lvl[2] << 16 | (uint32_t)d->lvl[3] << 24;
@@ -1140,9 +1129,7 @@ UI_SMALL static void ed_handle(const uint8_t *f, uint32_t n)   /* f: the bytes b
             else
                 lock_del(t, a[1], a[2]);
             fm1_irq_on();
-            ui.force = 1;
-            if (a[0] == song.sel)
-                ed_w.st[a[1]] = ed_step_sig(t, a[1]);     /* the editor's own change: no push */
+            ed_step_edited(t, a[1]);     /* the editor's own change: no push */
         }
         k = rc == 1u ? -1 : lock_find(t, a[1], a[2], 0);
         has = k >= 0;
@@ -1169,9 +1156,7 @@ UI_SMALL static void ed_handle(const uint8_t *f, uint32_t n)   /* f: the bytes b
         fm1_irq_off();
         t->micro[a[1]] = (int8_t)clamp((int32_t)a[2] - 64, MICRO_MIN, MICRO_MAX);
         fm1_irq_on();
-        ui.force = 1;
-        if (a[0] == song.sel)
-            ed_w.st[a[1]] = ed_step_sig(t, a[1]);
+        ed_step_edited(t, a[1]);
         ed_b(a[0]);
         ed_b(a[1]);
         ed_b((uint32_t)(t->micro[a[1]] + 64));
@@ -1192,9 +1177,7 @@ UI_SMALL static void ed_handle(const uint8_t *f, uint32_t n)   /* f: the bytes b
         fm1_irq_off();
         step_fill_set(t, a[1], a[2] % 3u);
         fm1_irq_on();
-        ui.force = 1;
-        if (a[0] == song.sel)
-            ed_w.st[a[1]] = ed_step_sig(t, a[1]);
+        ed_step_edited(t, a[1]);
         ed_b(a[0]);
         ed_b(a[1]);
         ed_b(step_fill(t, a[1]));

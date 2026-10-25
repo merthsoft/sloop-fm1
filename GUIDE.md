@@ -105,12 +105,14 @@ The 11 black keys are F#3, G#3, A#3, C#4, D#4, F#4, G#4, A#4, C#5, D#5, F#5. The
 
 | Track | Colour | Plays | Knob of the same colour |
 | --- | --- | --- | --- |
-| **1** | blue | a synth (3 synth tracks share 8 voices) | KNOB 1 |
+| **1** | blue | a synth (3 synth tracks share 8 normal or up to 12 LOFI/WHEEL voices) | KNOB 1 |
 | **2** | green | a synth | KNOB 2 |
 | **3** | yellow | a synth | KNOB 3 |
 | **4** | orange | the drum machine: 16 sounds, one per white key | KNOB 4 |
 
 **ALGORITHM** picks the track you play, record and edit, on every screen. The screen and the whole editor take the colour of the selected track. **White** on the screen always means *what you are touching*; **red** always means *recording*.
+
+The shared synth budget admits twelve LOFI/WHEEL voices or eight voices on other engines, with intermediate mixed populations (cheap voices cost two of 24 units, others three). Each track retains eight physical slots; engine-specific limits and release-first stealing still apply. FM6 now admits up to eight voices. Drum voices are separate. Dense expanded populations need device deadline testing.
 
 ### Tap and hold
 
@@ -151,7 +153,7 @@ The layers are **FX** (punch-in effects), **EDIT** (erase), **ARP** (note repeat
 | **SAVE** | on TRACKS or DRUMS: the **SONG** screen · on the SONG screen: save the song · elsewhere: the **SAVE pages** | the **song layer** (sections A–D, chain, song mode, SONG REC) |
 | **HOME** | the **TRACKS** screen · on TRACKS: the **visualiser** (HOME again closes it) | 0.7 s: the **menu** (SCREEN, LIGHTS, AUDIO, SYSTEM); hold again to leave it |
 | **ENV** | ENV pages (ENV, ENV DEST) | — |
-| **LFO** | LFO pages (LFO, LFO DEST) | — |
+| **LFO** | LFO pages (LFO, LFO 2, LFO DEST, DRIFT) | — |
 | **FX** | FX pages (FX, FILTER, SLICER, DLY, REV/CHO) | punch-in layer |
 | **SEL** | SEL pages (SEL, SEL 2) | key / chord layer |
 | **EDIT** | EDIT pages (EDIT 1, EDIT 2, VOICE, VOICE 2) · on TRACKS with the drum track: the **DRUMS** screen · on DRUMS: grid → kit → groove · on the STEP page: clear the step | erase layer |
@@ -500,7 +502,7 @@ There are three ways to enter steps:
 | Hold **OCT+** + KNOB 1 **STEP** clockwise | extends after the selected note/chord with ties, one per step; stops at the pattern's end. Turning backward moves without erasing. Undo the whole gesture with EDIT + OCT−. |
 | Hold **OCT−** + KNOB 1 **STEP** clockwise | writes rests into each following step; the starting step stays intact. The same end-stop, backward movement and undo apply. On STEP, the OCT buttons are painting modifiers; use another page to change playing octave. |
 | Hold either **OCT** button + KNOB 2 | shifts the selected note/chord by whole octaves; selecting a tie edits its onset. Intervals and metadata stay intact; MIDI bounds limit the shift. |
-| Hold either **OCT** button + KNOB 3 | moves the selected note/chord by whole steps; moving into its own tie run keeps its old end, while other moves shift the full chain. Timing, fill conditions and locks travel with the event. Playback can continue; unrelated occupied destinations are protected. EDIT + OCT−/OCT+ undoes/redoes the gesture. |
+| Hold either **OCT** button + KNOB 3 | moves the selected note/chord by whole steps; moving into its own tie run keeps its old end, while other moves shift the full chain. Timing, fill conditions and locks travel with the event. Empty destinations accept the move even if recording or deletion left silent note fields, timing nudges or conditions behind; parameter locks remain protected. Playback can continue; unrelated occupied destinations are protected. EDIT + OCT−/OCT+ undoes/redoes the gesture. |
 | KNOB 2 **NOTE** | transposes the step (an empty step gets your last note) |
 | KNOB 3 **TIME** / **LEN** | on an empty step, a TIE or a REST: **NOTE**, **TIE** (holds the previous note on) or **REST** · on a note (2.6): **LEN**, how many steps the note lasts: longer turns the steps after it into TIEs (it stops at the next step that has notes, and at the pattern's end: *NOTE AHEAD*, *END OF PATTERN*), shorter turns its last TIEs back into RESTs |
 | KNOB 4 **FLAG** | **–**, **ACC** (accent), **SLD** (slide to the next note), **A+S** (both) |
@@ -781,6 +783,7 @@ Tap a button to open its first page (or the last one you used); **tap it again**
 | **LFO** | **LFO** | RATE (Hz) | WAVE: SIN, TRI, SAW, SQR, S&H | PHS phase | FADE (fade-in time) |
 | | **LFO 2** (2.6) | SYNC: OFF, 4BAR, 2BAR, 1BAR, 1/2, 1/4, 1/8, 8T, 1/16, 16T, 1/32 | TRIG: NOTE / FREE | POL: BI / UNI | — |
 | | **LFO DEST** | PIT: vibrato | FLT: filter wobble | SHP: shape | AMP: tremolo |
+| | **DRIFT** | MODE: OFF / DRIFT / DRONE / BOTH | CYCLE: 5S–160S | AMOUNT | TARGET: TONE / SHAPE / PAN |
 | **FX** | **FX** (sends) | DST drive | CHO chorus send | DLY delay send | REV reverb send |
 | | **FILTER** | FILT: one-knob filter of the track — left LP, right HP, centre OFF | — | — | — |
 | | **SLICER** | SLCR: OFF, GATE, STUT (stutter) | PAT: pattern 1–16 | RATE: 1/8, 1/16, 1/32, 8T, 16T, 32T | DEPTH |
@@ -894,7 +897,7 @@ The **SAMPLE** sets are free recordings (CC0: Versilian Studios VSCO-2 CE and VC
 
 ### FM6 and DX7 patches
 
-**FM6** is msfa, the synthesis core of Dexed, as Felucca 1.0 ported it: six operators with their own four-stage envelopes, keyboard scaling, velocity, ratio or fixed frequency and detune; 32 algorithms, feedback, LFO, pitch envelope; six voices per track. The eight EDIT values above are **macros on top of the patch**; the track's FLT moves MLVL (so LFO → FLT still brightens it), SHP the feedback, PIT the pitch.
+**FM6** is msfa, the synthesis core of Dexed, as Felucca 1.0 ported it: six operators with their own four-stage envelopes, keyboard scaling, velocity, ratio or fixed frequency and detune; 32 algorithms, feedback, LFO, pitch envelope; eight voices per track. The eight EDIT values above are **macros on top of the patch**; the track's FLT moves MLVL (so LFO → FLT still brightens it), SHP the feedback, PIT the pitch.
 
 Edit full patches in the web editor's **FM6** panel (Sound page, on an FM6 track): every operator, **Send to track**, **Store in bank** (B1–B27), **Import SysEx** (a DX7 voice or a 32-voice bank: thousands of DX7 and Dexed patches play on the FM-1; or drop the .syx file on the panel) and **Export SysEx**. **Store cartridge in bank** (2.5) puts a whole 32-voice cartridge on the FM-1 at once: the first 27 voices are ticked (or tick the ones you want, up to 27), and one write puts them in B1, B2… in order; the editor asks before replacing, and the rest of the bank stays. Stop the song first. Before storing you can choose to **also add them to the user presets** (in the free slots, or from a slot you pick): each voice gets a user preset with its name that plays its B slot, so on the FM-1 you pick it by name with **PRESETS** or **SELECT**, like any sound; the editor says which user presets it would replace. (A user preset keeps PTCH, not the patch: the voice itself stays in the bank.) Then pick them on the FM-1 with **PTCH** (EDIT page 2: B1–B27 after the factory F1–F8). A project keeps the track's **PTCH**, not the patch itself: store an edited patch in the bank to keep it.
 
@@ -1614,7 +1617,7 @@ between direct sequence playback and the arp without waiting for the next NOTE.
 
 On a synth track, tap **SEQ** through STEP → PATTERN → RECORD → SEQUENCES → SONG.
 The SELECT knob reaches the same five pages in either direction; SONG is the arrangement
-screen. SEQUENCES offers 24 four-bar progressions, including classic turns,
+screen. SEQUENCES offers 27 four-bar progressions, including classic turns,
 sevenths, gospel, disco, garage, Latin rhythms, house offbeats and funk. Knobs select
 starter, root, scale and CHORD/BASS/ARP NOTES output. A CHR track starts this browser
 in Major without changing its actual scale. On any starter page, turn **PRESET**
@@ -1887,3 +1890,94 @@ All three zero bypasses the effect; OFF remains first and retains saved amounts.
 Near the end of PRESETS, the **LOFI** bank adds **DUST KEYS, WORN PAD, TOY BELL
 and DUST BASS**. These are editable instrument sounds and leave the master LOFI
 choice alone. Combine the warm presets with TAPE, or try SMPLR on drums.
+
+### Slow ambient DRIFT
+
+On a synth track, tap **LFO** through to **DRIFT**. Knob 1 selects
+**OFF / DRIFT / DRONE / BOTH**. Choose DRIFT for slow movement alone; knob 2 selects a **5S / 10S / 20S / 40S / 80S / 160S** cycle; knob 3
+sets AMOUNT; knob 4 selects **TONE / SHAPE / PAN**. Full amount allows roughly
+±64 control units of movement. The live bipolar meter shows the actual motion;
+the cycle bar shows progress toward the next random destination. This is smooth random
+movement, independently generated for each synth track. It layers over your
+existing sound and LFO settings. TONE moves filter cutoff, SHAPE moves the
+engine’s shape control, and PAN moves stereo position. A target may be subtle
+on sounds whose corresponding control is already at its limit.
+
+Fresh defaults are OFF, 10S and about 50% amount. For LOFI, **EDIT → MOTN**,
+knob 4 **TONE** around 50% leaves room to wander both darker and brighter.
+
+Change these controls during playback. Amount changes, OFF and target changes
+fade instead of jumping. DRIFT is unavailable on drums, does not change pitch,
+and is not stored in sections/projects; it resets when powered off.
+
+For sustained progressions, choose **STILL WATER**, **WIDE SKY** or **DUSK** in
+SEQUENCES, select **CHORD**, and try **VLEAD**, a slow tempo and a long attack
+and release. Each has one onset per bar with tied sustains. ROOT/SCALE, octave,
+independent rhythms, preview, ADD/REPLACE and Apply work as for other starters.
+For tap-toggle notes, choose **DRONE**; choose **BOTH** to add slow DRIFT too.
+Tap pitches to add them, then tap those pitches again to remove them. Other
+held pitches keep sounding. Key lights show the selected notes at the current
+octave. Octave and track changes preserve the captured notes; return to their
+register to toggle them off, or press STOP to clear them all.
+
+Use a sustained sound: set **EDIT → VOICE** to **POLY** for multiple pitches,
+and raise **ENV → SUS** for a steady bed. DRONE holds the note gate; it does
+not change an instrument’s envelope or add polyphony beyond the shared voice
+budget. One-shot/decaying instruments can still fade while their gate is held.
+
+Selecting DRONE takes over that track’s previous live holds and switches its
+ARP/CHORD modes off, while transport and stored sequences stay intact. Enabling
+ARP or CHORD later exits drone holding. MIDI notes stay momentary; MIDI and
+sequence releases cannot cut the same pitch while it is selected as a drone.
+MODE OFF/DRIFT, STOP, route changes and loading another sound/project retire
+the drone notes. Mode and notes reset at power-off and are not saved.
+
+### Slowly evolving drone notes
+
+Choose a sustaining **POLY** sound. On **LFO → DRIFT**, select **DRONE** or
+**BOTH**, then tap notes to form your chord. Open **LFO → EVOLVE**:
+
+| Knob | Control |
+| --- | --- |
+| 1 MODE | OFF / ON. OFF keeps the current pitches. |
+| 2 CYCLE | 1–160 seconds, or tempo-synced bar/note divisions from 16 bars to sixteenth-note triplets. |
+| 3 CHANCE | Probability of a change each cycle; 0% never changes, 100% always attempts. |
+| 4 RANGE | Maximum movement per change, 1–7 notes of the selected scale. |
+
+Start with **ON / 5S / 100% / 1** to hear it clearly. At most one pitch moves
+per cycle. Other notes stay held without reattacking. ROOT/SCALE in SEL determine
+which pitches are allowed; CHR uses all semitones. RANGE bounds each move, so the
+bed can gradually wander beyond its starting register. A move is skipped at
+pitch limits, on a duplicate note, or when another input/sequence owner shares
+the affected pitch. This keeps MIDI, other keys and stored playback safe.
+
+Timed evolution also runs with transport stopped; synced cycles pause. Rate changes
+and empty/released beds restart timing, with synced choices waiting for the next boundary. Turn it off to keep the harmony you’ve reached, tap
+lit notes to remove them, or use STOP to clear the bed. Normal REC captures the
+result as ordinary notes, within the existing four-note-per-step limit. Without
+REC, stored sequences and sound parameters stay unchanged. Controls and held
+notes are runtime-only; power-off resets them. PAGE HELP explains the DRONE
+requirement and scale-step range.
+
+EVOLVE's live cycle bar shows progress toward the next attempt. Timed choices run
+with playback stopped; note/bar choices follow transport phase and pause when
+stopped. SYNC changes occur on the next boundary, without replaying missed ones.
+The page indicates TIMED, TEMPO SYNC, PAUSED, ADD NOTES or NEEDS DRONE.
+
+### Track sustain
+
+Tap **ENV** to **SUSTAIN**. Set knob 1 TYPE to **PEDAL**, then choose knob 2
+DECAY: **0.5S / 1S / 2S / 4S / 8S / 16S / 32S / HOLD**. Use **POLY** to let
+released notes overlap new notes. The original envelope keeps running; a released
+note rings under a separate decay, while new attacks stay independent. HOLD adds
+no fade, but a one-shot sample or naturally decaying instrument can still end.
+
+TYPE **OFF** returns ringing tails to normal release, leaving physically held
+notes alone. **STOP** releases acoustic tails. Tied notes retain their normal
+continuations, and MIDI note-offs/recording keep the played gate duration. Tails
+yield voices before held notes when the shared budget fills. The settings are
+per track, runtime-only and unavailable on drums; they reset at power-off.
+
+Knob 1 also selects **PIANO**, **STRINGS** or **LOFI**. PIANO gives treble notes a faster decay and stronger darkening; STRINGS rings more gently for overlapping guitar-like voicings. These shape the existing instrument; they do not turn every sound into an acoustic piano or guitar. LOFI adds reduced sample rate/resolution to the released tail alone.
+
+Knob 3 **DAMP** darkens tails progressively; with HOLD it still colors the tail. Higher DAMP also coarsens LOFI. Knob 4 **AMOUNT** sets extension level: zero gives ordinary release, 100% keeps the full extension. Held/new attacks remain unchanged. DECAY is approximate RT60; PIANO varies it by pitch. Naturally decaying sounds still end. Settings remain runtime-only; saving a section does not preserve them.

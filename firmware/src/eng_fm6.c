@@ -31,7 +31,7 @@
 #include "fm6_core.c"
 #include "felucca_fm6.h"         /* tools/gen_fm6_patches.py: FM6_INIT, FM6_FACTORY[] */
 
-#define FM6_POLY 6               /* engine_t.poly */
+#define FM6_POLY 8               /* engine_t.poly */
 typedef struct {                 /* a part's FM6 state: its engine arena (engines.c) */
     fm6_note_t note[FM6_POLY];
     int32_t bus[2][FM6_N];       /* fm6_core_render's modulator buses: the part's own, so parts render on both cores */
@@ -332,7 +332,7 @@ static void fm6_render(track_t *t, voice_t *v, int32_t *out, uint32_t len, const
     if (!n || !n->live || len != FM6_N)
         return;
     p = fm6_eff[tr].p;
-    if (!v->gate && n->down)
+    if (!voice_engine_held(v) && n->down)
         fm6_note_key(n, p, 0);
     lf = fm6_note_logfreq(m->pitch16 + (p[FP_TRNSP] - 24) * 16, m->fine);
     fb = clamp(fm6_eff[tr].fb + ((m->shape - (64 << 8)) >> 11), 0, 7);

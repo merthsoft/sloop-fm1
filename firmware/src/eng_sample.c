@@ -135,7 +135,7 @@ DSP_INLINE int32_t sample_next_inline(const smp_zone_t *z, voice_t *v, int loop)
     v->s[0] = clamp(v->s[0] + ((code & 8u) ? -vd : vd), -32768, 32767);
     v->s[1] = clamp(v->s[1] + IMA_IDX[code & 7u], 0, 88);
     pos++;
-    if (pos > z->le && z->looped && loop && (z->looped != SMP_LOOP_HELD || v->gate)) {   /* (HELD, let go: the tail) */
+    if (pos > z->le && z->looped && loop && (z->looped != SMP_LOOP_HELD || voice_engine_held(v))) {   /* (HELD, let go: the tail) */
         pos = z->ls;
         v->s[0] = z->pred;
         v->s[1] = z->idx;

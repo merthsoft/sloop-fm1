@@ -142,8 +142,13 @@ typedef struct {
     uint8_t note, vel, gate, active;
     uint8_t stage;               /* env: 0 off, 1 attack, 2 decay/sustain, 3 release, 4 fading out (given up) */
     uint8_t kill;                /* stage 4: blocks of the fade left */
+    uint8_t sustained;           /* released tail: engine gate held, allocator gate remains off */
     uint8_t pitch_frac;          /* the glide between 1/16 semitones: pitch_cur + pitch_frac / 256 */
     int16_t penv;                /* the pitch envelope (ENV > PIT): Q15, a fast fall from the note's start */
+    uint8_t tail_init;           /* initialize the released-tail tone state on first render */
+    uint8_t tail_amount;         /* keep the last extension level through OFF/normal release */
+    uint32_t tail;               /* Q15.9 tail gain; zero = no sustain processing */
+    int32_t tail_lp, tail_hold;  /* released-tail filter/sample hold, independent of engine state */
     int32_t env;                 /* Q24 */
     int32_t env_out;             /* last control-rate amplitude, Q15 */
     int32_t pitch16, pitch_cur;  /* 1/16 semitone, with glide */
@@ -153,6 +158,8 @@ typedef struct {
     int32_t s[8];                /* engine state (filters, envs) */
     uint32_t age;
 } voice_t;
+
+static inline int voice_engine_held(const voice_t *v) { return v->gate || v->sustained; }
 
 typedef struct {                 /* per-voice control-rate modulation, computed in voice.c */
     uint32_t inc;                /* phase increment of the base pitch */

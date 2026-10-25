@@ -17,6 +17,7 @@ static void fm1_irq_on(void) {}
 #include "../src/engines.c"
 #include "../src/drums.c"
 #include "../src/params.c"
+#include "../src/ambient.c"
 #include "../src/voice.c"
 #include "../src/slicer.c"
 #include "../src/cpu1.h"                        /* (2.7) no second core in the browser: every unit renders here */

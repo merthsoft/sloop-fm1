@@ -132,12 +132,19 @@ UI_SMALL static void draw_page_help(void)
             cv_text(4,46+(int32_t)k*20,&FONT_S,n,TE_COL[k]);
             cv_text(36,46+(int32_t)k*20,&FONT_S,labels[k],TE_G4);
         }
+        if(pg->scope==SC_EVOLVE) {
+            cv_text(4,132,&FONT_S,"DRIFT: DRONE OR BOTH",TE_G4);
+            cv_text(4,152,&FONT_S,"RANGE: SCALE STEPS",TE_G4);
+            cv_text(4,172,&FONT_S,"ONE NOTE PER CYCLE",TE_G4);
+            cv_text(4,192,&FONT_S,"RUNTIME / NOT SAVED",TE_G4);
+        } else {
         cv_text(4,132,&FONT_S,"SELECT: PAGE",TE_G4);
         cv_text(4,152,&FONT_S,"PRESETS",TE_G4);
         cv_text(148,152,&FONT_S,"ALGORITHM",TE_G4);
         cv_text(4,172,&FONT_S,"SOUND",TE_G4);
         cv_text(148,172,&FONT_S,"TRACK",TE_G4);
         cv_text(4,192,&FONT_S,page_hold_hint(pg),TE_G4);
+        }
         cv_text(4,222,&FONT_S,"OCT-: BACK",C_WHITE);
         cv_oy=0;cv_blit(0,pass*120);
     }

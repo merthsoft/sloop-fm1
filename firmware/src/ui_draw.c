@@ -380,7 +380,7 @@ UI_SMALL static uint32_t str_hash(uint32_t h, const char *s)
 /* a page drawn with its values large (graph_big) */
 UI_SMALL static int big_page(const page_t *pg)            /* (2.6: the INSERT pages too: their middle stayed empty) */
 {
-    return (pg->graph == GR_NONE || pg->graph == GR_INS) && pg->scope != SC_SONG && pg->scope != SC_DRUM;
+    return (pg->graph == GR_NONE || pg->graph == GR_INS) && pg->scope != SC_SONG && pg->scope != SC_DRUM && pg->scope != SC_DRIFT && pg->scope != SC_EVOLVE;
 }
 UI_SMALL static uint32_t graph_signature(void)
 {
@@ -417,6 +417,16 @@ UI_SMALL static uint32_t graph_signature(void)
             h ^= (uint32_t)roll_selection().pitch*2654435761u;
         }
         h ^= steps_hash(t) + ph * 31u + ui.cursor * 7919u;
+    }
+    if(pg->scope==SC_EVOLVE && !is_drum(t)) {
+        for(i=0;i<4;i++)h=(h^(uint32_t)evolve_p[song.sel][i])*31u;
+        h^=evolve_phase(song.sel)*7919u+(uint32_t)kh_any(t)*65537u+song.playing;
+    }
+    if(pg->scope==SC_DRIFT && !is_drum(t)) {
+        for(i=0;i<4;i++)h=(h^(uint32_t)drift_p[song.sel][i])*31u;
+        h^=(uint32_t)(drift[song.sel].value>>7)*7919u;
+        h^=(uint32_t)(drift[song.sel].phase>>24);
+        h^=(uint32_t)drift[song.sel].target<<24;
     }
     return h;
 }
@@ -514,8 +524,14 @@ UI_SMALL static void graph_home(void)
 {
     uint32_t r,i;
     uint16_t sun[4];
-    uint32_t light=home_sun_light();
+    uint32_t light=home_sun_light(),scene=home_scene_step();
     for(r=0;r<4;r++) sun[r]=rgb565_scale(TE_COL[r],light,16u);
+    /* Fixed stars: two gently brighten in turn; never touch the audio RNG. */
+    static const uint8_t stars[][2]={{12,4},{39,9},{78,3},{162,5},{185,13},{207,4},{61,22},{175,24}};
+    for(r=0;r<NELEM(stars);r++)
+        cv_rect(stars[r][0],stars[r][1],1,1,((r+(scene>>1))&7u)<2u?C_GRAY:C_DIM);
+    cv_line(64,42,176,42,rgb565_scale(sun[1],1,4));
+    cv_line(40,43,200,43,rgb565_scale(sun[1],1,2));
     /* Striped round sun and wireframe skyline; no bitmap or framebuffer. */
     for(int32_t y=0;y<44;y++) {
         int32_t w=22,dy=y-21;
@@ -538,14 +554,16 @@ UI_SMALL static void graph_home(void)
         cv_text(222,4,&FONT_S,badge,TE_COL[scene]);
     }
 #endif
-    cv_line(0,44,239,44,C_AMB);
+    cv_line(0,44,239,44,sun[1]);
     for(int32_t x=-180;x<=420;x+=60) cv_line(120,44,x,123,C_LINE);
+    if(song.playing)cv_line(120,44,-180+(int32_t)(scene%11u)*60,123,rgb565_scale(sun[0],1,2));
     for(r=0;r<NTRK;r++) {
         const track_t *t=&trk[r];
         int32_t y=48+(int32_t)r*19;
         char n[2]={(char)('1'+r),0};
         int mute=!trk_level(r) || t->p[P_MUTE] || (song.solo && !(song.solo&(1u<<r)));
-        cv_rect(2,y,236,18,TE_G1);
+        /* Let the wireframe show between notes; mask only the number badge. */
+        cv_rect(2,y,24,18,C_BLACK);
         cv_rect(2,y,2,18,r==song.sel?C_WHITE:TE_DIM[r]);
         cv_text(9,y+1,&FONT_S,n,TE_COL[r]);
         for(i=0;i<16;i++) {
@@ -626,17 +644,35 @@ UI_SMALL static void graph_guide(const page_t *pg, const track_t *t, uint16_t c)
         cv_text(8,base+4,&FONT_S,"DRY   TEMPO-SYNCED ECHOES",C_GRAY);
     }
 }
+/* Actual audio-owned motion, not a second oscillator or simulated history. */
+UI_SMALL static void graph_drift(uint16_t c)
+{
+    uint32_t part=song.sel;
+    uint32_t evolution=cur_page()->scope==SC_EVOLVE;
+    if(evolution) {
+        cv_text(8,16,&FONT_S,!evolve_p[part][0]?"OFF":!drone_on(TSEL)?"NEEDS DRONE":!kh_any(TSEL)?"ADD NOTES":evolve_p[part][1]>=8?(song.playing?"TEMPO SYNC":"PAUSED"):"TIMED",C_GRAY);
+    } else {
+    int32_t v=drift[part].value, x=120+(v*104>>14);
+    cv_text(8,8,&FONT_S,(drift_p[part][0]&1)?"LIVE MOTION":(drift[part].depth?"FADING OUT":((drift_p[part][0]&2)?"DRONE KEYS":"OFF")),C_GRAY);
+    cv_line(16,55,224,55,C_DIM);
+    cv_line(120,43,120,67,C_GRAY);
+    cv_rect(v<0?x:120,51,(v<0?120-x:x-120)+1,9,c);
+    cv_rect(x-2,46,5,19,C_WHITE);
+    cv_text(8,75,&FONT_S,"-",C_GRAY);
+    cv_text(112,75,&FONT_S,"0",C_GRAY);
+    cv_text(220,75,&FONT_S,"+",C_GRAY);
+    if(drift_p[part][0]==2) {cv_text(8,102,&FONT_S,"TAP KEYS TO TOGGLE",C_GRAY);return;}
+    }
+    cv_text(8,102,&FONT_S,"CYCLE",C_GRAY);
+    cv_rect(80,107,144,2,C_DIM);
+    cv_rect(80,105,1+((evolution?evolve_phase(part)*2u:drift[part].phase>>24)*144u>>8),6,c);
+}
 UI_SMALL static void draw_graph(void)
 {
     const page_t *pg = cur_page();
     const track_t *t = TSEL;
     uint16_t c = TE_COL[song.sel & 3u];               /* LIVE: the curves in the track's colour */
     uint32_t sig, top, drum_note = !ui.home && is_drum(t) && !page_for_drum(pg);
-    if (!ui.home && pg->graph == GR_TRK) {
-        studio_tracks_draw();
-        ui.graph_top = 1;                            /* the next graph draws its top rows again */
-        return;
-    }
     sig = graph_signature();
     if (!ui.force && sig == ui.graph_sig)
         return;
@@ -688,7 +724,9 @@ UI_SMALL static void draw_graph(void)
             graph_user();
             break;
         default:
-            if (big_page(pg)) {
+            if(pg->scope==SC_DRIFT || pg->scope==SC_EVOLVE) {
+                cv_oy=0;graph_drift(c);
+            } else if (big_page(pg)) {
                 cv_oy = 0;
                 graph_big();
             }
@@ -696,9 +734,9 @@ UI_SMALL static void draw_graph(void)
         }
     }
     top = ui.home || (!drum_note && (pg->graph == GR_BROWSE || pg->graph == GR_SLOTS || pg->graph == GR_USER ||
-                                     big_page(pg) || pg->graph==GR_ROLL || pg->graph==GR_DEST || pg->graph==GR_FILTER || pg->graph==GR_DELAY));   /* these draw from the top */
+                                     big_page(pg) || pg->scope==SC_DRIFT || pg->scope==SC_EVOLVE || pg->graph==GR_ROLL || pg->graph==GR_DEST || pg->graph==GR_FILTER || pg->graph==GR_DELAY));   /* these draw from the top */
     cv_oy = 0;
-    if (ui.hot_t && settings.zoom && pg->graph != GR_ROLL && !(top && big_page(pg) && !drum_note)) {   /* (the big values show it already) */                 /* focus (menu ZOOM): the touched value, large and white */
+    if (ui.hot_t && settings.zoom && pg->graph != GR_ROLL && pg->scope != SC_DRIFT && pg->scope != SC_EVOLVE && !(top && big_page(pg) && !drum_note)) {   /* (the big values show it already) */                 /* focus (menu ZOOM): the touched value, large and white */
         int32_t x;
         top = 1;
         cv_rect(0, 0, 150, 50, C_BLACK);
