@@ -62,14 +62,17 @@
   <div class="strip"><i></i><i></i><i></i><i></i></div>
   
   
-  <h1>Firmware for the M-VAVE FM-1</h1>
-  <p class="lead">A groovebox you play live: four tracks — three synths and a drum machine — 12 synth engines (with six-operator FM and DX7 patches), 153 sounds, 37 drum kits from 808 to techno, amapiano and ambient, your own samples and drum kits, 27 punch-in effects. House, techno, hip-hop, drum &amp; bass, synthwave, lo-fi, ambient: make what you want. No factory patterns, nothing to load: everything you hear, you play.</p>
+  <h1 data-t="heading">MerthSloop for the M-VAVE FM-1</h1>
+  <p class="lead" data-t="headline">Start with a groove. Make it yours.</p>
+  <p data-t="overview">MerthSloop builds on SLOOP with ready-to-play drum grooves and chord progressions, expressive live controls, deeper sound shaping, and a neon interface. Build a song quickly, then keep playing and changing it.</p>
   <div class="tiles">
-    <div class="tile" style="--c: var(--blue)"><b>153</b><span>sounds, 12 engines, your samples</span></div>
-    <div class="tile" style="--c: var(--green)"><b>37</b><span>drum kits, 909 to afro, + your own</span></div>
-    <div class="tile" style="--c: var(--yellow)"><b>27</b><span>punch-in fx: hold fx + key</span></div>
-    <div class="tile" style="--c: var(--orange)"><b>rec</b><span>no click: the loop follows you</span></div>
+    <div class="tile" style="--c: var(--blue)"><b data-t="beatsTitle">BEATS</b><span data-t="beats">built-in grooves, preview &amp; rhythm shaping</span></div>
+    <div class="tile" style="--c: var(--green)"><b data-t="chordsTitle">CHORDS</b><span data-t="chords">custom progressions &amp; live performance</span></div>
+    <div class="tile" style="--c: var(--yellow)"><b data-t="soundTitle">SOUND</b><span data-t="sound">lo-fi, delay, reverb &amp; sustain characters</span></div>
+    <div class="tile" style="--c: var(--orange)"><b data-t="neonTitle">NEON</b><span data-t="neon">a fresh display &amp; scale-lit keys</span></div>
   </div>
+  <p data-t="more">Keep notes ringing across new chords with independent ties. Play vibrato, tremolo, wah and pan. Let drones drift and evolve. It all runs on the FM-1.</p>
+  <p class="small"><a href="https://github.com/merthsoft/sloop-fm1/blob/merthsloop/docs/firmware/MERTHSOFT-FEATURES.md" target="_blank" rel="noopener" data-t="features">Explore the MerthSloop features and controls</a></p>
   <p data-t="intro"></p>
   <p data-t="warn"></p>
   <p><button id="go" disabled data-t="install"></button></p>
@@ -95,11 +98,11 @@
     <p><button id="stock-go" disabled data-t="stockGo"></button></p>
     <p class="small" data-t="back"></p>
   </details>
-  <p class="small">SLOOP is based on Felucca by Leo Kuroshita (@kurogedelic), <a href="https://hugelton.com" target="_blank" rel="noopener">Hügelton Instruments</a>.
+  <p class="small">MerthSloop by Merthsoft Creations, built on <a href="https://github.com/isod89/sloop-fm1" target="_blank" rel="noopener">SLOOP</a> and Felucca by Leo Kuroshita (@kurogedelic), <a href="https://hugelton.com" target="_blank" rel="noopener">Hügelton Instruments</a>.
     Hold OCT− alone while switching on for USB rescue.<br>
     Font: Terminus (Dimitar Toshkov Zhekov, SIL OFL 1.1). Samples: Versilian Studios VSCO-2 Community Edition and VCSL (CC0 1.0), and the Hügelton Sample Pack (© Hügelton Instruments, not CC0).<br>
-    M-VAVE and FM-1 are trademarks of their respective owners; SLOOP is not affiliated with them.<br>
-    <span data-t="license"></span> <a href="https://github.com/hugelton/Felucca" target="_blank" rel="noopener">github.com/hugelton/Felucca</a></p>
+    M-VAVE and FM-1 are trademarks of their respective owners; MerthSloop is not affiliated with them.<br>
+    <span data-t="license"></span> <a href="https://github.com/merthsoft/sloop-fm1/tree/merthsloop" target="_blank" rel="noopener">MerthSloop</a> · <a href="https://github.com/hugelton/Felucca" target="_blank" rel="noopener">Felucca</a></p>
 </main>
 <script type="module">
 // SPDX-License-Identifier: GPL-3.0-only
@@ -439,15 +442,24 @@ class Updater {
 const $ = (id) => document.getElementById(id);
 const TEXT = {
   ja: {
+    heading: "M-VAVE FM-1 用 MerthSloop",
+    headline: "グルーヴから始めて、自分の曲に。",
+    overview: "MerthSloop は SLOOP をベースに、すぐに使えるドラムグルーヴとコード進行、ライブ演奏の操作、音作り、ネオンカラーの画面を加えたファームウェアです。曲の土台を手早く作り、演奏しながら変えていけます。",
+    beatsTitle: "BEATS", beats: "内蔵グルーヴ、試聴、リズム調整",
+    chordsTitle: "CHORDS", chords: "自作コード進行とライブ演奏",
+    soundTitle: "SOUND", sound: "ローファイ、ディレイ、リバーブ、サステイン",
+    neonTitle: "NEON", neon: "新しい画面とスケールに合わせた鍵盤ライト",
+    more: "独立したタイで次のコードまで音を伸ばし、ビブラート、トレモロ、ワウ、パンを演奏。ドローンにゆっくりした変化を加えることもできます。すべて FM-1 本体で動きます。",
+    features: "MerthSloop の機能と操作を見る",
     intro: "FM-1 を USB で接続してください。（Chrome か Edge で使えます）",
     warn: "書き込み中は USB を抜かないでください。",
-    install: "インストール", other: "English",
-    editor: "エディタ（インストール後、パソコンから音色やシーケンスを編集）",
+    install: "MerthSloop をインストール", other: "English",
+    editor: "MerthSloop エディタを開く",
     edOffline: "実機編集用エディタをダウンロード（Chrome / Edge）。音声試聴のオフライン利用はインストールしたアプリで。",
-    appInstall: "アプリとしてインストール（エディタとインストーラーがオフラインで使える・Android も）",
-    direct: "USB ケーブルはパソコンに直接つないでください。更新中は FM-1 を1台だけ接続してください。Probe や Transporter などの機材は不要です。",
-    brick: "万一インストールに失敗して起動しなくなった場合は、復旧に Transporter が必要です:",
-    beta: "これはベータ版で、不安定な場合があります。このカスタムファームウェアを使ったことで FM-1 が壊れたり不具合が起きたりしても、作者は一切の責任を負いません。自己責任でお使いください。",
+    appInstall: "エディタとインストーラーをオフラインで使う",
+    direct: "更新中は FM-1 を1台だけパソコンに直接つなぎ、完了するまで接続したままにしてください。",
+    brick: "起動しない場合は、Transporter などによるハードウェア復旧が必要になることがあります:",
+    beta: "MerthSloop は無保証のカスタムファームウェアです。自己責任でお使いください。",
     back: "公式ファームウェアに戻すには、M-VAVE 公式のアップデーター M-UPGRADE（Downloads → PC Software → M-UPGRADE）と公式ファームウェア（PC Firmware → FM-1 V15）が必要です。",
     nomidi: "このブラウザでは使えません。Chrome か Edge で開いてください。", loadfail: "読み込めませんでした: ",
     start: "開始します", verify: "確認中", loader: "書き込みモードに切り替え中", write: "書き込み中",
@@ -466,24 +478,33 @@ const TEXT = {
     license: "GPL-3.0、無保証。ソース:",
     stockTitle: "公式ファームウェア（V15）に戻す",
     stockHelp: "M-VAVE のサイトから公式の FM-1 V15 をダウンロードし、中の FM-1.fwsc（変更していないもの）を選んでください。ファイルはこのブラウザの中で確認され、どこにも送られません。",
-    stockBackup: "公式ファームウェアは SLOOP の曲・プロジェクト・サンプルを開けません。先にエディタでバックアップを保存してください（Projects → Backup）。SLOOP を入れ直せば、エディタから復元できます。",
+    stockBackup: "公式ファームウェアは MerthSloop の曲・プロジェクト・サンプルを開けません。先にエディタでバックアップを保存してください（Projects → Backup）。MerthSloop を入れ直せば、エディタから復元できます。",
     stockEditor: "エディタを開いてバックアップする", stockSaved: "バックアップをパソコンに保存しました",
     stockFile: "公式の FM-1.fwsc", stockGo: "公式 V15 をインストール",
     stockValid: "公式 V15 を確認しました", stockBad: "公式 V15 ではありません: ",
-    stockConfirm: "FM-1 に公式 V15 をインストールします。SLOOP の曲は公式ファームウェアでは開けません。バックアップは保存しましたか？",
-    stockFinish: "FM-1 は SLOOP の書き込みモードです。先に「インストール」で SLOOP の書き込みを終えてから、公式 V15 に戻してください。",
+    stockConfirm: "FM-1 に公式 V15 をインストールします。MerthSloop の曲は公式ファームウェアでは開けません。バックアップは保存しましたか？",
+    stockFinish: "FM-1 は MerthSloop の書き込みモードです。先に「インストール」で MerthSloop の書き込みを終えてから、公式 V15 に戻してください。",
     back: "M-VAVE のアップデーター M-UPGRADE（Downloads → PC Software）でも戻せます。FM-1 が見つからない場合は、MIDI を使う他のアプリとブラウザのタブを閉じてください。",
   },
   en: {
+    heading: "MerthSloop for the M-VAVE FM-1",
+    headline: "Start with a groove. Make it yours.",
+    overview: "MerthSloop builds on SLOOP with ready-to-play drum grooves and chord progressions, expressive live controls, deeper sound shaping, and a neon interface. Build a song quickly, then keep playing and changing it.",
+    beatsTitle: "BEATS", beats: "built-in grooves, preview & rhythm shaping",
+    chordsTitle: "CHORDS", chords: "custom progressions & live performance",
+    soundTitle: "SOUND", sound: "lo-fi, delay, reverb & sustain characters",
+    neonTitle: "NEON", neon: "a fresh display & scale-lit keys",
+    more: "Keep notes ringing across new chords with independent ties. Play vibrato, tremolo, wah and pan. Let drones drift and evolve. It all runs on the FM-1.",
+    features: "Explore the MerthSloop features and controls",
     intro: "Connect the FM-1 by USB. (Works in Chrome or Edge.)",
     warn: "Do not unplug the USB cable while writing.",
-    install: "Install", other: "日本語",
-    editor: "Editor (after installing: edit sounds and sequences from the computer)",
+    install: "Install MerthSloop", other: "日本語",
+    editor: "Open the MerthSloop editor",
     edOffline: "Download for offline FM-1 editing (Chrome / Edge). Offline audio preview uses the installed app.",
-    appInstall: "Install the app (the editor and the installer offline, Android too)",
-    direct: "Connect the USB cable directly to the computer. Keep only one FM-1 connected for the entire update. No probe or Transporter is needed.",
-    brick: "If an install fails and the FM-1 no longer starts, recovering it needs a Transporter:",
-    beta: "This is a beta and may be unstable. The author accepts no responsibility if your FM-1 is damaged or misbehaves because of this custom firmware. Use it at your own risk.",
+    appInstall: "Keep the editor and installer offline",
+    direct: "Connect one FM-1 directly to the computer and keep it connected until the update finishes.",
+    brick: "If the FM-1 no longer starts, hardware recovery such as Transporter may be needed:",
+    beta: "MerthSloop is custom firmware, provided without warranty. Use it at your own risk.",
     back: "To go back to the official firmware you need M-VAVE's official updater, M-UPGRADE (Downloads → PC Software → M-UPGRADE), and the official firmware (PC Firmware → FM-1 V15).",
     nomidi: "This browser cannot do it. Open the page in Chrome or Edge.", loadfail: "Could not load: ",
     start: "Starting", verify: "Verifying", loader: "Switching to update mode", write: "Writing",
@@ -502,12 +523,12 @@ const TEXT = {
     license: "GPL-3.0, no warranty. Source:",
     stockTitle: "Return to the official firmware (V15)",
     stockHelp: "Download the official FM-1 V15 from M-VAVE and select the FM-1.fwsc inside it, unmodified. The file is checked in this browser; it is not sent anywhere.",
-    stockBackup: "The official firmware cannot open SLOOP's music, projects or samples. Save a backup with the editor first (Projects → Backup); reinstall SLOOP and restore it from the editor whenever you want them back.",
+    stockBackup: "The official firmware cannot open MerthSloop's music, projects or samples. Save a backup with the editor first (Projects → Backup); reinstall MerthSloop and restore it from the editor whenever you want them back.",
     stockEditor: "Open the editor to back up", stockSaved: "I saved a backup on this computer",
     stockFile: "The official FM-1.fwsc", stockGo: "Install the official V15",
     stockValid: "Official V15 verified", stockBad: "Not the official V15: ",
-    stockConfirm: "Install the official V15 on the FM-1? The official firmware cannot open SLOOP's music. Did you save a backup?",
-    stockFinish: "The FM-1 is in SLOOP's update mode. Press Install to finish the SLOOP update first, then return to the official V15.",
+    stockConfirm: "Install the official V15 on the FM-1? The official firmware cannot open MerthSloop's music. Did you save a backup?",
+    stockFinish: "The FM-1 is in MerthSloop's update mode. Press Install to finish the MerthSloop update first, then return to the official V15.",
     back: "M-VAVE's own updater, M-UPGRADE (Downloads → PC Software), works too. If it does not find the FM-1, close every other app and browser tab that uses MIDI.",
   },
 };
