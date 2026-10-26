@@ -11,6 +11,7 @@ static void setup(void) {
         trk[i].p[P_AMODE]=trk[i].p[P_CHORD]=trk[i].p[P_AHOLD]=0;
         trk[i].p[P_ROOT]=0;trk[i].p[P_SCALE]=1;trk[i].p[P_VOICE]=V_POLY;trk[i].p[P_SUS]=127;
         evolve_p[i][0]=1;evolve_p[i][1]=2;evolve_p[i][2]=127;evolve_p[i][3]=1;
+        evolve_p[i][4]=-1;evolve_p[i][5]=9;
     }
     memset(evolve,0,sizeof evolve);go_home();
 }
@@ -46,6 +47,21 @@ int main(int argc,char **argv) {
     }
     assert(changes>100 && rng_state==global_rng && !memcmp(patch,t->p,sizeof patch));
     assert(!memcmp(original,t->step,sizeof original));
+    /* Absolute octave limits constrain long walks, including MIDI-end octaves. */
+    kh_release(t);drain();
+    static const int8_t bounds[][2]={{-1,-1},{0,0},{3,3},{3,5},{8,9},{9,9}};
+    for(uint32_t b=0;b<NELEM(bounds);b++) {
+        evolve_p[0][4]=bounds[b][0];evolve_p[0][5]=bounds[b][1];evolve_p[0][3]=7;
+        uint32_t low=(uint32_t)(bounds[b][0]+1)*12,high=(uint32_t)(bounds[b][1]+2)*12;
+        drone_toggle(t,low,27);drain();
+        for(uint32_t cycle=0;cycle<500;cycle++) {
+            evolve[0].left=1;evolve_tick(1);drain();assert(held(t)==1);
+            for(uint32_t n=0;n<128;n++)if(kh_has(t,n))assert(n>=low&&n<high);
+        }
+        kh_release(t);drain();
+    }
+    evolve_p[0][4]=-1;evolve_p[0][5]=9;evolve_p[0][3]=1;
+    drone_toggle(t,60,27);drone_toggle(t,64,27);drone_toggle(t,67,27);drain();
     /* Another track's drone/RNG is independent, including selected-track changes. */
     drone_toggle(&trk[1],48,27);drain();evolve_p[1][0]=0;
     uint32_t second[4];memcpy(second,kh_set[1],sizeof second);
@@ -117,7 +133,7 @@ int main(int argc,char **argv) {
         kh_release(t);drain();song.playing=0;
     }
     /* The page owns runtime knobs, not upstream patch IDs or parameter locks. */
-    open_family(FAM_LFO);for(uint32_t p=0;p<NPAGES;p++)if(PAGES[p].scope==SC_EVOLVE)ui.page=p;
+    open_family(FAM_LFO);for(uint32_t p=0;p<NPAGES;p++)if(PAGES[p].scope==SC_EVOLVE && PAGES[p].id[0]==0)ui.page=p;
     page_entered();frame();uint8_t lock=ui.lock_par;memcpy(patch,t->p,sizeof patch);
     encs[panel.enc[EN_K1]]=1;frame();assert(evolve_p[0][0]==1);
     encs[panel.enc[EN_K2]]=-100;frame();assert(!evolve_p[0][1]);
@@ -134,6 +150,19 @@ int main(int argc,char **argv) {
     evolve_p[0][1]=14;clk_beat=clk_pos=0;song.playing=0;ui.force=1;ui_draw();memcpy(shown,screen,sizeof shown);
     song.playing=1;ui.force=0;draw_graph();assert(memcmp(shown,screen,sizeof shown));
     ppm("ambient-evolve-sync");song.playing=0;kh_release(t);drain();
+    /* Both octave controls are native runtime values; crossing moves the other
+     * endpoint to keep a valid range, without retuning existing held notes. */
+    drone_toggle(t,60,27);drain();evolve_p[0][1]=2;evolve[0].rate=2;evolve[0].left=FS*5u;
+    for(uint32_t page=0;page<NPAGES;page++)if(PAGES[page].scope==SC_EVOLVE && PAGES[page].id[0]==4)ui.page=page;
+    page_entered();frame();uint32_t owners[4];memcpy(owners,kh_set[0],sizeof owners);
+    encs[panel.enc[EN_K1]]=100;frame();assert(evolve_p[0][4]==9&&evolve_p[0][5]==9);
+    encs[panel.enc[EN_K2]]=-100;frame();assert(evolve_p[0][4]==-1&&evolve_p[0][5]==-1);
+    assert(!memcmp(owners,kh_set[0],sizeof owners)&&kh_has(t,60));
+    evolve[0].left=1;evolve_tick(1);drain();assert(kh_has(t,60)); /* outside bounds: no forced octave jump */
+    int16_t *empty;assert(!page_desc(cur_page(),2,&empty)&&!empty);
+    assert(!page_desc(cur_page(),3,&empty)&&!empty);
+    evolve_p[0][4]=3;evolve_p[0][5]=5;ui.force=1;ui_draw();ppm("ambient-evolve-bounds");
+    kh_release(t);drain();
     track_select(TRK_DRUM);int16_t *v;for(unsigned k=0;k<4;k++)assert(!page_desc(cur_page(),k,&v));
     puts("evolution: scales/roots/bounds, one-note changes, timing/chance/OFF, ownership, MIDI balance, patch preservation and native knobs PASS");
 }

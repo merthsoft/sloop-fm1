@@ -1,3 +1,54 @@
+# MerthSloop firmware 2.8.0.77 — saved voice budget
+
+- HOME → AUDIO → VOICE BUDGET now survives power cycles through the existing verified device-settings transaction. Close HOME settings to save; changes made during playback are deferred until transport stops. Older records default to 8 / 12; invalid levels clamp safely. Upstream song formats are unchanged.
+- Target: 584,328 B, 8 B flash free; main static 90,336 B. Fault-injected settings commits, restart of every level and backup retention pass.
+
+# MerthSloop firmware 2.8.0.76 — About restored and evolution octave bounds
+
+- Standard About credits/layout/colors and version/author/core information restored. The 95% guard and automatic eligible-part core balancing remain active independently of the optional diagnostic screen. Runtime voice-budget choices remain; power-on still defaults to 8 / 12.
+- LFO → EVOLVE 2: knob 1 LOW OCT / knob 2 HIGH OCT (-1..9), default 3 / 5 (C3–B5). Endpoints follow each other when crossed. Bounds limit future evolution attempts without cutting or retuning held notes; manual out-of-range notes remain as played. Per-track runtime controls, no saved-format change.
+- A shared About-row drawing path/runtime field resolver and explicit keyboard/evolution handler boundaries fit both requests without musical cuts or new startup/sample decoding.
+- Normal target 584,296 B (40 B flash free), main static 90,336 B (7,968 B free), low RAM 28,928 B and pool 331,852 B. The earlier audible drone fix remains; residual hardware deadline overruns are not declared resolved.
+
+# MerthSloop firmware 2.8.0.75 — diagnostic core-balancing trial
+
+- Longer .74 hardware run accumulated eight new DMA misses, two CPU sheds and a 6,039-us peak. The threshold change alone was insufficient for deadline qualification.
+- Diagnostic builds only: core 1 receives the estimated heaviest eligible sounding synth part plus drums, using the preceding block's existing render count. Global-RNG/PHYS/multiple-FORMANT exclusions, manual masks and fallback remain intact. The 95% shedding trial remains; normal builds retain their previous split and 85% guard.
+- ABOUT has compact STEALS / SHEDS / RESTORE / MAX US / LATE / C1MASK snapshots. OCT+ refreshes; OCT- returns. Capture while playback continues, on the same boot.
+- Diagnostic target 584,316 B (20 B flash free), main static 90,368 B (7,936 B free); normal target 584,300 B (36 B flash free), main 90,336 B. Low RAM/pool unchanged. No musical feature cuts or saved-format change.
+- Eight-scene, thirteen-split audio parity includes the five-drone workload, asynchronous workers and forced timeouts. Goldens, ownership, UI and focused sanitizer checks pass; hardware timing remains pending.
+- [Trial behavior and capture instructions](../../docs/firmware/VOICE-BUDGET-EXPERIMENT.md#on-device-dropout-diagnostics).
+
+# MerthSloop firmware 2.8.0.74 — diagnostic overload-threshold trial
+
+- Hardware .73 captures confirmed 20 CPU sheds and 10 drone restores at a 5,373-us peak, with LATE HALVES unchanged at 7 and CPU1 running without timeouts. Shared admission was already set to 48 units.
+- Diagnostic builds only (`--audio-diag`) trial shedding after two consecutive halves above 95% of the wall-time deadline, rather than 85%. Normal builds retain 85%. Victim selection, recovery and admission limits are unchanged.
+- Real-ISR tests reproduce shedding at the reported time with the normal guard and retain all three notes with the trial. Exact thresholds, isolated/consecutive spikes, nested work and sustained overruns pass; trial passes UBSan. Hardware deadline qualification remains pending.
+- Diagnostic target 584,264 B (72 B free), static RAM unchanged. [Hardware evidence and trial instructions](../../docs/firmware/VOICE-BUDGET-EXPERIMENT.md#hardware-capture-and-threshold-trial).
+
+# MerthSloop firmware 2.8.0.73 — local dropout diagnostic build
+
+- Optional `--audio-diag` build replaces ABOUT credits with snapshots of steals, CPU sheds, drone restores, wall-time peak, DMA misses, CPU1 state/timeouts, sounding gates and logical held pitches. OCT+ refreshes; OCT- returns. Counters last for the current boot. Normal build defaults this hook OFF.
+- No audio-policy change. This investigates three latched LOFI drone notes dropping even at the maximum shared budget. The cause remains unconfirmed until hardware counters are collected.
+- Diagnostic target 584,264 / 584,336 B (72 B free); static RAM totals unchanged. The current local installer contains this diagnostic build; browser preview retains normal ABOUT.
+- [Capture instructions and field definitions](../../docs/firmware/VOICE-BUDGET-EXPERIMENT.md#on-device-dropout-diagnostics).
+
+# MerthSloop firmware 2.8.0.72 — wider shared voice budget
+
+- HOME → AUDIO → VOICE BUDGET (knob 4) now offers 8 / 12, 10 / 15, 12 / 18, 14 / 21, and 16 / 24: 24–48 weighted units. Knob stops at the ends; OCT+ cycles. Power-on default stays 8 / 12.
+- Uses existing voice slots; no added RAM or saved-format change. Engine-specific caps and CPU overload shedding remain. GRAIN stays three notes per track and VOICE four.
+- Every heavy/cheap admission boundary and menu endpoint/wrap is tested, including 24 simultaneous LOFI voices. Single/two-core recovery checks pass; hardware deadline qualification remains pending.
+- Target 584,300 / 584,336 B: 36 B flash free; main static 90,336 B. The selector extension adds 20 B flash and no RAM versus .71.
+
+# MerthSloop firmware 2.8.0.71 — adjustable voice budget and drone recovery
+
+- HOME → AUDIO → VOICE BUDGET, knob 4: default 8 / 12 (24 units) or experimental 10 / 15 (30 units). Runtime-only, resets at power-off. Engine caps, physical slots and CPU shedding remain.
+- Reproduce GRAIN + VOICE + LOFI drone pressure with Vinyl off/on. Higher budget keeps the 27-unit scene intact. Missing drone pitches survive both cross-track fades and own-slot reuse; recovery never steals or sends extra MIDI/recording events. Fresh attacks supersede old pending pitches, and natural one-shots are not repeated.
+- Share overload/admission victim categories, preserving quiet released-note priority and bass/lead protection.
+- Integrate the prior ordered native-clamp audit through the HAL, with portable fallback and original dynamic/inverted-bound contract. Signed boundary/register tests accompany target DSP checks.
+- Final target 584,280 / 584,336 B: 56 B free; main static 90,336 / 98,304 B (7,968 B free), +400 B versus .70. Low RAM/pool unchanged. No saved-format change or added voice slots.
+- Hardware listening, peak/deadline and stack qualification remain pending; this is an optional device-evaluation setting.
+
 # MerthSloop firmware 2.8.0.70 — sustain characters
 
 - ENV → SUSTAIN adds PIANO (faster treble loss), STRINGS (gentler darkening) and LOFI (released-tail sample hold/reduced resolution). PEDAL stays unchanged at default DAMP 0 / AMOUNT 100%. Held/new attacks remain clean.

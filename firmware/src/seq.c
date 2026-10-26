@@ -2294,6 +2294,29 @@ static void drone_toggle(track_t *t,uint32_t n,uint32_t except)
         midi_out_note(kh_mc[part],n,100);
     }
 }
+/* Restore only stolen drone voices, after quiet admission; never steal to recover.
+ * MIDI/logical owners remain unchanged. Natural one-shots are not restarted. */
+static void drone_recover(uint32_t frames)
+{
+    if(voice_recover_wait){voice_recover_wait=voice_recover_wait>frames?voice_recover_wait-frames:0;return;}
+    for(uint32_t p=0;p<NPART;p++) {
+        track_t *t=&trk[p];
+        if(!drone_on(t) || t->p[P_VOICE]!=V_POLY || t->xf_on || t->pold || t->eng_req!=t->engine || trk_silent(t) || !voice_fits(t))continue;
+        for(uint32_t i=0;i<trk_nvoice(t);i++) {
+            voice_t *v=&t->v[i];
+            if(v->active)continue;
+            for(uint32_t note=0;note<128;note++)if(drone_lost[p][note]) {
+                if(!kh_has(t,note)){drone_lost[p][note]=0;continue;}
+                voice_start(t,v,note,100,0);
+#if FELUCCA_AUDIO_DIAG
+                drone_restores++;
+#endif
+                return;
+            }
+            break;
+        }
+    }
+}
 /* One clock shared by scheduling and its UI phase, including external sync. */
 static uint32_t evolve_clock(void) {return clk_beat*96u+clk_pos*96u/BEAT_U;}
 static uint32_t evolve_phase(uint32_t part)
@@ -2304,7 +2327,7 @@ static uint32_t evolve_phase(uint32_t part)
     uint32_t period=EVOLVE_SECONDS[rate]*FS;
     return (period-clamp(evolve[part].left,0,period))*128u/period;
 }
-static void evolve_tick(uint32_t frames)
+static __attribute__((noinline)) void evolve_tick(uint32_t frames)
 {
     for(uint32_t part=0;part<NPART;part++) {
         track_t *t=&trk[part];int16_t *p=evolve_p[part];
@@ -2336,7 +2359,8 @@ static void evolve_tick(uint32_t frames)
             if(target<0 || target>127)break;
             if(mask&(1u<<((target-t->p[P_ROOT]+120)%12)))steps--;
         }
-        if(steps || kh_has(t,(uint32_t)target) || drone_shared(t,source) ||
+        if(steps || target<(p[4]+1)*12 || target>=(p[5]+2)*12 ||
+           kh_has(t,(uint32_t)target) || drone_shared(t,source) ||
            drone_shared(t,(uint32_t)target) || key_note_owner(part,source,27) ||
            key_note_owner(part,(uint32_t)target,27))continue;
         drone_toggle(t,source,27);drone_toggle(t,(uint32_t)target,27);
@@ -2624,7 +2648,7 @@ static void groove_preview_block(uint32_t n)
     groove_preview.phase += musical_advance;
 }
 
-static void keyboard_block(void)
+static __attribute__((noinline)) void keyboard_block(void)
 {
     uint32_t cur = fm1_in.notes, ch = cur ^ kb_prev, k, r;
     for (k = 0; k < NPART; k++)
@@ -4065,6 +4089,7 @@ static void events_block(uint32_t n)
     roll_block(adv);
     for (i = 0; i < NPART; i++)
         arp_tick(&trk[i], adv);
+    drone_recover(n);
     if (song.playing) {
         song.tick++;
         clk_pos += adv;

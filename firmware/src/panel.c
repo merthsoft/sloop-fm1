@@ -109,11 +109,13 @@ static uint8_t vis_upstream_id(void) { return vis_style<=VIS_METERS?VIS_SAVE_ID[
 UI_SMALL static uint32_t fork_settings_word(void)
 {
     return (uint32_t)(lights_scale != 0u) | (uint32_t)(midi_scale != 0u) << 1 |
-           (uint32_t)(swing_eighth != 0u) << 2 | (uint32_t)scale_light_level << 3 | (uint32_t)VIS_SAVE_ID[vis_style % VIS_STYLE_COUNT] << 8;
+           (uint32_t)(swing_eighth != 0u) << 2 | (uint32_t)scale_light_level << 3 | (uint32_t)voice_expand << 5 | (uint32_t)VIS_SAVE_ID[vis_style % VIS_STYLE_COUNT] << 8;
 }
 UI_SMALL static void fork_settings_from_word(uint32_t w)
 {
     scale_light_level = (w >> 3) & 3u;
+    /* Fork-only bits 5..7: old records select the original budget. */
+    voice_expand = (uint8_t)clamp((w >> 5) & 7u, 0, 4);
     lights_scale = w & 1u;
     midi_scale = (w >> 1) & 1u;
     swing_eighth = (w >> 2) & 1u;
@@ -137,7 +139,7 @@ UI_SMALL static void lights_from_word(uint32_t w)
     lights_lvl = (uint8_t)((w & 15u) < LIGHTS_N ? (w & 15u) : LIGHTS_OFF);
     lights_keys = (uint8_t)(((w >> 4) & 15u) < KEYS_N ? ((w >> 4) & 15u) : KEYS_OFF);
     lights_notes = (uint8_t)((w >> 8) & 1u);
-    lights_scale = midi_scale = swing_eighth = scale_light_level = 0;
+    lights_scale = midi_scale = swing_eighth = scale_light_level = voice_expand = 0;
     rec_tempo = (uint8_t)((w >> 9) & 1u);       /* the REC screen: MODE, START (seq.c) */
     rec_count = (uint8_t)((w >> 10) & 1u);
     usb_full = (uint8_t)((w >> 11) & 1u);       /* menu USB AUDIO (fx.c) */

@@ -133,3 +133,7 @@ Keep `-Oz`, current hot `DSP_INLINE` boundaries and the pinned compiler. Prior `
 4. **Retain reproducible diagnostics:** maps/cross-references can remain an opt-in audit mode with zero demonstrated payload cost. The saved ELF/disassembly, relocation-aware duplicate scan and exact section reconciliation are the concrete handoff for future work.
 
 No candidate was integrated, packaged, flashed, published, committed or pushed by this audit. Hardware timing, power-loss behavior and cold/recovery boot remain unmeasured; host and static target checks are not hardware performance evidence.
+
+## Subsequent integration remeasurement
+
+The combined cold-state initializer was remeasured while fitting the About restoration and EVOLVE octave bounds. It enlarged that newer target and was not adopted. The original declaration defaults and cold-boot calls remain in production. The frozen 288-byte result above is therefore not an additional available saving on the current source.

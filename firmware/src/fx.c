@@ -731,6 +731,9 @@ static __attribute__((noinline)) void ins_rest(track_t *t)
 
 /* one synth part into the dry mix and the sends; a part with no voice sounding costs
  * the LFO tick and a cleared buffer only (after the DIST tail has run out) */
+/* Previous block's actual render count. Both workers have joined before the
+ * scheduler reads this, and each part writes only its own cell. No voice rescan. */
+static uint32_t mix_voice_count[NPART];
 static void mix_part_run(track_t *t, uint32_t n, mixacc_t *mx, int32_t *b);
 /* (2.6) a preset's fade (voice.c sound_change): the whole part rendered with the sound it had, then the new one back.
  * The sound set aside per core, as part_buf is (a part may fade on each core at once) */
@@ -752,6 +755,7 @@ static void mix_part_run(track_t *t, uint32_t n, mixacc_t *mx, int32_t *b)
     uint32_t i;
     int32_t g0 = 32767 - t->att, g1 = gain_next(t);
     uint32_t voices = track_render(t, b, n);
+    mix_voice_count[t-trk]=voices;
     int32_t filter = live_wah_filter(t, b, n); /* decay the follower even on silent/muted blocks */
     if (voices)
         t->tail = t->p[P_ITYPE] ? 64 : 16, t->ins_xt = 0;              /* blocks of DIST / INSERT state to run out after the last
@@ -984,29 +988,36 @@ static void cpu1_units_job(uint32_t arg)                /* core 1's job: the uni
     cpu1_job_ticks += cpu1_ticks() - t0;
 }
 
-/* the units core 1 renders this block: the last part and the drums (cpu1_units when set: the menu, the tests),
- * less the parts that must stay here (above) */
-static uint32_t units_split(void)
+/* Select the estimated heaviest thread-safe synth part plus drums. Manual masks
+ * and the shared-state exclusions remain independent of automatic balancing. */
+static __attribute__((noinline)) uint32_t units_split(void)
 {
-    uint32_t mask = cpu1_units < 0 ? (1u << (NPART - 1u)) | U_DRUMS : (uint32_t)cpu1_units & U_ALL, k, nform = 0;
-    if (!mask)
-        return 0;
-    for (k = 0; k < NPART; k++)
-        nform += ENGINES[trk[k].engine] == &ENG_FORMANT;
-    for (k = 0; k < NPART; k++) {
-        const track_t *t = &trk[k];
-        const engine_t *e = ENGINES[t->engine];
-        uint32_t fade = t->xf_on && t->xf, inc;
-        const int16_t *p = fade && t->pold ? t->p_old : t->p;   /* the values this block renders with (mix_part: a
-                                                         * preset fading out keeps its old sound; voice.c track_render:
-                                                         * an engine fading out its old engine values, pe_old) */
-        if (!(mask & (1u << k)))
-            continue;
-        inc = p[P_LSYNC] ? lfo_sync_inc(p) : LFO_INC[p[P_LRATE] & 127];   /* (2.6: LFO 2 SYNC, as track_lfo_tick) */
-        if (t->lfo_ph + inc < t->lfo_ph || (e == &ENG_PHYS && phys_render_draws(t, fade ? t->pe_old[0] : p[P_E0])) ||
-            (e == &ENG_FORMANT && nform > 1u))
-            mask &= ~(1u << k);
+    /* Relative work from the preceding block, not measured deadlines. Count
+     * rendered tails and prefer the last eligible part on equal estimates. */
+    static const uint8_t weight[NENGINES] = {2,2,3,1,2,3,3,3,6,6,5,2
+#if FELUCCA_SLICE
+        ,3
+#endif
+    };
+    uint32_t best=0, score=0;
+    uint32_t mask=cpu1_units<0?U_ALL:(uint32_t)cpu1_units&U_ALL;
+    uint32_t nform=0;
+    if (!mask) return 0;
+    for(uint32_t k=0;k<NPART;k++)nform+=ENGINES[trk[k].engine]==&ENG_FORMANT;
+    for(uint32_t k=0;k<NPART;k++) {
+        const track_t *t=&trk[k];const engine_t *e=ENGINES[t->engine];
+        uint32_t bit=1u<<k, fade=t->xf_on && t->xf;
+        const int16_t *p=fade && t->pold?t->p_old:t->p;
+        if(!(mask&bit))continue;
+        uint32_t inc=p[P_LSYNC]?lfo_sync_inc(p):LFO_INC[p[P_LRATE]&127];
+        if(t->lfo_ph+inc<t->lfo_ph || (e==&ENG_PHYS && phys_render_draws(t,fade?t->pe_old[0]:p[P_E0])) ||
+           (e==&ENG_FORMANT && nform>1u))mask&=~bit;
+        else if(cpu1_units<0) {
+            uint32_t work=mix_voice_count[k]*weight[t->engine];
+            if(work>=score) {best=bit;score=work;}
+        }
     }
+    if(cpu1_units<0)mask=(mask&U_DRUMS)|best;
     return mask;
 }
 
@@ -1279,6 +1290,9 @@ static void mix_block(int32_t *out, uint32_t n)
         if (!cpu1_run(cpu1_units_job, c1 | n << 8))
             c1 = 0;
     }
+#if FELUCCA_AUDIO_DIAG
+    cpu1_last_mask=c1;
+#endif
     mix_units(U_ALL & ~c1, n, &acc[0], part_buf[0]);    /* this core's units, meanwhile */
     if (c1) {
         uint32_t w0 = cpu1_ticks();

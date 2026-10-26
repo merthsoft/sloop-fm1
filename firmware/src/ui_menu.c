@@ -11,12 +11,12 @@ enum { MI_COLOR, MI_ZOOM, MI_ACCEL, MI_HELP, MI_LIGHTS, MI_KEYS, MI_NOTES, MI_SC
 #if FELUCCA_CDC
        MI_SERIAL,
 #endif
-       MI_RATE, MI_RESO, MI_FADE, MI_MIDISCALE, MI_SWING, MI_ADVANCE, MI_PREVIEW, MI_CPU1, MI_PANEL, MI_LCLEAR, MI_ABOUT, MI_COUNT };
+       MI_RATE, MI_BUDGET, MI_RESO, MI_FADE, MI_MIDISCALE, MI_SWING, MI_ADVANCE, MI_PREVIEW, MI_CPU1, MI_PANEL, MI_LCLEAR, MI_ABOUT, MI_COUNT };
 static const char *const MI_NAME[MI_COUNT] = {"COLOR", "ZOOM", "KNOB ACCEL", "PAGE HELP", "LIGHTS", "KEYS", "NOTES", "SCALE LEVEL", "SPEAKER LOWCUT", "USB AUDIO",
 #if FELUCCA_CDC
                                               "USB SERIAL",
 #endif
-                                              "USB RATE", "FILTER RESO", "PUNCH FADE", "MIDI SCALE", "SWING GRID", "STEP ADVANCE", "DRUM PREVIEW", "2ND CORE", "HARDWARE CALIBRATION", "MIDI LEARN CLEAR", "ABOUT"};
+                                              "USB RATE", "VOICE BUDGET", "FILTER RESO", "PUNCH FADE", "MIDI SCALE", "SWING GRID", "STEP ADVANCE", "DRUM PREVIEW", "2ND CORE", "HARDWARE CALIBRATION", "MIDI LEARN CLEAR", "ABOUT"};
 enum { MS_SCREEN, MS_LIGHTS, MS_AUDIO, MS_FX, MS_MIDI, MS_TIMING, MS_SEQ, MS_SYSTEM, MS_COUNT };
 static const char *const MS_NAME[MS_COUNT] = {"SCREEN", "LIGHTS", "AUDIO", "FX", "MIDI", "TIMING", "SEQ", "SYSTEM"};
 static const uint8_t MS_FIRST[MS_COUNT + 1] = {MI_COLOR, MI_LIGHTS, MI_LOWCUT, MI_RESO, MI_MIDISCALE, MI_SWING, MI_ADVANCE, MI_CPU1, MI_COUNT};
@@ -67,6 +67,10 @@ UI_SMALL static const char *mi_value(uint32_t i, uint16_t *c)
         *c = lights_lvl ? C_HI : C_DIM;               /* (needs LIGHTS) */
         return KEYS_NAME[lights_keys % KEYS_N];
     case MI_SWING: return swing_eighth?"1/8":"STEP";
+    case MI_BUDGET: {
+        static const char names[][8] = {"8 / 12", "10 / 15", "12 / 18", "14 / 21", "16 / 24"};
+        return names[voice_expand];
+    }
     case MI_ADVANCE: return step_adv_off ? "OFF" : "ON";
     case MI_PREVIEW: return drum_preview ? "ON" : "OFF";
     case MI_RESO:
@@ -149,15 +153,39 @@ UI_SMALL static void draw_page_help(void)
         cv_oy=0;cv_blit(0,pass*120);
     }
 }
+#if FELUCCA_AUDIO_DIAG
+/* A snapshot on opening ABOUT, not a continuously redrawn page that changes load.
+ * OCT+ refreshes; counters last until power-off. See audio.c for trial policy. */
+UI_SMALL static void draw_audio_diag(void)
+{
+    static const char *const labels[] = {"STEALS", "SHEDS", "RESTORE", "MAX US", "LATE", "C1MASK"};
+    uint32_t v[6] = {voice_kills, shed_count, drone_restores, audio_wall_max,
+        felucca_dbg.late, cpu1_last_mask};
+    cv_begin(240,H_HEAD,C_BLACK);
+    cv_text(4,1,&FONT_S,"DIAG " FELUCCA_VERSION,C_WHITE);cv_blit(0,Y_HEAD);
+    for(uint32_t pass=0;pass<2;pass++) {
+        cv_begin(240,pass?95u:124u,C_BLACK);cv_oy=pass?-124:0;
+        for(uint32_t i=0;i<NELEM(labels);i++) {
+            char b[40];fmt_int(b,(int32_t)v[i]);
+            cv_text(4,(int32_t)i*18,&FONT_S,labels[i],C_DIM);
+            cv_text(236-text_w(&FONT_S,b),(int32_t)i*18,&FONT_S,b,C_WHITE);
+        }
+        cv_oy=0;cv_blit(0,H_HEAD+1+pass*124u);
+    }
+}
+#endif
 UI_SMALL static void draw_menu(void)
 {
     uint32_t i, pass, sec = mi_sec(ui.menu_sel % MI_COUNT);
     if(ui.menu==3) { if(ui.force) draw_page_help();return; }
+#if FELUCCA_AUDIO_DIAG
+    if(ui.menu==2) {if(ui.force)draw_audio_diag();return;}
+#endif
     uint32_t sig = ui.menu * 7u + ui.menu_sel * 131u + settings.palette * 1009u + settings.lowcut * 7919u +
                    settings.zoom * 104729u + lights_lvl * 1299709u + lights_keys * 15485863u + ml_count() * 2654435u +
                    lights_notes * 32452843u + usb_full * 49979687u + usb_serial * 86028121u + usb_rate * 15486719u + theme_shown() * 32452867u + theme.crc + cpu1_off * 122949829u +
                    ((uint32_t)scale_light_level << 5) + knob_accel_off * 179424673u + midi_scale * 961748941u + swing_eighth * 1234567u +
-                   step_adv_off * 193u + drum_preview * 65537u + flt_reso * 8191u + fxfade * 257u;
+                   step_adv_off * 193u + drum_preview * 65537u + flt_reso * 8191u + fxfade * 257u + voice_expand;
     if (!ui.force && sig == ui.menu_sig)
         return;
     ui.menu_sig = sig;
@@ -182,30 +210,24 @@ UI_SMALL static void draw_menu(void)
         cv_begin(240, pass ? 95u : 124u, C_BLACK);
         cv_oy = pass ? -124 : 0;
         if (ui.menu == 2) {
-            /* A full 16-pixel line per credit; the version lives in the header. */
-            cv_text(4, 4, &FONT_S, MERTHSLOOP_NAME, C_WHITE);
-            cv_text(4, 24, &FONT_S, "BASED ON SLOOP / FELUCCA", C_AMB);
-            cv_text(cv_text(4, 40, &FONT_S, "LEO KUROSHITA", C_HI) + 8, 40, &FONT_S, "@KUROGEDELIC", C_AMB);
-            cv_text(4, 56, &FONT_S, "H\xDCGELTON INSTRUMENTS", C_HI);
-            cv_text(4, 72, &FONT_S, "HUGELTON.COM", C_AMB);
-#if FELUCCA_CPU1
-            {
-                char sv[12];
-                cpu1_supplies(sv);
-                cv_text(236 - text_w(&FONT_S, sv), 72, &FONT_S, sv, C_GRAY);
+#if !FELUCCA_AUDIO_DIAG
+            /* Same credits/positions; one draw path avoids repeated call setup. */
+            static const char *const credits[]={MERTHSLOOP_NAME,"BASED ON SLOOP / FELUCCA",
+                "LEO KUROSHITA","H\xDCGELTON INSTRUMENTS","HUGELTON.COM","GPL-3.0, NO WARRANTY",
+                "GITHUB.COM/MERTHSOFT/","SLOOP-FM1","FONT: TERMINUS (OFL)",
+                "SAMPLES: VERSILIAN (CC0)","+ SONIC PI (CC0)","PHASE: CRISPYZEBRA (GPL)","VOICE: REF. KLATTSCH (MIT)"};
+            for(uint32_t line=0;line<NELEM(credits);line++) {
+                uint16_t color=!line?C_WHITE:line>=8?TE_G4:(210u>>line)&1u?C_AMB:C_HI;
+                int32_t y=line?8+(int32_t)line*16:4;
+                int32_t x=cv_text(4,y,&FONT_S,credits[line],color);
+                if(line==2)cv_text(x+8,y,&FONT_S,"@KUROGEDELIC",C_AMB);
             }
-#endif
-            cv_text(4, 88, &FONT_S, "GPL-3.0, NO WARRANTY", C_HI);
 #if FELUCCA_CPU1
-            cv_text(236 - text_w(&FONT_S, cpu1_label()), 88, &FONT_S, cpu1_label(), C_AMB);
+            char sv[12];cpu1_supplies(sv);
+            cv_text(236-text_w(&FONT_S,sv),72,&FONT_S,sv,C_GRAY);
+            cv_text(236-text_w(&FONT_S,cpu1_label()),88,&FONT_S,cpu1_label(),C_AMB);
 #endif
-            cv_text(4, 104, &FONT_S, "GITHUB.COM/MERTHSOFT/", C_AMB);
-            cv_text(4, 120, &FONT_S, "SLOOP-FM1", C_AMB);
-            cv_text(4, 136, &FONT_S, "FONT: TERMINUS (OFL)", TE_G4);
-            cv_text(4, 152, &FONT_S, "SAMPLES: VERSILIAN (CC0)", TE_G4);
-            cv_text(4, 168, &FONT_S, "+ SONIC PI (CC0)", TE_G4);
-            cv_text(4, 184, &FONT_S, "PHASE: CRISPYZEBRA (GPL)", TE_G4);
-            cv_text(4, 200, &FONT_S, "VOICE: REF. KLATTSCH (MIT)", TE_G4);
+#endif
         } else {
             int32_t x = 4, total = 0;
             for (i = 0; i < MS_COUNT; i++) total += text_w(&FONT_S, MS_TAB[i]);
@@ -315,15 +337,15 @@ UI_SMALL static void mi_set(uint32_t i, int32_t s)
         mi_toggle(&usb_serial,s);
         break;
 #endif
-    case MI_RATE:                                      /* (2.7 beta) AUTO 44.1 48: the knob steps (stops at the ends),
-                                                        * OCT+ round; at the next start (usb.c usb_rate_mode) */
-        if (s > 0 && usb_rate < 2u)
-            usb_rate++;
-        else if (s < 0 && usb_rate > 0u)
-            usb_rate--;
-        else if (!s)
-            usb_rate = (uint8_t)((usb_rate + 1u) % 3u);
+    case MI_RATE:
+    case MI_BUDGET: {
+        uint8_t *v = i == MI_RATE ? &usb_rate : &voice_expand;
+        uint32_t last = i == MI_RATE ? 2u : 4u;
+        if (s > 0 && *v < last) (*v)++;
+        else if (s < 0 && *v) (*v)--;
+        else if (!s) *v = (uint8_t)((*v + 1u) % (last + 1u));
         break;
+    }
     case MI_CPU1:                                      /* right ON, left OFF; at once (the next block renders so) */
         mi_toggle(&cpu1_off,-s);
         cpu1_units = cpu1_off ? 0 : -1;
@@ -404,6 +426,9 @@ UI_SMALL static void menu_input(uint32_t pressed)
         return;
     }
     if (ui.menu != 1) {
+#if FELUCCA_AUDIO_DIAG
+        if(ui.menu==2 && ok) ui.force=1;
+#endif
         enc_drop();
         return;
     }

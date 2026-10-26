@@ -8,8 +8,8 @@
 <title>MerthSloop installer</title>
 <!--PWA--><link rel="manifest" href="../sloop.webmanifest"><meta name="theme-color" content="#000000"><link rel="icon" href="../icon-192.png"><!--/PWA-->
 <style>
-  :root { --bg: #000; --fg: #f2f2f2; --dim: #8a8a92; --tile: #16161a; --line: #2a2a30;
-          --blue: #287cff; --green: #1ecc70; --yellow: #ffc618; --orange: #ff621a; --red: #ff2c34; }
+  :root { --bg: #000; --fg: #f2f2f2; --dim: #8c7eb8; --tile: #0c0e1c; --line: #38205c;
+          --cyan: #20dcf0; --pink: #f030c0; --amber: #ffc030; --purple: #a068f8; --red: #ff2c34; }
   :root[data-theme="light"] { --bg: #f4f4f2; --fg: #111; --dim: #666; --tile: #e6e6e2; --line: #d0d0cc; }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); color: var(--fg);
@@ -17,12 +17,13 @@
   main { max-width: 560px; margin: 0 auto; padding: 32px 16px 48px; }
   .top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
   .logo svg { display: block; width: 220px; height: auto; }
+  .logo svg text { fill: var(--fg); }
   .logo rect:first-child { fill: transparent; }
   .lang { font-size: 12px; color: var(--dim); cursor: pointer; text-decoration: underline; background: none;
           border: 0; padding: 0; text-transform: lowercase; }
   .strip { display: flex; height: 4px; margin: 20px 0 24px; }
-  .strip i { flex: 1; } .strip i:nth-child(1) { background: var(--blue); } .strip i:nth-child(2) { background: var(--green); }
-  .strip i:nth-child(3) { background: var(--yellow); } .strip i:nth-child(4) { background: var(--orange); }
+  .strip i { flex: 1; } .strip i:nth-child(1) { background: var(--cyan); } .strip i:nth-child(2) { background: var(--pink); }
+  .strip i:nth-child(3) { background: var(--amber); } .strip i:nth-child(4) { background: var(--purple); }
   h1 { font-size: 13px; font-weight: 500; letter-spacing: .12em; text-transform: uppercase; color: var(--dim); margin: 0 0 8px; }
   .lead { font-size: 20px; line-height: 1.35; margin: 0 0 24px; }
   .tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin: 0 0 28px; }
@@ -30,7 +31,7 @@
   .tile b { display: block; font-size: 22px; font-weight: 600; color: var(--c); line-height: 1.1; }
   .tile span { display: block; font-size: 12px; color: var(--dim); text-transform: lowercase; margin-top: 4px; }
   p { margin: 0 0 14px; }
-  button#go { font: 600 15px/1 inherit; font-family: inherit; background: var(--orange); color: #000; border: 0;
+  button#go { font: 600 15px/1 inherit; font-family: inherit; background: var(--purple); color: #000; border: 0;
               padding: 16px 0; width: 100%; cursor: pointer; letter-spacing: .08em; text-transform: uppercase; }
   button#go:disabled { background: var(--tile); color: var(--dim); cursor: default; }
   #status { margin-top: 14px; min-height: 1.6em; font-variant-numeric: tabular-nums; }
@@ -38,8 +39,8 @@
   .small a, a { color: inherit; }
   progress { -webkit-appearance: none; appearance: none; width: 100%; height: 6px; margin-top: 16px; border: 0; background: var(--tile); }
   progress::-webkit-progress-bar { background: var(--tile); }
-  progress::-webkit-progress-value { background: var(--orange); }
-  progress::-moz-progress-bar { background: var(--orange); }
+  progress::-webkit-progress-value { background: var(--purple); }
+  progress::-moz-progress-bar { background: var(--purple); }
   pre { color: var(--dim); font-size: 11px; white-space: pre-wrap; margin-top: 12px; max-height: 160px; overflow: auto; }
   hr { border: 0; border-top: 1px solid var(--line); margin: 28px 0 18px; }
   [hidden] { display: none !important; }
@@ -56,7 +57,7 @@
 <main>
   <div class="top"><div class="logo"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 540 105" role="img" aria-label="MerthSloop">
 <text x="8" y="66" fill="#f2f2f2" font-family="sans-serif" font-weight="700" font-size="64">MerthSloop</text>
-<path d="M10 91h126" stroke="#287cff" stroke-width="6"/><path d="M142 91h126" stroke="#1ecc70" stroke-width="6"/><path d="M274 91h126" stroke="#ffc618" stroke-width="6"/><path d="M406 91h126" stroke="#ff621a" stroke-width="6"/>
+<path d="M10 91h126" stroke="#20dcf0" stroke-width="6"/><path d="M142 91h126" stroke="#f030c0" stroke-width="6"/><path d="M274 91h126" stroke="#ffc030" stroke-width="6"/><path d="M406 91h126" stroke="#a068f8" stroke-width="6"/>
 </svg>
 </div><button class="lang" id="lang"></button></div>
   <div class="strip"><i></i><i></i><i></i><i></i></div>
@@ -66,10 +67,10 @@
   <p class="lead" data-t="headline">Start with a groove. Make it yours.</p>
   <p data-t="overview">MerthSloop builds on SLOOP with ready-to-play drum grooves and chord progressions, expressive live controls, deeper sound shaping, and a neon interface. Build a song quickly, then keep playing and changing it.</p>
   <div class="tiles">
-    <div class="tile" style="--c: var(--blue)"><b data-t="beatsTitle">BEATS</b><span data-t="beats">built-in grooves, preview &amp; rhythm shaping</span></div>
-    <div class="tile" style="--c: var(--green)"><b data-t="chordsTitle">CHORDS</b><span data-t="chords">custom progressions &amp; live performance</span></div>
-    <div class="tile" style="--c: var(--yellow)"><b data-t="soundTitle">SOUND</b><span data-t="sound">lo-fi, delay, reverb &amp; sustain characters</span></div>
-    <div class="tile" style="--c: var(--orange)"><b data-t="neonTitle">NEON</b><span data-t="neon">a fresh display &amp; scale-lit keys</span></div>
+    <div class="tile" style="--c: var(--cyan)"><b data-t="beatsTitle">BEATS</b><span data-t="beats">built-in grooves, preview &amp; rhythm shaping</span></div>
+    <div class="tile" style="--c: var(--pink)"><b data-t="chordsTitle">CHORDS</b><span data-t="chords">custom progressions &amp; live performance</span></div>
+    <div class="tile" style="--c: var(--amber)"><b data-t="soundTitle">SOUND</b><span data-t="sound">lo-fi, delay, reverb &amp; sustain characters</span></div>
+    <div class="tile" style="--c: var(--purple)"><b data-t="neonTitle">NEON</b><span data-t="neon">a fresh display &amp; scale-lit keys</span></div>
   </div>
   <p data-t="more">Keep notes ringing across new chords with independent ties. Play vibrato, tremolo, wah and pan. Let drones drift and evolve. It all runs on the FM-1.</p>
   <p class="small"><a href="https://github.com/merthsoft/sloop-fm1/blob/merthsloop/docs/firmware/MERTHSOFT-FEATURES.md" target="_blank" rel="noopener" data-t="features">Explore the MerthSloop features and controls</a></p>
@@ -80,7 +81,7 @@
   <p id="status"></p>
   <pre id="log"></pre>
   <a class="ed" href="../editor/" data-t="editor"></a>
-  <p class="small"><a href="../editor/sloop-editor.html" download="merthsloop-editor-2.8.0.70.html" data-t="edOffline"></a></p>
+  <p class="small"><a href="../editor/sloop-editor.html" download="merthsloop-editor-2.8.0.77.html" data-t="edOffline"></a></p>
   <p><button id="app" class="ed" hidden data-t="appInstall"></button></p>
   <hr>
   <p class="small" data-t="direct"></p>
@@ -563,7 +564,7 @@ const sayK = (k, arg = "") => { lastKey = k; lastArg = arg; $("status").textCont
 const say = (txt) => { lastKey = null; $("status").textContent = txt; };
 const log = (t) => { $("log").textContent += t + "\n"; };
 let image = null;
-const meta = {"version": "2.8.0.70", "product": "FM-1_900", "pkg": "../../firmware/merthsloop-2.8.0.70.fwsc", "sha256": "238001e9ae44c4329600f995f4293a59a63c1cc19955561140b72b23e3138339"};
+const meta = {"version": "2.8.0.77", "product": "FM-1_900", "pkg": "../../firmware/merthsloop-2.8.0.77.fwsc", "sha256": "97f32d383a96ba9a38fe06fd8b6c2b68a5dc3629e690e573442b63f6a2315c82"};
 
 let writing = false, stock = null;
 const lockAll = (on) => {

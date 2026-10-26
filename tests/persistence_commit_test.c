@@ -172,11 +172,19 @@ static void upstream_settings_test(void) {
     assert(song.g[G_DRCH]==10 && song.g[G_CHOTH]==1 && song.g[G_BEND]==9);
     assert(song.g[G_DRMAP]==1 && song.g[G_CLKOUT]==1);
     midi_part_fill(round); assert(!memcmp(mp,round,sizeof mp) && !midi_part_default(round));
-    lights_scale=1;scale_light_level=3;settings.palette=1;settings_save();
+    lights_scale=1;scale_light_level=3;voice_expand=4;settings.palette=1;settings_save();
+    voice_expand=0;
     drum_preview=step_adv_off=fxfade=flt_reso=0;lights_scale=0;
     persist_boot();dsu_boot();
     assert(drum_preview && step_adv_off && fxfade==15 && flt_reso==10);
     assert(lights_scale && scale_light_level==3 && song.g[G_BEND]==9 && song.g[G_CLKOUT]==1);
+    assert(voice_expand==4);
+    for(uint32_t level=0;level<5;level++) {
+        voice_expand=(uint8_t)level;settings_save();voice_expand=0;
+        persist_boot();dsu_boot();assert(voice_expand==level);
+    }
+    fork_settings_from_word(7u<<5);assert(voice_expand==4);
+    fork_settings_from_word(0);assert(!voice_expand);
     persist_t backup;persist_fill(&backup);backup.palette=2;
     assert(!restore_settings(&backup)); /* backup restore retains suffix preferences */
     drum_preview=step_adv_off=fxfade=flt_reso=0;persist_boot();dsu_boot();

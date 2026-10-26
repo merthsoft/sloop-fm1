@@ -27,10 +27,10 @@
 #undef main
 
 #define BLOCKS 1500u                                     /* ~2.2 s at 44.1 kHz */
-static const int32_t MASKS[] = {0, -1, 1, 2, 4, 8, 3, 5, 12, 7, 15};
+static const int32_t MASKS[] = {0, -1, 1, 2, 4, 8, 3, 5, 9, 10, 12, 7, 15};
 static const int32_t MASKS_QUICK[] = {0, 15, -1};
-static const char *const SCENE_NAME[] = {"formant3", "fm6x3", "phys_lfo", "mix", "fx26", "live_mods", "sample_cache"};
-#define NSCENE 7u
+static const char *const SCENE_NAME[] = {"formant3", "fm6x3", "phys_lfo", "mix", "fx26", "live_mods", "sample_cache", "drone_load"};
+#define NSCENE 8u
 
 static void drums_pattern(void)                          /* kick 4 on the floor, snare 4 / 12, hats, a clap */
 {
@@ -93,6 +93,17 @@ static void scene_setup(uint32_t s)
             trk[k].p[P_LD_PIT] = 40;
             chords(&trk[k], k, 4, 50 + 4 * k);
         }
+        break;
+    case 7:
+        voice_expand=4;
+        for(k=0;k<NPART;k++) {
+            host_preset(&trk[k],k==0?8:k==1?5:3,0);
+            trk[k].p[P_VOICE]=V_POLY;trk[k].p[P_AMODE]=trk[k].p[P_CHORD]=0;
+            if(k<2)chords(&trk[k],0,4,48+12*k);
+        }
+        drift_p[2][0]=3;drift_p[2][2]=64;
+        song.g[G_LTYPE]=VINYL_MODE_VINYL;
+        song.g[G_VWOW]=song.g[G_VTONE]=song.g[G_VCRACKLE]=64;
         break;
     case 6:
         for (k=0;k<NPART;k++) {
@@ -174,6 +185,8 @@ static void scene_setup(uint32_t s)
 static void scene_block(uint32_t s, uint32_t b)          /* what the UI would do between blocks */
 {
     uint32_t k;
+    if(s==7u && b==1u)for(uint32_t n=72;n<82;n+=2)drone_toggle(&trk[2],n,27);
+
     if (s == 5u && (b==400u || b==900u)) {
         for (k=0;k<LIVE_MOD_COUNT;k++) live_mod[k].part=(uint8_t)((live_mod[k].part+1u)%NPART);
         live_mod[2].sync = b==400u ? 3u : WAH_ENV;

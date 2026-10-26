@@ -567,6 +567,10 @@ UI_SMALL static void edit_param(uint32_t slot, int32_t steps)
     v = d->names == ESYNC_NAMES || d->names == N_IBITS || d->names == N_IRATE ? names_turn(d, *vp, steps)   /* (a name a detent) */
                                     : clamp(*vp + accel(EN_K1 + slot, steps, d->names ? 0 : d->max - d->min), d->min, d->max);
     *vp = (int16_t)v;
+    if(pg->scope==SC_EVOLVE && id>=4u) {
+        int16_t *other=vp+(id==4u?1:-1);
+        if(id==4u?*other<v:*other>v)*other=(int16_t)v;
+    }
     if(pg->scope==SC_DRIFT || pg->scope==SC_EVOLVE || pg->scope==SC_SUSTAIN)return; /* runtime values are neither MIDI-learn IDs nor locks */
     if(pg->scope==SC_VOICING && slot<2u) {
         sync_reload=1; /* next played chord, without retuning held notes */

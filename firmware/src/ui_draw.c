@@ -419,7 +419,7 @@ UI_SMALL static uint32_t graph_signature(void)
         h ^= steps_hash(t) + ph * 31u + ui.cursor * 7919u;
     }
     if(pg->scope==SC_EVOLVE && !is_drum(t)) {
-        for(i=0;i<4;i++)h=(h^(uint32_t)evolve_p[song.sel][i])*31u;
+        for(i=0;i<6;i++)h=(h^(uint32_t)evolve_p[song.sel][i])*31u;
         h^=evolve_phase(song.sel)*7919u+(uint32_t)kh_any(t)*65537u+song.playing;
     }
     if(pg->scope==SC_DRIFT && !is_drum(t)) {

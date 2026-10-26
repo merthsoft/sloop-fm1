@@ -400,6 +400,7 @@ static void param_format(const param_desc_t *d, int32_t v, char *val, const char
 enum { FAM_HOME, FAM_ENV, FAM_LFO, FAM_FX, FAM_SCL, FAM_EDIT, FAM_GLO, FAM_SAVE, FAM_ARP, FAM_SEQ, FAM_TRK,
        FAM_COUNT };
 enum { SC_TRACK, SC_GLOBAL, SC_ENGINE, SC_STEP, SC_TRK, SC_SONG, SC_DRUM, SC_STARTER, SC_RECORD, SC_ACTION, SC_VOICING, SC_DRIFT, SC_EVOLVE, SC_SUSTAIN };
+_Static_assert(SC_EVOLVE==SC_DRIFT+1 && SC_SUSTAIN==SC_DRIFT+2,"runtime field scope order");
 /* Native runtime performance controls, outside upstream saved parameter IDs. */
 static int16_t drift_p[NPART][4]={{0,1,64,0},{0,1,64,0},{0,1,64,0}};
 static const char *const N_AMBIENT_MODE[]={"OFF","DRIFT","DRONE","BOTH"};
@@ -413,10 +414,11 @@ static const char *const N_EVOLVE_CYCLE[]={"1S","2S","5S","10S","20S","40S","80S
  "16BAR","8BAR","4BAR","2BAR","1BAR","1/2","1/4","1/8","8T","1/16","16T"};
 static const uint16_t EVOLVE_SECONDS[]={1,2,5,10,20,40,80,160};
 static const uint16_t EVOLVE_UNITS[]={6144,3072,1536,768,384,192,96,48,32,24,16};
-static int16_t evolve_p[NPART][4]={{0,3,64,1},{0,3,64,1},{0,3,64,1}};
+static int16_t evolve_p[NPART][6]={{0,3,64,1,3,5},{0,3,64,1,3,5},{0,3,64,1,3,5}};
 static const param_desc_t EVOLVE_DESC[]={
     PE("MODE",N_ONOFF,0), PE("CYCLE",N_EVOLVE_CYCLE,3),
-    PD("CHANCE",F_PCT,0,127,64), PD("RANGE",F_INT,1,7,1)
+    PD("CHANCE",F_PCT,0,127,64), PD("RANGE",F_INT,1,7,1),
+    PD("LO OCT",F_INT,-1,9,3), PD("HI OCT",F_INT,-1,9,5)
 };
 /* Track-local runtime sustain; no upstream saved IDs. */
 static int16_t sustain_p[NPART][4]={{0,4,0,127},{0,4,0,127},{0,4,0,127}};
@@ -447,6 +449,7 @@ static const page_t PAGES[] = {
     {"LFO DEST", FAM_LFO, SC_TRACK, GR_DEST, {P_LD_PIT, P_LD_FLT, P_LD_SHP, P_LD_AMP}},
     {"DRIFT", FAM_LFO, SC_DRIFT, GR_NONE, {0,1,2,3}},
     {"EVOLVE", FAM_LFO, SC_EVOLVE, GR_NONE, {0,1,2,3}},
+    {"EVOLVE 2", FAM_LFO, SC_EVOLVE, GR_NONE, {4,5,0xFF,0xFF}},
     {"FX", FAM_FX, SC_TRACK, GR_FX, {P_DIST, P_CHOR, P_DLY, P_REV}},
     {"FILTER", FAM_FX, SC_TRACK, GR_FILTER, {P_TFLT, 0xFF, 0xFF, 0xFF}},   /* the track's filter (drum track too) */
     {"SLICER", FAM_FX, SC_TRACK, GR_SLCR, {P_SLCR, P_SLPAT, P_SLRATE, P_SLDEPTH}},   /* drum track too */
@@ -514,17 +517,18 @@ static int page_shown(const page_t *pg)
     return pg->id[0] != P_FTYPE || (!is_drum(TSEL) && TSEL->eng_req % NENGINES == 0u);
 }
 
-static const param_desc_t *page_desc(const page_t *pg, uint32_t slot, int16_t **valp)
+static __attribute__((minsize,noinline)) const param_desc_t *page_desc(const page_t *pg, uint32_t slot, int16_t **valp)
 {
     uint32_t id = pg->id[slot];
-    if(pg->scope==SC_SUSTAIN) {
-        if(is_drum(TSEL)){*valp=0;return 0;}
-        *valp=&sustain_p[song.sel%NPART][slot];return &SUSTAIN_DESC[slot];
-    }
-    if(pg->scope==SC_DRIFT || pg->scope==SC_EVOLVE) {
-        if(is_drum(TSEL)){*valp=0;return 0;}
-        *valp=pg->scope==SC_DRIFT?&drift_p[song.sel%NPART][slot]:&evolve_p[song.sel%NPART][slot];
-        return pg->scope==SC_DRIFT?&DRIFT_DESC[slot]:&EVOLVE_DESC[slot];
+    if((uint32_t)(pg->scope-SC_DRIFT)<3u) {
+        /* Contiguous runtime-only scopes share the same native field resolver. */
+        static const struct {void *values;const param_desc_t *desc;} fields[]={
+            {&drift_p,DRIFT_DESC},{&evolve_p,EVOLVE_DESC},{&sustain_p,SUSTAIN_DESC}
+        };
+        if(is_drum(TSEL) || id==0xFFu){*valp=0;return 0;}
+        uint32_t family=pg->scope-SC_DRIFT, stride=pg->scope==SC_EVOLVE?6u:4u;
+        *valp=(int16_t *)((uint8_t *)fields[family].values+((song.sel%NPART)*stride+id)*sizeof(int16_t));
+        return &fields[family].desc[id];
     }
     if(pg->scope==SC_VOICING && slot<2u) {
         if(is_drum(TSEL)){*valp=0;return 0;}

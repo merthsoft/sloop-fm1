@@ -44,7 +44,10 @@ static void audio_block(int32_t *out, uint32_t n)       /* mix (fx.c), then Q15 
 
 /* overload: shed_voice (voice.c) */
 static volatile uint8_t shed_req;
-static uint8_t shed_over;                      /* bit k: the half k halves ago was over 85 % */
+/* Avoid repeatedly cutting held drones below the render deadline. The guard
+ * still sheds after two consecutive halves above 95%; full wall time counts. */
+#define AUDIO_SHED_PERCENT 95u
+static uint8_t shed_over;                      /* bit k: half k halves ago exceeded the selected threshold */
 
 void fm1_alnk0_irq(void)                       /* via isr_alnk0 (hal/fm1_isr.S) */
 {
@@ -76,8 +79,11 @@ void fm1_alnk0_irq(void)                       /* via isr_alnk0 (hal/fm1_isr.S) 
         {   /* the deadline sees the render and TIMER5 nested in it (the USB audio stream); the load
              * figures the render alone (after Felucca 1.0) */
             uint32_t all = fm1_ticks() - t0;
+#if FELUCCA_AUDIO_DIAG
+            if (all / FM1_TICKS_PER_US > audio_wall_max) audio_wall_max = all / FM1_TICKS_PER_US;
+#endif
             us = (all - t5_nested_ticks) / FM1_TICKS_PER_US;
-            shed_over = (uint8_t)(shed_over << 1 | (all / FM1_TICKS_PER_US * 100u > (HALF_FRAMES * 1000000u / FS) * 85u));
+            shed_over = (uint8_t)(shed_over << 1 | (all / FM1_TICKS_PER_US * 100u > (HALF_FRAMES * 1000000u / FS) * AUDIO_SHED_PERCENT));
         }
         if (us > audio_max_us)
             audio_max_us = us;

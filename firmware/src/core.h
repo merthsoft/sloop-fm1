@@ -3,8 +3,8 @@
 /* Felucca core types: tracks, voices, engines, parameters.
  * Four tracks: tracks 1..3 are synth parts (each its own engine, preset, parameters,
  * voices and 64-step pattern), track 4 is the GM drum part (drums.c; its own voices,
- * pattern and the pattern parameters of its track_t). The parts share one budget of
- * NVOICE sounding voices (voice.c). */
+ * pattern and the pattern parameters of its track_t). The parts share weighted
+ * voice admission (voice.c), independently of their per-part slot count. */
 #include <stdint.h>
 #if FELUCCA_BOOT_PRESETS
 #include "boot_presets_sizes.h"
@@ -12,9 +12,16 @@
 /* Keep tiny per-sample DSP helpers inlined when the rest of the image uses -Oz. */
 /* Device settings, shared by DSP and the later panel/settings implementation. */
 static uint8_t drum_preview, step_adv_off, fxfade, flt_reso;
+#ifndef FELUCCA_AUDIO_DIAG
+#define FELUCCA_AUDIO_DIAG 0 /* on-device dropout investigation; optional on-device audio counters; independent of audio policy */
+#endif
+#if FELUCCA_AUDIO_DIAG
+static uint32_t drone_restores, audio_wall_max, cpu1_last_mask;
+#endif
+static uint8_t voice_expand;     /* saved device setting: 0..4 = 24..48 units */
 static int32_t punch_fade_step(void) { return 512 / (1 + 17 * fxfade); }
 #define DSP_INLINE static inline __attribute__((always_inline))
-#define NVOICE 8                 /* voices per part, and the budget shared by all parts */
+#define NVOICE 8                 /* physical voice slots per part */
 #define NPOLY 8
 #define NPART 3                  /* synth parts: tracks 1..3 */
 #define NTRK 4                   /* + the drum track */
@@ -141,7 +148,7 @@ enum { ARP_OFF, ARP_UP, ARP_DOWN, ARP_UPDOWN, ARP_RANDOM, ARP_ORDER,
 typedef struct {
     uint8_t note, vel, gate, active;
     uint8_t stage;               /* env: 0 off, 1 attack, 2 decay/sustain, 3 release, 4 fading out (given up) */
-    uint8_t kill;                /* stage 4: blocks of the fade left */
+    uint8_t kill;                /* stage 4: fade blocks left */
     uint8_t sustained;           /* released tail: engine gate held, allocator gate remains off */
     uint8_t pitch_frac;          /* the glide between 1/16 semitones: pitch_cur + pitch_frac / 256 */
     int16_t penv;                /* the pitch envelope (ENV > PIT): Q15, a fast fall from the note's start */

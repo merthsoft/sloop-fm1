@@ -59,7 +59,7 @@ static uint32_t fm1_input_note_edges(void) { uint32_t e = fm1_in.notes & ~notes_
 static uint32_t wdt_tick_ms;                       /* (stress_test: 1, the blocking PANEL setup's clock runs out) */
 static void fm1_wdt_feed(void) { fm1_ms += wdt_tick_ms; }
 static int32_t fm1_adc_read(int c) { (void)c; return -1; }
-static struct { uint32_t magic, stage, page, home, ui_frames; } felucca_dbg;
+static struct { uint32_t magic, stage, page, home, ui_frames, late; } felucca_dbg;
 #define FELUCCA_ICONS 1
 #define SCOPE_N 512u
 static int16_t scope_buf[SCOPE_N];
@@ -884,8 +884,8 @@ int main(int argc, char **argv)
         tap(B_OCTUP);
         check(usb_serial == 0u && ui.menu == 1, "menu USB SERIAL: OCT+ toggles back to OFF");
 #else
-        check(MS_FIRST[MS_AUDIO + 1] - MS_FIRST[MS_AUDIO] == 3u && MI_RATE == MI_USB + 1,
-              "2.7: no USB SERIAL in the FM-1's build (FELUCCA_CDC 0): AUDIO is LOWCUT, USB AUDIO, USB RATE");
+        check(MS_FIRST[MS_AUDIO + 1] - MS_FIRST[MS_AUDIO] == 4u && MI_RATE == MI_USB + 1 && MI_BUDGET == MI_RATE + 1,
+              "AUDIO: LOWCUT, USB AUDIO, USB RATE and VOICE BUDGET; no USB SERIAL with CDC disabled");
 #endif
         {   /* 2.7: your theme (the editor's Theme page): checked, then MENU > COLOR after MONO, by its name */
             theme_t th;
@@ -1266,7 +1266,11 @@ int main(int argc, char **argv)
         SEL(1);
         check(!strcmp(PT(), "EVOLVE") && song.g[G_BPM] == bpm, "SELECT: then EVOLVE");
         SEL(1);
-        check(!strcmp(PT(), "EVOLVE") && song.g[G_BPM] == bpm, "SELECT: stops at the last page of the family");
+        check(!strcmp(PT(), "EVOLVE 2") && song.g[G_BPM] == bpm, "SELECT: then EVOLVE 2 octave bounds");
+        SEL(1);
+        check(!strcmp(PT(), "EVOLVE 2") && song.g[G_BPM] == bpm, "SELECT: stops at the last page of the family");
+        SEL(-1);
+        check(!strcmp(PT(), "EVOLVE"), "SELECT left: EVOLVE");
         SEL(-1);
         check(!strcmp(PT(), "DRIFT"), "SELECT left: DRIFT");
         SEL(-1);

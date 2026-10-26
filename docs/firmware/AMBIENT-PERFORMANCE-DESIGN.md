@@ -199,3 +199,29 @@ Existing scale/ownership/recording tests remain. The combined sustain/.68 budget
 is recorded in [SUSTAIN-DESIGN](SUSTAIN-DESIGN.md#target-and-verification).
 
 ![EVOLVE cycle progress](../../assets/screens/merthsoft/neon/ambient-evolve.png)
+
+## Configurable evolution register
+
+Pitch movement belongs to EVOLVE; DRIFT itself still moves tone, shape or pan.
+EVOLVE 2 adds LOW OCT (knob 1) and HIGH OCT (knob 2), each -1..9 in scientific
+pitch numbering (C4 = MIDI 60). Defaults 3 / 5 permit MIDI 48..83. The top octave
+is naturally capped by MIDI 127. Bounds are inclusive whole octaves; RANGE on
+EVOLVE 1 remains the maximum number of scale steps per change.
+
+The audio-owned walk rejects a candidate outside these bounds before releasing
+its source pitch. A rejected move keeps the existing note and MIDI/recorder
+owners unchanged. Changes do not immediately retune or truncate held notes;
+manually held pitches outside a newly tightened range remain as played. Crossing
+one endpoint moves the other endpoint to maintain LOW <= HIGH. The temporary
+inverted pair possible between two UI stores fails closed in the scheduler.
+These values are per-track runtime state, not upstream project/parameter IDs.
+STOP, recording, scale/chance/cycle logic and source-sharing protection retain
+their previous contracts. The second page keeps the existing cycle graph; unused
+knobs resolve to null descriptors and cannot become locks or MIDI-learn targets.
+
+Tests cover long walks within single/multiple octaves and MIDI endpoints, field
+resolution, crossing endpoints, held-note preservation, outside-range candidates,
+scale/source ownership, MIDI balance and recording. Normal UI fuzz covers the
+new page alongside DRIFT and SUSTAIN's shared cold runtime-field resolution.
+
+![Native evolution octave limits](../../assets/screens/merthsoft/neon/evolve-bounds.png)

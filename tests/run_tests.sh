@@ -331,6 +331,16 @@ $CC -UNDEBUG -O2 -fwrapv -fno-strict-aliasing -w -Ibuild/gen -Ifirmware/src -Ifi
 run "track sustain: tails, lifecycle, budget priority and engine gates" "$OUT/track_sustain_test" "$OUT"
 $CC -UNDEBUG -O2 -fwrapv -fno-strict-aliasing -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal tests/voice_budget_test.c -o "$OUT/voice_budget_test" -lm -pthread
 run "weighted voices: capacity, FM6, sustain and steal-fade retrigger" "$OUT/voice_budget_test"
+$CC -UNDEBUG -O2 -fwrapv -fno-strict-aliasing -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal tests/drone_recovery_test.c -o "$OUT/drone_recovery_test" -lm -pthread
+run "expanded voices: GRAIN/VOICE/LOFI and non-stealing drone recovery" "$OUT/drone_recovery_test" "$OUT"
+$CC -UNDEBUG -O2 -fwrapv -fno-strict-aliasing -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal tests/audio_diag_test.c -o "$OUT/audio_diag_test" -lm -pthread
+run "audio diagnostic snapshots and real shed/recovery counters" "$OUT/audio_diag_test" "$OUT"
+$CC -UNDEBUG -O2 -fwrapv -fno-strict-aliasing -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal tests/audio_shed_timing_test.c -o "$OUT/audio_shed_timing_test" -lm -pthread
+run "production audio ISR: overload timing, nested work and shedding" "$OUT/audio_shed_timing_test"
+$CC -DFELUCCA_AUDIO_DIAG=0 -UNDEBUG -O2 -fwrapv -fno-strict-aliasing -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal tests/audio_shed_timing_test.c -o "$OUT/audio_shed_normal_test" -lm -pthread
+run "production audio ISR: working threshold retained without diagnostic UI" "$OUT/audio_shed_normal_test"
+$CC -UNDEBUG -O2 -fwrapv -fno-strict-aliasing -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal tests/auto_split_test.c -o "$OUT/auto_split_test" -lm -pthread
+run "automatic core split: workload, tails, masks and exclusions" "$OUT/auto_split_test"
 $CC -UNDEBUG -O2 -fwrapv -fno-strict-aliasing -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal tests/sustain_character_test.c -o "$OUT/sustain_character_test" -lm -pthread
 run "sustain characters: clean attacks, released-tail color and controls" "$OUT/sustain_character_test" "$OUT"
 $CC -UNDEBUG -O2 -fwrapv -fno-strict-aliasing -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal tests/headroom_commit_test.c -o "$OUT/headroom_commit_test" -lm -pthread
@@ -356,6 +366,9 @@ run "UI redraw with boot-restored factory metadata" "$OUT/ui_refresh_boot" "$OUT
 
 
 run "target DSP: preserve per-sample helper inlining" python3 tests/target_inlining_test.py build/felucca.dis
+if [ -n "${JIELI_TOOLCHAIN:-}" ]; then
+    run "target clamp: register operands and signed bounds" python3 tests/target_clamp_test.py
+fi
 
 run "installer CLI (fm1_install.py) against a simulated FM-1" python3 tests/install_test.py
 run "installer ownership, ambiguity and failure cleanup" python3 tests/web_installer_lifetime_test.py

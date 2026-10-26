@@ -1,5 +1,9 @@
 # Voice budget audit — isolated measurements, 2026-10-25
 
+The initial audit below is historical. Weighted admission and FM6 eight are now
+integrated; the optional 10 / 15 through 16 / 24 settings and drone recovery are documented in
+[the current experiment](VOICE-BUDGET-EXPERIMENT.md). Device qualification remains open.
+
 ## Recommendation and status
 
 Do not raise `NVOICE` globally. The best candidates for hardware qualification are:
@@ -177,3 +181,9 @@ Adopt weighted admission or FM6 eight only after this evidence establishes headr
 ## Production candidate integration
 
 User-approved weighted admission and FM6 eight are now integrated with the final Q15.9 sustain foundation. The actual combined image is **583,776 / 584,336 B** (560 B free); static main/low/pool RAM 89,616 / 28,928 / 331,852 B, unchanged versus .68. Existing slots, unison gain, other engine caps and overload shedding remain. A new regression exposed fading same-note reuse bypassing admission; `voice_start` now reacquires room for active stage-4 slots before restarting them. `tests/voice_budget_test.c` proves twelve cheap voices, eight FM6 voices, mixed sustained-tail eviction and fade-retrigger readmission, including sanitizer/two-core runs. Existing storage/audio/ownership tests accompany it. This makes the policy available for device evaluation; host checks do not establish AC7911 deadlines or per-core worst-case margin. The hardware matrix above remains pending, and weights may need reducing after measurement.
+
+## Adjustable-budget experiment
+
+The subsequent hardware-evaluation build offers HOME → AUDIO → VOICE BUDGET: default 8 / 12 (24 units) or 10 / 15 (30 units), runtime-only. Per-track engine caps remain. Per-pitch pending recovery covers both cross-track fades and in-place drone steals, without extra MIDI/recording events or stealing to recover. Final target 584,280 B (56 B free), main static 90,336 B (7,968 B free). The native ordered clamp from the prior audit funds part of this integration; no sample compression or new voice slots. See [controls, tests and qualification](VOICE-BUDGET-EXPERIMENT.md).
+
+The wider selector now extends admission to 48 units (16 normal or 24 cheap voices shared). It adds 20 B flash and no RAM versus the initial adjustable experiment: 584,300 B, 36 B free. Per-track caps remain unchanged. Every admission boundary and menu wrap/clamp is covered by the maintained recovery test.

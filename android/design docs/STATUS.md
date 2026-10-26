@@ -1,10 +1,18 @@
+**Current firmware: 2.8.0.77.** Expanded voice budget is saved with device settings; close the menu and stop transport to complete deferred writes. Target 584,328 B (8 B free), main static 90,336 B.
+
 # Latest native firmware integration
+
+**Current .76:** standard About restored; the 95% guard and automatic eligible-part core balancing now remain active independently of diagnostic UI. EVOLVE 2 adds per-track LOW/HIGH OCT controls (defaults 3 / 5), limiting future pitch moves without cutting held notes. Normal target 584,296 B / 40 B flash free, main static 90,336 B / 7,968 B free; low RAM/pool unchanged. Residual device deadline qualification remains pending. [Audio evidence](../../docs/firmware/VOICE-BUDGET-EXPERIMENT.md) and [ambient controls](../../docs/firmware/AMBIENT-PERFORMANCE-DESIGN.md).
+
+**.75 hardware follow-up:** user reports no audible drone dropouts with the same GRAIN/VOICE/LOFI setup with DRIFT ON. Captures show LATE 19 → 26, SHEDS 0 → 1, RESTORE unchanged at 0, peak 5,856 us and active C1MASK 10. Listening acceptance for this workload is positive; deadline qualification remains incomplete. Run duration is unknown, so no deadline-miss-rate comparison is established.
+
+**Voice experiment:** HOME → AUDIO → VOICE BUDGET (knob 4): default 8 / 12 or experimental 10 / 15 through 16 / 24. Saved with device settings; engine caps unchanged. POLY drones recover stolen pitches only with spare admission/slots after a quiet quarter-second; both fade-steals and in-place reuse are covered. No extra MIDI/recording event or natural one-shot repeat. [Controls and qualification](../../docs/firmware/VOICE-BUDGET-EXPERIMENT.md).
 
 **ENV → SUSTAIN** ships PEDAL/PIANO/STRINGS/LOFI with 0.5S–32S/HOLD, DAMP and AMOUNT.
 Logical gates/MIDI/recording remain unchanged; released tails yield to held notes.
 Settings remain runtime-only; saving/persistence is future work. **EVOLVE** now has
 1–160-second cycles plus eleven transport-synced divisions and a live cycle bar.
-Combined target: 584,204 B, 132 B flash free, main static 89,936 B (8,368 B free). Cold persistence/editor sharing, weighted admission (12 LOFI/WHEEL or 8 normal voices shared) and FM6 eight are integrated. Eight slots per track and existing overload shedding remain. Hardware deadline qualification is pending. Startup-string packing remains excluded.
+Combined target: 584,296 B, 40 B flash free, main static 90,336 B (7,968 B free). Cold persistence/editor sharing, weighted admission (12 LOFI/WHEEL or 8 normal voices shared) and FM6 eight are integrated. Eight slots per track and existing overload shedding remain. Hardware deadline qualification is pending. Startup-string packing remains excluded.
 
 Native **LFO → EVOLVE** now changes at most one DRONE/BOTH pitch per cycle,
 with timed/synced cycles, chance and 1–7 scale-step range. Other held notes
@@ -21,7 +29,7 @@ parameter locks remain protected. Regression tests include undo/redo and lock gu
 Extended startup packing restores factory sample-zone metadata and compact
 preset names once at boot; shared chord walking and dead UI dispatch cleanup
 recover flash without new sample-playback decoding. The retained build has
-**132 B flash** and **8,368 B main static RAM** free. Independent REV HOLD
+**40 B flash** and **7,968 B main static RAM** free. Independent REV HOLD
 is removed by request; upstream FREEZE is retained. The old cold-initialization
 candidate was measured again and rejected because it grows current flash.
 
@@ -40,7 +48,7 @@ with no new render-time decoder or sound changes. See the
 
 LOFI now also offers stronger TAPE and progressive SMPLR early-digital coloration, with
 four appended dusty/warm presets (171 factory sounds total). No new audio
-buffer or feature cuts; current target has 132 B flash and 568 B low RAM free.
+buffer or feature cuts; current target has 40 B flash and 568 B low RAM free.
 See [LOFI controls and validation](../../docs/firmware/LOFI-MASTER-DESIGN.md).
 
 The selected SLOOP 2.8 integration is complete: partial held-note recording,

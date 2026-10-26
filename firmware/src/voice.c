@@ -50,6 +50,7 @@ static live_mod_t live_mod[LIVE_MOD_COUNT] = {
     {.rate = 63, .depth = 96, .wave = 16}, /* wah: sensitive band-pass sweep from base center -48 */
     {.rate = 48, .depth = 96} /* pan: slow, wide sweep */
 };
+
 static void mod_reset(uint32_t part)
 {
     if (part == NTRK) memset(mod_midi, 0, sizeof mod_midi);
@@ -173,7 +174,7 @@ static uint32_t trk_nvoice(const track_t *t)
 }
 
 /* ------------------------------------------------- the shared voice budget --- */
-static uint32_t voices_busy(void)                       /* sounding voices of all parts (not the fading ones) */
+static uint32_t voices_busy(void)
 {
     uint32_t p, i, n = 0;
     for (p = 0; p < NPART; p++)
@@ -184,7 +185,7 @@ static uint32_t voices_busy(void)                       /* sounding voices of al
 
 /* Conservative engine classes; device deadline qualification remains required.
  * Keep physical slots and unison unchanged. 24 units = 8 normal / 12 cheap. */
-#define VOICE_UNITS 24u
+#define VOICE_UNITS (24u + 6u * voice_expand)
 static uint32_t voice_cost(const track_t *t)
 {
     const engine_t *e = ENGINES[t->engine];
@@ -201,6 +202,7 @@ static uint32_t voice_load(void)
     }
     return n;
 }
+
 static int voice_fits(const track_t *t)
 {
     return voice_load() + voice_cost(t) <= VOICE_UNITS;
@@ -250,9 +252,19 @@ static uint32_t voice_victim(const track_t *self, int soft, track_t **pp)
 }
 
 static uint32_t voice_kills;                            /* voices given up (budget, overload): console, hostsim */
-#define KILL_BLOCKS 2u                                  /* 1.5 ms: no click on a bass, little extra load */
-static void voice_kill(voice_t *v)                      /* fade out over the next blocks (env_tick stage 4) */
+static uint32_t voice_recover_wait;
+static uint8_t drone_lost[NPART][128];                  /* stolen pitches survive voice-slot reuse */
+static int drone_held(const track_t *t,uint32_t note);
+static void voice_lost(track_t *t,const voice_t *v)
 {
+    if(v->active && v->gate && t->p[P_VOICE]==V_POLY && drone_held(t,v->note))
+        drone_lost[t-trk][v->note]=1;
+}
+#define KILL_BLOCKS 2u                                  /* 1.5 ms: no click on a bass, little extra load */
+static void voice_kill(track_t *t,voice_t *v)           /* fade out over the next blocks (env_tick stage 4) */
+{
+    voice_recover_wait=FS/4u;
+    voice_lost(t,v);
     v->gate = v->sustained = 0;
     if (v->stage != 4u)
         v->kill = KILL_BLOCKS;
@@ -260,10 +272,10 @@ static void voice_kill(voice_t *v)                      /* fade out over the nex
     voice_kills++;
 }
 
-/* overload (after Felucca 1.0; audio.c asks for it when two halves in a row took > 85 % of their time):
+/* overload (after Felucca 1.0; audio.c asks for it when two halves in a row exceeded its wall-time threshold (85%, diagnostic trial 95%)):
  * fade one voice out over the next blocks (voice_kill: no click), one more each half while it lasts. A
  * single late half (a USB burst, a flash write) sheds nothing. First the quietest releasing voice; else
- * the oldest held one that is not a part's lowest POLY note nor its MONO / LEGATO / UNISON lead, as the
+ * extra UNISON voices, then the oldest held one that is not a part's lowest POLY note nor its MONO / LEGATO / UNISON lead, as the
  * voice budget keeps them: a dense chord on a heavy engine thins out from the top, bass and lead stay. */
 static uint32_t shed_count;
 
@@ -271,29 +283,20 @@ static void shed_voice(void)
 {
     uint32_t p, i;
     voice_t *best = 0;
+    track_t *owner=0;
     for (p = 0; p < NPART; p++)
         for (i = 0; i < NVOICE; i++) {
             voice_t *v = &trk[p].v[i];
-            if (v->active && !v->gate && v->stage != 4u && (!best || v->env < best->env))
-                best = v;
+            if (v->active && !v->gate && v->stage != 4u && (!best || v->env < best->env)) {
+                best = v;owner=&trk[p];
+            }
         }
-    if (best) {
-        voice_kill(best);
-        shed_count++;
-        return;
-    }
-    for (p = 0; p < NPART; p++) {
-        const track_t *t = &trk[p];
-        uint32_t mode = (uint32_t)t->p[P_VOICE], low = mode == V_POLY ? lowest_held(t) : 0u;
-        for (i = 0; i < NVOICE; i++) {
-            voice_t *v = &trk[p].v[i];
-            if (v->active && v->gate && v->stage != 4u &&
-                ((mode == V_POLY && i != low) || (mode != V_POLY && i > 0u)) && (!best || v->age < best->age))
-                best = v;
-        }
+    if (!best) {
+        uint32_t k=voice_victim(0,0,&owner);
+        if(k<NVOICE)best=&owner->v[k];
     }
     if (best) {
-        voice_kill(best);
+        voice_kill(owner,best);
         shed_count++;
     }
 }
@@ -306,7 +309,7 @@ static int voice_room(track_t *t, int soft)
     while (!voice_fits(t)) {
         k = voice_victim(t, soft, &vp);
         if (k == NVOICE) return 0;
-        voice_kill(&vp->v[k]);
+        voice_kill(vp,&vp->v[k]);
     }
     return 1;
 }
@@ -333,7 +336,7 @@ static voice_t *voice_alloc(track_t *t, uint32_t note)
         if (k < np && vp == t && voice_load() <= VOICE_UNITS)
             return &t->v[k];
         if (k == NVOICE) break; /* only protected leads: unreachable with current weights */
-        voice_kill(&vp->v[k]);
+        voice_kill(vp,&vp->v[k]);
     }
     if (t->p[P_ALLOC] || t->p[P_GLIDE]) {
         for (i = 0; i < np; i++) {
@@ -407,10 +410,14 @@ static void voice_start(track_t *t, voice_t *v, uint32_t note, uint32_t vel, int
     int sounding = v->active && v->stage != 0;
     uint32_t ph0 = v->ph[0], ph1 = v->ph[1], ph2 = v->ph[2];
     int32_t s0 = v->s[0], s1 = v->s[1], s4 = v->s[4], s5 = v->s[5], s6 = v->s[6], s7 = v->s[7];
+    if(v->active && v->gate && v->note!=note && t->p[P_VOICE]==V_POLY) {
+        voice_lost(t,v);voice_kills++;voice_recover_wait=FS/4u;
+    }
+    drone_lost[t-trk][note]=0;
     v->note = (uint8_t)note;
     v->vel = (uint8_t)vel;
     v->gate = 1;
-    v->sustained=0;v->tail=0;v->tail_init=0;
+    v->sustained=0;v->tail=0;v->tail_init=0;v->kill=0;
     v->active = 1;
     v->stage = 1;
     v->age = ++vage;
@@ -517,8 +524,6 @@ static void mono_remove(track_t *t, uint32_t note)
  * by the UI with the IRQ off */
 static volatile uint32_t note_hits[NPART][4];
 static uint32_t vis_note_hits[NPART][4]; /* UI-owned attacks, including notes ending between frames. */
-/* Native drone ownership is defined alongside keyboard/MIDI sources in seq.c. */
-static int drone_held(const track_t *t,uint32_t note);
 static void trk_note_on(track_t *t, uint32_t note, uint32_t vel)
 {
     if(drone_held(t,note))return;
@@ -685,12 +690,13 @@ static void trk_all_off(track_t *t)
     uint32_t i;
     strum_cancel(t, 0, 1);
     for (i = 0; i < NVOICE; i++) {
-        t->v[i].gate = t->v[i].sustained = 0;
+        t->v[i].gate = t->v[i].sustained = t->v[i].kill = 0;
         t->v[i].stage = t->v[i].active ? 3 : 0;
     }
     t->nmono = 0;
     t->mono_note = 0;
     t->xp_n = 0;
+    if(!is_drum(t))memset(drone_lost[t-trk],0,sizeof drone_lost[0]);
 }
 
 /* note i of a chord of n (notes[]): at once, or strummed (rank: its place from the lowest, or the highest) */
@@ -778,10 +784,11 @@ static void engine_block(track_t *t)
         }
         for (i = 0; i < NVOICE; i++) {                  /* faded to 0: gone */
             voice_t *v = &t->v[i];
-            v->active = v->gate = v->sustained = 0;
+            v->active = v->gate = v->sustained = v->kill = 0;
             v->stage = 0;
             v->env = v->env_out = 0;
         }
+        memset(drone_lost[t-trk],0,sizeof drone_lost[0]);
         if (t->xf_on && t->eng_req == ENGI_FM6 && ((fm6_pend >> ((uint32_t)(t - trk) % NPART)) & 1u))
             return;                                     /* (2.6) FM6: the new notes wait for the preset's patch
                                                          * (eng_fm6.c fm6_poll, main loop): not a note of the old */

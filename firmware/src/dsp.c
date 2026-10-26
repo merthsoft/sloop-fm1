@@ -12,9 +12,19 @@ DSP_INLINE int32_t mulq16(int32_t a, uint32_t k)
     return (int32_t)(((a >> 16) * (int32_t)k) + (int32_t)(((uint32_t)(a & 0xFFFF) * k) >> 16));
 }
 DSP_INLINE int32_t clamp(int32_t v, int32_t lo, int32_t hi) { return v < lo ? lo : v > hi ? hi : v; }
+#if defined(__PI32V2__)
+#include "fm1_math.h"
+#endif
 /* Ordered constant bounds permit native min/max. Keep the original fallback
  * for dynamic/inverted bounds; each argument is evaluated only once. */
-DSP_INLINE int32_t clamp_ordered(int32_t v, int32_t lo, int32_t hi) { v = v < lo ? lo : v; return v > hi ? hi : v; }
+DSP_INLINE int32_t clamp_ordered(int32_t v, int32_t lo, int32_t hi)
+{
+#if defined(__PI32V2__)
+    return fm1_clamp_ordered(v,lo,hi);
+#else
+    v = v < lo ? lo : v; return v > hi ? hi : v;
+#endif
+}
 #define clamp(v,lo,hi) ((__builtin_constant_p(lo) && __builtin_constant_p(hi) && (int32_t)(lo) <= (int32_t)(hi)) ? clamp_ordered((v),(lo),(hi)) : (clamp)((v),(lo),(hi)))
 
 /* sine, linearly interpolated between the 1024 table points (plain lookup: THD -55 dB) */

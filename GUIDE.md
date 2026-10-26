@@ -112,7 +112,9 @@ The 11 black keys are F#3, G#3, A#3, C#4, D#4, F#4, G#4, A#4, C#5, D#5, F#5. The
 
 **ALGORITHM** picks the track you play, record and edit, on every screen. The screen and the whole editor take the colour of the selected track. **White** on the screen always means *what you are touching*; **red** always means *recording*.
 
-The shared synth budget admits twelve LOFI/WHEEL voices or eight voices on other engines, with intermediate mixed populations (cheap voices cost two of 24 units, others three). Each track retains eight physical slots; engine-specific limits and release-first stealing still apply. FM6 now admits up to eight voices. Drum voices are separate. Dense expanded populations need device deadline testing.
+The shared synth budget admits twelve LOFI/WHEEL voices or eight voices on other engines, with intermediate mixed populations (cheap voices cost two of 24 units, others three). Each track retains eight physical slots; engine-specific limits and release-first stealing still apply. FM6 now admits up to eight voices. Drum voices are separate. Hold **HOME → AUDIO → VOICE BUDGET** (knob 4) to select **8 / 12** (24 units, factory default) or experimental **10 / 15** through **16 / 24** (30–48 units). The setting is saved automatically with device preferences and restored at power-on. GRAIN remains three voices per track and VOICE four; the higher shared budget does not remove engine caps. Existing held notes are not cut when lowering admission. Dense expanded populations need device deadline testing.
+
+Stolen POLY drone pitches may restart locally after a quarter-second without another steal, when an inactive slot and admission space are available. Recovery never steals another note, never repeats naturally ended samples and adds no MIDI/recording events. [Full experiment and validation](docs/firmware/VOICE-BUDGET-EXPERIMENT.md).
 
 ### Tap and hold
 
@@ -153,7 +155,7 @@ The layers are **FX** (punch-in effects), **EDIT** (erase), **ARP** (note repeat
 | **SAVE** | on TRACKS or DRUMS: the **SONG** screen · on the SONG screen: save the song · elsewhere: the **SAVE pages** | the **song layer** (sections A–D, chain, song mode, SONG REC) |
 | **HOME** | the **TRACKS** screen · on TRACKS: the **visualiser** (HOME again closes it) | 0.7 s: the **menu** (SCREEN, LIGHTS, AUDIO, SYSTEM); hold again to leave it |
 | **ENV** | ENV pages (ENV, ENV DEST) | — |
-| **LFO** | LFO pages (LFO, LFO 2, LFO DEST, DRIFT) | — |
+| **LFO** | LFO pages (LFO, LFO 2, LFO DEST, DRIFT, EVOLVE, EVOLVE 2) | — |
 | **FX** | FX pages (FX, FILTER, SLICER, DLY, REV/CHO) | punch-in layer |
 | **SEL** | SEL pages (SEL, SEL 2) | key / chord layer |
 | **EDIT** | EDIT pages (EDIT 1, EDIT 2, VOICE, VOICE 2) · on TRACKS with the drum track: the **DRUMS** screen · on DRUMS: grid → kit → groove · on the STEP page: clear the step | erase layer |
@@ -784,6 +786,8 @@ Tap a button to open its first page (or the last one you used); **tap it again**
 | | **LFO 2** (2.6) | SYNC: OFF, 4BAR, 2BAR, 1BAR, 1/2, 1/4, 1/8, 8T, 1/16, 16T, 1/32 | TRIG: NOTE / FREE | POL: BI / UNI | — |
 | | **LFO DEST** | PIT: vibrato | FLT: filter wobble | SHP: shape | AMP: tremolo |
 | | **DRIFT** | MODE: OFF / DRIFT / DRONE / BOTH | CYCLE: 5S–160S | AMOUNT | TARGET: TONE / SHAPE / PAN |
+| | **EVOLVE** | MODE: OFF / ON | CYCLE: timed / synced | CHANCE | RANGE: scale steps |
+| | **EVOLVE 2** | LO OCT | HI OCT | — | — |
 | **FX** | **FX** (sends) | DST drive | CHO chorus send | DLY delay send | REV reverb send |
 | | **FILTER** | FILT: one-knob filter of the track — left LP, right HP, centre OFF | — | — | — |
 | | **SLICER** | SLCR: OFF, GATE, STUT (stutter) | PAT: pattern 1–16 | RATE: 1/8, 1/16, 1/32, 8T, 16T, 32T | DEPTH |
@@ -1946,8 +1950,15 @@ Choose a sustaining **POLY** sound. On **LFO → DRIFT**, select **DRONE** or
 
 Start with **ON / 5S / 100% / 1** to hear it clearly. At most one pitch moves
 per cycle. Other notes stay held without reattacking. ROOT/SCALE in SEL determine
-which pitches are allowed; CHR uses all semitones. RANGE bounds each move, so the
-bed can gradually wander beyond its starting register. A move is skipped at
+which pitches are allowed; CHR uses all semitones. RANGE bounds each move.
+For a fixed register, turn SELECT from EVOLVE to **EVOLVE 2**: **knob 1 LO OCT**
+and **knob 2 HI OCT** set the lowest/highest allowed whole octave, from -1 to 9.
+Defaults **3 / 5** allow C3 through B5 (MIDI 48–83); octave 9 ends at MIDI 127.
+Moving one endpoint past the other moves the other endpoint with it. Editing
+bounds does not cut or retune held notes; only subsequent evolution attempts
+use the limits. Notes manually played outside the range stay held; attempts that
+would remain outside it are skipped. The bounds are per synth track and runtime-only.
+A move is skipped at
 pitch limits, on a duplicate note, or when another input/sequence owner shares
 the affected pitch. This keeps MIDI, other keys and stored playback safe.
 

@@ -7,6 +7,7 @@ the website installer references the current MerthSloop package.
 - [Illustrated guide to all MerthSloop firmware additions](MERTHSOFT-FEATURES.md)
 - [Native UI refresh, actual screen gallery and design](UI-REFRESH-DESIGN.md)
 - [Ambient DRIFT, DRONE, note EVOLVE and sustained starters](AMBIENT-PERFORMANCE-DESIGN.md)
+- [Adjustable voice budget and drone recovery](VOICE-BUDGET-EXPERIMENT.md)
 - [Track sustain: pedal, piano, strings and LOFI](SUSTAIN-DESIGN.md)
 - [Musical sequence starters](SEQUENCE-STARTERS-DESIGN.md)
 - [Custom progressions](CUSTOM-PROGRESSIONS-DESIGN.md)
