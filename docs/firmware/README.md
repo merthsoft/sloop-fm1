@@ -62,3 +62,5 @@ Use the [player guide](../../GUIDE.md) for controls and the
 
 - [Measured voice-budget options and hardware qualification](VOICE-BUDGET-AUDIT.md) — audit candidates only.
 - [Additional build-time compression audit](SUSTAIN-HEADROOM-AUDIT.md).
+
+- [Track snapshots and morphing](TRACK-SNAPSHOTS-DESIGN.md): native A/B controls, scope, lock handling and lifecycle.

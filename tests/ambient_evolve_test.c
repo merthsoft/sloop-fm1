@@ -7,10 +7,10 @@ static uint32_t held(track_t *t) {
 static void setup(void) {
     host_tracks_init();song.sel=0;song.playing=song.rec=transport_req=rec_wait=ft_on=0;
     for(uint32_t i=0;i<NPART;i++) {
-        kh_release(&trk[i]);drift_p[i][0]=2;
+        kh_release(&trk[i]);drift_p[i][0]=0;
         trk[i].p[P_AMODE]=trk[i].p[P_CHORD]=trk[i].p[P_AHOLD]=0;
         trk[i].p[P_ROOT]=0;trk[i].p[P_SCALE]=1;trk[i].p[P_VOICE]=V_POLY;trk[i].p[P_SUS]=127;
-        evolve_p[i][0]=1;evolve_p[i][1]=2;evolve_p[i][2]=127;evolve_p[i][3]=1;
+        evolve_p[i][0]=DRONE_MOVE;evolve_p[i][1]=2;evolve_p[i][2]=127;evolve_p[i][3]=1;
         evolve_p[i][4]=-1;evolve_p[i][5]=9;
     }
     memset(evolve,0,sizeof evolve);go_home();
@@ -71,8 +71,8 @@ int main(int argc,char **argv) {
     track_select(0);kh_release(&trk[1]);drain();
     /* OFF, zero chance, inactive drone and actual timing cannot mutate pitches. */
     uint32_t before[4];memcpy(before,kh_set[0],sizeof before);
-    evolve_p[0][0]=0;evolve_tick(FS*10u);assert(!memcmp(before,kh_set[0],sizeof before));
-    evolve_p[0][0]=1;evolve_p[0][2]=0;evolve[0].left=1;evolve_tick(1);
+    evolve_p[0][0]=DRONE_STILL;evolve_tick(FS*10u);assert(!memcmp(before,kh_set[0],sizeof before));
+    evolve_p[0][0]=DRONE_MOVE;evolve_p[0][2]=0;evolve[0].left=1;evolve_tick(1);
     assert(!memcmp(before,kh_set[0],sizeof before));
     evolve_p[0][2]=127;evolve[0].left=FS*5u;evolve_tick(FS*5u-1);assert(evolve[0].left==1);
     assert(!memcmp(before,kh_set[0],sizeof before));
@@ -134,8 +134,9 @@ int main(int argc,char **argv) {
     }
     /* The page owns runtime knobs, not upstream patch IDs or parameter locks. */
     open_family(FAM_LFO);for(uint32_t p=0;p<NPAGES;p++)if(PAGES[p].scope==SC_EVOLVE && PAGES[p].id[0]==0)ui.page=p;
-    page_entered();frame();uint8_t lock=ui.lock_par;memcpy(patch,t->p,sizeof patch);
-    encs[panel.enc[EN_K1]]=1;frame();assert(evolve_p[0][0]==1);
+    evolve_p[0][0]=DRONE_OFF;page_entered();frame();uint8_t lock=ui.lock_par;memcpy(patch,t->p,sizeof patch);
+    encs[panel.enc[EN_K1]]=1;frame();assert(evolve_p[0][0]==DRONE_STILL);
+    encs[panel.enc[EN_K1]]=1;frame();assert(evolve_p[0][0]==DRONE_MOVE);
     encs[panel.enc[EN_K2]]=-100;frame();assert(!evolve_p[0][1]);
     encs[panel.enc[EN_K3]]=100;frame();assert(evolve_p[0][2]==127);
     encs[panel.enc[EN_K4]]=-100;frame();assert(evolve_p[0][3]==1);

@@ -1,3 +1,17 @@
+# MerthSloop firmware 2.8.0.79 — separate drone controls
+
+- LFO → DRIFT now has only OFF/ON sound movement. Its next page is DRONE with OFF / DRONE / MOVE: release the bed, hold its pitches, or evolve them. CYCLE/CHANCE/RANGE stay on that page; DRONE 2 keeps LO OCT/HI OCT. Changing DRIFT never clears the drone; MOVE → DRONE preserves the chord already reached.
+- DRIFT TARGET adds T+S (tone/shape), T+P (tone/pan), S+P (shape/pan), and ALL. Combined targets move together through the same bounded signal and target-switch fade, with no additional generators or audio state.
+- Runtime controls only; no upstream format changes. Combined target: 583,896 B, 440 B flash free; main static 91,216 B, low RAM 28,928 B, pool 331,852 B unchanged.
+- Drift-mask/fade, independent drone ownership, evolution/recording/bounds, recovery, dual-core/timeout, UI/fuzz and all 200 unchanged audio-golden checks pass.
+
+# MerthSloop firmware 2.8.0.78 — track sound morphing
+
+- EDIT → MORPH: per-synth-track A/B sound capture, manual morph, read-only stored status and two-turn capture confirmation. Works during playback/recording; locked values keep sounding while their bases update. Patterns, harmony/routing, voice modes and global/ambient controls are excluded. Loading a sound or project/section clears the RAM-only pair; ordinary save preserves the current morphed sound.
+- ANALOG's LP/BP/HP renderers share their formerly duplicated body. Per-sample helpers remain inline; the moved loop retains the original instruction budget and zero loop calls. Hardware timing is not inferred from static or host checks.
+- Target 583,864 B (472 B flash free), main static 91,216 B (7,088 B free); low RAM 28,928 B and pool 331,852 B unchanged. This is 464 B smaller than .77 despite adding snapshots.
+- All-engine snapshot/lock/owner/UI checks and UBSan pass. All 200 audio goldens are unchanged; dual-core/timeout parity and full UI navigation/fuzz pass. The instruction checker follows the real shared loop rather than just its dispatcher.
+
 # MerthSloop firmware 2.8.0.77 — saved voice budget
 
 - HOME → AUDIO → VOICE BUDGET now survives power cycles through the existing verified device-settings transaction. Close HOME settings to save; changes made during playback are deferred until transport stops. Older records default to 8 / 12; invalid levels clamp safely. Upstream song formats are unchanged.

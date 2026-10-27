@@ -47,10 +47,10 @@ int main(int argc,char **argv) {
     /* Physical tap/MIDI pedal and DRONE retain their existing logical ownership. */
     setup(0);t=TSEL;sus_set(t,1);input_on(t,60,100);input_off(t,60);v=note(t,60);
     assert(v&&v->gate&&!v->sustained);sus_set(t,0);assert(!v->gate&&v->sustained);
-    trk_all_off(t);drift_p[0][0]=2;frame();key(0);uint32_t n=kb_map(t,0);v=note(t,n);
+    trk_all_off(t);evolve_p[0][0]=DRONE_STILL;frame();key(0);uint32_t n=kb_map(t,0);v=note(t,n);
     assert(v&&drone_held(t,n));trk_note_off(t,n);assert(v->gate&&!v->sustained);
     key(0);assert(!drone_held(t,n)&&!v->gate&&v->sustained);
-    trk_all_off(t);assert(!v->sustained);drift_p[0][0]=0;
+    trk_all_off(t);assert(!v->sustained);evolve_p[0][0]=DRONE_OFF;
     /* A local acoustic tail never delays the physical key's outgoing MIDI-off. */
     setup(0);t=TSEL;song.g[G_CH1]=1;frame();mo_r=mo_w=0;uint32_t played=kb_map(t,0);key(0);v=note(t,played);
     assert(v&&v->sustained&&!v->gate);uint32_t ons=0,offs=0;

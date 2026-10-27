@@ -1730,7 +1730,7 @@ static int midi_scale_owner(uint32_t part, uint32_t note);
 static int drone_on(const track_t *t)
 {
     uint32_t p=trk_index(t);
-    return p<NPART && (drift_p[p][0]&2) && !t->p[P_AMODE] && !t->p[P_CHORD];
+    return p<NPART && evolve_p[p][0] && !t->p[P_AMODE] && !t->p[P_CHORD];
 }
 static int kh_on(const track_t *t) { return !t->p[P_AMODE] && !t->p[P_CHORD] && (t->p[P_AHOLD] || drone_on(t)) && !is_drum(t); }
 static int kh_has(const track_t *t, uint32_t note)
@@ -2322,7 +2322,7 @@ static uint32_t evolve_clock(void) {return clk_beat*96u+clk_pos*96u/BEAT_U;}
 static uint32_t evolve_phase(uint32_t part)
 {
     uint32_t rate=(uint32_t)evolve_p[part][1];
-    if(!evolve_p[part][0] || !drone_on(&trk[part]) || !kh_any(&trk[part]))return 0;
+    if(evolve_p[part][0]!=DRONE_MOVE || !drone_on(&trk[part]) || !kh_any(&trk[part]))return 0;
     if(rate>=8u)return song.playing?(evolve_clock()%EVOLVE_UNITS[rate-8u])*128u/EVOLVE_UNITS[rate-8u]:0;
     uint32_t period=EVOLVE_SECONDS[rate]*FS;
     return (period-clamp(evolve[part].left,0,period))*128u/period;
@@ -2333,7 +2333,7 @@ static __attribute__((noinline)) void evolve_tick(uint32_t frames)
         track_t *t=&trk[part];int16_t *p=evolve_p[part];
         uint32_t rate=(uint32_t)clamp(p[1],0,NELEM(N_EVOLVE_CYCLE)-1);
         uint32_t sync=rate>=8u,period=sync?evolve_clock()/EVOLVE_UNITS[rate-8u]:EVOLVE_SECONDS[rate]*FS;
-        uint32_t active=p[0] && drone_on(t) && kh_any(t);
+        uint32_t active=p[0]==DRONE_MOVE && drone_on(t) && kh_any(t);
         if(!active || evolve[part].rate!=rate || (sync && !evolve[part].running)) {
             evolve[part].left=period;evolve[part].rate=(uint8_t)rate;evolve[part].running=(uint8_t)active;continue;
         }
@@ -2669,13 +2669,13 @@ static __attribute__((noinline)) void keyboard_block(void)
     }
     for(k=0;k<NPART;k++) {
         uint32_t bit=1u<<k;
-        if((drift_p[k][0]&2) && !(drone_was&bit)) {
+        if(evolve_p[k][0] && !(drone_was&bit)) {
             if(progression.active && progression.part==k)progression_stop();
             progression_takeover(k); /* reuse the existing audio-owned live-source handoff */
             trk[k].p[P_AMODE]=trk[k].p[P_CHORD]=0;
         }
         uint32_t on=(uint32_t)drone_on(&trk[k]);
-        if((drone_was&bit) && !on) {kh_release(&trk[k]);drift_p[k][0]&=1;}
+        if((drone_was&bit) && !on) {kh_release(&trk[k]);evolve_p[k][0]=DRONE_OFF;}
         drone_was=(uint8_t)((drone_was&~bit)|(on<<k));
     }
     audition_block();

@@ -1,8 +1,10 @@
-**Current firmware: 2.8.0.77.** Expanded voice budget is saved with device settings; close the menu and stop transport to complete deferred writes. Target 584,328 B (8 B free), main static 90,336 B.
-
 # Latest native firmware integration
 
-**Current .76:** standard About restored; the 95% guard and automatic eligible-part core balancing now remain active independently of diagnostic UI. EVOLVE 2 adds per-track LOW/HIGH OCT controls (defaults 3 / 5), limiting future pitch moves without cutting held notes. Normal target 584,296 B / 40 B flash free, main static 90,336 B / 7,968 B free; low RAM/pool unchanged. Residual device deadline qualification remains pending. [Audio evidence](../../docs/firmware/VOICE-BUDGET-EXPERIMENT.md) and [ambient controls](../../docs/firmware/AMBIENT-PERFORMANCE-DESIGN.md).
+**Current .79:** DRIFT is sound movement only (OFF/ON); next-page DRONE combines OFF / DRONE / MOVE with cycle/chance/range. DRONE 2 has octave bounds. Combined drift targets T+S / T+P / S+P / ALL share one bounded signal. Target 583,896 B (440 B free), main static 91,216 B (7,088 B free); low RAM/pool unchanged. Track sound snapshots and saved voice budget remain.
+
+**Earlier .78:** Track A/B parameter snapshots and manual morphing are available at EDIT → MORPH. Runtime-only pairs; current sound saves normally. Expanded voice budget persists in device preferences. Target 583,864 B (472 B free), main static 91,216 B (7,088 B free). [Snapshot controls and scope](../../docs/firmware/TRACK-SNAPSHOTS-DESIGN.md).
+
+**Earlier .76:** standard About restored; the 95% guard and automatic eligible-part core balancing now remain active independently of diagnostic UI. EVOLVE 2 adds per-track LOW/HIGH OCT controls (defaults 3 / 5), limiting future pitch moves without cutting held notes. Normal target 584,296 B / 40 B flash free, main static 90,336 B / 7,968 B free; low RAM/pool unchanged. Residual device deadline qualification remains pending. [Audio evidence](../../docs/firmware/VOICE-BUDGET-EXPERIMENT.md) and [ambient controls](../../docs/firmware/AMBIENT-PERFORMANCE-DESIGN.md).
 
 **.75 hardware follow-up:** user reports no audible drone dropouts with the same GRAIN/VOICE/LOFI setup with DRIFT ON. Captures show LATE 19 → 26, SHEDS 0 → 1, RESTORE unchanged at 0, peak 5,856 us and active C1MASK 10. Listening acceptance for this workload is positive; deadline qualification remains incomplete. Run duration is unknown, so no deadline-miss-rate comparison is established.
 

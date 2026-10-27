@@ -101,7 +101,7 @@ static void scene_setup(uint32_t s)
             trk[k].p[P_VOICE]=V_POLY;trk[k].p[P_AMODE]=trk[k].p[P_CHORD]=0;
             if(k<2)chords(&trk[k],0,4,48+12*k);
         }
-        drift_p[2][0]=3;drift_p[2][2]=64;
+        drift_p[2][0]=1;evolve_p[2][0]=DRONE_STILL;drift_p[2][2]=64;
         song.g[G_LTYPE]=VINYL_MODE_VINYL;
         song.g[G_VWOW]=song.g[G_VTONE]=song.g[G_VCRACKLE]=64;
         break;

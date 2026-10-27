@@ -14,7 +14,7 @@ import os
 import re
 import sys
 
-FUNCS = ["analog_render", "digital_render", "phase_render", "lofi_render", "sample_render", "formant_render",
+FUNCS = ["analog_render", "analog_body", "digital_render", "phase_render", "lofi_render", "sample_render", "formant_render",
          "trio_render", "trio_pass", "drawbar_render", "drawbar_block",
          "grain_render", "grain_block", "slicer_track", "drums_mix",
          "phys_render", "noise_render", "px_modal_run", "px_string_run", "px_string_excite", "px_symp_run",

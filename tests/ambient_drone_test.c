@@ -25,7 +25,7 @@ int main(int argc,char **argv)
     transport_req=1;frame();assert(song.playing);
     step_t original[NSTEP];memcpy(original,t->step,sizeof original);
     t->p[P_AMODE]=t->p[P_CHORD]=1; /* selecting DRONE takes over without a stop/disarm ritual */
-    drift_p[0][0]=2;frame();assert(drone_on(t) && !t->p[P_AMODE] && !t->p[P_CHORD]);
+    evolve_p[0][0]=DRONE_STILL;frame();assert(drone_on(t) && !t->p[P_AMODE] && !t->p[P_CHORD]);
     assert(song.playing && !memcmp(original,t->step,sizeof original));
     uint32_t n=kb_map(t,0),other=kb_map(t,4);
     key(0);drain();assert(kh_has(t,n) && gates(t,n));
@@ -52,10 +52,10 @@ int main(int argc,char **argv)
     /* Track changes preserve captured channel and pitch ownership. */
     key(0);drain();track_select(1);frame();assert(kh_has(t,n) && gates(t,n));
     track_select(0);frame();
-    drift_p[0][0]=0;frame();drain();assert(!kh_any(t) && !gates(t,n));
+    evolve_p[0][0]=DRONE_OFF;frame();drain();assert(!kh_any(t) && !gates(t,n));
     /* ARP/chord takeover, route changes and STOP retire the drone owners. */
     for(unsigned reason=0;reason<5;reason++) {
-        t->p[P_AMODE]=t->p[P_CHORD]=0;drift_p[0][0]=2;frame();key(0);drain();
+        t->p[P_AMODE]=t->p[P_CHORD]=0;evolve_p[0][0]=DRONE_STILL;frame();key(0);drain();
         assert(kh_has(t,n));
         if(reason==0)t->p[P_AMODE]=1;
         if(reason==1)t->p[P_CHORD]=1;
@@ -67,16 +67,21 @@ int main(int argc,char **argv)
     }
     for(unsigned c=0;c<16;c++)for(unsigned p=0;p<128;p++)assert(!balance[c][p]);
     /* Ordinary HOLD preference does not turn tap-add into replacement behavior. */
-    t->p[P_AHOLD]=1;drift_p[0][0]=2;frame();key(0);key(4);drain();
-    assert(kh_has(t,n) && kh_has(t,other));drift_p[0][0]=0;frame();drain();
+    t->p[P_AHOLD]=1;evolve_p[0][0]=DRONE_STILL;frame();key(0);key(4);drain();
+    assert(kh_has(t,n) && kh_has(t,other));evolve_p[0][0]=DRONE_OFF;frame();drain();
     assert(!kh_any(t));t->p[P_AHOLD]=0;
     for(unsigned c=0;c<16;c++)for(unsigned p=0;p<128;p++)assert(!balance[c][p]);
     /* Capture the native UI without a hardware phone or device. */
-    open_family(FAM_LFO);for(unsigned p=0;p<NPAGES;p++)if(PAGES[p].scope==SC_DRIFT)ui.page=p;
-    drift_p[0][0]=2;page_entered();frame();key(0);key(4);ui.msg_t=0;ui.force=1;ui_draw();ppm("ambient-drone");
-    drift_p[0][0]=0;frame();drain();
+    open_family(FAM_LFO);for(unsigned p=0;p<NPAGES;p++)if(PAGES[p].scope==SC_EVOLVE && PAGES[p].id[0]==0)ui.page=p;
+    evolve_p[0][0]=DRONE_STILL;page_entered();frame();key(0);key(4);ui.msg_t=0;ui.force=1;ui_draw();ppm("ambient-drone");
+    /* DRIFT on/off is independent of latching and moving/still selection. */
+    drift_p[0][0]=1;frame();assert(drone_on(t) && kh_has(t,n));
+    drift_p[0][0]=0;frame();assert(drone_on(t) && kh_has(t,n));
+    evolve_p[0][0]=DRONE_MOVE;frame();assert(kh_has(t,n));
+    evolve_p[0][0]=DRONE_STILL;frame();assert(kh_has(t,n));
+    evolve_p[0][0]=DRONE_OFF;frame();drain();
     /* DRONE-only must not advance DRIFT or consume its RNG. */
-    memset(drift,0,sizeof drift);drift_p[0][0]=2;frame();
+    memset(drift,0,sizeof drift);evolve_p[0][0]=DRONE_STILL;frame();
     assert(!drift[0].phase && !drift[0].value);
     puts("drone: tap/add/remove, octave/track snapshots, MIDI overlap/channel balance, takeover and STOP PASS");
     return 0;

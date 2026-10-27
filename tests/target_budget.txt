@@ -11,6 +11,8 @@
 # tests/target_inlining_test.py separately guards all 25 functions' hot call-site caps.
 # These are static instruction heuristics, not hardware cycle measurements.
 analog_render 638
+# Shared LP/BP/HP loop retains the prior analog budget; wrapper has no sample loop.
+analog_body 638
 digital_render 333
 phase_render 79
 lofi_render 128

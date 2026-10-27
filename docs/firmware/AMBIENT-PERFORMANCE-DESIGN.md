@@ -7,11 +7,11 @@ performance controls. Reuse its existing note ownership, starter rendering and
 modulation boundaries. No new audio buffers or sample decompression.
 
 The implementation adds a native DRIFT page, three ambient progression
-recipes and tap-toggle DRONE keys. EVOLVE now adds slow scale-aware changes to drone notes. Scene morphing and shimmer remain later work.
+recipes and tap-toggle DRONE keys. EVOLVE now adds slow scale-aware changes to drone notes. Track sound A/B morphing is implemented separately; shimmer remains later work.
 
 ## DRIFT
 
-Tap LFO, then cycle its pages to DRIFT. Four knobs: MODE / CYCLE / AMOUNT / TARGET. MODE selects OFF, DRIFT, DRONE or BOTH.
+Tap LFO, then cycle its pages to DRIFT. Four knobs: MODE / CYCLE / AMOUNT / TARGET. MODE selects OFF/ON. TARGET offers TONE, SHAPE, PAN, T+S, T+P, S+P or ALL. Combined targets share one bounded motion signal; no additional generators or sample buffers are allocated.
 CYCLE chooses 5S, 10S, 20S, 40S, 80S or 160S between random target values. Default
 is MODE OFF, 10S, amount 64 (about 50%), TONE. The first segment begins at zero; each subsequent
 segment interpolates continuously from its previous destination. Each synth
@@ -52,7 +52,7 @@ These are recipes, not a new generator or automatic multi-track arrangement.
 
 ## DRONE: implemented ownership contract
 
-DRONE and BOTH add/remove individual pitches by tapping,
+The DRONE page’s DRONE and MOVE modes add/remove individual pitches by tapping,
 without retriggering the other selected notes. Octave/track changes preserve
 held pitch snapshots. Reuse existing note/pitch mapping and release/record/MIDI
 boundaries, not a second chord builder. Preserve ordinary latch behavior.
@@ -101,8 +101,9 @@ placement/hot-loop checks pass. Hardware listening remains pending.
 
 ## DRONE controls and integration
 
-On **LFO → DRIFT**, knob 1 selects **DRONE** for tap-toggle keys alone or
-**BOTH** for drone notes plus slow DRIFT. CYCLE/AMOUNT/TARGET affect DRIFT,
+On **LFO → DRONE**, knob 1 selects **OFF**, **DRONE** (hold pitches), or
+**MOVE** (evolve pitches). DRIFT is independently OFF/ON on its preceding page.
+Its CYCLE/AMOUNT/TARGET affect sound movement,
 not the duration or loudness of the held notes. Tap any pitch to add it; tap
 the same pitch again to remove it. Other selected pitches do not reattack.
 Held-key lights follow the mapped octave independently of NOTES preference.
@@ -134,15 +135,14 @@ rendering and target budgets pass. Hardware listening remains pending.
 
 ## EVOLVE: slow drone-note evolution
 
-Implemented: a native LFO → EVOLVE page, with MODE OFF/ON, CYCLE (1–160 seconds or synced divisions),
-CHANCE (0–100%) and RANGE (1–7 scale steps per change). Enable DRONE or BOTH on
-DRIFT, tap notes to form a bed, then enable EVOLVE. It changes at most one held
+Implemented on LFO → DRONE: MODE OFF/DRONE/MOVE, CYCLE (1–160 seconds or synced divisions),
+CHANCE (0–100%) and RANGE (1–7 scale steps per change). Select MOVE and tap notes to form a bed. It changes at most one held
 pitch per cycle, up or down within the selected track ROOT/SCALE. RANGE limits
 each change, not total wandering from the original chord. CHR means chromatic.
 
 Timed cycles run in audio time, including while transport is stopped; synced
 cycles follow transport and pause when stopped. Empty beds and
-mode/source cleanup restart the waiting period. Turning EVOLVE off keeps the
+mode/source cleanup restart the waiting period. Selecting DRONE instead of MOVE keeps the
 current chord; it does not restore the initial pitches. Rate changes start fresh timing or wait for the next synced boundary. RNG is independent per track and consumes no global randomness.
 No patch/sequence bytes change unless the normal recorder is active; recorded
 output is ordinary note attacks/releases. No new voices or audio buffers.
@@ -151,7 +151,7 @@ Skip a change if it would exceed MIDI pitch limits, duplicate another held note,
 or involve a physical/MIDI/sequencer owner outside the drone. Never steal or
 release those notes. Other held voices do not retrigger. Reuse drone MIDI-channel,
 key-light and lifecycle cleanup. Runtime controls reset at power-off; no saved
-format/parameter-ID extension. UI help must explain DRONE dependency and scale-step
+format/parameter-ID extension. UI help explains the DRONE/MOVE choice and scale-step
 range. Validate scale/pitch bounds, collision/ownership, independent tracks, rate,
 OFF/chance endpoints, MIDI balance, record playback and unchanged default goldens.
 
@@ -173,7 +173,7 @@ fuzz pass; all 200 default-off audio goldens and native/WASM parity remain
 unchanged. Target placement, DSP budgets and 24 inlining caps pass. Hardware
 listening, physical timing/stack/deadline validation remain pending.
 
-![Native EVOLVE controls](../../assets/screens/merthsoft/neon/ambient-evolve.png)
+![Native moving-drone controls](../../assets/screens/merthsoft/neon/ambient-evolve.png)
 
 ## Expanded EVOLVE cycles and live display
 
@@ -190,7 +190,7 @@ reset scheduling. Controls are runtime-only, so no stored-index migration is nee
 
 The native page shares DRIFT's cycle bar renderer and reads scheduler phase,
 not a second random oscillator or wall clock. TIMED / TEMPO SYNC / PAUSED,
-ADD NOTES and NEEDS DRONE describe the current state. Phase and transport changes
+ADD NOTES and DRONE KEYS describe the current state. Phase and transport changes
 invalidate its redraw cache; the bar stays visible during knob focus.
 
 All eleven synced divisions are tested before/at/after boundaries, with repeated
@@ -198,15 +198,15 @@ same-phase calls, tempo changes, paused/resumed clocks and actual UI redraw pari
 Existing scale/ownership/recording tests remain. The combined sustain/.68 budget
 is recorded in [SUSTAIN-DESIGN](SUSTAIN-DESIGN.md#target-and-verification).
 
-![EVOLVE cycle progress](../../assets/screens/merthsoft/neon/ambient-evolve.png)
+![Moving-drone cycle progress](../../assets/screens/merthsoft/neon/ambient-evolve.png)
 
 ## Configurable evolution register
 
 Pitch movement belongs to EVOLVE; DRIFT itself still moves tone, shape or pan.
-EVOLVE 2 adds LOW OCT (knob 1) and HIGH OCT (knob 2), each -1..9 in scientific
+DRONE 2 adds LOW OCT (knob 1) and HIGH OCT (knob 2), each -1..9 in scientific
 pitch numbering (C4 = MIDI 60). Defaults 3 / 5 permit MIDI 48..83. The top octave
 is naturally capped by MIDI 127. Bounds are inclusive whole octaves; RANGE on
-EVOLVE 1 remains the maximum number of scale steps per change.
+DRONE’s RANGE remains the maximum number of scale steps per change.
 
 The audio-owned walk rejects a candidate outside these bounds before releasing
 its source pitch. A rejected move keeps the existing note and MIDI/recorder
@@ -225,3 +225,19 @@ scale/source ownership, MIDI balance and recording. Normal UI fuzz covers the
 new page alongside DRIFT and SUSTAIN's shared cold runtime-field resolution.
 
 ![Native evolution octave limits](../../assets/screens/merthsoft/neon/evolve-bounds.png)
+
+
+## Independent drone modes and combined drift targets
+
+DRIFT controls only sound movement. DRONE is the next page in the same LFO family,
+with OFF / DRONE / MOVE on knob 1. The existing evolution scheduler and its
+cycle/chance/range controls live on that DRONE page; no duplicate page state or
+scheduler is introduced. DRONE 2 retains octave bounds. Switching MOVE to DRONE
+keeps the evolved notes but stops further pitch changes. OFF retires drone owners.
+Changing DRIFT does not add/remove held pitches or change drone mode.
+
+Combined drift targets use masks T+S=3, T+P=5, S+P=6, ALL=7. Destinations share the
+same signed bounded value, so the movement is coordinated, rather than separately
+random. Existing per-destination clipping and fade-out/switch/fade-in apply. The
+single-target IDs stay unchanged, and no additional persistent or audio state is
+allocated. Native modes are runtime-only; firmware installation needs no migration.

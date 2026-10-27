@@ -98,3 +98,11 @@ See [architectural headroom](ARCHITECTURAL-HEADROOM.md),
 The local .75 diagnostic-only core-balancing/threshold trial measures 584,316 B (20 B flash free), main static 90,368 B (7,936 B free). Its normal configuration remains 584,300 B / 90,336 B, matching the table. Low RAM and pool are unchanged. [Trial evidence and qualification](VOICE-BUDGET-EXPERIMENT.md#core-balancing-trial-after-the-longer-hardware-run).
 
 Normal .76 restores About and adds configurable EVOLVE octave bounds while retaining the successful audio policy: 584,296 B (40 B flash free), main 90,336 B (7,968 B free), low/pool unchanged. The table remains current.
+
+
+### Track snapshots and shared ANALOG renderer
+
+The .77 saved-budget build is 584,328 B (8 B free). The combined .78 snapshot feature and shared ANALOG body link at **583,864 B (472 B free)**, a **464 B net reduction** including the new feature. Main static RAM is **91,216 B (7,088 B free)**; low RAM 28,928 B and pool 331,852 B are unchanged. No per-hit decoding or new per-block morph runner is added. The shared sample loop has zero helper calls and weighted cost 640 against the original 638 budget (+0.3%, static estimator only). Hardware cycles/stack are not qualified by this comparison. All 200 audio goldens, snapshot/lock sanitizer checks, dual-core/timeout parity and UI navigation/fuzz pass. See [track snapshots](TRACK-SNAPSHOTS-DESIGN.md).
+
+
+The .79 ambient-control reorganization and four combined drift targets add 32 B to .78: **583,896 B / 440 B free**, with all static RAM regions unchanged. One drone mode replaces the prior coupled DRIFT/EVOLVE switches; targets reuse the existing motion generator.

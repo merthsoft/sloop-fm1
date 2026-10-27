@@ -31,9 +31,8 @@ DSP_INLINE int32_t analog_tap(const tsvf_t *c, int32_t k, int32_t in, int32_t *i
 }
 #define ANALOG_K(res) (8192 - (res) * 7600 / 127)     /* tsvf_coef's damping, Q12 */
 
-/* the voice through the filter TYPE ft: analog_render's loop with ft 0 (a constant: LP, the code as it always was),
- * analog_render_f's with BP / HP (its own copy: the LP loop gains nothing) */
-DSP_INLINE __attribute__((always_inline)) void analog_body(track_t *t, voice_t *v, int32_t *out, uint32_t n,
+/* One renderer for LP/BP/HP; keep helpers inline within the shared sample loop. */
+static __attribute__((noinline)) void analog_body(track_t *t, voice_t *v, int32_t *out, uint32_t n,
                                                               const vmod_t *m, uint32_t ft)
 {
     const int16_t *p = t->p;

@@ -12,7 +12,7 @@ int main(int argc,char **argv)
     encs[panel.enc[EN_K1]]=1;frame();assert(drift_p[0][0]==1);
     encs[panel.enc[EN_K2]]=100;frame();assert(drift_p[0][1]==5);
     encs[panel.enc[EN_K3]]=100;frame();assert(drift_p[0][2]==127);
-    encs[panel.enc[EN_K4]]=100;frame();assert(drift_p[0][3]==2);
+    encs[panel.enc[EN_K4]]=100;frame();assert(drift_p[0][3]==6);
     assert(!memcmp(patch,TSEL->p,sizeof patch) && lock==ui.lock_par);
     /* Audio-owned value changes invalidate the graph without touching a knob.
      * Its moving marker stays visible while zoom/focus is active. */

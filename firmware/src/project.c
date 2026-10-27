@@ -510,6 +510,7 @@ UI_SMALL static void proj_capture(project_t *p)        /* what is playing now, a
  * meanwhile (the song sections: called from it; a load: IRQ off) */
 static void proj_apply(const project_t *p, int all)
 {
+    memset(snapshot_p,0,sizeof snapshot_p);
     progression_stop();
     uint32_t i, k;
     undo.valid = 0;                                  /* undo never crosses project/section adoption */

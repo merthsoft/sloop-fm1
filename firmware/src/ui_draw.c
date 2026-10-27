@@ -650,10 +650,10 @@ UI_SMALL static void graph_drift(uint16_t c)
     uint32_t part=song.sel;
     uint32_t evolution=cur_page()->scope==SC_EVOLVE;
     if(evolution) {
-        cv_text(8,16,&FONT_S,!evolve_p[part][0]?"OFF":!drone_on(TSEL)?"NEEDS DRONE":!kh_any(TSEL)?"ADD NOTES":evolve_p[part][1]>=8?(song.playing?"TEMPO SYNC":"PAUSED"):"TIMED",C_GRAY);
+        cv_text(8,16,&FONT_S,!evolve_p[part][0]?"OFF":!kh_any(TSEL)?"ADD NOTES":evolve_p[part][0]==DRONE_STILL?"DRONE KEYS":evolve_p[part][1]>=8?(song.playing?"TEMPO SYNC":"PAUSED"):"TIMED",C_GRAY);
     } else {
     int32_t v=drift[part].value, x=120+(v*104>>14);
-    cv_text(8,8,&FONT_S,(drift_p[part][0]&1)?"LIVE MOTION":(drift[part].depth?"FADING OUT":((drift_p[part][0]&2)?"DRONE KEYS":"OFF")),C_GRAY);
+    cv_text(8,8,&FONT_S,drift_p[part][0]?"LIVE MOTION":(drift[part].depth?"FADING OUT":"OFF"),C_GRAY);
     cv_line(16,55,224,55,C_DIM);
     cv_line(120,43,120,67,C_GRAY);
     cv_rect(v<0?x:120,51,(v<0?120-x:x-120)+1,9,c);
@@ -661,8 +661,8 @@ UI_SMALL static void graph_drift(uint16_t c)
     cv_text(8,75,&FONT_S,"-",C_GRAY);
     cv_text(112,75,&FONT_S,"0",C_GRAY);
     cv_text(220,75,&FONT_S,"+",C_GRAY);
-    if(drift_p[part][0]==2) {cv_text(8,102,&FONT_S,"TAP KEYS TO TOGGLE",C_GRAY);return;}
     }
+    if(evolution && evolve_p[part][0]!=DRONE_MOVE) {cv_text(8,102,&FONT_S,evolve_p[part][0]?"TAP KEYS TO TOGGLE":"MODE: DRONE OR MOVE",C_GRAY);return;}
     cv_text(8,102,&FONT_S,"CYCLE",C_GRAY);
     cv_rect(80,107,144,2,C_DIM);
     cv_rect(80,105,1+((evolution?evolve_phase(part)*2u:drift[part].phase>>24)*144u>>8),6,c);
@@ -774,7 +774,7 @@ UI_SMALL static const char *page_hold_hint(const page_t *pg)
         "HOLD FX: PUNCH", "HOLD SEL: KEY/LATCH", "HOLD EDIT: ERASE",
         "HOLD GLO: MIX/FILL", "HOLD SAVE: SONG/NEW", "HOLD ARP: ROLL/LATCH",
         "HOLD SEQ: STEP KEYS", "PRESETS: SOUND / ALGO: TRACK"};
-    return pg->scope==SC_STEP?"PRESETS: ZOOM / OCT: TOOLS":hints[pg->fam];
+    return pg->scope==SC_MORPH?"STORE: TURN RIGHT TWICE":pg->scope==SC_STEP?"PRESETS: ZOOM / OCT: TOOLS":hints[pg->fam];
 }
 UI_SMALL static const char *page_title(const page_t *pg)
 {

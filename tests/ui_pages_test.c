@@ -1264,13 +1264,13 @@ int main(int argc, char **argv)
         SEL(1);
         check(!strcmp(PT(), "DRIFT") && song.g[G_BPM] == bpm, "SELECT: then DRIFT");
         SEL(1);
-        check(!strcmp(PT(), "EVOLVE") && song.g[G_BPM] == bpm, "SELECT: then EVOLVE");
+        check(!strcmp(PT(), "DRONE") && song.g[G_BPM] == bpm, "SELECT: then DRONE");
         SEL(1);
-        check(!strcmp(PT(), "EVOLVE 2") && song.g[G_BPM] == bpm, "SELECT: then EVOLVE 2 octave bounds");
+        check(!strcmp(PT(), "DRONE 2") && song.g[G_BPM] == bpm, "SELECT: then DRONE 2 octave bounds");
         SEL(1);
-        check(!strcmp(PT(), "EVOLVE 2") && song.g[G_BPM] == bpm, "SELECT: stops at the last page of the family");
+        check(!strcmp(PT(), "DRONE 2") && song.g[G_BPM] == bpm, "SELECT: stops at the last page of the family");
         SEL(-1);
-        check(!strcmp(PT(), "EVOLVE"), "SELECT left: EVOLVE");
+        check(!strcmp(PT(), "DRONE"), "SELECT left: DRONE");
         SEL(-1);
         check(!strcmp(PT(), "DRIFT"), "SELECT left: DRIFT");
         SEL(-1);
@@ -1323,7 +1323,7 @@ int main(int argc, char **argv)
         tap(B_EDIT); SEL(-9);
         check(!strcmp(PT(), "EDIT 1"), "SELECT on EDIT: back to the first page");
         SEL(9);
-        check(!strcmp(PT(), "VOICE 2"), "SELECT on EDIT: up to VOICE 2");
+        check(!strcmp(PT(), "MORPH"), "SELECT on EDIT: up to MORPH");
         tap(B_SEQ); SEL(9);
         check(!strcmp(PT(), "SONG"), "SELECT on SEQ reaches SONG through the sequence browser");
         tap(B_ENV);

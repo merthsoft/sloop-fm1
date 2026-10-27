@@ -20,7 +20,7 @@ static void setup(uint32_t expanded) {
         t->p[P_ATK]=t->p[P_DEC]=t->p[P_REL]=0;t->p[P_SUS]=127;t->p[P_SLEN]=16;t->p[P_SGATE]=127;
         sustain_p[p][0]=0;song.g[G_CH1+p]=(int16_t)(p+1);
     }
-    drift_p[2][0]=3;drift_p[2][2]=64;pump(CTL*4);
+    drift_p[2][0]=1;evolve_p[2][0]=DRONE_STILL;drift_p[2][2]=64;pump(CTL*4);
 }
 static void pattern(void) {
     for(uint32_t p=0;p<2;p++)for(uint32_t s=0;s<16;s++) {
@@ -55,7 +55,7 @@ int main(int argc,char **argv) {
     }
     /* Every budget's exact heavy/cheap boundary, distributed over physical slots. */
     for(uint32_t level=0;level<5;level++)for(uint32_t cheap=0;cheap<2;cheap++) {
-        setup(level);drift_p[2][0]=0;pump(CTL);
+        setup(level);evolve_p[2][0]=DRONE_OFF;pump(CTL);
         uint32_t limit=VOICE_UNITS/(cheap?2u:3u);
         for(uint32_t p=0;p<NPART;p++) {
             host_preset(&trk[p],cheap?3:0,0);trk[p].p[P_VOICE]=V_POLY;trk[p].p[P_AMODE]=0;

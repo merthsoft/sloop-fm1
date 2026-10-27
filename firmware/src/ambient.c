@@ -6,10 +6,10 @@ static void drift_tick(track_t *t)
     uint32_t part=(uint32_t)(t-trk);
     if(part>=NPART)return;
     int16_t *p=drift_p[part];
-    int32_t target=(p[0]&1) && drift[part].target==p[3] ? clamp(p[2],0,127)*128 : 0;
+    int32_t target=p[0] && drift[part].target==p[3] ? clamp(p[2],0,127)*128 : 0;
     drift[part].depth+=(int16_t)clamp(target-drift[part].depth,-32,32);
     if(!drift[part].depth && drift[part].target!=p[3])drift[part].target=(uint8_t)p[3];
-    if(!(p[0]&1) && !drift[part].depth){drift[part].value=0;return;}
+    if(!p[0] && !drift[part].depth){drift[part].value=0;return;}
     if(!drift[part].rng) {
         drift[part].rng=(int32_t)(0x3156494eu+part);
         drift[part].to=(int16_t)(noise32(&drift[part].rng)>>16);
@@ -26,5 +26,6 @@ static void drift_tick(track_t *t)
 static int32_t drift_mod(const track_t *t,uint32_t target)
 {
     uint32_t part=(uint32_t)(t-trk);
-    return part<NPART && drift[part].target==target ? drift[part].value : 0;
+    static const uint8_t masks[]={1,2,4,3,5,6,7};
+    return part<NPART && drift[part].target<NELEM(masks) && (masks[drift[part].target]&(1u<<target)) ? drift[part].value : 0;
 }

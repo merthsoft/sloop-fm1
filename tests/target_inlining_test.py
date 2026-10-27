@@ -12,7 +12,7 @@ from pathlib import Path
 from target_budget import functions, cost
 
 LOOP_CALL_CAPS = {
-    "analog_render": 0, "digital_render": 0, "phase_render": 2,
+    "analog_render": 0, "analog_body": 0, "digital_render": 0, "phase_render": 2,
     "lofi_render": 0, "sample_render": 1, "formant_render": 0,
     "trio_render": 2, "trio_pass": 0, "drawbar_render": 0,
     # Raw samples have no cache-miss decoder calls. SLICER's swing call is per step.

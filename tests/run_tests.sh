@@ -327,6 +327,8 @@ $CC -UNDEBUG -O2 -fwrapv -fno-strict-aliasing -w -Ibuild/gen -Ifirmware/src -Ifi
 run "ambient drift: native page and knob ownership" "$OUT/ambient_drift_ui_test" "$OUT"
 $CC -UNDEBUG -O2 -fwrapv -fno-strict-aliasing -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal tests/ambient_evolve_test.c -o "$OUT/ambient_evolve_test" -lm -pthread
 run "ambient evolution: scale bounds, ownership, recorder and native UI" "$OUT/ambient_evolve_test" "$OUT"
+$CC -UNDEBUG -O2 -fwrapv -fno-strict-aliasing -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal tests/track_snapshot_test.c -o "$OUT/track_snapshot_test" -lm -pthread
+run "track snapshots: native controls, endpoints, locks and isolation" "$OUT/track_snapshot_test" "$OUT"
 $CC -UNDEBUG -O2 -fwrapv -fno-strict-aliasing -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal tests/track_sustain_test.c -o "$OUT/track_sustain_test" -lm -pthread
 run "track sustain: tails, lifecycle, budget priority and engine gates" "$OUT/track_sustain_test" "$OUT"
 $CC -UNDEBUG -O2 -fwrapv -fno-strict-aliasing -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal tests/voice_budget_test.c -o "$OUT/voice_budget_test" -lm -pthread

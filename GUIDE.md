@@ -155,7 +155,7 @@ The layers are **FX** (punch-in effects), **EDIT** (erase), **ARP** (note repeat
 | **SAVE** | on TRACKS or DRUMS: the **SONG** screen · on the SONG screen: save the song · elsewhere: the **SAVE pages** | the **song layer** (sections A–D, chain, song mode, SONG REC) |
 | **HOME** | the **TRACKS** screen · on TRACKS: the **visualiser** (HOME again closes it) | 0.7 s: the **menu** (SCREEN, LIGHTS, AUDIO, SYSTEM); hold again to leave it |
 | **ENV** | ENV pages (ENV, ENV DEST) | — |
-| **LFO** | LFO pages (LFO, LFO 2, LFO DEST, DRIFT, EVOLVE, EVOLVE 2) | — |
+| **LFO** | LFO pages (LFO, LFO 2, LFO DEST, DRIFT, DRONE, DRONE 2) | — |
 | **FX** | FX pages (FX, FILTER, SLICER, DLY, REV/CHO) | punch-in layer |
 | **SEL** | SEL pages (SEL, SEL 2) | key / chord layer |
 | **EDIT** | EDIT pages (EDIT 1, EDIT 2, VOICE, VOICE 2) · on TRACKS with the drum track: the **DRUMS** screen · on DRUMS: grid → kit → groove · on the STEP page: clear the step | erase layer |
@@ -785,9 +785,9 @@ Tap a button to open its first page (or the last one you used); **tap it again**
 | **LFO** | **LFO** | RATE (Hz) | WAVE: SIN, TRI, SAW, SQR, S&H | PHS phase | FADE (fade-in time) |
 | | **LFO 2** (2.6) | SYNC: OFF, 4BAR, 2BAR, 1BAR, 1/2, 1/4, 1/8, 8T, 1/16, 16T, 1/32 | TRIG: NOTE / FREE | POL: BI / UNI | — |
 | | **LFO DEST** | PIT: vibrato | FLT: filter wobble | SHP: shape | AMP: tremolo |
-| | **DRIFT** | MODE: OFF / DRIFT / DRONE / BOTH | CYCLE: 5S–160S | AMOUNT | TARGET: TONE / SHAPE / PAN |
-| | **EVOLVE** | MODE: OFF / ON | CYCLE: timed / synced | CHANCE | RANGE: scale steps |
-| | **EVOLVE 2** | LO OCT | HI OCT | — | — |
+| | **DRIFT** | MODE: OFF / ON | CYCLE: 5S–160S | AMOUNT | TARGET: TONE / SHAPE / PAN / combinations |
+| | **DRONE** | MODE: OFF / DRONE / MOVE | CYCLE: timed / synced | CHANCE | RANGE: scale steps |
+| | **DRONE 2** | LO OCT | HI OCT | — | — |
 | **FX** | **FX** (sends) | DST drive | CHO chorus send | DLY delay send | REV reverb send |
 | | **FILTER** | FILT: one-knob filter of the track — left LP, right HP, centre OFF | — | — | — |
 | | **SLICER** | SLCR: OFF, GATE, STUT (stutter) | PAT: pattern 1–16 | RATE: 1/8, 1/16, 1/32, 8T, 16T, 32T | DEPTH |
@@ -1898,8 +1898,9 @@ choice alone. Combine the warm presets with TAPE, or try SMPLR on drums.
 ### Slow ambient DRIFT
 
 On a synth track, tap **LFO** through to **DRIFT**. Knob 1 selects
-**OFF / DRIFT / DRONE / BOTH**. Choose DRIFT for slow movement alone; knob 2 selects a **5S / 10S / 20S / 40S / 80S / 160S** cycle; knob 3
-sets AMOUNT; knob 4 selects **TONE / SHAPE / PAN**. Full amount allows roughly
+**OFF / ON**; knob 2 selects a **5S / 10S / 20S / 40S / 80S / 160S** cycle; knob 3
+sets AMOUNT; knob 4 selects **TONE / SHAPE / PAN / T+S / T+P / S+P / ALL**.
+The combined targets move together: T is tone, S is shape, P is pan. Full amount allows roughly
 ±64 control units of movement. The live bipolar meter shows the actual motion;
 the cycle bar shows progress toward the next random destination. This is smooth random
 movement, independently generated for each synth track. It layers over your
@@ -1918,7 +1919,9 @@ For sustained progressions, choose **STILL WATER**, **WIDE SKY** or **DUSK** in
 SEQUENCES, select **CHORD**, and try **VLEAD**, a slow tempo and a long attack
 and release. Each has one onset per bar with tied sustains. ROOT/SCALE, octave,
 independent rhythms, preview, ADD/REPLACE and Apply work as for other starters.
-For tap-toggle notes, choose **DRONE**; choose **BOTH** to add slow DRIFT too.
+For tap-toggle notes, go to the next page, **LFO → DRONE**, and set MODE to
+**DRONE**. DRIFT remains independently OFF or ON; use both pages together to
+add slow sound movement to the held notes.
 Tap pitches to add them, then tap those pitches again to remove them. Other
 held pitches keep sounding. Key lights show the selected notes at the current
 octave. Octave and track changes preserve the captured notes; return to their
@@ -1933,25 +1936,25 @@ Selecting DRONE takes over that track’s previous live holds and switches its
 ARP/CHORD modes off, while transport and stored sequences stay intact. Enabling
 ARP or CHORD later exits drone holding. MIDI notes stay momentary; MIDI and
 sequence releases cannot cut the same pitch while it is selected as a drone.
-MODE OFF/DRIFT, STOP, route changes and loading another sound/project retire
+DRONE MODE OFF, STOP, route changes and loading another sound/project retire
 the drone notes. Mode and notes reset at power-off and are not saved.
 
 ### Slowly evolving drone notes
 
-Choose a sustaining **POLY** sound. On **LFO → DRIFT**, select **DRONE** or
-**BOTH**, then tap notes to form your chord. Open **LFO → EVOLVE**:
+Choose a sustaining **POLY** sound. On **LFO → DRONE**, select **MOVE**,
+then tap notes to form your chord. The same page controls pitch evolution:
 
 | Knob | Control |
 | --- | --- |
-| 1 MODE | OFF / ON. OFF keeps the current pitches. |
+| 1 MODE | OFF clears the drone; DRONE holds its pitches; MOVE evolves them. |
 | 2 CYCLE | 1–160 seconds, or tempo-synced bar/note divisions from 16 bars to sixteenth-note triplets. |
 | 3 CHANCE | Probability of a change each cycle; 0% never changes, 100% always attempts. |
 | 4 RANGE | Maximum movement per change, 1–7 notes of the selected scale. |
 
-Start with **ON / 5S / 100% / 1** to hear it clearly. At most one pitch moves
+Start with **MOVE / 5S / 100% / 1** to hear it clearly. At most one pitch moves
 per cycle. Other notes stay held without reattacking. ROOT/SCALE in SEL determine
 which pitches are allowed; CHR uses all semitones. RANGE bounds each move.
-For a fixed register, turn SELECT from EVOLVE to **EVOLVE 2**: **knob 1 LO OCT**
+For a fixed register, turn SELECT from DRONE to **DRONE 2**: **knob 1 LO OCT**
 and **knob 2 HI OCT** set the lowest/highest allowed whole octave, from -1 to 9.
 Defaults **3 / 5** allow C3 through B5 (MIDI 48–83); octave 9 ends at MIDI 127.
 Moving one endpoint past the other moves the other endpoint with it. Editing
@@ -1963,17 +1966,17 @@ pitch limits, on a duplicate note, or when another input/sequence owner shares
 the affected pitch. This keeps MIDI, other keys and stored playback safe.
 
 Timed evolution also runs with transport stopped; synced cycles pause. Rate changes
-and empty/released beds restart timing, with synced choices waiting for the next boundary. Turn it off to keep the harmony you’ve reached, tap
+and empty/released beds restart timing, with synced choices waiting for the next boundary. Choose DRONE to keep the harmony you’ve reached, tap
 lit notes to remove them, or use STOP to clear the bed. Normal REC captures the
 result as ordinary notes, within the existing four-note-per-step limit. Without
 REC, stored sequences and sound parameters stay unchanged. Controls and held
 notes are runtime-only; power-off resets them. PAGE HELP explains the DRONE
 requirement and scale-step range.
 
-EVOLVE's live cycle bar shows progress toward the next attempt. Timed choices run
+DRONE’s live cycle bar in MOVE mode shows progress toward the next attempt. Timed choices run
 with playback stopped; note/bar choices follow transport phase and pause when
 stopped. SYNC changes occur on the next boundary, without replaying missed ones.
-The page indicates TIMED, TEMPO SYNC, PAUSED, ADD NOTES or NEEDS DRONE.
+The page indicates TIMED, TEMPO SYNC, PAUSED, ADD NOTES or DRONE KEYS.
 
 ### Track sustain
 
@@ -1992,3 +1995,27 @@ per track, runtime-only and unavailable on drums; they reset at power-off.
 Knob 1 also selects **PIANO**, **STRINGS** or **LOFI**. PIANO gives treble notes a faster decay and stronger darkening; STRINGS rings more gently for overlapping guitar-like voicings. These shape the existing instrument; they do not turn every sound into an acoustic piano or guitar. LOFI adds reduced sample rate/resolution to the released tail alone.
 
 Knob 3 **DAMP** darkens tails progressively; with HOLD it still colors the tail. Higher DAMP also coarsens LOFI. Knob 4 **AMOUNT** sets extension level: zero gives ordinary release, 100% keeps the full extension. Held/new attacks remain unchanged. DECAY is approximate RT60; PIANO varies it by pitch. Naturally decaying sounds still end. Settings remain runtime-only; saving a section does not preserve them.
+
+
+## Track sound snapshots and morphing
+
+On a synth track, tap **EDIT** and turn **SELECT** to **MORPH**.
+
+1. Turn **knob 2 (SET A)** right twice to keep the current sound.
+2. Change its sound controls on other pages, then return to MORPH.
+3. Turn **knob 3 (SET B)** right twice.
+4. Sweep **knob 1 (MORPH)**: 0% is A, 100% is B. **STORED** shows A+B.
+
+You can capture and morph while playing or recording. Each synth track keeps its
+own pair. Continuous sound parameters blend; named choices switch halfway.
+Level, pan, envelope/LFO, filter, sends, insert and engine controls are included.
+Notes, key/scale, arp routing, voice mode, global FX and ambient runtime controls
+stay as they are. Active parameter locks keep sounding and return to the morphed
+base afterward. Loading a sound or project/section clears the pair; stopping
+playback does not. Pairs are RAM-only. Saving a section keeps the current morphed
+sound, but not the pair. This blends controls within an instrument, rather than
+crossfading audio between different engines.
+
+![Track sound morphing](assets/screens/merthsoft/neon/track-morph.png)
+
+[Implementation and scope](docs/firmware/TRACK-SNAPSHOTS-DESIGN.md).

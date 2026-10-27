@@ -32,6 +32,15 @@ int main(void)
         assert(live_pan(&trk[0])>=-64 && live_pan(&trk[0])<=63);
     }
     assert(transitioned && drift_mod(&trk[0],2));
+    /* Combined destinations reuse the exact same bounded motion, not extra
+     * generators, and never leak into an unselected destination. */
+    static const uint8_t masks[]={1,2,4,3,5,6,7};
+    for(unsigned choice=0;choice<NELEM(masks);choice++) {
+        drift[0].target=(uint8_t)choice;drift[0].value=-8192;
+        for(unsigned destination=0;destination<3;destination++)
+            assert(drift_mod(&trk[0],destination)==(masks[choice]&(1u<<destination)?-8192:0));
+    }
+    drift[0].target=2; /* Resume the fade from the previously selected PAN. */
     drift_p[0][0]=0;for(unsigned i=0;i<600;i++)drift_tick(&trk[0]);
     assert(!drift[0].depth && !drift[0].value);
     /* The slowest choice advances 32 times more slowly, without altering patches. */

@@ -758,6 +758,7 @@ static void strum_block(uint32_t n)
  * release in the middle of a note (a click). A fade under way keeps the sound it started from */
 static void sound_change(track_t *t)
 {
+    if(!is_drum(t))memset(snapshot_p[t-trk],0,sizeof snapshot_p[0]);
     if (!t->pold) {                                     /* (the ISR reads p_old only once pold is set: no IRQ-off
                                                          * here, the caller's own IRQ-off section stays whole; an
                                                          * engine fade without a preset takes it too, never an old
