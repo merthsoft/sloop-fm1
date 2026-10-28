@@ -6,8 +6,17 @@
  * Phase modulation wraps naturally in the 32-bit phase. */
 static const char *const N_FMALG[] = {"1", "2", "3", "4", "5", "6", "7", "8"};
 static const char *const N_RATIO[] = {".5", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "14", "16"};
-static const uint16_t RATIO_Q8[15] = {128, 256, 512, 768, 1024, 1280, 1536, 1792, 2048, 2304, 2560, 2816,
-                                      3072, 3584, 4096};
+/* Both tables come from one ratio list; all divisions are compile-time. */
+#define DIGITAL_RATIOS(X) \
+    X(128) X(256) X(512) X(768) X(1024) X(1280) X(1536) X(1792) \
+    X(2048) X(2304) X(2560) X(2816) X(3072) X(3584) X(4096)
+#define DIGITAL_RATIO_VALUE(r) r,
+static const uint16_t RATIO_Q8[15] = {DIGITAL_RATIOS(DIGITAL_RATIO_VALUE)};
+#undef DIGITAL_RATIO_VALUE
+#define DIGITAL_RATIO_LIMIT(r) 0x73000000u / (r),
+static const uint32_t RATIO_LIMIT[15] = {DIGITAL_RATIOS(DIGITAL_RATIO_LIMIT)};
+#undef DIGITAL_RATIO_LIMIT
+#undef DIGITAL_RATIOS
 
 static void digital_note_on(track_t *t, voice_t *v)
 {
@@ -19,9 +28,9 @@ static void digital_note_on(track_t *t, voice_t *v)
 }
 
 /* operator increment = carrier * ratio (Q8) without 32-bit overflow; kept below Nyquist */
-DSP_INLINE uint32_t fm_ratio_inc(uint32_t inc, uint32_t r)
+DSP_INLINE uint32_t fm_ratio_inc(uint32_t inc, uint32_t ri)
 {
-    uint32_t lim = 0x73000000u / r;                      /* (inc >> 8) * r must stay < 0x73000000 */
+    uint32_t r = RATIO_Q8[ri], lim = RATIO_LIMIT[ri];  /* product stays below Nyquist */
     return (inc >> 8) > lim ? 0x73000000u : (inc >> 8) * r;
 }
 
@@ -32,8 +41,8 @@ static void digital_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, con
     const int16_t *p = t->p;
     uint32_t alg = (uint32_t)p[P_E0] & 7u, i;
     uint32_t i1 = m->inc;
-    uint32_t i2 = fm_ratio_inc(m->inc, RATIO_Q8[p[P_E1] % 15]), i3 = fm_ratio_inc(m->inc, RATIO_Q8[p[P_E2] % 15]);
-    uint32_t i4 = fm_ratio_inc(m->inc, RATIO_Q8[p[P_E3] % 15]);
+    uint32_t i2 = fm_ratio_inc(m->inc, p[P_E1] % 15), i3 = fm_ratio_inc(m->inc, p[P_E2] % 15);
+    uint32_t i4 = fm_ratio_inc(m->inc, p[P_E3] % 15);
     int32_t me, idx, fb = p[P_E6], fb1, fb2;                 /* fb1, fb2: op 4 feedback history */
     uint32_t ph0, ph1, ph2, ph4;
     /* modulator envelope: decays (MODDEC) towards 25 %, per block */

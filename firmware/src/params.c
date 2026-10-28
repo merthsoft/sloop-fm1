@@ -402,23 +402,23 @@ enum { FAM_HOME, FAM_ENV, FAM_LFO, FAM_FX, FAM_SCL, FAM_EDIT, FAM_GLO, FAM_SAVE,
 enum { SC_TRACK, SC_GLOBAL, SC_ENGINE, SC_STEP, SC_TRK, SC_SONG, SC_DRUM, SC_STARTER, SC_RECORD, SC_ACTION, SC_VOICING, SC_DRIFT, SC_EVOLVE, SC_SUSTAIN, SC_MORPH };
 _Static_assert(SC_EVOLVE==SC_DRIFT+1 && SC_SUSTAIN==SC_DRIFT+2,"runtime field scope order");
 /* Native runtime performance controls, outside upstream saved parameter IDs. */
-static int16_t drift_p[NPART][4]={{0,1,64,0},{0,1,64,0},{0,1,64,0}};
-static const char *const N_DRIFT_CYCLE[]={"5S","10S","20S","40S","80S","160S"};
-static const char *const N_DRIFT_TARGET[]={"TONE","SHAPE","PAN","T+S","T+P","S+P","ALL"};
-static const param_desc_t DRIFT_DESC[]={
-    PE("MODE",N_ONOFF,0), PE("CYCLE",N_DRIFT_CYCLE,1),
-    PD("AMOUNT",F_PCT,0,127,64), PE("TARGET",N_DRIFT_TARGET,0)
-};
 static const char *const N_EVOLVE_CYCLE[]={"1S","2S","5S","10S","20S","40S","80S","160S",
  "16BAR","8BAR","4BAR","2BAR","1BAR","1/2","1/4","1/8","8T","1/16","16T"};
 static const uint16_t EVOLVE_SECONDS[]={1,2,5,10,20,40,80,160};
 static const uint16_t EVOLVE_UNITS[]={6144,3072,1536,768,384,192,96,48,32,24,16};
-static int16_t evolve_p[NPART][6]={{0,3,64,1,3,5},{0,3,64,1,3,5},{0,3,64,1,3,5}};
+static int16_t drift_p[NPART][4]={{0,3,64,0},{0,3,64,0},{0,3,64,0}};
+enum { DRIFT_MORPH=7 };
+static const char *const N_DRIFT_TARGET[]={"TONE","SHAPE","PAN","T+S","T+P","S+P","ALL","MORPH"};
+static const param_desc_t DRIFT_DESC[]={
+    PE("MODE",N_ONOFF,0), PE("CYCLE",N_EVOLVE_CYCLE,3),
+    PD("AMOUNT",F_PCT,0,127,64), PE("TARGET",N_DRIFT_TARGET,0)
+};
+static int16_t evolve_p[NPART][6]={{0,3,50,1,3,5},{0,3,50,1,3,5},{0,3,50,1,3,5}};
 enum { DRONE_OFF, DRONE_STILL, DRONE_MOVE };
 static const char *const N_DRONE_MODE[]={"OFF","DRONE","MOVE"};
 static const param_desc_t EVOLVE_DESC[]={
     PE("MODE",N_DRONE_MODE,0), PE("CYCLE",N_EVOLVE_CYCLE,3),
-    PD("CHANCE",F_PCT,0,127,64), PD("RANGE",F_INT,1,7,1),
+    {"CHANCE",F_INT,0,101,50,0,"%"}, PD("RANGE",F_INT,1,7,1),
     PD("LO OCT",F_INT,-1,9,3), PD("HI OCT",F_INT,-1,9,5)
 };
 /* Track-local runtime sustain; no upstream saved IDs. */
@@ -486,7 +486,7 @@ static const page_t PAGES[] = {
     {"MIDI 3", FAM_GLO, SC_GLOBAL, GR_NONE, {G_FXCH, G_DRMAP, G_RMCH, G_CLKOUT}},   /* 2.7: the punch-in FX over MIDI */
     {"TEXTURE", FAM_GLO, SC_GLOBAL, GR_NONE, {G_TXSRC, G_TXLVL, G_TXTONE, G_TXMOVE}},   /* 2.6: the bed under the mix */
     {"TEXTURE 2", FAM_GLO, SC_GLOBAL, GR_NONE, {G_TXRATE, G_TXWHEN, G_TXDUCK, 0xFF}},
-    {"PRESETS", FAM_SAVE, SC_GLOBAL, GR_BROWSE, {0xFF, 0xFF, 0xFF, 0xFF}},   /* browser: PRESETS knob / KNOB 1 */
+    {"SOUNDS", FAM_SAVE, SC_GLOBAL, GR_BROWSE, {0xFF, 0xFF, 0xFF, 0xFF}},   /* browser: PRESETS knob / KNOB 1 */
     {"USER", FAM_SAVE, SC_GLOBAL, GR_USER, {0xFF, 0xFF, 0xFF, 0xFF}},       /* user presets: SLOT LOAD ERASE SAVE */
     {"SECTION", FAM_SAVE, SC_GLOBAL, GR_SLOTS, {G_SLOT, 0xFF, G_LOAD, G_SAVE}},   /* ("PROJECT" before 2.7) */   /* (KNOB 2: ERASE, 2.6: ui_input.c) */
     {"TOOLS", FAM_SAVE, SC_GLOBAL, GR_NONE, {G_CLRSEQ, G_INITSND, 0xFF, G_NEWPRJ}},

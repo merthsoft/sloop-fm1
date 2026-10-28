@@ -29,8 +29,8 @@
 #define BLOCKS 1500u                                     /* ~2.2 s at 44.1 kHz */
 static const int32_t MASKS[] = {0, -1, 1, 2, 4, 8, 3, 5, 9, 10, 12, 7, 15};
 static const int32_t MASKS_QUICK[] = {0, 15, -1};
-static const char *const SCENE_NAME[] = {"formant3", "fm6x3", "phys_lfo", "mix", "fx26", "live_mods", "sample_cache", "drone_load"};
-#define NSCENE 8u
+static const char *const SCENE_NAME[] = {"formant3", "fm6x3", "phys_lfo", "mix", "fx26", "live_mods", "sample_cache", "drone_load", "morph_sync", "vowel_tape", "flute_lofi", "flute_source"};
+#define NSCENE 12u
 
 static void drums_pattern(void)                          /* kick 4 on the floor, snare 4 / 12, hats, a clap */
 {
@@ -94,6 +94,28 @@ static void scene_setup(uint32_t s)
             chords(&trk[k], k, 4, 50 + 4 * k);
         }
         break;
+    case 8:
+        for(k=0;k<NPART;k++) {
+            host_preset(&trk[k],0,4);chords(&trk[k],k,4,48+5*k);
+            trk[k].p[P_LWAVE]=4;trk[k].p[P_LRATE]=(int16_t)(110+k*5);
+        }
+        trk[0].p[P_LWAVE]=0;trk[0].p[P_LRATE]=0;
+        for(k=0;k<2;k++)memcpy(snapshot_values[0][k],trk[0].p,sizeof trk[0].p);
+        snapshot_values[0][0][P_E4]=20;snapshot_values[0][1][P_E4]=110;
+        snapshot_values[0][1][P_LWAVE]=4;snapshot_values[0][1][P_LRATE]=127;
+        snapshot_p[0][0]=32;snapshot_p[0][3]=3;
+        drift_p[0][0]=1;drift_p[0][1]=18;drift_p[0][2]=127;drift_p[0][3]=DRIFT_MORPH;
+        drift[0].target=DRIFT_MORPH;drift[0].depth=16256;drift[0].rng=1;
+        drift[0].from=drift[0].to=32767;drift[0].state=18+32+64;
+        break;
+    case 11:
+    case 10:
+        voice_expand=4;
+        host_preset(&trk[2],ENGI_GRAIN,2);
+        chords(&trk[2],0,4,60);
+        song.g[G_VWOW]=80;song.g[G_VTONE]=64;song.g[G_VCRACKLE]=40;
+        break;
+    case 9:
     case 7:
         voice_expand=4;
         for(k=0;k<NPART;k++) {
@@ -104,6 +126,14 @@ static void scene_setup(uint32_t s)
         drift_p[2][0]=1;evolve_p[2][0]=DRONE_STILL;drift_p[2][2]=64;
         song.g[G_LTYPE]=VINYL_MODE_VINYL;
         song.g[G_VWOW]=song.g[G_VTONE]=song.g[G_VCRACKLE]=64;
+        if(s==9u) {
+            song.g[G_LTYPE]=VINYL_MODE_TAPE;
+            for(k=0;k<2;k++)memcpy(snapshot_values[1][k],trk[1].p,sizeof trk[1].p);
+            snapshot_values[1][0][P_E0]=0;snapshot_values[1][1][P_E0]=127;
+            snapshot_p[1][0]=64;snapshot_p[1][3]=3;
+            drift_p[1][0]=1;drift_p[1][1]=0;drift_p[1][2]=127;drift_p[1][3]=DRIFT_MORPH;
+            drift[1].target=DRIFT_MORPH;drift[1].depth=16256;drift[1].rng=1;
+        }
         break;
     case 6:
         for (k=0;k<NPART;k++) {
@@ -185,7 +215,16 @@ static void scene_setup(uint32_t s)
 static void scene_block(uint32_t s, uint32_t b)          /* what the UI would do between blocks */
 {
     uint32_t k;
-    if(s==7u && b==1u)for(uint32_t n=72;n<82;n+=2)drone_toggle(&trk[2],n,27);
+    if(s==10u || s==11u)song.g[G_LTYPE]=(int16_t)((b/200u)%NELEM(N_LOFI));
+    if(s==11u) {
+        /* Simulated upload metadata/generation changes; data points into the
+         * immutable host sample fixture. No concurrent flash programming. */
+        if(b==300u) {usr_zone[0][0]=SMP_ZONES[SMP_SETS[5].z0];usr_nz[0]=1;smp_user_gen++;trk[2].p[P_E0]=SMP_NSETS;}
+        if(b==600u) {usr_zone[0][0]=SMP_ZONES[SMP_SETS[0].z0];smp_user_gen++;}
+        if(b==900u) {usr_nz[0]=0;smp_user_gen++;}
+        if(b==1100u)trk[2].p[P_E0]=5;
+    }
+    if((s==7u || s==9u) && b==1u)for(uint32_t n=72;n<82;n+=2)drone_toggle(&trk[2],n,27);
 
     if (s == 5u && (b==400u || b==900u)) {
         for (k=0;k<LIVE_MOD_COUNT;k++) live_mod[k].part=(uint8_t)((live_mod[k].part+1u)%NPART);
@@ -303,6 +342,11 @@ int main(int argc, char **argv)
             fails++;
             continue;
         }
+        if(s==11u && ref.hash!=0xf6e48f0462161b93ull) {
+            printf("split: flute source/upload output differs from frozen .89 reference\n");
+            fails++;
+            continue;
+        }
         for (m = 0; m < nm; m++) {
             res_t r;
             int32_t mask = masks[m];
@@ -311,7 +355,7 @@ int main(int argc, char **argv)
                 why = "crashed";
             else if (r.hash != ref.hash)
                 why = "the output differs from the unsplit render";
-            else if (mask && !r.jobs && (s != 0u || mask < 0 || (mask & (1 << NPART))))
+            else if (mask && !r.jobs && (s != 0u || mask < 0 || (mask & (1 << NPART))) && !(s==8u && mask==1))
                 why = "no job was handed to core 1";          /* (formant3: its parts never go; the drums do) */
             else if (!mask && r.jobs)
                 why = "jobs handed to core 1 with no unit for it";

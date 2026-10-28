@@ -120,7 +120,9 @@ UI_SMALL static void draw_page_help(void)
         labels[k]=d?d->label:"--";
         if(pg->fam==FAM_SCL&&pg->id[k]==P_AHOLD) labels[k]="LATCH";
     }
-    if(pg->scope==SC_STEP) {
+    if(pg->graph==GR_BROWSE) {
+        labels[0]="SOUND";labels[1]="KIND";labels[2]="KEEP / UNDO";labels[3]="FAV";
+    } else if(pg->scope==SC_STEP) {
         labels[0]="STEP";labels[1]="NOTE";labels[2]="LENGTH";labels[3]=ui.tie_voice?"VOICE":"FLAG";
     } else if(pg->scope==SC_TRK) {
         labels[0]="SWING";labels[1]="LEVEL";labels[2]="STEPS";labels[3]="PAN";

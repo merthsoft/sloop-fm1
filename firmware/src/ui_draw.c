@@ -427,13 +427,15 @@ UI_SMALL static uint32_t graph_signature(void)
         h^=(uint32_t)(drift[song.sel].value>>7)*7919u;
         h^=(uint32_t)(drift[song.sel].phase>>24);
         h^=(uint32_t)drift[song.sel].target<<24;
+        h^=song.playing;
     }
     return h;
 }
 /* preset browser: the list by kind (ui.c BANK), the current one in white */
 UI_SMALL static void graph_browse(void)
 {
-    uint32_t total, cur = preset_pos(&total), e, k;
+    uint32_t total, cur,e,k;
+    browse_list(0,&cur,&total);
     int32_t row;
     if (!total)
         return;
@@ -442,6 +444,8 @@ UI_SMALL static void graph_browse(void)
         char tag[5], nm[13];
         int sel = row == 0;
         uint32_t n = (cur + total * 4u + (uint32_t)row) % total;
+        uint32_t unused,count;
+        n=browse_list(n,&unused,&count);
         e = preset_at(n, &k);
         if (e == NENGINES) {                             /* user preset: "U07" and its name */
             up_slot_label(tag, k);
@@ -454,6 +458,7 @@ UI_SMALL static void graph_browse(void)
             cv_rect(4, y + 6, 3, 3, C_WHITE);
         cv_text(14, y, &FONT_S, tag, sel ? C_GRAY : C_DIM);
         cv_text(54, y, &FONT_S, nm, sel ? C_WHITE : C_GRAY);
+        if(sel)cv_text(180,y,&FONT_S,ENGINES[TSEL->eng_req]->name,TE_COL[song.sel]);
     }
 }
 
@@ -653,7 +658,7 @@ UI_SMALL static void graph_drift(uint16_t c)
         cv_text(8,16,&FONT_S,!evolve_p[part][0]?"OFF":!kh_any(TSEL)?"ADD NOTES":evolve_p[part][0]==DRONE_STILL?"DRONE KEYS":evolve_p[part][1]>=8?(song.playing?"TEMPO SYNC":"PAUSED"):"TIMED",C_GRAY);
     } else {
     int32_t v=drift[part].value, x=120+(v*104>>14);
-    cv_text(8,8,&FONT_S,drift_p[part][0]?"LIVE MOTION":(drift[part].depth?"FADING OUT":"OFF"),C_GRAY);
+    cv_text(8,8,&FONT_S,drift_p[part][3]==DRIFT_MORPH && !snapshot_ready(TSEL,song.sel)?(snapshot_p[part][3]!=3?"STORE A AND B":"MATCH SOURCES"):drift_p[part][0]?(drift_p[part][1]>=8?(song.playing?"TEMPO SYNC":"PAUSED"):"LIVE MOTION"):(drift[part].depth?"FADING OUT":"OFF"),C_GRAY);
     cv_line(16,55,224,55,C_DIM);
     cv_line(120,43,120,67,C_GRAY);
     cv_rect(v<0?x:120,51,(v<0?120-x:x-120)+1,9,c);
@@ -736,7 +741,7 @@ UI_SMALL static void draw_graph(void)
     top = ui.home || (!drum_note && (pg->graph == GR_BROWSE || pg->graph == GR_SLOTS || pg->graph == GR_USER ||
                                      big_page(pg) || pg->scope==SC_DRIFT || pg->scope==SC_EVOLVE || pg->graph==GR_ROLL || pg->graph==GR_DEST || pg->graph==GR_FILTER || pg->graph==GR_DELAY));   /* these draw from the top */
     cv_oy = 0;
-    if (ui.hot_t && settings.zoom && pg->graph != GR_ROLL && pg->scope != SC_DRIFT && pg->scope != SC_EVOLVE && !(top && big_page(pg) && !drum_note)) {   /* (the big values show it already) */                 /* focus (menu ZOOM): the touched value, large and white */
+    if (ui.hot_t && settings.zoom && pg->graph != GR_ROLL && pg->graph != GR_BROWSE && pg->scope != SC_DRIFT && pg->scope != SC_EVOLVE && !(top && big_page(pg) && !drum_note)) {   /* (the big values show it already) */                 /* focus (menu ZOOM): the touched value, large and white */
         int32_t x;
         top = 1;
         cv_rect(0, 0, 150, 50, C_BLACK);
@@ -774,6 +779,7 @@ UI_SMALL static const char *page_hold_hint(const page_t *pg)
         "HOLD FX: PUNCH", "HOLD SEL: KEY/LATCH", "HOLD EDIT: ERASE",
         "HOLD GLO: MIX/FILL", "HOLD SAVE: SONG/NEW", "HOLD ARP: ROLL/LATCH",
         "HOLD SEQ: STEP KEYS", "PRESETS: SOUND / ALGO: TRACK"};
+    if(pg->graph==GR_BROWSE)return "K3: RIGHT KEEP / LEFT UNDO";
     return pg->scope==SC_MORPH?"STORE: TURN RIGHT TWICE":pg->scope==SC_STEP?"PRESETS: ZOOM / OCT: TOOLS":hints[pg->fam];
 }
 UI_SMALL static const char *page_title(const page_t *pg)
@@ -796,7 +802,7 @@ UI_SMALL static void draw_foot(void)
             str_cpy(title+str_len(title),"/",2);fmt_int(title+str_len(title),n); }
         str_cpy(hint,page_hold_hint(pg),sizeof hint);
     }
-    str_cpy(scope,pg->scope==SC_GLOBAL&&!ui.home?"GLOBAL":"T1",sizeof scope);
+    str_cpy(scope,pg->scope==SC_GLOBAL&&pg->graph!=GR_BROWSE&&!ui.home?"GLOBAL":"T1",sizeof scope);
     if(scope[0]=='T') scope[1]=(char)('1'+song.sel);
     while(text_w(&FONT_S,title)>228-text_w(&FONT_S,scope)-8) title[str_len(title)-1u]=0;
     sig=str_hash(str_hash(str_hash(7,title),hint),scope);
@@ -858,14 +864,15 @@ UI_SMALL static void draw_columns(void)
         return;
     }
     if (cur_page()->graph == GR_BROWSE) {
-        uint32_t total, cur = preset_pos(&total);
+        uint32_t total,cur;
+        browse_list(0,&cur,&total);
         char u[8];
-        fmt_int(val, (int32_t)cur + 1);
+        fmt_int(val,total?(int32_t)cur+1:0);
         str_cpy(u, "/", 8);
         fmt_int(u + 1, (int32_t)total);
         draw_column(0, "No.", val, u, VAL(0u), -1);
-        draw_column(1, "ENG", ENGINES[TSEL->eng_req]->name, "", VAL(1u), -1);
-        draw_column(2, "", "", "", C_HI, -1);
+        draw_column(1,browse_category>=BROWSE_ENGINE?"ENGINE":"KIND",browse_label(),"",VAL(1u),-1);
+        draw_column(2,"KEEP",browse_saved.active?"RIGHT":"--","",VAL(2u),-1);
         draw_column(3, "FAV", fav_has(fav_key()) ? "ON" : "--", "", VAL(3u), -1);   /* (2.7) KNOB 4 */
         return;
     }
@@ -953,7 +960,7 @@ UI_SMALL static void draw_columns(void)
             draw_column(c, "", "", "", C_HI, -1);
             continue;
         }
-        draw_parameter_column(c,d,*vp,0);
+        draw_parameter_column(c,d,cur_page()->scope==SC_MORPH && !c && snapshot_ready(TSEL,song.sel)?snapshot_position(song.sel):*vp,0);
     }
 }
 

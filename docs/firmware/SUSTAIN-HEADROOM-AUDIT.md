@@ -144,3 +144,7 @@ An initial unpooled all-string trial saves 920 B while consuming more RAM than t
 ## Production integration
 
 Cold sharing and its fault-injection regression are integrated after the minimum-cost LZ4 parser already shipped. Startup-string packing is intentionally excluded. The combined sustain/weighted-voice/FM6/readmission-fix build is **583,776 B**, **560 B free**, versus .68 at 584,064 B. Main/low/pool static RAM remain 89,616 / 28,928 / 331,852 B. This is a combined 288 B saving, not a remeasurement of the isolated cold-sharing patch. Tests live in `tests/headroom_commit_test.c` and the maintained runner.
+
+## Sound explorer integration
+
+The later .82 sound explorer adopts a bounded derivative of the startup-string work, not this full-string candidate. Complete literals are pooled, with at most 4,500 B main and 2,500 B pool selected for startup restoration. Existing decoder and final object relocations are retained. The current combined build and RAM trade are documented in [literal storage](LITERAL-STORAGE.md) and [headroom comparison](HEADROOM-COMPARISON.md); frozen audit deltas above are not additive.

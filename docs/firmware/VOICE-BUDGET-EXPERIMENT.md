@@ -272,3 +272,66 @@ The full normal target is **584,296 / 584,336 B** (40 B free), main static
 totals, not sums of earlier isolated experiments. Event-helper call boundaries
 are outside per-sample engine loops; DSP/ownership/golden and target checks still
 apply. Hardware deadline qualification remains incomplete.
+
+
+## LOFI-triggered Flute Dust chord loss (.86 → .87)
+
+Device .86 counters before/after enabling master LOFI were STEALS 31→56,
+SHEDS 3→12, RESTORE 0→0, MAX US 5933→6159, LATE 6→12, C1MASK 12→12.
+All LOFI types trigger the reported thinning and OFF restores the sound.
+The nine new CPU sheds confirm intentional voice cuts during this interval;
+the remaining steal delta is not independently diagnosed. Run duration and
+baseline counter history are unknown, so these are not event rates.
+
+Mask 12 places synth track 3 and drums on the worker. The previous scheduler
+always coupled drums to its chosen synth. With one heavy GRAIN track, that
+serializes both sources while core 0 has no synth work to overlap. The .87
+scheduler retains the heaviest eligible synth choice, sums all estimated synth
+work including ineligible parts and assigns drums to the lighter synth workload.
+Idle ties retain the historical preference. Manual masks and RNG/LFO/PHYS/MORPH
+exclusions are unchanged. The guard remains two consecutive halves above 95%.
+For the reported isolated track-3 workload, the expected steady mask is 4.
+
+This is a scheduling improvement, not proof of enough hardware headroom: global
+LOFI and shared buses still run after the worker join. Diagnostic .87 retains
+the temporary About counters for before/after device qualification. Image
+583,692 B (644 free); RAM totals match .86. Host tests preserve Flute Dust
+4411 chord gates across all master LOFI types without allocation kills; host
+rendering does not simulate deadlines. The split suite adds a Flute Dust/LOFI
+scene for exact audio parity under core masks and timeout recovery.
+
+
+## GRAIN and master LOFI render work (.88)
+
+The .87 device follow-up still thinned chords: cumulative counters were STEALS
+142, SHEDS 62, RESTORE 0, MAX US 6333, LATE 66, C1MASK 2. These are not a timed
+rate comparison. A LOFI-engine instrument did not reproduce the dropout. The
+new mask indicates the revised split is active, but it did not solve the load.
+The 95% guard and voice admission policy remain unchanged in the next trial.
+
+Three exact-output changes target avoidable render work:
+
+- Master LOFI is outlined from the large mixer, and shared stereo filter/dropout
+  control arithmetic is evaluated once per frame. Removing an inner repeated
+  TAPE-mode test does not change its branch behavior. Alias qualifiers produced
+  identical target code and were discarded. A frozen-reference check matches
+  all samples and complete effect state over 14,000 changing-mode/control blocks.
+- GRAIN's IMA magnitude replaces three conditional additions with a multiply
+  and an eight-byte rounding-correction table. All 524,288 15-bit step/nibble
+  combinations match exactly. Static target GRAIN render cost changes from
+  1,711 to 1,693 in the existing estimator; this is not measured hardware speed.
+- GRAIN stores 448 half-segment predictor/index checkpoints in previously unused
+  shared engine-arena capacity. A valid covered seek skips at most 127 decodes
+  instead of 255. The flute source has 246 entries, so all its segments fit.
+  Checkpoints are produced during the existing index build without extra source
+  decoding; the next full entry must exist before a midpoint can be used. Cold
+  startup, uncovered entries and the last unbuilt half keep the original path.
+  Index capacity, readiness, sample bytes, grain density and RNG are unchanged.
+
+The target main/low/pool occupancy is unchanged from .87. The additional 1,344
+logical bytes per GRAIN state fit inside the already allocated PHYS-sized union;
+a static assertion prevents silently growing that arena. Tests compare 19,283
+seek/boundary states across all built-in sources and reused storage, including
+8,476 midpoint hits that each avoid 128 decodes, under UBSan. No extra static
+PCM cache or per-track buffer is allocated. Device deadline improvement remains
+unverified until the next hardware run. Diagnostics remain available in About.

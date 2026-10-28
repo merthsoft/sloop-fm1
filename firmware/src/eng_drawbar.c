@@ -31,7 +31,8 @@
  * Cost: per sample and partial one table lookup and a multiply-add (a gain ramp only for the
  * partials whose gain moved: percussion, rotary, knobs); the bar levels, the rotor and the
  * percussion run once per block. State: the per-track rotor and bar gains (drw_trk) and the
- * per-voice phases / gains (drw_vc) live here, indexed by part and voice; voice_t is unused. */
+ * per-voice phases/gains live in the shared engine arena. voice_t supplies the
+ * common note, pitch and envelope state. */
 #define DRW_NP 9                 /* partials */
 #define DRW_FOLD 584366000u      /* ~6 kHz as a phase increment: partials above fold down an octave */
 #define DRW_XOVER 77915000u      /* ~800 Hz: below the low rotor, above the high rotor */
@@ -92,6 +93,8 @@ static const int32_t DRW_ROT_SPD[2][3] = {
 };
 
 typedef struct {                 /* per part, once per block (drawbar_block) */
+    int16_t cached[7];
+    uint8_t cached_ok;
     int32_t g[DRW_NP];           /* bar gains, Q15, normalised */
     int32_t pk, plev;            /* percussion: partial (DRW_NP = off), level Q15 */
     uint32_t pdec;               /* its decay per block, Q16 */
@@ -137,26 +140,34 @@ static void drawbar_block(track_t *t)
     uint32_t k, perc = (uint32_t)p[P_E4] % 7u, rot = (uint32_t)p[P_E7] % 3u;
     int32_t s = 0, lv[DRW_NP];
     uint32_t norm;
-    for (k = 0; k < DRW_NP; k++) {
-        lv[k] = perc && k == DRW_NP - 1u ? 0 : DRW_LV[drw_level(p, k)];   /* PERC on: the 1' bar is off */
-        s += lv[k];
-    }
-    /* sum of the gains = 2.4 s / (s + 1.5) (s in units of a full bar): one bar 0.96, three 1.6,
-     * all nine 2.06 */
-    norm = (uint32_t)(2u * 39322u * 32768u) / (uint32_t)(s + 49152);
-    if (perc == 1u || perc == 2u || perc == 5u || perc == 6u)
-        norm = (norm * 23170u) >> 15;                   /* normal percussion: the bars -3 dB */
-    for (k = 0; k < DRW_NP; k++)
-        T->g[k] = (int32_t)(((uint32_t)lv[k] * norm) >> 15);
-    T->pk = perc ? (int32_t)(3u + ((perc - 1u) & 1u)) : DRW_NP;   /* 2ND: 4', 3RD: 2 2/3' */
-    T->plev = perc == 3u || perc == 4u ? 12000 : 24000;
-    T->pdec = perc >= 5u ? 65457u : 65219u;             /* tau 0.6 s / 0.15 s */
-    T->clk = p[P_E5] * 180;
-    if (p[P_E6]) {                                      /* y = 6 / (2 + g) tanh(g x / 2) */
-        T->dg = 256 + p[P_E6] * 6;                      /* 1 .. 4 */
-        T->dcomp = (6 * 256 * 256) / (512 + T->dg);
-    } else {
-        T->dg = 0;
+    /* Only registration/drive setup is cached. Rotor motion stays live. */
+    for (k = 0; k < 7u && T->cached_ok && T->cached[k] == p[P_E0 + k]; k++)
+        ;
+    if (k != 7u) {
+        for (k = 0; k < DRW_NP; k++) {
+            lv[k] = perc && k == DRW_NP - 1u ? 0 : DRW_LV[drw_level(p, k)];   /* PERC on: the 1' bar is off */
+            s += lv[k];
+        }
+        /* sum of the gains = 2.4 s / (s + 1.5) (s in units of a full bar): one bar 0.96, three 1.6,
+         * all nine 2.06 */
+        norm = (uint32_t)(2u * 39322u * 32768u) / (uint32_t)(s + 49152);
+        if (perc == 1u || perc == 2u || perc == 5u || perc == 6u)
+            norm = (norm * 23170u) >> 15;                   /* normal percussion: the bars -3 dB */
+        for (k = 0; k < DRW_NP; k++)
+            T->g[k] = (int32_t)(((uint32_t)lv[k] * norm) >> 15);
+        T->pk = perc ? (int32_t)(3u + ((perc - 1u) & 1u)) : DRW_NP;   /* 2ND: 4', 3RD: 2 2/3' */
+        T->plev = perc == 3u || perc == 4u ? 12000 : 24000;
+        T->pdec = perc >= 5u ? 65457u : 65219u;             /* tau 0.6 s / 0.15 s */
+        T->clk = p[P_E5] * 180;
+        if (p[P_E6]) {                                      /* y = 6 / (2 + g) tanh(g x / 2) */
+            T->dg = 256 + p[P_E6] * 6;                      /* 1 .. 4 */
+            T->dcomp = (6 * 256 * 256) / (512 + T->dg);
+        } else {
+            T->dg = 0;
+        }
+        for (k = 0; k < 7u; k++)
+            T->cached[k] = p[P_E0 + k];
+        T->cached_ok = 1;
     }
     /* rotors: each speed eases to its target (high rotor tau ~0.37 s, low ~1.5 s) */
     for (k = 0; k < 2u; k++) {

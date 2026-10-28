@@ -741,12 +741,16 @@ static void mix_part(track_t *t, uint32_t n, mixacc_t *mx, int32_t *b)   /* into
 {
     static int16_t pnew[2][P_COUNT] __attribute__((section(".lowram")));
     int16_t *pn = pnew[mx != &acc[0]];
-    if (!(t->pold && t->xf_on && t->xf)) {
+    drift_tick(t);
+    uint32_t morph=drift[t-trk].target==DRIFT_MORPH && drift[t-trk].depth && snapshot_ready(t,(uint32_t)(t-trk));
+    uint32_t fading=t->pold && t->xf_on && t->xf;
+    if (!fading && !morph) {
         mix_part_run(t, n, mx, b);
         return;
     }
     memcpy(pn, t->p, sizeof pnew[0]);
-    memcpy(t->p, t->p_old, sizeof t->p);
+    if(fading)memcpy(t->p, t->p_old, sizeof t->p);
+    else snapshot_apply(t,snapshot_position((uint32_t)(t-trk)),1);
     mix_part_run(t, n, mx, b);
     memcpy(t->p, pn, sizeof pnew[0]);
 }
@@ -988,7 +992,8 @@ static void cpu1_units_job(uint32_t arg)                /* core 1's job: the uni
     cpu1_job_ticks += cpu1_ticks() - t0;
 }
 
-/* Select the estimated heaviest thread-safe synth part plus drums. Manual masks
+/* Select the estimated heaviest thread-safe synth part. Put drums beside the
+ * lighter synth workload, rather than always sharing the worker. Manual masks
  * and the shared-state exclusions remain independent of automatic balancing. */
 static __attribute__((noinline)) uint32_t units_split(void)
 {
@@ -999,25 +1004,30 @@ static __attribute__((noinline)) uint32_t units_split(void)
         ,3
 #endif
     };
-    uint32_t best=0, score=0;
+    uint32_t best=0, score=0, total=0;
     uint32_t mask=cpu1_units<0?U_ALL:(uint32_t)cpu1_units&U_ALL;
     uint32_t nform=0;
     if (!mask) return 0;
     for(uint32_t k=0;k<NPART;k++)nform+=ENGINES[trk[k].engine]==&ENG_FORMANT;
     for(uint32_t k=0;k<NPART;k++) {
         const track_t *t=&trk[k];const engine_t *e=ENGINES[t->engine];
+        uint32_t work=mix_voice_count[k]*weight[t->engine];
+        total+=work; /* Include ineligible parts: they still occupy core 0. */
         uint32_t bit=1u<<k, fade=t->xf_on && t->xf;
         const int16_t *p=fade && t->pold?t->p_old:t->p;
         if(!(mask&bit))continue;
+        /* Only morphs that can change LFO timing need the core-0 guard.
+         * Otherwise the ordinary wrap/source/RNG exclusions remain sufficient. */
+        if((drift_p[k][3]==DRIFT_MORPH || drift[k].target==DRIFT_MORPH) &&
+           (drift_p[k][0] || drift[k].depth) && !snapshot_lfo_stable(k,p)) {mask&=~bit;continue;}
         uint32_t inc=p[P_LSYNC]?lfo_sync_inc(p):LFO_INC[p[P_LRATE]&127];
         if(t->lfo_ph+inc<t->lfo_ph || (e==&ENG_PHYS && phys_render_draws(t,fade?t->pe_old[0]:p[P_E0])) ||
            (e==&ENG_FORMANT && nform>1u))mask&=~bit;
         else if(cpu1_units<0) {
-            uint32_t work=mix_voice_count[k]*weight[t->engine];
             if(work>=score) {best=bit;score=work;}
         }
     }
-    if(cpu1_units<0)mask=(mask&U_DRUMS)|best;
+    if(cpu1_units<0)mask=best|((!score || total-score>score)?mask&U_DRUMS:0u);
     return mask;
 }
 

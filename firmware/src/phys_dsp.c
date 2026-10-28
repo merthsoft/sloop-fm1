@@ -331,8 +331,8 @@ static __attribute__((noinline)) void px_modal_block(px_modal_blk_t *B, px_modal
     for (; i < PX_NMODE; i++)                            /* out of the band: silent */
         M->s[i][0] = M->s[i][1] = 0;
     for (i = 0; i < B->n; i++) {                         /* bound the states at +-64 (far beyond any real use): */
-        M->s[i][0] = px_clamp(M->s[i][0], -(1 << 28), 1 << 28);   /* every sum of the next block fits */
-        M->s[i][1] = px_clamp(M->s[i][1], -(1 << 28), 1 << 28);   /* in 32 bits */
+        M->s[i][0] = clamp(M->s[i][0], -(1 << 28), 1 << 28);   /* every sum of the next block fits */
+        M->s[i][1] = clamp(M->s[i][1], -(1 << 28), 1 << 28);   /* in 32 bits */
     }
 }
 
@@ -392,8 +392,8 @@ static __attribute__((noinline)) void px_memb_block(px_modal_blk_t *B, px_modal_
     for (; i < PX_NMODE; i++)
         M->s[i][0] = M->s[i][1] = 0;
     for (i = 0; i < B->n; i++) {
-        M->s[i][0] = px_clamp(M->s[i][0], -(1 << 28), 1 << 28);
-        M->s[i][1] = px_clamp(M->s[i][1], -(1 << 28), 1 << 28);
+        M->s[i][0] = clamp(M->s[i][0], -(1 << 28), 1 << 28);
+        M->s[i][1] = clamp(M->s[i][1], -(1 << 28), 1 << 28);
     }
 }
 
@@ -432,8 +432,8 @@ static void px_modal_run(const px_modal_blk_t *B, px_modal_t *M, int32_t *out, i
         }
         if (!big && !B->dust_thr && e1 > -256 && e1 < 256 && e2 > -256 && e2 < 256)
             e1 = e2 = 0;                                 /* rung out (-96 dB) */
-        M->e1 = px_clamp(e1, -(1 << 30), 1 << 30);
-        M->e2 = px_clamp(e2, -(1 << 30), 1 << 30);
+        M->e1 = clamp(e1, -(1 << 30), 1 << 30);
+        M->e2 = clamp(e2, -(1 << 30), 1 << 30);
         M->rng = rs;
     }
     for (i = 0; i < n; i++) {                            /* the modes, band-pass */

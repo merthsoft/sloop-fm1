@@ -79,3 +79,7 @@ wsl -d Ubuntu --cd /mnt/c/code/sloop-fm1/build/duplicate-audit-78 --exec env AUD
 ```
 
 The retained patches are review artifacts in ignored build storage; preserve them before cleaning that directory. Integrate neither automatically during .78 packaging nor by adding these savings to a different parent baseline.
+
+## Synced DRIFT integration
+
+The later .81 integration adopts the preferred coefficient-damping sharing patch and drum onset priming through sample_next; the drum sample loop remains inline. The combined feature build is 584,332 B with 4 B free and no RAM growth over .80. Historical isolated savings above are not additive to this different baseline. The coefficient/priming contract test compares original formulas and decoder state exhaustively.

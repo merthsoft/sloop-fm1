@@ -121,6 +121,18 @@ $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/reverb_types_test" tests/reverb_t
 run "reverb types: measured tails, stereo, damping, overload and FREEZE lifecycle" "$OUT/reverb_types_test"
 $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/vinyl_test" tests/vinyl_test.c -lm
 run "persistent VINYL DSP and bypass" "$OUT/vinyl_test"
+$CC -UNDEBUG -O2 -fwrapv -fno-strict-aliasing -w -Ibuild/gen -Ifirmware/src tests/lofi_fastpath_test.c -o "$OUT/lofi_fastpath_test" -lm -pthread
+run "master LOFI: frozen pre-optimization audio/state and exact arithmetic" "$OUT/lofi_fastpath_test"
+$CC -UNDEBUG -O2 -fwrapv -fno-strict-aliasing -w -Ibuild/gen -Ifirmware/src tests/lofi_voice_isolation_test.c -o "$OUT/lofi_voice_isolation_test" -lm -pthread
+run "master LOFI preserves Flute Dust chord gates with drums" "$OUT/lofi_voice_isolation_test"
+$CC -UNDEBUG -O2 -fwrapv -fno-strict-aliasing -w -Ibuild/gen -Ifirmware/src tests/grain_delta_test.c -o "$OUT/grain_delta_test" -lm -pthread
+run "GRAIN exact decoder magnitude arithmetic" "$OUT/grain_delta_test"
+$CC -UNDEBUG -O2 -fwrapv -fno-strict-aliasing -w -Ibuild/gen -Ifirmware/src tests/grain_seek_test.c -o "$OUT/grain_seek_test" -lm -pthread
+run "GRAIN midpoint checkpoints: cold/source-switch fallback and exact seeks" "$OUT/grain_seek_test"
+for engine_case in engine_control_tables sample_decoder drawbar_cache grain_reverse; do
+    $CC -UNDEBUG -O2 -fwrapv -fno-strict-aliasing -w -Ibuild/gen -Ifirmware/src "tests/${engine_case}_test.c" -o "$OUT/${engine_case}_test" -lm -pthread
+    run "engine optimization contract: $engine_case" "$OUT/${engine_case}_test"
+done
 $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/lofi_character_test" tests/lofi_character_test.c -lm
 run "LOFI master: character changes, stereo, overload, silence and captured fragments" "$OUT/lofi_character_test"
 $CC -UNDEBUG -O2 -Wall -Wextra -o "$OUT/wet_color_test" tests/wet_color_test.c -lm
@@ -327,8 +339,19 @@ $CC -UNDEBUG -O2 -fwrapv -fno-strict-aliasing -w -Ibuild/gen -Ifirmware/src -Ifi
 run "ambient drift: native page and knob ownership" "$OUT/ambient_drift_ui_test" "$OUT"
 $CC -UNDEBUG -O2 -fwrapv -fno-strict-aliasing -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal tests/ambient_evolve_test.c -o "$OUT/ambient_evolve_test" -lm -pthread
 run "ambient evolution: scale bounds, ownership, recorder and native UI" "$OUT/ambient_evolve_test" "$OUT"
+$CC -UNDEBUG -O2 -fwrapv -fno-strict-aliasing -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal tests/evolve_force_test.c -o "$OUT/evolve_force_test" -lm -pthread
+run "101% evolution: legal-move search, bounds, ownership and native UI" "$OUT/evolve_force_test" "$OUT"
+$CC -UNDEBUG -O2 -fwrapv -fno-strict-aliasing -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal tests/sound_browser_test.c -o "$OUT/sound_browser_test" -lm -pthread
+run "sound browser: category/engine filters, real user records and reversible live auditions" "$OUT/sound_browser_test" "$OUT"
+run "literal pooling: complete byte objects and unsupported relocation refusal" python3 tests/pool_literals_test.py
+$CC -UNDEBUG -O2 -Ifirmware/src tests/boot_literal_grammar_test.c -o "$OUT/boot_literal_grammar_test"
+run "boot literal grammar: overlap safety and malformed-tree refusal" "$OUT/boot_literal_grammar_test"
 $CC -UNDEBUG -O2 -fwrapv -fno-strict-aliasing -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal tests/track_snapshot_test.c -o "$OUT/track_snapshot_test" -lm -pthread
 run "track snapshots: native controls, endpoints, locks and isolation" "$OUT/track_snapshot_test" "$OUT"
+$CC -UNDEBUG -O2 -fwrapv -fno-strict-aliasing -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal tests/drift_morph_test.c -o "$OUT/drift_morph_test" -lm -pthread
+run "drift/morph: sync timing, base preservation, audio equivalence and ownership" "$OUT/drift_morph_test" "$OUT"
+$CC -UNDEBUG -O2 -fwrapv -fno-strict-aliasing -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal tests/duplicate_dsp_contract_test.c -o "$OUT/duplicate_dsp_contract_test" -lm -pthread
+run "shared DSP setup: exact coefficient and decoder-state oracles" "$OUT/duplicate_dsp_contract_test"
 $CC -UNDEBUG -O2 -fwrapv -fno-strict-aliasing -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal tests/track_sustain_test.c -o "$OUT/track_sustain_test" -lm -pthread
 run "track sustain: tails, lifecycle, budget priority and engine gates" "$OUT/track_sustain_test" "$OUT"
 $CC -UNDEBUG -O2 -fwrapv -fno-strict-aliasing -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal tests/voice_budget_test.c -o "$OUT/voice_budget_test" -lm -pthread
@@ -347,6 +370,8 @@ $CC -UNDEBUG -O2 -fwrapv -fno-strict-aliasing -w -Ibuild/gen -Ifirmware/src -Ifi
 run "sustain characters: clean attacks, released-tail color and controls" "$OUT/sustain_character_test" "$OUT"
 $CC -UNDEBUG -O2 -fwrapv -fno-strict-aliasing -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal tests/headroom_commit_test.c -o "$OUT/headroom_commit_test" -lm -pthread
 run "cold persistence sharing: fault recovery and editor notifications" "$OUT/headroom_commit_test"
+$CC -UNDEBUG -O2 -fwrapv -fno-strict-aliasing -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal tests/snapshot_persistence_test.c -o "$OUT/snapshot_persistence_test" -lm -pthread
+run "A/B snapshots: cold restart, queued saves and trailer fault recovery" "$OUT/snapshot_persistence_test"
 $CC -O1 -w -Ibuild/gen -Ifirmware/src -o "$OUT/boot_tables_test" tests/boot_tables_test.c
 run "startup tables: original bytes and decoder bounds" "$OUT/boot_tables_test" build/gen/boot_tables_oracle.bin
 $CC -UNDEBUG -O2 -w -Ibuild/gen -Ifirmware/src tests/boot_presets_test.c -o "$OUT/presets_raw" -lm
@@ -368,6 +393,7 @@ run "UI redraw with boot-restored factory metadata" "$OUT/ui_refresh_boot" "$OUT
 
 
 run "target DSP: preserve per-sample helper inlining" python3 tests/target_inlining_test.py build/felucca.dis
+run "target LOFI: no sample-loop division or helper calls" python3 tests/target_lofi_test.py build/felucca.dis
 if [ -n "${JIELI_TOOLCHAIN:-}" ]; then
     run "target clamp: register operands and signed bounds" python3 tests/target_clamp_test.py
 fi

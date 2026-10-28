@@ -182,7 +182,7 @@ def build_loader():
 # ---- app
 
 def build_app():
-    flags = [*CFLAGS, "-DFELUCCA_BOOT_TABLES=1", "-Ifirmware/hal", "-Ifirmware/src", "-Ibuild/gen"]
+    flags = [*CFLAGS, "-DFELUCCA_BOOT_TABLES=1", "-DFELUCCA_BOOT_LITERALS=1", "-Ifirmware/hal", "-Ifirmware/src", "-Ibuild/gen"]
     for flag in ("FELUCCA_FLASH", "FELUCCA_OTA", "FELUCCA_OTA_DRYRUN", "FELUCCA_CDC", "FELUCCA_UART",
                  "FELUCCA_ICONS", "FELUCCA_SLICE", "FELUCCA_CPU1", "FELUCCA_LOGO_TEXT", "FELUCCA_AUDIO_DIAG"):
         v = os.environ.get(flag)    # unset: the default in firmware/src/felucca.c
@@ -202,9 +202,12 @@ def build_app():
            ("cc", "-c", FW / "hal" / "fm1_isr.S", "-o", OUT / "fm1_isr.o"),
            ("cc", "-c", FW / "hal" / "fm1_cpu1.S", "-o", OUT / "fm1_cpu1.o"),
            ("cc", *flags, "-c", FW / "src" / "felucca.c", "-o", OUT / "felucca.o"))
+    from pool_literals import pack as pool_literals
+    pool_literals(OUT / "felucca.o", GEN)
+    tc("cc", *CFLAGS, "-c", GEN / "boot_literals_blob.c", "-o", OUT / "boot_literals.o")
     elf = OUT / "felucca.elf"
     tc("pi32v2/bin/ld", "-T", FW / "app.ld", OUT / "crt0.o", OUT / "fm1_vec.o", OUT / "fm1_isr.o",
-       OUT / "fm1_cpu1.o", OUT / "felucca.o", "-o", elf)
+       OUT / "fm1_cpu1.o", OUT / "felucca.o", OUT / "boot_literals.o", "-o", elf)
     for sect in ("text.bin", "data.bin", "ramtext.bin", "c1text.bin"):
         (OUT / sect).unlink(missing_ok=True)
     *_, syms, dis, rt = tc_all(("common/bin/objcopy", "-O", "binary", "-j", ".text", elf, OUT / "text.bin"),

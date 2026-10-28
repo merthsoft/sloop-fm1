@@ -8,6 +8,7 @@ UI_SMALL static int32_t ui_clamp(int32_t v,int32_t lo,int32_t hi) {return clamp(
 #undef clamp
 #define clamp ui_clamp
 
+static void browse_end(int keep);
 static void project_save(uint32_t slot);
 static void arrangement_save(void);
 static void panel_setup(void);
@@ -165,6 +166,7 @@ UI_SMALL static void note_edit_error(int result)
 
 UI_SMALL static void page_entered(void)
 {
+    if(cur_page()->graph!=GR_BROWSE)browse_end(0);
     ui.tie_voice=0;ui.tie_start=255;
     uint32_t context=!ui.home && (notes_page() || cur_page()->scope==SC_ACTION);
     if(!context || !ui.note_context) {
@@ -479,6 +481,7 @@ UI_SMALL static void page_fix(void)
 
 UI_SMALL static void go_home(void)
 {
+    browse_end(0);
     ui.note_context=0;ui.roll_pitch=0;kb_grid=0;
     groove_preview.active = 0;
     sequence_screen_close();
@@ -936,6 +939,7 @@ UI_SMALL static void pc_poll(void)
         fm1_irq_on();
         if (!r)
             continue;
+        browse_end(0); /* External Program Change ends a local audition first. */
         n = r - 1u;
         if (is_drum(&trk[i])) {
             if (n >= DRUM_KITS)
@@ -974,6 +978,8 @@ UI_SMALL static void preset_go(uint32_t n)                    /* load list index
     ui.force = 1;
 }
 
+#include "ui_sound_browser.c"
+
 /* HOME: what KNOB k edits: the engine's four main parameters; on the drum track
  * LEVEL and REV (GLO > DRUMS), PAN and LEN */
 UI_SMALL static const param_desc_t *home_param(uint32_t k, int16_t **vp)
@@ -1002,6 +1008,7 @@ UI_SMALL static void track_select(uint32_t i)
         return;
     fm1_irq_off();progression_stop();fm1_irq_on();
     sequence_screen_close();
+    browse_end(0);
     if (cur_page()->scope == SC_STARTER) go_home();
     song.sel = (uint8_t)i;
     ui.roll_pitch=0;ui.roll_project=project_revision;

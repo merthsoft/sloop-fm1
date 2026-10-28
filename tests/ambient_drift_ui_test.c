@@ -10,9 +10,9 @@ int main(int argc,char **argv)
     assert(!strcmp(ui.big_l[0],"MODE") && !strcmp(ui.big_l[1],"CYCLE"));
     int16_t patch[P_COUNT];memcpy(patch,TSEL->p,sizeof patch);uint8_t lock=ui.lock_par;
     encs[panel.enc[EN_K1]]=1;frame();assert(drift_p[0][0]==1);
-    encs[panel.enc[EN_K2]]=100;frame();assert(drift_p[0][1]==5);
+    encs[panel.enc[EN_K2]]=100;frame();assert(drift_p[0][1]==18);
     encs[panel.enc[EN_K3]]=100;frame();assert(drift_p[0][2]==127);
-    encs[panel.enc[EN_K4]]=100;frame();assert(drift_p[0][3]==6);
+    encs[panel.enc[EN_K4]]=100;frame();assert(drift_p[0][3]==7);
     assert(!memcmp(patch,TSEL->p,sizeof patch) && lock==ui.lock_par);
     /* Audio-owned value changes invalidate the graph without touching a knob.
      * Its moving marker stays visible while zoom/focus is active. */
@@ -22,7 +22,7 @@ int main(int argc,char **argv)
     assert(screen[(Y_GRAPH+46)*240+68]==swap16(C_WHITE));
     uint16_t shown[240*240];memcpy(shown,screen,sizeof shown);
     ui.force=1;draw_graph();assert(!memcmp(shown,screen,sizeof shown));
-    ppm("ambient-drift");track_select(1);frame();assert(!drift_p[1][0] && drift_p[1][1]==1);
+    ppm("ambient-drift");track_select(1);frame();assert(!drift_p[1][0] && drift_p[1][1]==3);
     track_select(TRK_DRUM);int16_t *v;for(unsigned k=0;k<4;k++)assert(!page_desc(cur_page(),k,&v));
     puts("ambient UI: real knob routing, limits, no patch/lock edits, per-track defaults and drum exclusion PASS");
     return 0;

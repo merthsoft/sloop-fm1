@@ -7,9 +7,11 @@
 UI_SMALL static int autosave_commit(const project_t *p)
 {
 #if FELUCCA_FLASH
-    if (st_save(OBJ_AUTOSAVE, p, sizeof *p)) return -1;
+    if (p->sum!=autosave_hash && st_save(OBJ_AUTOSAVE, p, sizeof *p)) return -1;
     autosave_hash = p->sum;
     autosave_ms = fm1_ms;
+    settings_save();
+    if(snapshot_pending())return -1;
 #else
     (void)p;
 #endif
@@ -23,6 +25,7 @@ UI_SMALL static void project_save(uint32_t slot)
     if (song.playing || transport_req) { ui_message("STOP BEFORE SAVE"); return; }
 #endif
     proj_capture(p);
+    snapshot_capture(&snapshot_sections[slot&3u],p);
 #if FELUCCA_FLASH
     if (flash_ok) {
         if (st_save(OBJ_PROJECT0 + (slot & 3u), p, sizeof *p) || autosave_commit(p)) {
@@ -52,6 +55,7 @@ UI_SMALL static void section_store(uint32_t s)
     }
     fm1_irq_off();                                      /* (the audio ISR may be applying a section) */
     proj_capture(&proj_slot[s]);
+    snapshot_capture(&snapshot_sections[s],&proj_slot[s]);
     live_sec = (int8_t)s;
     fm1_irq_on();
     sec_dirty |= (uint8_t)(1u << s);

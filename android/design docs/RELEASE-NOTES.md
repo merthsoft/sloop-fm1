@@ -1,3 +1,60 @@
+# MerthSloop firmware 2.8.0.90 — engine audit integration
+
+- Reduce redundant GRAIN density work and reverse-grain decoder replay; share exact sample/drum/GRAIN magnitude arithmetic and specialize pitch setup.
+- Integrate exact ANALOG, DIGITAL, LOFI instrument, FM6 and PHYS improvements, plus an arena-backed DRAWBAR control cache that keeps rotor motion live.
+- Normal firmware is 64 B smaller than .89 with no extra static RAM. Sound, timing, voice budget and overload guard are unchanged. Diagnostics remain available for hardware comparison.
+- [Combined measurements, validation and deferred investigations](../../docs/firmware/ENGINE-PERFORMANCE-INTEGRATION.md).
+
+# MerthSloop firmware 2.8.0.89 — master LOFI processing
+
+- Skip settled per-sample control work and unused character/WOW calculations while preserving exact .88 audio and complete effect state.
+- Remove all hardware division and helper calls from the target LOFI sample loops; retain the existing transition slews, RNG, history and phase.
+- No static RAM growth or change to voice admission, overload guard, effect settings or grain quality. Normal firmware still fits; diagnostic About remains for the next hardware check.
+- Host benchmarks and target structure checks support the optimization; actual device deadline/dropout improvement remains unverified. [Evidence](../../docs/firmware/LOFI-PERFORMANCE.md).
+
+# MerthSloop firmware 2.8.0.88 — GRAIN/LOFI performance trial
+
+- Reduce shared stereo-control work in master LOFI without changing its samples or state.
+- Speed up exact GRAIN IMA magnitude arithmetic and cache half-segment seek states in existing engine-arena space. The flute source is fully covered; no extra static RAM, grain-density or voice-policy change.
+- About temporarily retains audio diagnostics for hardware testing. Prior core balancing alone did not resolve the reported chord thinning; device validation is still required.
+
+# MerthSloop firmware 2.8.0.85 — persistent A/B
+
+- Section saves retain each synth track's A/B captures and manual blend. Working autosave includes capture-only edits; stop playback and allow the idle save before shutdown.
+- Loading a section restores its captures. Loading an instrument still clears them.
+- DRIFT/MORPH skips unchanged control work and allows timing-stable pairs on the worker, retaining LFO wrap safeguards.
+- Existing upstream payloads and flash partitions are unchanged. Fault-injected trailer writes retain the prior committed copy; interrupted project/settings association is rejected.
+- Image 584,268 B (68 B free); main 97,324 B, low 28,928 B, pool 335,424 B. Device power-cycle and performance validation remain pending.
+
+# MerthSloop firmware 2.8.0.83 — startup label headroom
+
+- Shared byte-pair grammar tightens startup-only label packing. The existing label buffers are reused, with an eight-byte bounded expansion stack; no extra static RAM or playback decoding.
+- **852 B net saved** against the identical .82 source/version baseline, including the new decoder/dictionary/metadata/layout. .83 image **583,372 / 584,336 B**, leaving **964 B flash**. Main static 96,324 B, low RAM 28,928 B and pool 334,352 B are unchanged.
+- Exact target literal/address/restoration checks, malformed/overlap/high-byte grammar cases and UBSan pass. Factory sample/preset/lookup assets remain byte-identical; 200 audio goldens are unchanged. Physical startup qualification remains pending.
+
+# MerthSloop firmware 2.8.0.82 — sound explorer
+
+- SAVE → SOUNDS: category, favourite, user-slot and factory-engine filters; knob 1 or PRESETS auditions within the list. Knob 3 right keeps, left restores the original edited sound. The selected preset shows its engine in track color.
+- Leaving the browser or switching tracks cancels a pending audition; keyboard/transport stay available. Cancellation restores parameters, A/B captures and unsaved FM6 patch edits. Patterns stay intact. Autosave waits until KEEP/cancel; explicit section save remains separate.
+- Bounded startup literal packing funds the browser: complete strings are pooled and selected labels restore once at boot. No audio/sample decoding is added during playback. Main/pool label allocations are 4,499 / 2,500 B.
+- Target **584,224 / 584,336 B**, **112 B flash free**. Main static **96,324 / 98,304 B** (1,980 B free), low RAM **28,928 / 29,496 B**, pool **334,352 / 344,064 B**. Pool gap 9,712 B retains the 8,192 B reserve. Compared with .81, the complete browser/storage change saves 108 B flash while using 5,108 B more main static RAM and 2,500 B pool RAM.
+- Actual UI/user-record, patch/A-B rollback, autosave, project adoption, audio goldens, split/timeout and UI fuzz checks pass. Every transformed literal and final linked address matches, with repeated real boot decoder/guard-byte checks under UBSan. Physical boot/deadline qualification remains required.
+
+# MerthSloop firmware 2.8.0.81 — synced DRIFT and sound morphing
+
+- DRIFT shares all 19 DRONE cycle choices: eight timed rates from 1–160 seconds and eleven tempo-synced divisions. Synced cycles pause with transport; timed motion continues stopped.
+- TARGET MORPH moves around the manual A/B blend without overwriting the base, captures or active parameter locks. The MORPH page shows the effective position. Source/patch/model selections must match for SAMPLE/GRAIN/FM6/PHYS.
+- Reuses existing per-core scratch RAM; MORPH rendering remains on core 0 to preserve LFO/global-RNG ordering. Dynamic filter coefficient setup and drum onset priming share existing implementations; sample-loop helpers remain inline.
+- Target 584,332 / 584,336 B: **4 B flash free**. Main static 91,216 B (7,088 B free), low RAM 28,928 B and pool 331,852 B unchanged. Combined addition over .80 is 292 B flash, no RAM.
+- Host timing, overlay/locks, source compatibility, DSP equivalence and dual-core/timeout tests cover the change. Hardware deadline qualification remains required.
+
+# MerthSloop firmware 2.8.0.80 — 101% drone change
+
+- DRONE CHANCE now reaches 101%. Normal 0–100% attempts one random move; 101% falls back to a bounded search across held sources, both directions and distances through RANGE. A legal move is made whenever one exists. Octave limits and physical/MIDI/sequencer ownership remain protected; a fully blocked bed stays put.
+- Literal percentage values keep the native readout exact. Runtime-only controls, no stored format or protocol change. One RNG draw and at most one successful move per cycle remain intact.
+- Target 584,040 B (296 B flash free), main static 91,216 B (7,088 B free); low RAM and pool unchanged. Adds 144 B flash, no RAM.
+- All 200 audio goldens, dual-core/timeout parity, evolution/ownership/recording/bounds, native UI/fuzz, target budget and browser/native preview checks pass. The new crowded-octave, fully blocked, physical/MIDI/sequence-owner and 101% readout tests also pass under UBSan.
+
 # MerthSloop firmware 2.8.0.79 — separate drone controls
 
 - LFO → DRIFT now has only OFF/ON sound movement. Its next page is DRONE with OFF / DRONE / MOVE: release the bed, hold its pitches, or evolve them. CYCLE/CHANCE/RANGE stay on that page; DRONE 2 keeps LO OCT/HI OCT. Changing DRIFT never clears the drone; MOVE → DRONE preserves the chord already reached.

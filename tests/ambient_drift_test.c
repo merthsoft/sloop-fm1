@@ -11,7 +11,7 @@ int main(void)
     assert(rng_state==rng_before);
     for(unsigned p=0;p<NPART;p++)assert(!drift[p].phase && !drift[p].value);
     int16_t patch[P_COUNT];memcpy(patch,trk[0].p,sizeof patch);
-    drift_p[0][0]=1;drift_p[0][1]=0;drift_p[0][2]=127;
+    drift_p[0][0]=1;drift_p[0][1]=2;drift_p[0][2]=127;
     int32_t last=0;unsigned wraps=0;uint32_t old=0;
     for(unsigned b=0;b<FS*60u/CTL;b++) {
         drift_tick(&trk[0]);
@@ -44,7 +44,7 @@ int main(void)
     drift_p[0][0]=0;for(unsigned i=0;i<600;i++)drift_tick(&trk[0]);
     assert(!drift[0].depth && !drift[0].value);
     /* The slowest choice advances 32 times more slowly, without altering patches. */
-    memset(drift,0,sizeof drift);drift_p[0][0]=1;drift_p[0][1]=5;
+    memset(drift,0,sizeof drift);drift_p[0][0]=1;drift_p[0][1]=7;
     for(unsigned i=0;i<1000;i++)drift_tick(&trk[0]);
     assert(drift[0].phase==(623305u>>5)*1000u);
     /* Prove that the drift reaches the real oscillator/filter render without
@@ -54,10 +54,10 @@ int main(void)
     t->p[P_SUS]=127;
     trk_note_on(t,60,100);track_t saved=*t;uint32_t saved_rng=rng_state;
     int32_t dry[CTL],wet[CTL];memset(drift,0,sizeof drift);drift_p[0][0]=0;
-    track_render(t,dry,CTL);*t=saved;rng_state=saved_rng;
+    drift_tick(t);track_render(t,dry,CTL);*t=saved;rng_state=saved_rng;
     drift_p[0][0]=1;drift_p[0][3]=0;drift[0].target=0;drift[0].rng=1;
     drift[0].from=drift[0].to=16384;drift[0].depth=16256;
-    track_render(t,wet,CTL);
+    drift_tick(t);track_render(t,wet,CTL);
     assert(memcmp(dry,wet,sizeof dry) && !memcmp(saved.p,t->p,sizeof t->p));
     /* LOFI: bipolar DRIFT equals an actual tone adjustment; legacy negative
      * envelope/LFO response remains byte-identical when DRIFT is off. */

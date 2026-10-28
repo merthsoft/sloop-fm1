@@ -1,5 +1,8 @@
 #if FELUCCA_BOOT_TABLES
 #include "boot_tables_init.h"
+#if FELUCCA_BOOT_LITERALS
+#include "boot_literals.c"
+#endif
 #endif
 #if FELUCCA_BOOT_ZONES
 #include "boot_zones.h"
@@ -405,6 +408,9 @@ UI_SMALL void fm1_cstart(void)
         *d = *s;                                /* the second core's waiting loop (fm1_cpu1.h) */
 #if FELUCCA_BOOT_TABLES
     if (!boot_tables_init()) fm1_enter_uboot();
+#if FELUCCA_BOOT_LITERALS
+    if (!boot_literals_init()) fm1_enter_uboot();
+#endif
 #endif
 #if FELUCCA_BOOT_ZONES
     if(!boot_zones_init()) fm1_enter_uboot();

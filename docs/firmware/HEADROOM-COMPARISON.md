@@ -106,3 +106,44 @@ The .77 saved-budget build is 584,328 B (8 B free). The combined .78 snapshot fe
 
 
 The .79 ambient-control reorganization and four combined drift targets add 32 B to .78: **583,896 B / 440 B free**, with all static RAM regions unchanged. One drone mode replaces the prior coupled DRIFT/EVOLVE switches; targets reuse the existing motion generator.
+
+
+The .80 101% drone-change search adds **144 B flash / 0 B RAM** to .79: **584,040 B / 296 B free**. Main static remains 91,216 B (7,088 B free), low RAM 28,928 B, pool 331,852 B. The fallback is bounded and event-driven; host checks do not qualify worst-case hardware timing.
+
+## Synced DRIFT integration
+
+The .81 synced-DRIFT/MORPH integration, including shared dynamic SVF coefficient setup and drum onset priming, reaches **584,332 / 584,336 B (4 B free)**: net +292 B over .80. Main static 91,216 B, low RAM 28,928 B and pool 331,852 B are unchanged. MORPH reuses preset-fade scratch; hardware deadlines remain unqualified.
+
+## Sound explorer integration
+
+The .82 complete sound-browser and bounded literal-storage build reaches **584,224 / 584,336 B (112 B free)**, a net 108 B reduction from .81 including the new feature. Main static **96,324 B** leaves **1,980 B**; low RAM remains **28,928 B** (568 B free); pool **334,352 B** leaves **9,712 B**, including the retained 8,192 B reserve. Added resident cost versus .81: 5,108 B main and 2,500 B pool. The label destinations use 4,499 / 2,500 B; remaining main growth is the single audition backup/layout. Literal payload savings are 2,407 B before boot helper/code/layout; do not call this an isolated net saving. All decoding is at startup, with no sample-codec changes. [Implementation](LITERAL-STORAGE.md).
+
+## Shared startup label grammar
+
+The .83 startup-only grammar refinement saves **852 B net** in a same-version
+.82 comparison: **584,224 → 583,372 B**. .83 also links to **583,372 / 584,336 B**,
+leaving **964 B flash**. Main static **96,324 B** (1,980 B free), low RAM
+**28,928 B** (568 B free), and pool **334,352 B** (9,712 B gross gap, retaining the
+8,192 B reserve) are unchanged. It adds no playback decoder or resident buffer.
+The label payload saves 1,006 B before new code/metadata/layout, not an additional
+1,006 B beyond the net result. [Mechanism and validation](LITERAL-STORAGE.md#shared-label-grammar).
+
+
+## Persistent snapshots (.85)
+
+The current combined image is 584,268 B, leaving 68 B. Main static RAM is
+97,324 B (980 free), low RAM 28,928 B (568 free), and pool 335,424 B
+(448 beyond the retained 8,192-byte reserve). This includes the morph fast path,
+conditional worker guard and persistent A/B bank; main literal packing grows
+from 4,500 to 5,500 B and the four-record section cache adds 1,072 pool bytes.
+The historical .83 savings are not a separate additive estimate for this build.
+
+
+## Combined engine audit integration (.90)
+
+The selected ten-candidate combination links at 584,228 B in normal firmware,
+108 B free: 64 B net below the same-version .89 baseline, including the DRAWBAR
+cache. Main/low/pool remain 97,324 / 28,928 / 335,424 B. Diagnostic .90 is
+583,844 B (492 free), with 97,340 B main. No individual savings were summed.
+[Integration and validation](ENGINE-PERFORMANCE-INTEGRATION.md) records the
+exact-output tests, actual links and deferred unmeasured cache proposals.

@@ -51,6 +51,12 @@ static const uint8_t WRAM[16][16] = {
     {0xF3, 0x00, 0x12, 0x22, 0x11, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22, 0x22},   /* BUZZ: spike + ring */
     {0xFF, 0xFF, 0xFF, 0xFF, 0xAA, 0xAA, 0xAA, 0xAA, 0x55, 0x55, 0x55, 0x55, 0x00, 0x00, 0x00, 0x00},   /* STAIR: 4 levels */
 };
+
+/* Immutable table means with C signed-division rounding; checked against WRAM. */
+static const int16_t WRAM_DC[2][16] = {
+    {0,-16380,-24570,136,0,0,0,0,2866,136,136,136,136,-136,-23068,0},
+    {0,-16383,-24575,2047,0,0,0,0,6143,2047,2047,2047,2047,-2047,-30719,0}
+};
 #define Q4 2184                  /* one 4-bit step (2 * 2184 * 7.5 = 32760) */
 
 /* CHIP = STEP: CRSH as the envelope, CRSH / 4 = b: 0 constant volume, 1..16 a one-shot decay
@@ -146,12 +152,8 @@ static void lofi_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const 
     uint32_t inc, ph0 = v->ph[0], lfsr = (uint32_t)v->s[2];
     const uint8_t *wr = WRAM[((uint32_t)p[P_E2] >> 3) & 15u];
     int32_t wdc = 0;
-    if (wave == RW_WRAM) {                              /* the table's mean: no DC from lopsided shapes */
-        int32_t sum = 0;
-        for (i = 0; i < 16u; i++)
-            sum += bits == 1 ? ((wr[i] >> 7) + ((wr[i] >> 3) & 1)) * 2 - 2 : (wr[i] >> 4) + (wr[i] & 15) - 15;
-        wdc = bits == 1 ? sum * 32767 / 32 : sum * 2 * Q4 / 32;   /* (2 v - 15) Q4, or +-32767 at 1 bit */
-    }
+    if (wave == RW_WRAM)
+        wdc = WRAM_DC[bits == 1][((uint32_t)p[P_E2] >> 3) & 15u];
     /* sweep down, vibrato (uses the track LFO through m->pitch16 already) */
     if (v->s[3] < 4096)                                 /* past 2047 + an arp step the pitch is 0 anyway */
         v->s[3] += p[P_E4] / 8;

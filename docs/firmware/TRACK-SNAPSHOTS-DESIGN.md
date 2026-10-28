@@ -37,16 +37,17 @@ ordinary discrete engine control, using its existing loader/polling behavior.
 This is parameter interpolation, not an audio crossfade between two engines;
 discrete changes can be abrupt.
 
-Loading a factory/user sound or adopting a project/section invalidates the pair.
-STOP and track selection do not. Snapshots are RAM-only and reset at power-off.
-Saving a section stores the current morphed track parameters through the ordinary
-project representation, but does not save the A/B pair. This avoids changing
-upstream project formats. Persistent pairs and timed morphs are future extensions.
+Loading a factory/user sound invalidates the pair. STOP and track selection do
+not. Section SAVE persists A/B, readiness and manual blend alongside the current
+sound; loading that section restores its pair. Working-project autosave also
+checks A/B-only changes, after the existing stopped/idle gates. Queued live saves
+remain RAM-only until STOP flushes them. DRIFT can animate the pair at runtime;
+its runtime mode is not made persistent by this extension.
 
 ## Execution and locks
 
-Capture/apply runs in the UI's existing IRQ exclusion, never in a sample loop.
-There is no continuously active morph runner. Every explicit knob move computes
+Manual capture/apply runs in the UI's existing IRQ exclusion, never in a sample loop.
+Every explicit knob move computes
 from immutable endpoints, so scrubbing back and forth does not accumulate rounding
 error. Unchanged endpoints reproduce exact parameter values.
 
@@ -74,3 +75,61 @@ exact endpoints, dynamic/named controls, missing endpoints, locked bases,
 voice/pattern/MIDI/RNG preservation, invalidation, isolation and native controls.
 Audio goldens, engine/filter coverage, dual-core/timeout parity and the full UI
 navigation/fuzz suite supplement these checks.
+
+## Automatic DRIFT target
+
+DRIFT TARGET MORPH shares DRONE's eight timed and eleven transport-synced cycles.
+The manual position is the center; maximum amount permits approximately ±64 of
+127 position units, clamped to A/B. The MORPH readout shows the effective position.
+Synced cycles pause on STOP; timed cycles continue. Mid-cycle sync entry freezes
+the current value until the next boundary. Each track retains its private RNG.
+
+The mixer computes a temporary parameter overlay once per control block, using
+its existing per-core preset-fade scratch buffer. It restores the base after
+rendering, including sends and inserts. No extra static RAM is allocated. Active
+locks override automatic motion; their saved bases remain unchanged. Saves retain
+the base sound. A/B captures remain immutable, and no MIDI or gate events are emitted.
+Manual and automatic morphing share snapshot.c's parameter and interpolation rules.
+
+Automatic morph requires both captures. SAMPLE/GRAIN source, FM6 patch and PHYS
+model must match between A/B and the current base, because those selections also
+control allocation/loading outside rendering. Incompatible pairs show MATCH SOURCES.
+Preset crossfade rendering takes precedence over the temporary overlay.
+
+MORPH tracks whose A/B LFO rate or sync differs from the current base remain on
+core 0, including target-change fades: worker prediction cannot anticipate their
+global RNG wraps. Timing-stable morphs, including vowel-only changes, use the
+ordinary worker eligibility rules. Unchanged overlay values skip descriptor and
+lock lookup; equal endpoints skip interpolation division. Hardware deadline
+qualification is still required. drift_morph_test covers overlay/lock/source rules,
+all timing choices, private RNG and dispatch exclusion; mix_split_test adds synced
+morph/LFO coverage across core masks, chaotic scheduling and worker timeout.
+
+
+## Persistent A/B storage
+
+The existing settings A/B sectors have an optional fork trailer at byte 2048.
+No partition or upstream payload length changes: existing settings/SYN/MIDI
+bytes retain their format, and samples and the SDK key/MAC sector are untouched.
+The 1,348-byte bank contains a magic, four section records, one working record
+and a CRC. Each record stores the associated project CRC, three readiness/blend
+pairs and two signed-byte sets of the 43 captured controls per synth track.
+Tests verify that the captured descriptor ranges fit signed bytes.
+
+A settings write programs and verifies this trailer before publishing its
+commit header. A failed write retains the previous complete settings copy and
+retries. Project and settings commits are separate: if interrupted between them,
+a project CRC mismatch discards stale captures instead of applying them to a
+different sound. Missing trailers from upstream writes are treated as empty.
+Upstream-format backups do not carry this fork trailer.
+
+Section records occupy 1,072 bytes of pool RAM; staging reuses project scratch.
+Startup literal packing now allows 5,500 bytes in main RAM (pool limit 2,500),
+funding persistence without adding any audio-path decoding. Current .85 image:
+584,268 bytes, 68 flash free; main 97,324/98,304, low 28,928/29,496, pool
+335,424/344,064, leaving 448 bytes beyond the existing 8,192-byte pool reserve.
+
+`snapshot_persistence_test.c` exercises cold restart, saved/queued sections,
+A/B-only autosave, unchanged upstream prefix, trailer write/drop/corruption
+failures, retry, absent trailers and mismatched project rejection. Hardware
+power-cycle verification remains required.

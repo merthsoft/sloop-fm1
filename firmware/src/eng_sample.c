@@ -27,11 +27,24 @@ static const int16_t IMA_STEP[89] = {
     4871, 5358, 5894, 6484, 7132, 7845, 8630, 9493, 10442, 11487, 12635, 13899, 15289, 16818, 18500, 20350,
     22385, 24623, 27086, 29794, 32767};
 static const int8_t IMA_IDX[8] = {-1, -1, -1, -1, 2, 4, 6, 8};
+/* Exact IMA magnitude for SAMPLE, sampled drums and GRAIN. Multiplying first
+ * needs a correction for the standard separate right-shift rounding. */
+DSP_INLINE int32_t ima_delta(int32_t step,uint32_t code)
+{
+    static const uint8_t correction[8]={0,0,0,0x44,0,0x50,0x44,0x94};
+    return ((step*(int32_t)(2u*(code&7u)+1u))>>3)-
+           ((correction[step&7]>>((code&3u)*2u))&3u);
+}
+
 /* 2^(i/192), Q16: pitch ratios in 1/16 semitones, d16 >= -3072 (16 octaves down) */
 static uint32_t pow2_q16(int32_t d16)
 {
     uint32_t u = (uint32_t)(d16 + 192 * 16), oct = u / 192u;     /* no loop for negative d16 */
-    uint32_t r = pitch_inc(1600 + u % 192u) / (pitch_inc(1600) >> 16);   /* 2^(d/192) via the pitch table */
+    uint32_t rem = u % 192u;
+    /* 1600 = 8*192+64. The top-octave table therefore shifts by two for
+     * rem<64, and by one after wrapping into the next octave. */
+    uint32_t r = rem < 64u ? PITCH_OCT[128u + rem] >> 2 : PITCH_OCT[rem - 64u] >> 1;
+    r /= PITCH_OCT[128] >> 18;   /* 2^(d/192) via the pitch table */
     return oct >= 16u ? r << (oct - 16u) : r >> (16u - oct);
 }
 
@@ -125,13 +138,8 @@ DSP_INLINE int32_t sample_next_inline(const smp_zone_t *z, voice_t *v, int loop)
 {
     uint32_t pos = v->ph[0], b = SMP_DATA[z->off + (pos >> 1)];
     uint32_t code = (pos & 1u) ? (b >> 4) : (b & 15u);
-    int32_t step = IMA_STEP[(uint32_t)v->s[1] <= 88u ? v->s[1] : 88], vd = step >> 3;
-    if (code & 4u)
-        vd += step;
-    if (code & 2u)
-        vd += step >> 1;
-    if (code & 1u)
-        vd += step >> 2;
+    int32_t step = IMA_STEP[(uint32_t)v->s[1] <= 88u ? v->s[1] : 88];
+    int32_t vd = ima_delta(step, code);
     v->s[0] = clamp(v->s[0] + ((code & 8u) ? -vd : vd), -32768, 32767);
     v->s[1] = clamp(v->s[1] + IMA_IDX[code & 7u], 0, 88);
     pos++;

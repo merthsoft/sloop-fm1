@@ -35,7 +35,9 @@ int main(void)
             memset(&vinyl,0,sizeof vinyl); vinyl.mode=mode;
             song.playing=1; song.g[G_VWOW]=song.g[G_VTONE]=0; song.g[G_VCRACKLE]=127;
             uint64_t playing=silence_blocks(mode,1000);
-            if (mode!=VINYL_MODE_CD) assert(playing>0); /* CD damages content; no independent noise. */
+            /* CD and SAMPLER damage existing content; neither adds a noise bed. */
+            if (mode==VINYL_MODE_CD || mode==VINYL_MODE_SAMPLER) assert(!playing);
+            else assert(playing>0);
             unsigned bypass=off_mode?VINYL_MODE_OFF:mode;
             if (!off_mode) song.g[G_VCRACKLE]=0;
             silence_blocks(bypass,1000);
@@ -46,7 +48,8 @@ int main(void)
             assert(heard==0 && song.g[G_VCRACKLE]==127);
             /* Re-enabling transport still produces noise; active STOP keeps its fade. */
             song.playing=1; playing=silence_blocks(mode,1000);
-            if (mode!=VINYL_MODE_CD) assert(playing>0);
+            if (mode==VINYL_MODE_CD || mode==VINYL_MODE_SAMPLER) assert(!playing);
+            else assert(playing>0);
             int32_t before_stop=vinyl.bed;
             song.playing=0; silence_blocks(mode,1);
             assert(vinyl.bed>0 && vinyl.bed<before_stop); /* Active STOP slews; bypass STOP resets. */

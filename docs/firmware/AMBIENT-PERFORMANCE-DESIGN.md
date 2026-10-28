@@ -11,8 +11,11 @@ recipes and tap-toggle DRONE keys. EVOLVE now adds slow scale-aware changes to d
 
 ## DRIFT
 
-Tap LFO, then cycle its pages to DRIFT. Four knobs: MODE / CYCLE / AMOUNT / TARGET. MODE selects OFF/ON. TARGET offers TONE, SHAPE, PAN, T+S, T+P, S+P or ALL. Combined targets share one bounded motion signal; no additional generators or sample buffers are allocated.
-CYCLE chooses 5S, 10S, 20S, 40S, 80S or 160S between random target values. Default
+Tap LFO, then cycle its pages to DRIFT. Four knobs: MODE / CYCLE / AMOUNT / TARGET. MODE selects OFF/ON. TARGET offers TONE, SHAPE, PAN, T+S, T+P, S+P, ALL or MORPH. Combined targets share one bounded motion signal; no additional generators or sample buffers are allocated.
+CYCLE shares DRONE’s 1S, 2S, 5S, 10S, 20S, 40S, 80S and 160S choices, followed by
+16BAR, 8BAR, 4BAR, 2BAR, 1BAR, 1/2, 1/4, 1/8, 8T, 1/16 and 16T between random target values.
+Synced cycles follow transport phase and pause on STOP. Mid-cycle entry holds the
+current value until the next boundary. Timed cycles continue while stopped. Default
 is MODE OFF, 10S, amount 64 (about 50%), TONE. The first segment begins at zero; each subsequent
 segment interpolates continuously from its previous destination. Each synth
 track owns independent phase, RNG and values. Target choices are TONE (filter
@@ -22,7 +25,8 @@ The existing saved LFO and live vibrato/tremolo/wah/pan remain independent.
 AMOUNT has a full-scale range of about ±63.5 parameter units (twice the first build’s range). It bounds displacement around existing edited values, without writing those
 values back to the patch. Changing amount slews; OFF fades back to the unchanged
 base sound. Changing target fades the prior target to zero before engaging the
-new one. No pitch drift or note changes occur. PAN clamps to the existing pan
+new one. Direct TONE/SHAPE/PAN targets do not change pitch or notes; MORPH can
+move any captured sound control, including tuning. PAN clamps to the existing pan
 range. The drum track does not expose or run DRIFT.
 
 The page shows the actual audio-owned value on a bipolar meter and the current
@@ -136,7 +140,7 @@ rendering and target budgets pass. Hardware listening remains pending.
 ## EVOLVE: slow drone-note evolution
 
 Implemented on LFO → DRONE: MODE OFF/DRONE/MOVE, CYCLE (1–160 seconds or synced divisions),
-CHANCE (0–100%) and RANGE (1–7 scale steps per change). Select MOVE and tap notes to form a bed. It changes at most one held
+CHANCE (0–101%) and RANGE (1–7 scale steps per change). Select MOVE and tap notes to form a bed. It changes at most one held
 pitch per cycle, up or down within the selected track ROOT/SCALE. RANGE limits
 each change, not total wandering from the original chord. CHR means chromatic.
 
@@ -179,7 +183,7 @@ listening, physical timing/stack/deadline validation remain pending.
 
 EVOLVE CYCLE now has 1S / 2S / 5S / 10S / 20S / 40S / 80S / 160S, followed by
 16BAR / 8BAR / 4BAR / 2BAR / 1BAR / 1/2 / 1/4 / 1/8 / 8T / 1/16 / 16T.
-Default remains 10S. This is independent of DRIFT's cycle options.
+Default remains 10S. DRIFT now uses this same list, with an independent per-track cycle selection.
 
 Timed choices continue in audio time while stopped. Synced choices use the real
 transport's quarter-note/subdivision phase, including external sync and tempo
@@ -241,3 +245,39 @@ same signed bounded value, so the movement is coordinated, rather than separatel
 random. Existing per-destination clipping and fade-out/switch/fade-in apply. The
 single-target IDs stay unchanged, and no additional persistent or audio state is
 allocated. Native modes are runtime-only; firmware installation needs no migration.
+
+
+## 101% change: bounded search
+
+CHANCE stores literal integer percentages (default 50) for a clear 0–101% UI.
+0–100% keeps the single random-candidate policy. At 101%, a rejected candidate
+starts a bounded fallback over each possible held pitch, both directions, and
+every scale distance through RANGE. It stops at the first legal change. Original
+source selection/direction/distance still supplies the first random candidate.
+
+The fallback traverses at most 256 source/direction entries; absent or protected
+sources are skipped, and each scale walk terminates at RANGE or MIDI boundaries.
+No source is released until all destination constraints pass. No speculative note
+or extra RNG draw is generated. The per-track RNG advances once per attempted
+cycle; other tracks/global RNG, cycle scheduling and at-most-one-change behavior
+remain intact. This guarantees a change only when a legal move exists under the
+selected scale, range, octave bounds and input ownership rules. A completely
+occupied or protected bed remains unchanged.
+
+`tests/evolve_force_test.c` covers 1,000 successful changes with a single free
+pitch in a crowded octave, a fully occupied no-move case with unchanged voices,
+range-limited and shared-input exclusions, one RNG draw, ordinary 100% skips,
+and actual 101% display/knob access. The search runs at evolution events, not per
+sample; hardware timing of worst-case dense/protected beds is not established by
+host checks.
+
+![Native 101% drone change](../../assets/screens/merthsoft/neon/drone-force.png)
+
+## A/B sound movement
+
+MORPH animates the runtime track snapshots around the manual blend position.
+It uses the existing private motion generator and per-core scratch space, with
+no new static RAM. Active locks keep priority, base parameters and captures stay
+unchanged, and automatic rendering requires compatible sources. See
+[track snapshots](TRACK-SNAPSHOTS-DESIGN.md#automatic-drift-target) for execution,
+source matching and core-dispatch rules. All 19 cycle choices are shared with DRONE.

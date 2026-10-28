@@ -13,7 +13,9 @@
  * state (0, 0), so zones index independently. The index is built in the block hook, one entry
  * (256 decodes) per part and block, the zones of the sounding voices first: a 1 s zone is ready
  * in ~60 ms, PERC (24 zones) in ~0.7 s. A grain starts at its exact sample: the state of the
- * entry below, then up to 255 decodes skipped. A forward grain then decodes as it plays (one
+ * entry below, then up to 255 decodes skipped. Half-segment checkpoints for the first GR_NMID
+ * entries reduce covered, built seeks to at most 127 skipped decodes, using spare space in the
+ * existing engine arena. Index coverage/readiness are unchanged. A forward grain then decodes as it plays (one
  * decode per source sample); a reverse grain reads a 128-sample window that it refills from the
  * index as it moves down (about two decodes per source sample). A SRC change or a new upload into
  * the slot (smp_user_gen) rebuilds the index.
@@ -41,6 +43,7 @@
 #define GR_SEG_LOG2 8
 #define GR_SEG (1u << GR_SEG_LOG2)   /* seek index interval, source samples */
 #define GR_NIDX 1024             /* seek index entries per part (PERC: 1001) */
+#define GR_NMID 448              /* half-segment checkpoints in unused PHYS arena capacity */
 #define GR_MAXZ 32               /* zones per set (PERC has 24, a user slot <= 16) */
 #define GR_RB 128                /* reverse window, source samples */
 #define GR_STEP_MAX (2u << 16)   /* grain rate cap: 2 source samples per output sample */
@@ -73,6 +76,8 @@ typedef struct {
     int16_t rb[GR_NG][GR_RB];    /* reverse windows */
     int16_t ipred[GR_NIDX];      /* seek index: the state before sample k * GR_SEG of a zone */
     uint8_t iidx[GR_NIDX];
+    int16_t mpred[GR_NMID];
+    uint8_t midx[GR_NMID];
     uint16_t zbase[GR_MAXZ], zcnt[GR_MAXZ], zdone[GR_MAXZ];   /* entries of a zone: first, all, built */
     uint32_t stamp;              /* what the index was built for (user slots: smp_user_gen) */
     int32_t rng;
@@ -97,13 +102,7 @@ DSP_INLINE uint32_t gr_scale(uint32_t n, uint32_t f16) { return (n >> 16) * f16 
 DSP_INLINE int32_t gr_dec(const smp_zone_t *z, uint32_t pos, int32_t *pred, int32_t *idx)
 {
     uint32_t b = SMP_DATA[z->off + (pos >> 1)], code = (pos & 1u) ? (b >> 4) : (b & 15u);
-    int32_t step = IMA_STEP[*idx], vd = step >> 3;
-    if (code & 4u)
-        vd += step;
-    if (code & 2u)
-        vd += step >> 1;
-    if (code & 1u)
-        vd += step >> 2;
+    int32_t vd = ima_delta(IMA_STEP[*idx],code);
     *pred = clamp(*pred + ((code & 8u) ? -vd : vd), -32768, 32767);
     *idx = clamp(*idx + IMA_IDX[code & 7u], 0, 88);
     return *pred;
@@ -168,8 +167,12 @@ static void gr_build(gr_part_t *P, const track_t *t)
     pred = P->ipred[e];
     idx = P->iidx[e];
     pos = (k - 1u) << GR_SEG_LOG2;
-    for (i = 0; i < GR_SEG; i++)
+    for (i = 0; i < GR_SEG; i++) {
+        if(i==GR_SEG/2u && e<GR_NMID) {
+            P->mpred[e]=(int16_t)pred;P->midx[e]=(uint8_t)idx;
+        }
         gr_dec(z, pos + i, &pred, &idx);
+    }
     P->ipred[e + 1u] = (int16_t)pred;
     P->iidx[e + 1u] = (uint8_t)idx;
     P->zdone[zl] = (uint16_t)(k + 1u);
@@ -181,14 +184,24 @@ static void gr_seek(const gr_part_t *P, const smp_zone_t *z, uint32_t zl, uint32
     uint32_t e = P->zbase[zl] + (p >> GR_SEG_LOG2), q;
     *pred = P->ipred[e];
     *idx = P->iidx[e];
-    for (q = p & ~(GR_SEG - 1u); q < p; q++)
+    q=p&~(GR_SEG-1u);
+    /* A midpoint is valid only after the following full index entry was built.
+     * Keep the original fallback during startup and outside the cached prefix. */
+    if(e<GR_NMID && (p&(GR_SEG-1u))>=GR_SEG/2u &&
+       (p>>GR_SEG_LOG2)+1u<P->zdone[zl]) {
+        *pred=P->mpred[e];*idx=P->midx[e];q+=GR_SEG/2u;
+    }
+    for (; q < p; q++)
         gr_dec(z, q, pred, idx);
 }
 
-/* reverse: decode [hi - GR_RB + 1, hi] into the grain's window */
+/* Reverse windows start on a checkpoint-aligned boundary when possible.
+ * At an exact window edge, spawn still needs BOTH hi-1 and hi for interpolation;
+ * retain the original window in that case (including the source-start clamp). */
 static void gr_fill(const gr_part_t *P, gr_grain_t *g, int16_t *rb, uint32_t zl, uint32_t hi)
 {
-    uint32_t lo = hi >= GR_RB - 1u ? hi - (GR_RB - 1u) : 0u, q;
+    uint32_t lo = (hi & (GR_RB - 1u)) ? hi & ~(GR_RB - 1u) :
+                  hi >= GR_RB - 1u ? hi - (GR_RB - 1u) : 0u, q;
     int32_t pred, idx;
     gr_seek(P, g->z, zl, lo, &pred, &idx);
     for (q = lo; q <= hi; q++)
@@ -383,9 +396,9 @@ static void grain_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const
         if (P->g[i].owner == vi + 1u)
             mine += gr_run(P, &P->g[i], acc, n);
     /* the next grain: DENS a second, 1..98 /s (SPRD jitters the interval) */
-    iv = (44100u * pow2_q16(-p[P_E3] * 10)) >> 16;
     v->s[1] -= (int32_t)n;
     if (v->s[1] <= 0) {
+        iv = (44100u * pow2_q16(-p[P_E3] * 10)) >> 16;
         uint32_t r = gr_rnd(P);
         int32_t j = (((int32_t)(r & 0xFFFFu) - 32768) * p[P_E5]) / 254;   /* +-SPRD / 2, Q15 */
         v->s[1] += (int32_t)iv + mulq15((int32_t)iv, j);

@@ -95,9 +95,9 @@ DSP_INLINE uint32_t noise32(int32_t *st)
 /* Trapezoidal SVF (A. Simper), unconditionally stable. Coefficients per
  * block in Q13; signals stay within +-150000 so products fit in 32 bits. */
 typedef struct { int32_t a1, a2, a3; } tsvf_t;
-DSP_INLINE void tsvf_coef(tsvf_t *c, int32_t cut, int32_t reso)   /* cut: 0..127 << 8 */
+DSP_INLINE void tsvf_coef_damped(tsvf_t *c, int32_t cut, int32_t k)   /* cut: 0..127 << 8 */
 {
-    int32_t i, g, den, k = 8192 - reso * 7600 / 127;   /* damping 2.0 .. ~0.15 (Q12) */
+    int32_t i, g, den;   /* damping 2.0 .. ~0.15 (Q12) */
     cut = clamp(cut, 0, 127 << 8);
     i = cut >> 8;
     g = SVF_G[i];
@@ -108,6 +108,13 @@ DSP_INLINE void tsvf_coef(tsvf_t *c, int32_t cut, int32_t reso)   /* cut: 0..127
     c->a2 = (c->a1 * g) >> 12;
     c->a3 = (c->a2 * g) >> 12;
 }
+
+/* Constant resonance still folds at the caller; share dynamic coefficient work. */
+DSP_INLINE void tsvf_coef(tsvf_t *c,int32_t cut,int32_t reso)
+{ tsvf_coef_damped(c,cut,8192-reso*7600/127); }
+static __attribute__((noinline)) void tsvf_coef_dynamic(tsvf_t *c,int32_t cut,int32_t damping)
+{ tsvf_coef_damped(c,cut,damping); }
+#define tsvf_coef(c,cut,reso) ((__builtin_constant_p(cut) && __builtin_constant_p(reso)) ? tsvf_coef((c),(cut),(reso)) : tsvf_coef_dynamic((c),(cut),8192-(int32_t)(reso)*7600/127))
 
 DSP_INLINE int32_t tsvf_lp(const tsvf_t *c, int32_t in, int32_t *ic1, int32_t *ic2)
 {

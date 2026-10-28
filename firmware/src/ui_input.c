@@ -520,14 +520,15 @@ UI_SMALL static void edit_param(uint32_t slot, int32_t steps)
         tracks_edit(slot, steps);
         return;
     }
-    if (pg->graph == GR_BROWSE) {                         /* KNOB 1: one preset, KNOB 2: the next / previous engine */
-        if (slot == 0u && !is_drum(TSEL)) {
-            uint32_t total, cur = preset_pos(&total);
-            if (total)
-                preset_go((uint32_t)(((int32_t)cur + steps % (int32_t)total + (int32_t)total) % (int32_t)total));
-        } else if (slot == 1u && !is_drum(TSEL)) {
-            select_engine((TSEL->eng_req + (steps > 0 ? 1u : NENGINES - 1u)) % NENGINES);
-        } else if (slot == 3u && !is_drum(TSEL)) {          /* (2.7) KNOB 4: FAV, right adds the sound, left removes it */
+    if (pg->graph == GR_BROWSE) {                         /* SOUND / category-or-engine filter / KEEP-UNDO / FAV */
+        if(is_drum(TSEL))return;
+        if(slot==0u)browse_step(steps);
+        else if(slot==1u) {
+            browse_category=(uint8_t)clamp((int32_t)browse_category+steps,0,BROWSE_LAST);
+            browse_step(0);ui.force=1;
+        } else if(slot==2u) {
+            browse_end(steps>0);ui_message(steps>0?"SOUND KEPT":"SOUND RESTORED");
+        } else if (slot == 3u) {          /* (2.7) KNOB 4: FAV, right adds the sound, left removes it */
             fav_toggle(steps > 0);
         }
         return;
@@ -1220,6 +1221,8 @@ UI_SMALL static void ui_input(void)
             ((fm1_in.buttons & ly_bit[LY_VIB + i]) != ly_bit[LY_VIB + i] && ly_lock != LY_VIB + i)) live_mod[i].on = 0;
     if (pressed || notes)
         ui_input_ms = fm1_ms;
+    if(browse_saved.active)for(uint32_t b=0;b<=B_REC;b++)
+        if(b!=B_PLAY && (pressed&(1u<<panel.btn[b]))) {browse_end(0);break;}
     remote_poll();                                      /* (2.7) the buttons over MIDI */
     pc_poll();                                          /* MIDI Program Change: a sound (2.6, ui.c) */
     midi_chan_fix();                                    /* GLO > MIDI: no channel on two tracks (2.6, ui.c) */
@@ -1387,6 +1390,7 @@ UI_SMALL static void ui_input(void)
         uint32_t total, cur = preset_pos(&total);
         if (is_drum(TSEL))
             TDRUM->p[P_E0] = (int16_t)clamp(TDRUM->p[P_E0] + s, 0, DRUM_KITS - 1);
+        else if(!ui.home && cur_page()->graph==GR_BROWSE)browse_step(s);
         else if (total)
             preset_go((uint32_t)(((int32_t)cur + s % (int32_t)total + (int32_t)total) % (int32_t)total));
     }

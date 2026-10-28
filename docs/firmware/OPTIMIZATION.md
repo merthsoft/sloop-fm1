@@ -712,3 +712,59 @@ The combined .76 About restoration, policy promotion and EVOLVE bounds target is
 ### Track snapshots and shared ANALOG renderer
 
 The .77 saved-budget build is 584,328 B (8 B free). The combined .78 snapshot feature and shared ANALOG body link at **583,864 B (472 B free)**, a **464 B net reduction** including the new feature. Main static RAM is **91,216 B (7,088 B free)**; low RAM 28,928 B and pool 331,852 B are unchanged. No per-hit decoding or new per-block morph runner is added. The shared sample loop has zero helper calls and weighted cost 640 against the original 638 budget (+0.3%, static estimator only). Hardware cycles/stack are not qualified by this comparison. All 200 audio goldens, snapshot/lock sanitizer checks, dual-core/timeout parity and UI navigation/fuzz pass. See [track snapshots](TRACK-SNAPSHOTS-DESIGN.md).
+
+## Sound explorer integration
+
+The .82 sound explorer is funded by bounded startup literal packing rather than removing audio features: complete target string objects are suffix-pooled, with at most 4,500 B main / 2,500 B pool restored once before startup. Final combined image 584,224 B, 112 B free; main 96,324 B, low 28,928 B, pool 334,352 B. Every original object and final relocated address is checked, along with actual boot restoration/guard bytes under UBSan. There is no playback decode. See [literal storage](LITERAL-STORAGE.md) for memory trade and [headroom comparison](HEADROOM-COMPARISON.md) for complete measurements.
+
+## Shared label grammar without further RAM use
+
+The .83 refinement encodes repeated startup-label pairs with a shared, acyclic
+byte grammar before the existing LZ4 stage. At boot, LZ4 restores tokens and a
+bounded eight-byte stack expands them backwards into their existing destinations.
+Original high/NUL bytes are preserved. No decoding runs during playback. Complete
+same-version target links save **852 B net**, reaching **583,372 B / 964 B free**;
+all three static RAM regions are unchanged. Dictionary-size and label-order
+trials did not justify extra ordering complexity; retain deterministic lexical
+root order. The 254-byte dictionary and actual decoder are included in the net
+measurement. See [literal storage](LITERAL-STORAGE.md#shared-label-grammar).
+
+
+## Morph control work and persistent captures
+
+Automatic morph now skips lock/descriptor lookup for unchanged overlay controls
+and division for equal endpoints. Timing-stable pairs can use the ordinary
+worker scheduler, while differing LFO rates/sync retain the core-0 guard.
+The GRAIN/VOICE vowel-morph/TAPE scene is bit-identical across core masks;
+this demonstrates correctness, not a measured hardware speed gain.
+
+Persistent A/B uses spare bytes in existing settings sectors, not new partitions.
+The main literal budget grows by 1,000 bytes and four section records add 1,072
+pool bytes. The combined .85 image is 584,268 B (68 free), main static 97,324 B,
+low 28,928 B, pool 335,424 B. Target literal restoration, DSP budgets and
+fault-injected persistence tests pass. Device startup/deadline checks remain.
+
+
+## GRAIN/LOFI dropout performance trial (.88)
+
+The core-balancing trial did not eliminate device voice shedding with master
+LOFI and Flute Dust. The next trial keeps the guard unchanged and reduces work:
+LOFI shares stereo control calculations, GRAIN IMA magnitude preserves exact
+rounding with an eight-byte correction table, and 448 extra half-segment decoder
+checkpoints fit inside the existing PHYS-sized engine arena. Covered built
+seeks avoid 128 decodes; the flute source's 246 index entries are fully covered.
+Static RAM is unchanged. Same-version diagnostic target links compare .87
+583,692 B to optimized 583,668 B; .88 also links at 583,668 B (668 B free).
+The loop estimator measures GRAIN render 1,711→1,693; this is not hardware cycles.
+Full decoder/reference and seek checks preserve output. Hardware qualification
+remains necessary. [Measurements and caveats](VOICE-BUDGET-EXPERIMENT.md#grain-and-master-lofi-render-work-88).
+
+
+## Combined engine audit integration (.90)
+
+The selected ten-candidate combination links at 584,228 B in normal firmware,
+108 B free: 64 B net below the same-version .89 baseline, including the DRAWBAR
+cache. Main/low/pool remain 97,324 / 28,928 / 335,424 B. Diagnostic .90 is
+583,844 B (492 free), with 97,340 B main. No individual savings were summed.
+[Integration and validation](ENGINE-PERFORMANCE-INTEGRATION.md) records the
+exact-output tests, actual links and deferred unmeasured cache proposals.

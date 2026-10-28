@@ -340,7 +340,7 @@ static void drum_on(uint32_t note, uint32_t vel)
     v->s[0] = v->s[1] = v->s[2] = 0;
     {
         const smp_zone_t *z = drum_zone_of(v);
-        v->s[3] = sample_next_inline(z, v, 0);
+        v->s[3] = sample_next(z, v, 0);
         v->s[5] = (int32_t)((pow2_q16((int32_t)note * 16 - z->root16) >> 8) * (z->rate >> 8));
     }
     {

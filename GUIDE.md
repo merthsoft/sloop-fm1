@@ -164,7 +164,7 @@ The layers are **FX** (punch-in effects), **EDIT** (erase), **ARP** (note repeat
 | **GLO** | GLO pages (GLOBAL, MASTER, SYSTEM, DRUMS) | mix layer |
 | **OCT− / OCT+** | synth track: octave down / up (−3 … +3) · both together: octave 0 | drum track: **ghost** (OCT−) / **hard** (OCT+) hits while held |
 | **ALGORITHM** | select track 1–4, on every screen (inside a layer it waits; not during a free take, on the SONG screen or in the menu) | — |
-| **PRESETS** | on TRACKS, HOME and the PRESETS page: the selected track's **sound** (all factory sounds by kind, then your user presets) · drum track: the **kit** · on the DRUMS screen: the kit | — |
+| **PRESETS** | on TRACKS, HOME and the SOUNDS page: the selected track's **sound** (all factory sounds by kind, then your user presets) · drum track: the **kit** · on the DRUMS screen: the kit | — |
 | **SELECT** | on TRACKS, inside other layers and on the REC screen: the **tempo** · FX held: **PUNCH FADE** · on a page: previous / next page of its button (stops at the ends) · DRUMS screen: grid → kit → groove · visualiser: the style · menu: the section | — |
 | **KNOB 1–4** | the four dials at the bottom of the screen | — |
 | **MASTER** | output volume (the visualiser ignores it) | — |
@@ -703,12 +703,42 @@ A muted track fades out in a few milliseconds and plays no new notes; its patter
 
 | Page | KNOB 1 | KNOB 2 | KNOB 3 | KNOB 4 |
 | --- | --- | --- | --- | --- |
-| **PRESETS** | the sound (your favourites, then factory by kind, then user presets) | the engine (next / previous) | — | **FAV** (2.7): right adds the sound to your favourites, left removes it |
+| **SOUNDS** | audition a sound in the current list | KIND: ALL, FAV, sound categories, USER, then factory engines | right: KEEP · left: UNDO | FAV: right adds, left removes |
 | **USER** | **SLOT** 1–32 | **LOAD** (GO) | **ERASE** (GO) | **SAVE** (GO) |
 | **SECTION** | **SECT** A–D | **ERASE** (GO, 2.6) | **LOAD** (GO) | **SAVE** (GO) |
 | **TOOLS** | **CLRSQ** (GO) | **INIT** (GO) | — | **NEW** (GO) |
 
-<a id="favourites"></a>**Favourites (2.7).** On the PRESETS page, turn KNOB 4 right: the sound is added to your favourites (*FAV ADDED*), up to 16, which come first in the PRESETS list, tagged FAV, in the order you added them; the PRESETS knob reaches them in a click or two from anywhere on TRACKS or HOME. KNOB 4 left removes it. A user preset can be a favourite too. They are a setting of the FM-1, kept through power-off (not in a project, and not in an editor backup). MIDI Program Change still counts the list without them.
+<a id="favourites"></a>**Favourites (2.7).** On the SOUNDS page, turn KNOB 4 right: the sound is added to your favourites (*FAV ADDED*), up to 16, which come first in the PRESETS list, tagged FAV, in the order you added them; the PRESETS knob reaches them in a click or two from anywhere on TRACKS or HOME. KNOB 4 left removes it. A user preset can be a favourite too. They are a setting of the FM-1, kept through power-off (not in a project, and not in an editor backup). MIDI Program Change still counts the list without them.
+
+### Sound explorer
+
+Tap **SAVE**, then use SELECT to reach **SOUNDS**. **Knob 2 (KIND)** selects ALL,
+FAV, BASS, KEYS, ORGN, PAD, LEAD, PLCK, STAB, FX, CHIP, INST, LOFI or USER;
+continue turning for factory-engine filters such as ANALOG, CHIP and FM6.
+**Knob 1** or **PRESETS** auditions sounds within that list. The selected row
+shows the preset name and its engine in the track color. Empty categories leave
+the sound untouched. USER includes your occupied user slots; engine filters
+include factory sounds only. ALL preserves the existing favourites-first order.
+
+Keep your sequence running, or play the keyboard to audition. **Knob 3 right**
+keeps the sound; **knob 3 left** restores your previous edited sound and returns
+to ALL. Leaving the browser, changing tracks, or opening a held-function page
+also restores it unless you chose KEEP. KEEP is immediate; it does not require
+a second turn. A following audition starts from the sound you just kept.
+
+Audition uses the usual preset loading and voice fade, so it can release or
+retrigger sounding notes; cancellation restores the patch, not prior voice
+phases. Patterns stay intact. Existing track FX and voice preferences survive
+sound browsing. Cancellation also restores A/B morph captures and unsaved FM6
+operator edits. Favourites are independent of KEEP/UNDO.
+
+Autosave waits while an audition is pending. KEEP accepts it into the working
+track; use the usual section save to store it deliberately. Loading a project
+or section supersedes an audition, and MIDI Program Change ends it before
+loading the requested sound. Finish an audition before editing its patch from
+another editor. The drum kit browser keeps its existing controls.
+
+![Sound explorer filtered to pads](assets/screens/merthsoft/neon/sound-browser-pads.png)
 
 GO: one click shows *AGAIN: SAVE* (or LOAD…), a second click within about 1.5 s does it. Presets and sections are written to flash only while the song is stopped.
 
@@ -785,7 +815,7 @@ Tap a button to open its first page (or the last one you used); **tap it again**
 | **LFO** | **LFO** | RATE (Hz) | WAVE: SIN, TRI, SAW, SQR, S&H | PHS phase | FADE (fade-in time) |
 | | **LFO 2** (2.6) | SYNC: OFF, 4BAR, 2BAR, 1BAR, 1/2, 1/4, 1/8, 8T, 1/16, 16T, 1/32 | TRIG: NOTE / FREE | POL: BI / UNI | — |
 | | **LFO DEST** | PIT: vibrato | FLT: filter wobble | SHP: shape | AMP: tremolo |
-| | **DRIFT** | MODE: OFF / ON | CYCLE: 5S–160S | AMOUNT | TARGET: TONE / SHAPE / PAN / combinations |
+| | **DRIFT** | MODE: OFF / ON | CYCLE: 1S–160S / synced | AMOUNT | TARGET: TONE / SHAPE / PAN / combinations / MORPH |
 | | **DRONE** | MODE: OFF / DRONE / MOVE | CYCLE: timed / synced | CHANCE | RANGE: scale steps |
 | | **DRONE 2** | LO OCT | HI OCT | — | — |
 | **FX** | **FX** (sends) | DST drive | CHO chorus send | DLY delay send | REV reverb send |
@@ -820,7 +850,7 @@ Tap a button to open its first page (or the last one you used); **tap it again**
 | | **MIDI** (2.6) | CH1: track 1's MIDI channel (OFF, 1–16) | CH2: track 2's | CH3: track 3's | CH4: the drum track's (default 10) |
 | | **MIDI 2** (2.6) | IN: NOTES / CLOCK / CH 1–16 | OTHER: the channels no track has: SEL (the selected track) / OFF | OUT: KEYS / SEQ | BEND: the pitch bend's range, 1–12 semitones |
 | | **MIDI 3** (2.7) | FX CH: the punch-in effects' MIDI channel (OFF, 1–16) | DR MAP: how MIDI notes play the drums (GM / 1-16) | REMOTE: the buttons over MIDI (OFF, 1–16) | CLOCK: OUT, the MIDI clock and START / STOP out on USB (OFF / OUT) |
-| **SAVE** | **PRESETS** | the sound | the engine | — | — |
+| **SAVE** | **SOUNDS** | audition sound | category / engine filter | right KEEP / left UNDO | favourite |
 | | **USER** | SLOT 1–32 | LOAD (GO) | ERASE (GO) | SAVE (GO) |
 | | **PROJECT** | SLOT 1–4 | ERASE (GO) | LOAD (GO) | SAVE (GO) |
 | | **TOOLS** | CLRSQ: clear the pattern (GO) | INIT: reset the sound (GO) | — | NEW project (GO) |
@@ -876,7 +906,7 @@ These modes use pitch order across the octave range. PULSE sends each distinct p
 | **Stab** | MIN STAB, MIN7 STAB, RAVE STAB, DUB CHORD (TRIO: one key plays the chord) · SYN BRASS (ANALOG) · CZ BRASS (PHASE) · BRASS SECT (FM6) · 80S POLY (TRIO) · HORN STAB, STRING STB (SAMPLE) · CHIP CHORD (LOFI) · POWER STAB (TRIO) |
 | **FX** | SCRATCH (scratch, backspin, rewind across the keys) · GM KIT (SAMPLE) · HAND DRUM, MEMB TOMS, TABLA, CONGA, TIMPANI (PHYS) · RAIN, NZ METAL, VINYL, HISS, RISER, NZ SNARE, BITCRUSH, RADIO (NOISE) · CHIP NOISE (LOFI) |
 
-To pick an engine directly: SAVE → PRESETS → **KNOB 2**. To start from the engine's defaults: SAVE → TOOLS → **INIT**.
+To browse one engine: SAVE → SOUNDS → **KNOB 2**, past USER to the engine filters. To start from the engine's defaults: SAVE → TOOLS → **INIT**.
 
 ### The twelve engines
 
@@ -1898,8 +1928,11 @@ choice alone. Combine the warm presets with TAPE, or try SMPLR on drums.
 ### Slow ambient DRIFT
 
 On a synth track, tap **LFO** through to **DRIFT**. Knob 1 selects
-**OFF / ON**; knob 2 selects a **5S / 10S / 20S / 40S / 80S / 160S** cycle; knob 3
-sets AMOUNT; knob 4 selects **TONE / SHAPE / PAN / T+S / T+P / S+P / ALL**.
+**OFF / ON**; knob 2 selects the same cycles as DRONE: **1S / 2S / 5S / 10S / 20S / 40S / 80S / 160S**, then **16BAR / 8BAR / 4BAR / 2BAR / 1BAR / 1/2 / 1/4 / 1/8 / 8T / 1/16 / 16T**. Knob 3
+sets AMOUNT; knob 4 selects **TONE / SHAPE / PAN / T+S / T+P / S+P / ALL / MORPH**.
+Synced motion follows transport phase and pauses when stopped; timed cycles keep
+moving. Joining a synced cycle mid-way holds the current value until the next
+boundary, avoiding a jump.
 The combined targets move together: T is tone, S is shape, P is pan. Full amount allows roughly
 ±64 control units of movement. The live bipolar meter shows the actual motion;
 the cycle bar shows progress toward the next random destination. This is smooth random
@@ -1912,7 +1945,8 @@ Fresh defaults are OFF, 10S and about 50% amount. For LOFI, **EDIT → MOTN**,
 knob 4 **TONE** around 50% leaves room to wander both darker and brighter.
 
 Change these controls during playback. Amount changes, OFF and target changes
-fade instead of jumping. DRIFT is unavailable on drums, does not change pitch,
+fade instead of jumping. The direct TONE/SHAPE/PAN targets do not change pitch.
+DRIFT is unavailable on drums,
 and is not stored in sections/projects; it resets when powered off.
 
 For sustained progressions, choose **STILL WATER**, **WIDE SKY** or **DUSK** in
@@ -1948,7 +1982,7 @@ then tap notes to form your chord. The same page controls pitch evolution:
 | --- | --- |
 | 1 MODE | OFF clears the drone; DRONE holds its pitches; MOVE evolves them. |
 | 2 CYCLE | 1–160 seconds, or tempo-synced bar/note divisions from 16 bars to sixteenth-note triplets. |
-| 3 CHANCE | Probability of a change each cycle; 0% never changes, 100% always attempts. |
+| 3 CHANCE | 0% never changes; 100% attempts once each cycle; 101% searches for a legal move if the first attempt is blocked. |
 | 4 RANGE | Maximum movement per change, 1–7 notes of the selected scale. |
 
 Start with **MOVE / 5S / 100% / 1** to hear it clearly. At most one pitch moves
@@ -1961,9 +1995,12 @@ Moving one endpoint past the other moves the other endpoint with it. Editing
 bounds does not cut or retune held notes; only subsequent evolution attempts
 use the limits. Notes manually played outside the range stay held; attempts that
 would remain outside it are skipped. The bounds are per synth track and runtime-only.
-A move is skipped at
-pitch limits, on a duplicate note, or when another input/sequence owner shares
-the affected pitch. This keeps MIDI, other keys and stored playback safe.
+At 0–100%, a move is skipped at pitch limits, on a duplicate note, or when another
+input/sequence owner shares the affected pitch. **101%** searches other held notes,
+both directions and every distance through RANGE, making one change whenever a
+legal move exists. It still respects octave bounds and other note owners. If no
+legal move exists, the bed stays unchanged. This keeps MIDI, other keys and stored
+playback safe.
 
 Timed evolution also runs with transport stopped; synced cycles pause. Rate changes
 and empty/released beds restart timing, with synced choices waiting for the next boundary. Choose DRONE to keep the harmony you’ve reached, tap
@@ -2011,10 +2048,24 @@ own pair. Continuous sound parameters blend; named choices switch halfway.
 Level, pan, envelope/LFO, filter, sends, insert and engine controls are included.
 Notes, key/scale, arp routing, voice mode, global FX and ambient runtime controls
 stay as they are. Active parameter locks keep sounding and return to the morphed
-base afterward. Loading a sound or project/section clears the pair; stopping
-playback does not. Pairs are RAM-only. Saving a section keeps the current morphed
-sound, but not the pair. This blends controls within an instrument, rather than
+base afterward. Loading a sound clears the pair; loading a section restores its
+saved A/B and manual blend. Section SAVE stores them with the current sound.
+The working project also autosaves captures after playback stops and the device
+is idle; wait for that save before powering off. A save queued while playing
+becomes durable after STOP. Stopping playback itself does not clear the pair.
+This blends controls within an instrument, rather than
 crossfading audio between different engines.
+
+For automatic A/B movement, select **LFO → DRIFT → TARGET: MORPH** and turn
+MODE ON. Set the manual MORPH knob near **50%** to give movement room in both
+directions, then use AMOUNT and CYCLE to control its depth and timing. The MORPH
+page shows the effective blend. The saved base sound and A/B captures stay intact;
+active parameter locks keep priority. Saving stores the base sound, rather than
+the temporary moving blend. Without both captures, DRIFT shows STORE A AND B.
+For SAMPLE, GRAIN, FM6 and PHYS, keep the same sample, patch or model in A, B and
+the current sound; otherwise it shows MATCH SOURCES and skips automatic morphing.
+
+![Tempo-synced morph drift](assets/screens/merthsoft/neon/drift-morph-sync.png)
 
 ![Track sound morphing](assets/screens/merthsoft/neon/track-morph.png)
 

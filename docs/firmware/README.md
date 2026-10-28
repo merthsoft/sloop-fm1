@@ -17,6 +17,8 @@ the website installer references the current MerthSloop package.
 - [Instrument and console-inspired preset pack](INSTRUMENT-PRESET-PACK.md)
 - [LOFI chord arpeggios](LOFI-CHORD-ARP.md)
 - [Live track auto-wah and auto-pan](AUTO-WAH-DESIGN.md)
+- [Combined sound-engine performance integration](ENGINE-PERFORMANCE-INTEGRATION.md)
+- [Master LOFI processing optimization and validation](LOFI-PERFORMANCE.md)
 - [Reverb types and dual-path spring](REVERB-EXPANSION.md)
 - [Selective upstream fixes and piano-roll integration status](UPSTREAM-2.8-INTEGRATION.md)
 - [Upstream controls: integrated FX/SEQ preferences and remaining work](UPSTREAM-CONTROLS-REVIEW.md)
@@ -64,3 +66,6 @@ Use the [player guide](../../GUIDE.md) for controls and the
 - [Additional build-time compression audit](SUSTAIN-HEADROOM-AUDIT.md).
 
 - [Track snapshots and morphing](TRACK-SNAPSHOTS-DESIGN.md): native A/B controls, scope, lock handling and lifecycle.
+
+- [Sound explorer and reversible auditions](SOUND-BROWSER-DESIGN.md).
+- [Bounded startup literal storage](LITERAL-STORAGE.md).

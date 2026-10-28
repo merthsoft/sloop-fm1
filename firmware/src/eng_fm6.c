@@ -21,10 +21,10 @@
  *   PTCH  loads a patch: F1..F8 the factory patches, B1..B27 the patch bank (fm6_bank.c, flash)
  * The operator envelopes are the voice's amplitude and end it (engine_t.ownenv / done): the track's ADSR and
  * ENV DEST do nothing here. The track's FLT moves MLVL (LFO -> FLT), SHP the feedback, PIT the pitch (glide,
- * tune: the voice's pitch and fine factor). Six voices per part at most (engine_t.poly).
+ * tune: the voice's pitch and fine factor). Eight voices per part at most (engine_t.poly).
  *
- * State (RAM, NPART parts: the drum track runs no engine): per voice an fm6_note_t (fm6_note, 244 bytes, a
- * side array in the pool: voice_t.s[] is too small), per part the patch, the patch through the macros
+ * State (RAM, NPART synth parts): fm6_note_t voices, patch and macro-adjusted patch
+ * live in each part's shared engine arena (voice_t.s[] is too small). The latter
  * (fm6_eff, rebuilt in the audio ISR when either changes) and the LFO (once a block). Adapted from Felucca
  * 1.0.1: no modulation matrix, the velocity is the voice's (UNISON scales it), the fine factor comes in
  * vmod_t.fine (voice.c folds it into inc for the other engines). */

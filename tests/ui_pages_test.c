@@ -1903,7 +1903,7 @@ int main(int argc, char **argv)
         fav_at = -1;
         preset_pos(&total0);
         e0 = trk[1].eng_req, p0 = trk[1].preset;
-        for (k = 0; k < NPAGES; k++) if (!strcmp(PAGES[k].title, "PRESETS")) break;
+        for (k = 0; k < NPAGES; k++) if (PAGES[k].graph==GR_BROWSE) break;
         open_family(PAGES[k].fam); ui.page = (uint8_t)k; ui.fam_last[PAGES[k].fam] = (uint8_t)k; page_entered(); ui.force = 1; frames(2);
         encs[panel.enc[EN_K4]] = 1; frames(2);
         cur = preset_pos(&total1);

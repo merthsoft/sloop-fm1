@@ -14,12 +14,12 @@ int main(void) {
     assert(units_split()==12); /* historical idle tie preference */
     for(uint32_t p=0;p<NPART;p++)for(uint32_t n=0;n<notes[p];n++)trk_note_on(&trk[p],48+n*3,100);
     int32_t out[CTL*2];mix_block(out,CTL);
-    assert(units_split()==9); /* GRAIN + drums, not the lighter track 3 */
+    assert(units_split()==1); /* GRAIN on worker; lighter core 0 takes drums. */
     for(uint32_t i=0;i<NVOICE;i++)trk[0].v[i].gate=0;
-    assert(units_split()==9); /* release tails still consume render time */
+    assert(units_split()==1); /* release tails still consume render time */
     for(uint32_t i=0;i<NVOICE;i++)trk[0].v[i].active=0;
     mix_block(out,CTL);
-    assert(units_split()==10); /* VOICE + drums after GRAIN finishes */
+    assert(units_split()==2); /* VOICE alone on worker after GRAIN finishes */
     for(uint32_t mask=0;mask<16;mask++) {cpu1_units=(int32_t)mask;assert(units_split()==mask);}
     cpu1_units=-1;trk[1].lfo_ph=UINT32_MAX;
     assert(units_split()==12); /* skip VOICE wrap, offload eligible LOFI instead */
@@ -28,5 +28,14 @@ int main(void) {
         trk[p].lfo_ph=0;trk[p].p[P_LSYNC]=trk[p].p[P_LRATE]=0;trk_note_on(&trk[p],60,100);
     }
     assert(units_split()==8); /* shared formant RNG stays on one core */
+    host_tracks_init();host_preset(&trk[2],ENGI_GRAIN,2);
+    trk[2].p[P_VOICE]=V_POLY;trk[2].p[P_LSYNC]=trk[2].p[P_LRATE]=0;
+    for(uint32_t n=60;n<=67;n+=3)trk_note_on(&trk[2],n,100);
+    mix_block(out,CTL);cpu1_units=-1;
+    assert(units_split()==4); /* Reported Flute Dust + drums: avoid mask 12. */
+    for(uint32_t type=0;type<NELEM(N_LOFI);type++) {
+        song.g[G_LTYPE]=(int16_t)type;mix_block(out,CTL);
+        trk[2].lfo_ph=0;assert(units_split()==4);
+    }
     puts("auto split: GRAIN/VOICE/LOFI workload, tails/idle, manual masks, LFO and FORMANT exclusions PASS");
 }

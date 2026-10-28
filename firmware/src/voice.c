@@ -904,7 +904,6 @@ static uint32_t track_render(track_t *t, int32_t *out, uint32_t n)
     uint32_t i;
     int32_t lfo = mulq15(t->lfo_val, t->lfo_fade);
     live_mod_tick(t);
-    drift_tick(t);
     int32_t wheel_pitch = mod_pitch(t, lfo), tremolo = live_tremolo(t);
     /* TUNE in cents: whole 1/16 semitones in the pitch, the rest as a fine factor (no dead zone) */
     int32_t tune = song.g[G_TUNE] >= 0 ? song.g[G_TUNE] * 16 / 100 : -((-song.g[G_TUNE] * 16 + 99) / 100);

@@ -150,6 +150,9 @@ _Static_assert(sizeof(project_v2_t) == 2552u && sizeof(project_v1_t) == 688u && 
                sizeof(project_v4_t) == 3112u && sizeof(project_v5_t) == 3840u, "formats 1 / 2 / 3 / 4 / 5 as they were stored");
 _Static_assert(sizeof(project_t) <= 3840u, "format 6 fits one flash object (storage.c ST_PAYLOAD_MAX)");
 project_t proj_slot[4] __attribute__((section(".noinit")));
+#ifndef PROJ_HOST
+static void snapshot_section_apply(const project_t *p);
+#endif
 
 UI_SMALL static uint32_t proj_hash(const void *p, uint32_t n)   /* FNV-1a over n bytes */
 {
@@ -510,6 +513,9 @@ UI_SMALL static void proj_capture(project_t *p)        /* what is playing now, a
  * meanwhile (the song sections: called from it; a load: IRQ off) */
 static void proj_apply(const project_t *p, int all)
 {
+#ifndef PROJ_HOST
+    browse_saved.active=0;
+#endif
     memset(snapshot_p,0,sizeof snapshot_p);
     progression_stop();
     uint32_t i, k;
@@ -610,6 +616,9 @@ static void proj_apply(const project_t *p, int all)
             }
         fm6_track_loaded(t);                            /* FM6: the project keeps PTCH, not the patch: its slot's */
     }
+#ifndef PROJ_HOST
+    snapshot_section_apply(p);
+#endif
 }
 
 /* One whole-project load undo. A later sequence edit supersedes this history.
@@ -675,6 +684,7 @@ static const char *const SEC_NAME[4] = {"A", "B", "C", "D"};
 /* Shared with explicit SAVE: a saved section must also be the startup state. */
 static project_t autosave_buf __attribute__((section(".pool")));
 static uint32_t autosave_hash, autosave_ms, autosave_checked;
+#include "snapshot_store.c"
 #include "project_save.c"
 /* SAVE > PROJECT > ERASE (SLOOP 2.6, after a YouTube comment): the slot (section A..D) empty again. In flash as the
  * editor's restore leaves an empty slot (project_restore): an object of no bytes, which proj_fetch (older SLOOP too)
@@ -783,16 +793,15 @@ UI_SMALL static void autosave_tick(void)                /* main loop */
 {
 #if FELUCCA_FLASH
     uint32_t h, now = fm1_ms;
-    if (!flash_ok || song.playing || transport_req || rec_wait || ft_on || ui.menu ||
+    if (!flash_ok || song.playing || transport_req || rec_wait || ft_on || ui.menu || browse_saved.active ||
         now - ui_input_ms < AUTOSAVE_IDLE || now - autosave_ms < AUTOSAVE_GAP || now - autosave_checked < 1000u)
         return;
     autosave_checked = now;
     proj_capture(&autosave_buf);
     h = autosave_buf.sum;
-    if (h == autosave_hash || !audio_quiet())
+    if ((h == autosave_hash && !snapshot_pending()) || !audio_quiet())
         return;
-    if (st_save(OBJ_AUTOSAVE, &autosave_buf, sizeof autosave_buf) == 0)
-        autosave_hash = h;
+    autosave_commit(&autosave_buf);
     autosave_ms = fm1_ms;
 #endif
 }
@@ -817,6 +826,7 @@ UI_SMALL static void autosave_resume(void)              /* power-on: the project
     }
     drch_seed = 0;
     proj_apply(q, 1);
+    snapshot_resume(q);
     song.sel = (uint8_t)(q->sel < NTRK ? q->sel : 0u);
     for (n = 0; n < NPART; n++)
         trk[n].engine = trk[n].eng_req;        /* (nothing sounds yet: no fade) */
@@ -936,6 +946,7 @@ UI_SMALL static void persist_boot(void)                    /* before settings_in
     dsu_boot();                                    /* SLOOP 2.5: the SYN kits (after the settings) */
     up_boot();                                     /* user presets */
     fm6_bank_boot();                               /* the FM6 patch bank (fm6_bank.c) */
+    snapshot_boot();
 #endif
 }
 
@@ -1029,7 +1040,11 @@ UI_SMALL static int settings_write(const persist_t *p)
     side_fill(&side_out);
     st_side = &side_out;
     st_side_len = sizeof side_out;
+    snapshot_bank_t *bank=snapshot_prepare();
+    st_tail=bank;st_tail_len=sizeof *bank;
     rc = st_save3(OBJ_SETTINGS, p, sizeof *p, &dsu, sizeof dsu, mp, midi_part_default(mp) ? 0u : sizeof mp);
+    st_tail=0;
+    if(!rc)snapshot_saved=bank->crc;
     st_side = 0;
     if (rc)
         return -1;
@@ -1096,7 +1111,7 @@ UI_SMALL static void settings_save(void)
     {
         uint8_t mp[MIDI_PART];
         midi_part_fill(mp);
-        if (!memcmp(&p, &persist_saved, sizeof p) && !memcmp(mp, midi_saved, sizeof mp) && !fav_dirty && fork_settings_saved == fork_settings_word())
+        if (!memcmp(&p, &persist_saved, sizeof p) && !memcmp(mp, midi_saved, sizeof mp) && !fav_dirty && fork_settings_saved == fork_settings_word() && !snapshot_pending())
             return;                                /* unchanged: no erase cycle */
     }
     if (settings_write(&p) == 0)
@@ -1229,8 +1244,7 @@ UI_SMALL static void persist_flush_now(void)
 #if FELUCCA_FLASH
     if (flash_ok && !arrangement_clock.running) {     /* (a song playing: the tracks hold a section) */
         proj_capture(&autosave_buf);
-        if (autosave_buf.sum != autosave_hash && st_save(OBJ_AUTOSAVE, &autosave_buf, sizeof autosave_buf) == 0)
-            autosave_hash = autosave_buf.sum;
+        autosave_commit(&autosave_buf);
     }
 #endif
 }

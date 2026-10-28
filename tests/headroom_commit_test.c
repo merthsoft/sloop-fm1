@@ -21,7 +21,7 @@ static void fm1_led_key(uint32_t id,int on) {}
 #undef clamp
 static uint8_t flash_ok=1;
 static unsigned erases, programs, headers;
-enum { FAULT_NONE, FAULT_SIDE_DROP, FAULT_SIDE_CORRUPT, FAULT_SIDE_PROG, FAULT_SIDE_READ };
+enum { FAULT_NONE, FAULT_SIDE_DROP, FAULT_SIDE_CORRUPT, FAULT_SIDE_PROG, FAULT_SIDE_READ, FAULT_TAIL_DROP, FAULT_TAIL_PROG, FAULT_TAIL_CORRUPT };
 static int fault;
 static int st_read(uint32_t off,void *dst,uint32_t n) {
     assert(off+n<=sizeof nor);
@@ -32,11 +32,15 @@ static int st_erase(uint32_t off) {assert(!(off&4095u));erases++;memset(nor+off,
 static int st_prog(uint32_t off,const void *src,uint32_t n) {
     assert(off+n<=sizeof nor && (off&255u)+n<=256u);programs++;
     if(!(off&4095u))headers++;
+    int tail=((off&~4095u)==0xFC000u || (off&~4095u)==0xFD000u) && (off&4095u)>=2048u;
+    if(tail && fault==FAULT_TAIL_PROG)return -9;
+    if(tail && fault==FAULT_TAIL_DROP)return 0;
     if((off&4095u)==64u) {
         if(fault==FAULT_SIDE_PROG)return -9;
         if(fault==FAULT_SIDE_DROP)return 0;
     }
     for(uint32_t i=0;i<n;i++)nor[off+i]&=((const uint8_t *)src)[i];
+    if(tail && fault==FAULT_TAIL_CORRUPT)nor[off]=0;
     if((off&4095u)==64u && fault==FAULT_SIDE_CORRUPT)nor[off+4]&=0xfdu; /* extra zero bit */
     return 0;
 }
@@ -242,4 +246,19 @@ static void syn_commit_test(void) {
  fault=FAULT_NONE;assert(!ed_dsyn_store());persist_t after;persist_fill(&after);assert(!memcmp(&after,&persist_saved,sizeof after));
  puts("SYN STORE: busy/flash/staging errors, injected write failure, unchanged saved cache and successful retry PASS");
 }
-int main(int argc,char **argv){original_commit_test(argc,argv);notify_test();syn_commit_test();return 0;}
+static void browser_autosave_test(void) {
+ setup();song.sel=0;browse_saved.active=0;browse_category=0;
+ song.playing=transport_req=rec_wait=ft_on=ui.menu=0;flash_ok=1;
+ fm1_ms=100000;ui_input_ms=autosave_ms=autosave_checked=0;
+ browse_step(1);assert(browse_saved.active);
+ unsigned writes=programs;autosave_tick();
+ assert(!autosave_checked && programs==writes);
+ browse_end(1);autosave_tick();assert(autosave_checked==fm1_ms);
+ browse_step(1);assert(browse_saved.active);
+ proj_capture(&autosave_buf);proj_apply(&autosave_buf,1);
+ assert(!browse_saved.active);
+ puts("browser persistence: pending audition blocks actual autosave; KEEP resumes; project adoption invalidates original patch PASS");
+}
+#ifndef SNAPSHOT_PERSISTENCE_FIXTURE
+int main(int argc,char **argv){original_commit_test(argc,argv);notify_test();syn_commit_test();browser_autosave_test();return 0;}
+#endif

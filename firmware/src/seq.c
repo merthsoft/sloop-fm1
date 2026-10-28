@@ -2327,6 +2327,25 @@ static uint32_t evolve_phase(uint32_t part)
     uint32_t period=EVOLVE_SECONDS[rate]*FS;
     return (period-clamp(evolve[part].left,0,period))*128u/period;
 }
+/* 101% searches each scale step; normal chance checks only the chosen distance.
+ * Validate everything before retiring the original owner. No speculative notes. */
+static __attribute__((noinline)) int evolve_move(track_t *t,uint32_t source,int32_t dir,uint32_t steps,int search)
+{
+    if(drone_shared(t,source) || key_note_owner(trk_index(t),source,27))return 0;
+    const int16_t *p=evolve_p[trk_index(t)];
+    uint32_t mask=scale_mask(t);int32_t target=(int32_t)source;
+    while(steps) {
+        target+=dir;
+        if(target<0 || target>127)return 0;
+        if(!(mask&(1u<<((target-t->p[P_ROOT]+120)%12))))continue;
+        steps--;
+        if((steps && !search) || target<(p[4]+1)*12 || target>=(p[5]+2)*12 ||
+           kh_has(t,(uint32_t)target) || drone_shared(t,(uint32_t)target) ||
+           key_note_owner(trk_index(t),(uint32_t)target,27))continue;
+        drone_toggle(t,source,27);drone_toggle(t,(uint32_t)target,27);return 1;
+    }
+    return 0;
+}
 static __attribute__((noinline)) void evolve_tick(uint32_t frames)
 {
     for(uint32_t part=0;part<NPART;part++) {
@@ -2347,23 +2366,20 @@ static __attribute__((noinline)) void evolve_tick(uint32_t frames)
         if(!p[2])continue;
         if(!evolve[part].rng)evolve[part].rng=(int32_t)(0x45564f4cu+part);
         uint32_t r=noise32(&evolve[part].rng);
-        if(p[2]<127 && (r>>25)>=(uint32_t)p[2])continue;
+        if((r>>25)*100u>=(uint32_t)p[2]*128u)continue;
         uint32_t count=0;
         for(uint32_t n=0;n<128;n++)count+=(uint32_t)kh_has(t,n);
         uint32_t pick=(r&127u)%count,source=0;
         for(;source<128;source++)if(kh_has(t,source) && !pick--)break;
-        int32_t target=(int32_t)source,dir=(r&128u)?1:-1;
-        uint32_t steps=1u+((r>>8)%((uint32_t)clamp(p[3],1,7))),mask=scale_mask(t);
-        while(steps) {
-            target+=dir;
-            if(target<0 || target>127)break;
-            if(mask&(1u<<((target-t->p[P_ROOT]+120)%12)))steps--;
+        int32_t dir=(r&128u)?1:-1;
+        uint32_t range=(uint32_t)clamp(p[3],1,7);
+        if(evolve_move(t,source,dir,1u+((r>>8)%range),0) || p[2]<=100)continue;
+        /* Bounded exhaustive fallback: each held source, both directions, all
+         * distances through RANGE. One successful move at most per cycle. */
+        for(uint32_t i=0;i<256u;i++) {
+            uint32_t next=(source+(i>>1))&127u;
+            if(kh_has(t,next) && evolve_move(t,next,(i&1u)?-dir:dir,range,1))break;
         }
-        if(steps || target<(p[4]+1)*12 || target>=(p[5]+2)*12 ||
-           kh_has(t,(uint32_t)target) || drone_shared(t,source) ||
-           drone_shared(t,(uint32_t)target) || key_note_owner(part,source,27) ||
-           key_note_owner(part,(uint32_t)target,27))continue;
-        drone_toggle(t,source,27);drone_toggle(t,(uint32_t)target,27);
     }
 }
 

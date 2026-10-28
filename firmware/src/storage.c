@@ -152,6 +152,11 @@ UI_SMALL static int st_load(uint32_t obj, void *dst, uint32_t max)
 #define ST_SIDE_MAX (ST_PAYLOAD_OFF - ST_SIDE_OFF)
 static const void *st_side;                         /* the next save's side record (0: none), for one save */
 static uint32_t st_side_len;
+/* Fork-only settings trailer. The advertised upstream payload is unchanged.
+ * Program and verify before the same A/B header commits either record. */
+#define ST_TAIL_OFF 2048u
+static const void *st_tail;
+static uint32_t st_tail_len;
 _Static_assert(sizeof(st_hdr_t) <= ST_SIDE_OFF, "the side record starts after the header");
 /* the current copy's side bytes (n <= ST_SIDE_MAX) into dst: 0, or -1 (no valid copy) */
 UI_SMALL static int st_side_load(uint32_t obj, void *dst, uint32_t n)
@@ -161,6 +166,21 @@ UI_SMALL static int st_side_load(uint32_t obj, void *dst, uint32_t n)
     if (c < 0 || n > ST_SIDE_MAX)
         return -1;
     return st_read(st_sector(obj, (uint32_t)c) + ST_SIDE_OFF, dst, n) ? -1 : 0;
+}
+
+/* Shared commit-last extension writer: accept RAM/ROM sources, verify each
+ * page without disturbing the payload scratch used by the header CRC. */
+UI_SMALL static int st_extra_write(uint32_t address,const void *data,uint32_t length)
+{
+    const uint8_t *src=data;uint8_t check[256];
+    for(uint32_t off=0;off<length;off+=sizeof check) {
+        uint32_t n=length-off>sizeof check?sizeof check:length-off;
+        memcpy(check,src+off,n);
+        int rc=st_prog(address+off,check,n);
+        if(rc)return rc;
+        if(st_read(address+off,check,n) || memcmp(check,src+off,n))return -7;
+    }
+    return 0;
 }
 
 /* an object in up to three parts, src then src2 then src3 (SLOOP 2.5: the settings and the SYN kits after them;
@@ -173,6 +193,8 @@ UI_SMALL static int st_save3(uint32_t obj, const void *src, uint32_t len, const 
     st_hdr_t h;
     if (obj >= OBJ_COUNT || len + len2 + len3 > ST_PAYLOAD_MAX)
         return -1;
+    if(obj==OBJ_SETTINGS && st_tail &&
+       (st_tail_len>ST_SECTOR-ST_TAIL_OFF || ST_PAYLOAD_OFF+len+len2+len3>ST_TAIL_OFF))return -1;
     cur = st_current(obj, &h);
     seq = cur < 0 ? 0u : h.seq;
     base = st_sector(obj, cur == 0 ? 1u : 0u);       /* write the other copy */
@@ -191,16 +213,11 @@ UI_SMALL static int st_save3(uint32_t obj, const void *src, uint32_t len, const 
         if ((rc = st_prog(base + ST_PAYLOAD_OFF + off, st_buf + off, n)) != 0)
             return rc;
     }
-    if (st_side && st_side_len && st_side_len <= ST_SIDE_MAX) {   /* (2.7) the side record, before the commit */
-        uint8_t sb[ST_SIDE_MAX];
-        for (off = 0; off < st_side_len; off++)
-            sb[off] = ((const uint8_t *)st_side)[off];      /* (RAM source) */
-        if ((rc = st_prog(base + ST_SIDE_OFF, sb, st_side_len)) != 0)
-            return rc;
-        /* Verify before the header commits this copy: side bytes are outside
-         * both header and payload CRCs, and a ready part can still misprogram. */
-        if (st_read(base + ST_SIDE_OFF, sb, st_side_len) || memcmp(sb, st_side, st_side_len))
-            return -7;
+    if(st_side && st_side_len<=ST_SIDE_MAX) {
+        if((rc=st_extra_write(base+ST_SIDE_OFF,st_side,st_side_len)))return rc;
+    }
+    if(obj==OBJ_SETTINGS && st_tail) {
+        if((rc=st_extra_write(base+ST_TAIL_OFF,st_tail,st_tail_len)))return rc;
     }
     h.magic = ST_MAGIC;
     h.type = (uint16_t)obj;
