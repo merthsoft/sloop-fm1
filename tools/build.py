@@ -182,7 +182,9 @@ def build_loader():
 # ---- app
 
 def build_app():
-    flags = [*CFLAGS, "-DFELUCCA_BOOT_TABLES=1", "-DFELUCCA_BOOT_LITERALS=1", "-Ifirmware/hal", "-Ifirmware/src", "-Ibuild/gen"]
+    # Size-focused application inlining; explicit DSP/HAL inline contracts stay
+    # authoritative. Keep loader flags unchanged (see REVERSE-SOUNDS.md).
+    flags = [*CFLAGS, "-mllvm", "-inline-threshold=0", "-DFELUCCA_BOOT_TABLES=1", "-DFELUCCA_BOOT_LITERALS=1", "-Ifirmware/hal", "-Ifirmware/src", "-Ibuild/gen"]
     for flag in ("FELUCCA_FLASH", "FELUCCA_OTA", "FELUCCA_OTA_DRYRUN", "FELUCCA_CDC", "FELUCCA_UART",
                  "FELUCCA_ICONS", "FELUCCA_SLICE", "FELUCCA_CPU1", "FELUCCA_LOGO_TEXT", "FELUCCA_AUDIO_DIAG"):
         v = os.environ.get(flag)    # unset: the default in firmware/src/felucca.c
