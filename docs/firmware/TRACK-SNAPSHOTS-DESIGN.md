@@ -79,10 +79,11 @@ navigation/fuzz suite supplement these checks.
 ## Automatic DRIFT target
 
 DRIFT TARGET MORPH shares DRONE's eight timed and eleven transport-synced cycles.
+DRIFT MODE selects RAND, SIN, TRI, SAW or SQR using the [shared modulation evaluator](MODULATION-WAVEFORMS.md); MORPH does not duplicate waveform or clock logic.
 The manual position is the center; maximum amount permits approximately ±64 of
 127 position units, clamped to A/B. The MORPH readout shows the effective position.
-Synced cycles pause on STOP; timed cycles continue. Mid-cycle sync entry freezes
-the current value until the next boundary. Each track retains its private RNG.
+Synced cycles pause on STOP; timed cycles continue. RAND mid-cycle sync entry freezes
+the current value until the next boundary, while repeating shapes follow transport phase. Each track retains its private RNG.
 
 The mixer computes a temporary parameter overlay once per control block, using
 its existing per-core preset-fade scratch buffer. It restores the base after

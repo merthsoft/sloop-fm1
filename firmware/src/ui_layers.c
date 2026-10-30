@@ -29,7 +29,8 @@ static uint32_t sec_armed_ms;
 static uint8_t chain_tap[CHAIN_MAX], chain_taps;        /* the section keys tapped in this SAVE hold (the first
                                                          * is asked for at once; two or more: a chain on release) */
 #define TAP_MS 450u                                     /* a press shorter than this, untouched: a tap */
-#define SHOW_MS 140u                                    /* the layer shows after this (a tap does not flash it) */
+#define SHOW_MS 350u                                    /* the layer shows after this (a tap does not flash it; 2.8.3: was 0.14 s,
+                                                         * a quick tap flashed it; a key or knob used shows it at once) */
 
 /* the ISR's view of the panel: the layers' buttons, OCT- / OCT+, REC / PLAY of a free take */
 UI_SMALL static void layers_init(void)
@@ -574,16 +575,12 @@ UI_SMALL static void layer_knobs(uint32_t layer)
             if (k == 0 && m->sync != WAH_ENV) m->sync = 0; /* turning Hz deliberately returns to free rate */
             break;
         }
-        case LY_FX:
-            if (k == 0u)
-                song.g[G_FILT] = (int16_t)clamp(song.g[G_FILT] + accel(EN_K1, s, 127), -64, 63);
-            else if (k == 1u)
-                song.g[G_DUST] = (int16_t)clamp(song.g[G_DUST] + accel(EN_K2, s, 127), 0, 127);
-            else if (k == 2u)
-                song.g[G_DUCK] = (int16_t)clamp(song.g[G_DUCK] + accel(EN_K3, s, 127), 0, 127);
-            else                                        /* the selected track's FILTER (2.4) */
-                t->p[P_TFLT] = (int16_t)clamp(t->p[P_TFLT] + accel(EN_K4, s, 127), -64, 63);
+        case LY_FX: {
+            int16_t *value=k==3u?&t->p[P_TFLT]:&song.g[k==0u?G_FILT:k==1u?G_DUST:G_DUCK];
+            int32_t lo=(k==0u||k==3u)?-64:0;
+            *value=(int16_t)clamp(*value+accel(EN_K1+k,s,127),lo,lo+127);
             break;
+        }
         case LY_ERASE:
             if (k == 0u)
                 pattern_rotate(t, s);
@@ -670,7 +667,7 @@ UI_SMALL static void tiles_draw(const tile_t *tl, uint32_t *cache)
         return;
     *cache = sig;
     for (r = 0; r < 4u; r++) {
-        cv_begin(240, 36, C_BLACK);
+        cv_band(36);
         for (c = 0; c < 4u; c++) {
             const tile_t *t = &tl[r * 4u + c];
             int32_t x = 2 + (int32_t)c * 60;
@@ -696,7 +693,7 @@ UI_SMALL static void tiles_draw(const tile_t *tl, uint32_t *cache)
                 }
             }
         }
-        cv_blit(0, 74 + r * 36);
+        cv_band_blit(74 + r * 36);
     }
 }
 
@@ -713,7 +710,7 @@ UI_SMALL static void punch_tiles_draw(const tile_t *tl, uint32_t *cache)
         return;
     *cache = sig;
     for (r = 0; r < 4u; r++) {
-        cv_begin(240, 36, C_BLACK);
+        cv_band(36);
         for (c = 0; c < 4u; c++) {                      /* the white keys */
             const tile_t *t = &tl[r * 4u + c];
             int32_t x = 2 + (int32_t)c * 60;
@@ -729,11 +726,11 @@ UI_SMALL static void punch_tiles_draw(const tile_t *tl, uint32_t *cache)
                 continue;
             x = w % 4 < 3 ? 60 * (w % 4 + 1) - PT_BW / 2 : 238 - PT_BW;
             if (t->bg == C_BLACK)
-                cv_rect(x, 0, PT_BW, 17, TE_G2);         /* an outline: a black key on the black screen */
+                cv_rect_te_g2(x, 0, PT_BW, 17);         /* an outline: a black key on the black screen */
             cv_rect(x + 1, 1, PT_BW - 2, 15, t->bg);
             te_text_c(x + PT_BW / 2, 1, t->lab, t->fg);
         }
-        cv_blit(0, 74 + r * 36);
+        cv_band_blit(74 + r * 36);
     }
 }
 
@@ -744,15 +741,15 @@ UI_SMALL static void layer_title(const char *name, const char *sub, uint16_t col
     if (!ui.force && sig == *cache)
         return;
     *cache = sig;
-    cv_begin(240,20,C_BLACK);
-    cv_text(4,0,&FONT_S,name,col);
+    cv_band(20);
+    cv_text_s(4,0,name,col);
     char track[3]={'T',(char)('1'+song.sel),0};
-    cv_text(168,0,&FONT_S,track,col);
-    if(locked) cv_text(200,0,&FONT_S,"LOCK",C_WHITE);
-    cv_blit(0,0);
-    cv_begin(240,22,C_BLACK);
-    cv_text(4,2,&FONT_S,ui.msg_t?ui.msg:sub,ui.msg_t?C_WHITE:TE_G4);
-    cv_blit(0,218);
+    cv_text_s(168,0,track,col);
+    if(locked) cv_text_c_white(200,0,"LOCK");
+    cv_band_blit(0);
+    cv_band(22);
+    cv_text_s(4,2,ui.msg_t?ui.msg:sub,ui.msg_t?C_WHITE:TE_G4);
+    cv_band_blit(218);
 }
 
 UI_SMALL static const char *lock_label(const track_t *t, uint32_t id)   /* the lock parameter's name, lower case */
@@ -787,8 +784,7 @@ static const char *layer_sub_shown = "";                 /* the sub line last dr
 /* One modulation cycle, sampled for display only; no audio history or new buffer. */
 UI_SMALL static int32_t live_mod_plot_y(const live_mod_t *m, uint32_t phase, int trem)
 {
-    int32_t w = m->wave == 1 ? osc_tri(phase) : m->wave == 2 ? (int32_t)(phase >> 16) - 32768 :
-        m->wave == 3 ? (phase < 0x80000000u ? 32767 : -32767) : osc_sine(phase);
+    int32_t w = modulation_wave(m->wave,phase,0);
     return trem ? 20 + ((w + 32768) / 2) * m->depth * 84 / (32768 * 127) :
         62 - w * m->depth * 42 / (32768 * 127);
 }
@@ -803,44 +799,44 @@ UI_SMALL static void live_mod_draw(const track_t *t, uint32_t layer, uint16_t co
     uint32_t now=fm1_ms/50u*8u+layer-LY_VIB;
     if(!ui.force&&stamp==now) return;
     stamp=now;
-    cv_begin(240,114,C_BLACK);
+    cv_band(114);
     if(is_drum(t)) te_text_c(120,48,"SYNTHS ONLY",TE_G3);
     else {
         if(layer==LY_WAH) {
-            cv_text(8,0,&FONT_S,"SWEEP / GUIDE",TE_G3);
+            cv_text_te_g3(8,0,"SWEEP / GUIDE");
             int32_t base=clamp(((int32_t)m->wave)*4+16,16,192);
             int32_t end=clamp(base+m->depth,base,224);
-            cv_rect(base,38,end-base+1,24,TE_G1);
+            cv_rect_te_g1(base,38,end-base+1,24);
             cv_line(base,34,base,68,col);cv_line(end,34,end,68,col);
             int32_t at=base+(end-base)*clamp(m->sync==WAH_ENV?m->value:(m->value+32768)/2,0,32767)/32767;
             cv_line(8,78,at,25,col);cv_line(at,25,232,78,col);
-            cv_line(at,20,at,84,C_WHITE);
-            cv_text(8,94,&FONT_S,m->sync==WAH_ENV?"ENVELOPE FOLLOWER":"LFO SWEEP",TE_G4);
+            cv_line_c_white(at,20,at,84);
+            cv_text_te_g4(8,94,m->sync==WAH_ENV?"ENVELOPE FOLLOWER":"LFO SWEEP");
         } else if(layer==LY_PAN) {
-            cv_text(8,0,&FONT_S,"STEREO POSITION",TE_G3);
-            cv_line(16,62,224,62,TE_G2);
-            cv_text(12,82,&FONT_S,"L",TE_G4);cv_text(116,82,&FONT_S,"C",TE_G4);cv_text(220,82,&FONT_S,"R",TE_G4);
+            cv_text_te_g3(8,0,"STEREO POSITION");
+            cv_line_te_g2(16,62,224,62);
+            cv_text_te_g4(12,82,"L");cv_text_te_g4(116,82,"C");cv_text_te_g4(220,82,"R");
             cv_rect(120+live_pan(t)*100/64-3,48,7,28,col);
         } else {
-            cv_line(12,trem?20:62,228,trem?20:62,TE_G2);
+            cv_line_te_g2(12,trem?20:62,228,trem?20:62);
             int32_t py=live_mod_plot_y(&plot,0,trem);
             for(uint32_t x=1;x<=216;x++) {
                 int32_t y=live_mod_plot_y(&plot,(x%216u)*(UINT32_MAX/216u),trem);
                 cv_line(11+x,py,12+x,y,col);py=y;
             }
             int32_t x=12+(m->phase>>24)*216/256;
-            cv_rect(x-2,live_mod_plot_y(&plot,m->phase,trem)-2,5,5,C_WHITE);
+            cv_rect_c_white(x-2,live_mod_plot_y(&plot,m->phase,trem)-2,5,5);
             fmt_int(text,trem?live_tremolo(t)*100/32767:m->value*m->depth*50/(32768*127));
             str_cpy(text+str_len(text),trem?"% LEVEL":" CENTS",12);
             te_text_c(120,0,text,C_WHITE);
         }
     }
-    cv_blit(0,84);
-    cv_begin(240,38,C_BLACK);
-    cv_text(4,0,&FONT_S,LAYER_NAME[layer],col);
-    cv_text(140,0,&FONT_S,ly_lock==layer?"LOCKED":"HELD",C_WHITE);
-    cv_text(4,20,&FONT_S,layer<=LY_TREM?"OCT+: COPY TO TRACK LFO":"HOME LOCK / RELEASE BACK",col);
-    cv_blit(0,202);
+    cv_band_blit(84);
+    cv_band(38);
+    cv_text_s(4,0,LAYER_NAME[layer],col);
+    cv_text_c_white(140,0,ly_lock==layer?"LOCKED":"HELD");
+    cv_text_s(4,20,layer<=LY_TREM?"OCT+: COPY TO TRACK LFO":"HOME LOCK / RELEASE BACK",col);
+    cv_band_blit(202);
 
 }
 /* A separate cold draw boundary reduces measured target flash. */
@@ -1244,20 +1240,14 @@ UI_SMALL static void layer_screen_draw(void)
     if(layer>=LY_VIB) {
         if(ui.force) draw_frame();
         draw_head();
-        cv_begin(240,4,C_BLACK);cv_blit(0,20);
+        cv_band(4);cv_band_blit(20);
     } else layer_title(LAYER_NAME[layer % LY_COUNT], sub, col, &head);
-    if (layer >= LY_VIB) {
-        te_dials(lab,val,ratio,layer*7919u,&foot);
-        live_mod_draw(t,layer,col);
-        return;
+    if (layer < LY_VIB) {
+        if(layer==LY_FX) punch_tiles_draw(tl,&tiles);
+        else tiles_draw(tl,&tiles);
     }
-    else if (layer == LY_FX)
-        punch_tiles_draw(tl, &tiles);
-    else
-        tiles_draw(tl, &tiles);
-    {   /* (a message shows in the title: the dials stay) */
-        te_dials(lab, val, ratio, layer * 7919u, &foot);
-    }
+    te_dials(lab,val,ratio,layer*7919u,&foot);
+    if(layer>=LY_VIB) live_mod_draw(t,layer,col);
 }
 
 /* HOLD to confirm: a ring fills while REC (clear the track) or SAVE (save the project) is held */
@@ -1278,7 +1268,7 @@ UI_SMALL static void hold_screen_draw(void)
     if (sig == cache && !ui.force)
         return;
     cache = sig;
-    cv_begin(240, 124, C_BLACK);
+    cv_band(124);
     cv_text(120 - text_w(&FONT_L, ui.hold_kind == 1u ? "clear" : "save") / 2, 4, &FONT_L,
             ui.hold_kind == 1u ? "clear" : "save", ui.hold_kind == 1u ? TE_RED : C_WHITE);
     {   /* the ring: 36 px, 7 thick, filling clockwise from the top */
@@ -1290,8 +1280,8 @@ UI_SMALL static void hold_screen_draw(void)
                 cv_pset(120 + ((si * rr) >> 15), 80 + ((co * rr) >> 15), c);
         }
     }
-    cv_blit(0, 20);
-    cv_begin(240, 60, C_BLACK);
+    cv_band_blit(20);
+    cv_band(60);
     if (ui.hold_kind == 1u) {
         str_cpy(b, "track 1", sizeof b);
         b[6] = (char)('1' + ui.hold_trk);
@@ -1301,5 +1291,5 @@ UI_SMALL static void hold_screen_draw(void)
     }
     te_text_c(120, 4, b, TE_G4);
     te_text_c(120, 30, "keep holding", TE_G3);
-    cv_blit(0, 160);
+    cv_band_blit(160);
 }

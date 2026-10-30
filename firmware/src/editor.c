@@ -183,9 +183,7 @@ UI_SMALL static int16_t *ed_val(uint32_t i) { return i < P_COUNT ? &TSEL->p[i] :
 UI_SMALL static uint32_t ed_step_sig(const track_t *t, uint32_t i)   /* all 10 bytes (a drum step's lanes too), v7: + its nudge and locks, v8: + its condition */
 {
     const uint8_t *b = (const uint8_t *)&t->step[i % NSTEP];
-    uint32_t k, h = 0x811C9DC5u;
-    for (k = 0; k < sizeof t->step[0]; k++)
-        h = (h ^ b[k]) * 16777619u;
+    uint32_t k, h = proj_hash(b, sizeof t->step[0]);
     h = (h ^ (uint8_t)t->micro[i % NSTEP]) * 16777619u;
     h = (h ^ (step_fill(t, i) + 1u)) * 16777619u;        /* v8: its fill condition */
     for (k = 0; k < NLOCK; k++)
@@ -665,7 +663,6 @@ UI_SMALL static int ed_backup(uint32_t cmd, const uint8_t *a, uint32_t na)   /* 
 
 #include "editor_fm6.c"                               /* v9: the FM6 patches (68..71) */
 #include "editor_performance.c"                       /* v12: host-owned fills and punch FX */
-#include "editor_drum_grooves.c"                      /* v12: shared ROM groove bank */
 #include "editor_dsyn.c"                              /* upstream SYN drum kits (72..76) */
 
 #include "editor_live.c"                              /* v12: the LIVE page (77) */
@@ -678,15 +675,11 @@ UI_SMALL static void ed_handle(const uint8_t *f, uint32_t n)   /* f: the bytes b
     int16_t *vp;
     const param_desc_t *d;
     ed_begin(cmd);
-    if (cmd == 88u || cmd == 89u) { /* retired companion features: explicit unavailable reply */
+    if (cmd >= 87u && cmd <= 89u) { /* retired companion features: explicit unavailable reply */
         ed_b(na ? a[0] : 127u); ed_b(2u); ed_send(); return;
     }
     if (cmd == 86u) {
         ed_performance(a, na);
-        return;
-    }
-    if (ed_drum_grooves_handle(cmd, a, na)) {
-        ed_send();
         return;
     }
     if (ed_backup(cmd, a, na)) {                           /* v6: backup / restore */

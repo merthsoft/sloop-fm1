@@ -39,6 +39,10 @@ Check(await client.ApplyDrumGrooveAsync(23,true) == DrumGrooveStatus.Applied, "E
 wire.Replies.Enqueue([2,0,0]);
 try { await client.ApplyDrumGrooveAsync(1,true); throw new Exception("Wrong groove ack accepted"); } catch (FormatException) { checks++; }
 int sent = wire.Sent;
+wire.Replies.Enqueue([0,2]);
+try { await client.ListDrumGroovesAsync(Info(16)); throw new Exception("Retired bank accepted"); }
+catch (NotSupportedException e) { Check(e.Message.Contains("GROOVE"), "Retired bank directs player to hardware GROOVE page"); }
+sent = wire.Sent;
 try { await client.ApplyDrumGrooveAsync(24,true); throw new Exception("Invalid groove sent"); } catch (ArgumentOutOfRangeException) { checks++; }
 Check(wire.Sent == sent, "Invalid IDs rejected before send");
 Console.WriteLine($"Drum groove protocol: {checks} checks passed.");

@@ -134,6 +134,7 @@ enum {                          /* global parameters */
     G_LTYPE,                   /* master LOFI character; absent settings default to OFF */
     G_DTYPE,                   /* delay character; old projects default to DIGITAL */
     G_DDRIVE, G_DBITS, G_DHOLD, /* delay character controls */
+    G_DTRIG, G_DREC, G_DSHAPE,  /* kick/snare ducking: source, synced recovery, curve */
     G_COUNT
 };
 /* UI order is OFF first; stored/DSP character IDs remain VINYL/TAPE/VHS/CD/OFF/RADIO. */
@@ -379,6 +380,8 @@ typedef struct {
 
 static track_t trk[NTRK];        /* the instrument: three parts and the drum track */
 static song_t song;
+/* Zero means included: legacy projects duck every synth track. Not a sound parameter. */
+static int16_t duck_bypass[NPART];
 
 /* The transport clock (seq.c runs it). One unit = one sample at 1 BPM: a beat is BEAT_U units at any
  * tempo, and every division of it (1/4 .. 1/64, the triplets) is a whole number of units. The steps
@@ -408,8 +411,8 @@ DSP_INLINE uint32_t musical_samples(uint32_t units)
 /* Recording preference only; no project/parameter format changes. Resets on boot. */
 enum { REC_SNAP_TRACK, REC_SNAP_EIGHTH, REC_SNAP_QUARTER, REC_SNAP_COUNT };
 static int16_t rec_snap[NTRK];
-static const uint8_t DIV_DEN[6] = {1, 2, 4, 8, 3, 6};    /* N_DIV 0..5: beats = 1 / DEN */
-#define NDIV_SHORT 6u            /* the divisions inside a beat (N_DIV, the arp's RATE) */
+static const uint8_t DIV_DEN[6] = {1, 2, 4, 8, 3, 6};    /* N_SDIV 0..5: beats = 1 / DEN */
+#define NDIV_SHORT 6u            /* the within-beat prefix of N_SDIV, also used by ARP RATE and DUCK */
 #define NDIV_STEP 9u             /* N_SDIV: + 1/2 note, a bar, two bars (whole beats: DIV_BEATS) */
 #define NDIV_DLY 8u              /* N_DLY: + 1/8 and 1/16 dotted */
 static const uint8_t DIV_BEATS[3] = {2, 4, 8};

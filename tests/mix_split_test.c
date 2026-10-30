@@ -29,8 +29,8 @@
 #define BLOCKS 1500u                                     /* ~2.2 s at 44.1 kHz */
 static const int32_t MASKS[] = {0, -1, 1, 2, 4, 8, 3, 5, 9, 10, 12, 7, 15};
 static const int32_t MASKS_QUICK[] = {0, 15, -1};
-static const char *const SCENE_NAME[] = {"formant3", "fm6x3", "phys_lfo", "mix", "fx26", "live_mods", "sample_cache", "drone_load", "morph_sync", "vowel_tape", "flute_lofi", "flute_source"};
-#define NSCENE 12u
+static const char *const SCENE_NAME[] = {"formant3", "fm6x3", "phys_lfo", "mix", "fx26", "live_mods", "sample_cache", "drone_load", "morph_sync", "vowel_tape", "flute_lofi", "flute_source", "morph_sine_sync", "morph_square_tape"};
+#define NSCENE 14u
 
 static void drums_pattern(void)                          /* kick 4 on the floor, snare 4 / 12, hats, a clap */
 {
@@ -94,6 +94,7 @@ static void scene_setup(uint32_t s)
             chords(&trk[k], k, 4, 50 + 4 * k);
         }
         break;
+    case 12:
     case 8:
         for(k=0;k<NPART;k++) {
             host_preset(&trk[k],0,4);chords(&trk[k],k,4,48+5*k);
@@ -115,6 +116,7 @@ static void scene_setup(uint32_t s)
         chords(&trk[2],0,4,60);
         song.g[G_VWOW]=80;song.g[G_VTONE]=64;song.g[G_VCRACKLE]=40;
         break;
+    case 13:
     case 9:
     case 7:
         voice_expand=4;
@@ -126,7 +128,7 @@ static void scene_setup(uint32_t s)
         drift_p[2][0]=1;evolve_p[2][0]=DRONE_STILL;drift_p[2][2]=64;
         song.g[G_LTYPE]=VINYL_MODE_VINYL;
         song.g[G_VWOW]=song.g[G_VTONE]=song.g[G_VCRACKLE]=64;
-        if(s==9u) {
+        if(s==9u || s==13u) {
             song.g[G_LTYPE]=VINYL_MODE_TAPE;
             for(k=0;k<2;k++)memcpy(snapshot_values[1][k],trk[1].p,sizeof trk[1].p);
             snapshot_values[1][0][P_E0]=0;snapshot_values[1][1][P_E0]=127;
@@ -209,6 +211,8 @@ static void scene_setup(uint32_t s)
         TDRUM->p[P_TFLT] = -40;
         break;
     }
+    if(s==12u){drift_p[0][0]=2;drift[0].shape=1;}
+    if(s==13u){drift_p[1][0]=5;drift[1].shape=4;}
     transport_req = 1;
 }
 
@@ -355,7 +359,7 @@ int main(int argc, char **argv)
                 why = "crashed";
             else if (r.hash != ref.hash)
                 why = "the output differs from the unsplit render";
-            else if (mask && !r.jobs && (s != 0u || mask < 0 || (mask & (1 << NPART))) && !(s==8u && mask==1))
+            else if (mask && !r.jobs && (s != 0u || mask < 0 || (mask & (1 << NPART))) && !((s==8u || s==12u) && mask==1))
                 why = "no job was handed to core 1";          /* (formant3: its parts never go; the drums do) */
             else if (!mask && r.jobs)
                 why = "jobs handed to core 1 with no unit for it";

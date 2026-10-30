@@ -21,18 +21,7 @@ static int eng_sampled(const engine_t *e) { return e == &ENG_SAMPLE; }
 #endif
 static int32_t lfo_wave(track_t *t, uint32_t ph)
 {
-    switch (t->p[P_LWAVE]) {
-    case 1:
-        return osc_tri(ph);
-    case 2:
-        return (int32_t)(ph >> 16) - 32768;
-    case 3:
-        return ph < 0x80000000u ? 32767 : -32767;
-    case 4:
-        return (int32_t)(t->lfo_rnd >> 16) - 32768;
-    default:
-        return osc_sine(ph);
-    }
+    return modulation_wave((uint32_t)t->p[P_LWAVE],ph,(int32_t)(t->lfo_rnd>>16)-32768);
 }
 
 /* Runtime performance modulation: independent of saved patch parameters. */
@@ -89,9 +78,7 @@ static void live_mod_tick(const track_t *t)
             }
         } else m->phase += LFO_INC[m->rate];
         uint32_t wave = i == 2 ? 1 : m->wave;
-        int32_t w = wave == 1 ? osc_tri(m->phase) :
-            wave == 2 ? (int32_t)(m->phase >> 16) - 32768 :
-            wave == 3 ? (m->phase < 0x80000000u ? 32767 : -32767) : osc_sine(m->phase);
+        int32_t w = modulation_wave(wave,m->phase,0);
         m->value = i == 1 || i == 2 ? (w + 32768) >> 1 : w;
     }
 }
@@ -254,7 +241,20 @@ static uint32_t voice_victim(const track_t *self, int soft, track_t **pp)
 static uint32_t voice_kills;                            /* voices given up (budget, overload): console, hostsim */
 static uint32_t voice_recover_wait;
 static uint8_t drone_lost[NPART][128];                  /* stolen pitches survive voice-slot reuse */
+/* High bit: CPU-shed ordinary note, low seven bits: its attack velocity.
+ * Admission/cap stealing retains the existing drone-only recovery policy. */
+static uint32_t cpu_recover_safe;
+static uint8_t cpu_recover_backoff;
+static uint8_t cpu_lost_mask;
+static struct {uint32_t gen;int16_t source;uint8_t engine;} cpu_lost_source[NPART];
 static int drone_held(const track_t *t,uint32_t note);
+static int16_t cpu_source(const track_t *t)
+{return t->engine==ENGI_GRAIN?t->p[P_E0]:-1;}
+static void cpu_lost_clear(uint32_t p)
+{
+    for(uint32_t n=0;n<128;n++)if(drone_lost[p][n]&128u)drone_lost[p][n]=0;
+    cpu_lost_mask&=(uint8_t)~(1u<<p);
+}
 static void voice_lost(track_t *t,const voice_t *v)
 {
     if(v->active && v->gate && t->p[P_VOICE]==V_POLY && drone_held(t,v->note))
@@ -296,7 +296,23 @@ static void shed_voice(void)
         if(k<NVOICE)best=&owner->v[k];
     }
     if (best) {
+        uint32_t part=(uint32_t)(owner-trk),note=best->note,vel=best->vel;
+        int remember=best->gate && owner->p[P_VOICE]==V_POLY && !drone_held(owner,note) &&
+            owner->p[P_SUS] && !eng_sampled(ENGINES[owner->engine]) && ENGINES[owner->engine]!=&ENG_PHYS &&
+            !ENGINES[owner->engine]->amp && !ENGINES[owner->engine]->ownenv;
+        /* A source change invalidates any earlier pending ordinary attacks. */
+        if(cpu_lost_source[part].engine!=owner->engine || cpu_lost_source[part].source!=cpu_source(owner) ||
+           cpu_lost_source[part].gen!=smp_user_gen)
+            cpu_lost_clear(part);
         voice_kill(owner,best);
+        if(remember) {
+            cpu_lost_source[part].engine=owner->engine;
+            cpu_lost_source[part].source=cpu_source(owner);
+            cpu_lost_source[part].gen=smp_user_gen;
+            drone_lost[part][note]=(uint8_t)(128u|vel);
+            cpu_lost_mask|=(uint8_t)(1u<<part);
+        }
+        cpu_recover_safe=0;
         shed_count++;
     }
 }
@@ -651,6 +667,7 @@ static void sustain_render(track_t *t,voice_t *v,int32_t *out,uint32_t n,const v
 static void trk_note_off(track_t *t, uint32_t note)
 {
     if(drone_held(t,note))return;
+    if(!is_drum(t) && note<128u && (drone_lost[t-trk][note]&128u))drone_lost[t-trk][note]=0;
     uint32_t i, k = 0, mode = (uint32_t)t->p[P_VOICE], was_mono = t->nmono;
     if (is_drum(t))
         return;                                         /* one-shots */
@@ -696,7 +713,10 @@ static void trk_all_off(track_t *t)
     t->nmono = 0;
     t->mono_note = 0;
     t->xp_n = 0;
-    if(!is_drum(t))memset(drone_lost[t-trk],0,sizeof drone_lost[0]);
+    if(!is_drum(t)) {
+        memset(drone_lost[t-trk],0,sizeof drone_lost[0]);
+        cpu_lost_mask&=(uint8_t)~(1u<<(t-trk));
+    }
 }
 
 /* note i of a chord of n (notes[]): at once, or strummed (rank: its place from the lowest, or the highest) */
@@ -771,6 +791,9 @@ static void sound_change(track_t *t)
 static void engine_block(track_t *t)
 {
     uint32_t i, any = 0;
+    if(!is_drum(t) && (cpu_lost_mask&(1u<<(t-trk))) &&
+       (t->p[P_VOICE]!=V_POLY || !t->p[P_SUS] || cpu_lost_source[t-trk].gen!=smp_user_gen ||
+       (cpu_source(t)>=0 && t->p[P_E0]!=t->pe_old[0])))cpu_lost_clear((uint32_t)(t-trk));
     if (t->xf_on || t->eng_req != t->engine || t->pold) {
         if (!t->xf_on) {
             for (i = 0; i < NVOICE; i++)
@@ -790,6 +813,7 @@ static void engine_block(track_t *t)
             v->env = v->env_out = 0;
         }
         memset(drone_lost[t-trk],0,sizeof drone_lost[0]);
+        cpu_lost_mask&=(uint8_t)~(1u<<(t-trk));
         if (t->xf_on && t->eng_req == ENGI_FM6 && ((fm6_pend >> ((uint32_t)(t - trk) % NPART)) & 1u))
             return;                                     /* (2.6) FM6: the new notes wait for the preset's patch
                                                          * (eng_fm6.c fm6_poll, main loop): not a note of the old */

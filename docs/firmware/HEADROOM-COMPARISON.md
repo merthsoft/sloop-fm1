@@ -147,3 +147,58 @@ cache. Main/low/pool remain 97,324 / 28,928 / 335,424 B. Diagnostic .90 is
 583,844 B (492 free), with 97,340 B main. No individual savings were summed.
 [Integration and validation](ENGINE-PERFORMANCE-INTEGRATION.md) records the
 exact-output tests, actual links and deferred unmeasured cache proposals.
+
+## Worker hardening and hold timing (.91)
+
+Normal .91 links at **584,296 / 584,336 B (40 B free)**, 68 B above normal .90.
+Main static RAM is **97,500 / 98,304 B (804 free)**; low-RAM data remains
+28,928 B, with 464 B left after the worker code grows from 60 to 160 B and
+alignment. Pool remains 335,424 / 344,064 B, retaining the 8,192 B reserve.
+The retained worker bar adds eight bytes after existing `.noinit` records.
+
+The direct upstream implementation overflowed by 88 B. Omitting extra BAD-screen
+text reduced this to 8 B; sharing the common core-0/core-1 crash-record writes
+then saved 48 B, giving the final 40 B gap. Cold minsize/noinline experiments
+did not improve the linked size and were reverted. No additional literal RAM,
+sample decoder or audio-loop optimization is used to fund this integration.
+See [scope and validation](UPSTREAM-2.8-INTEGRATION.md#selective-upstream-283-safety-and-hold-timing).
+
+## Combined UI, storage and startup data (.92)
+
+Production .92 is **582,324 / 584,336 B**, leaving **2,012 B flash**. It is
+1,972 B smaller than .91, with all static RAM regions unchanged. The same-version
+.91 combined source measures 582,320 B (1,976 B saved); the final version string
+adds four bytes through literal compression/layout. The measured stages and
+runtime/stack qualifications are in [the integration report](FLASH-91-INTEGRATION.md).
+
+## Measured scheduling and held-note recovery (.93)
+
+The combined normal build is **584,304 / 584,336 B (32 B free)**. Main static
+RAM is **97,548 / 98,304 B (756 B free)**; low RAM remains **28,928 B** and
+pool **335,424 B**, retaining the 8,192 B pool reserve. Relative to the actual
+.92 baseline, the fixes cost **1,980 B flash / 48 B main RAM**. Outlining the
+part wrapper, partition search and recovery control function reduces register
+pressure without altering sample loops or adding literal RAM. An attempted
+shared synth/drum dispatch enlarged the image and was rejected. Hardware timing
+remains unqualified. See [policy, limits and validation](VOICE-LOFI-FIXES.md).
+
+The bounded LOFI SWP follow-up (.94) links at **584,308 B (28 B free)** with
+all static RAM totals unchanged. Its net image increase is 4 B, including
+version-string packing. [Behavior and validation](LOFI-SWEEP.md).
+
+Shared control-wave evaluation alone recovers **176 B** at the same .94 version.
+The combined shaped DRIFT/MORPH build (.95) is **584,192 B (144 B free)**,
+**116 B smaller** than .94 including the new modes. All static RAM totals stay
+unchanged. [Scope and measurements](MODULATION-WAVEFORMS.md).
+
+The .96 drum allocation/snare-body build is **584,256 B (80 B free)**. Main
+static RAM is **97,580 B (724 B free)**; low RAM and pool remain unchanged.
+Compared with .95 this is +64 B flash / +32 B main static RAM. The allocator
+alone costs 48 B at the same version; the final number includes the three
+sound edits and version packing. [Verification](DRUM-PLAYBACK-INTEGRATION.md).
+
+The .97 DUCK-depth extension stays at **584,256 B (80 B free)** with static RAM unchanged. Configurable ducking and removal of the phone-only groove-bank handler in .98 reach **584,288 B (48 B free)** and **97,612 B main static RAM (692 B free)**. Low RAM and pool are unchanged. Native grooves, Android playing and sampling remain available. [Controls, persistence and scope](DUCKING-DESIGN.md).
+
+The .99 UI reuse integration links at **583,728 B (608 B free)**, saving **560 B** against .98 with all RAM totals unchanged. Shared control arithmetic, HOME identity, subdivision labels, fixed-font layout, REC digits and menu/held-page helpers preserve all 260 compared framebuffers and 200 audio goldens. No features are removed in this batch. [Combined measurements and validation](UI-REUSE-INTEGRATION.md).
+
+The .100 conservative audit integration plus eight console/worn-digital presets links at **583,396 B (940 B free)**, a **332 B net reduction** including the sounds, trims, default-DUCK compatibility correction and version packing. Main static RAM is **97,676 B (628 B free)**, low RAM **29,216 B (176 B free)**, and pool remains **335,424 B**. The optional hot-setup sharing candidates are not included. [Scope and measurements](CONSOLE-SOUNDS-EXPANSION.md).

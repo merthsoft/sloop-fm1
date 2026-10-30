@@ -121,7 +121,7 @@ Stolen POLY drone pitches may restart locally after a quarter-second without ano
 Every function button has two lives:
 
 - **Tap** it: its **pages** open (sound design, settings), as on any FM-1 firmware. Tap it again: the next page of that button. **SELECT** also walks the pages of that button, both ways. Each button remembers the last page you used.
-- **Hold** it: a **layer**. While it is held, the 16 white keys and KNOB 1–4 do something else, and after 0.14 s the screen shows the 16 keys as 16 tiles (four rows of four: keys 1–4, 5–8, 9–12, 13–16) and the knobs as dials. Let go: back to playing.
+- **Hold** it: a **layer**. While it is held, the 16 white keys and KNOB 1–4 do something else, and after 0.35 s the screen shows the 16 keys as 16 tiles (four rows of four: keys 1–4, 5–8, 9–12, 13–16) and the knobs as dials. Using a key or knob opens the layer immediately. Quicker page taps avoid flashing the layer. Let go: back to playing.
 
 The layers are **FX** (punch-in effects), **EDIT** (erase), **ARP** (note repeat), **SEQ** (steps), **SEL** (key and chords), **GLO** (mix) and **SAVE** (song). ENV and LFO have no layer: they only open pages.
 
@@ -233,11 +233,15 @@ The FM-1's keys have no velocity: on the drum track every hit has one of four **
 - **Levels:** GHOST, SOFT, NORM, HARD (hold OCT− / OCT+ while you hit). Softer hits are darker as well as quieter.
 - **Ratchets:** a hit can repeat x1–x4 inside its step (ARP rolls record them; SEQ + step + KNOB 3 sets them).
 - **Choke:** the closed hat and the pedal hat cut the open hat.
-- **6 drum voices**, separate from the synths' 8.
+- **6 drum voices**, separate from the synth voice budget. When full, a repeated sound reuses its voice; a new sound takes the oldest non-kick first, falling back to the oldest kick only if all voices are kicks. Hat choke and declicking still apply.
 
 ### Kits
 
 **PRESETS** on the drum track (or KNOB 1 on the DRUMS kit page, or the editor) picks the kit:
+
+The 808, 606 and VINTAGE snares have fuller bodies and softer attack transients.
+These are factory sound edits, with no extra control to enable. Existing edited
+SYN kits and uploaded samples retain their stored sounds.
 
 | # | Kits |
 | --- | --- |
@@ -815,7 +819,7 @@ Tap a button to open its first page (or the last one you used); **tap it again**
 | **LFO** | **LFO** | RATE (Hz) | WAVE: SIN, TRI, SAW, SQR, S&H | PHS phase | FADE (fade-in time) |
 | | **LFO 2** (2.6) | SYNC: OFF, 4BAR, 2BAR, 1BAR, 1/2, 1/4, 1/8, 8T, 1/16, 16T, 1/32 | TRIG: NOTE / FREE | POL: BI / UNI | — |
 | | **LFO DEST** | PIT: vibrato | FLT: filter wobble | SHP: shape | AMP: tremolo |
-| | **DRIFT** | MODE: OFF / ON | CYCLE: 1S–160S / synced | AMOUNT | TARGET: TONE / SHAPE / PAN / combinations / MORPH |
+| | **DRIFT** | MODE: OFF / RAND / SIN / TRI / SAW / SQR | CYCLE: 1S–160S / synced | AMOUNT | TARGET: TONE / SHAPE / PAN / combinations / MORPH |
 | | **DRONE** | MODE: OFF / DRONE / MOVE | CYCLE: timed / synced | CHANCE | RANGE: scale steps |
 | | **DRONE 2** | LO OCT | HI OCT | — | — |
 | **FX** | **FX** (sends) | DST drive | CHO chorus send | DLY delay send | REV reverb send |
@@ -843,6 +847,7 @@ Tap a button to open its first page (or the last one you used); **tap it again**
 | **GLO** | **GLOBAL** | BPM 40–240 | SWING (all tracks) | CLICK: OFF, REC, ON | TUNE ±50 cents |
 | **FX** | **LOFI** | TYPE | WOW / FLUTTR / WARBLE / RATE | DARK / LATCH | DAMAGE / DRIVE / MIX |
 | | **MASTER** | DUST | DUCK | FILT (DJ filter) | ROLL (note-repeat rate) |
+| | **DUCK** | DUCK depth | TRIG: KICK / SNARE / K+S / ANY | RECOV: synced division | SHAPE: SNAP / RAMP / HOLD |
 | | **SYSTEM** | OUT (MIDI out): KEYS / SEQ (also on MIDI 2) | SYNC: INT, USB, TRS | IN: NOTES / CLOCK / CH 1–16 (also on MIDI 2) | CPU load, with or without USB connected |
 | | **DRUMS** | CH4: the drum track's MIDI channel (OFF, 1–16, default 10; the same setting as GLO → MIDI → CH4; 2.6: a setting of the FM-1) | LVL drum level | REV drum reverb | DLY drum delay (2.5): the drums into the tempo delay (FX → DLY sets its time, feedback and tone), saved with the project |
 | | **TEXTURE** (2.6) | SRC: OFF, VINYL, TAPE, RAIN, WIND, RADIO, ROOM, USR1–4 | LEVEL | TONE (LP ← OFF → HP) | MOVE |
@@ -893,7 +898,7 @@ These modes use pitch order across the octave range. PULSE sends each distinct p
 
 ### The sound bank
 
-**171 factory sounds**, every one a full patch on one of the twelve engines, all level-matched (the same LEVEL gives the same loudness). **PRESETS** browses them **by kind** — basses, keys, organs, pads, leads, plucks and bells, stabs, FX — with the kind shown next to the name; your **32 user presets** come after. CHIP adds eight NES/Game Boy-inspired presets; INST adds VIOLIN, CLARINET, OBOE, BASSOON, HARPSICHORD and OUD. These are synth interpretations, edited through the usual engine and envelope pages. Factory identities are unchanged; the new sounds are appended before USER slots. A new project starts at **90 BPM** with *808 BOOM* on track 1, *RHODES* on track 2, *LOFI FLUTE* on track 3 and the 808 kit on track 4.
+**179 factory sounds**, every one a full patch on one of the twelve engines, with per-preset trims to help balance their levels. **PRESETS** browses them **by kind** — basses, keys, organs, pads, leads, plucks and bells, stabs, FX — with the kind shown next to the name; your **32 user presets** come after. CHIP includes fourteen NES/Game Boy/Mega Drive-inspired presets; INST adds VIOLIN, CLARINET, OBOE, BASSOON, HARPSICHORD and OUD. These are synth interpretations, edited through the usual engine and envelope pages. Factory identities are unchanged; the new sounds are appended before USER slots. A new project starts at **90 BPM** with *808 BOOM* on track 1, *RHODES* on track 2, *LOFI FLUTE* on track 3 and the 808 kit on track 4.
 
 | Kind | Sounds (engine) |
 | --- | --- |
@@ -927,6 +932,12 @@ Each engine's eight parameters are on **EDIT 1** (KNOB 1–4) and **EDIT 2** (KN
 | **PHYS** | physical models: strings, bars and bells, drum heads, sympathetic strings (DaisySP and Rings, as Felucca 1.0 ported them; 3 voices a track, SYMP 2) | MODEL: MODAL, STRNG, MEMB, SYMP · STRC structure (MEMB: HARM, SYMP: CHRD the sympathetic strings' chord) · BRIT brightness · DAMP | POS strike / pluck position (SYMP: SYMP, how much they ring) · ACC accent · BOW bowing (MEMB: BEND, SYMP: BUZZ) · EXC the exciter in the mix |
 | **NOISE** | noise, from analogue to digital: colours, crackle, shift registers, metallic tones | MODE: ANLG, DUST, LFSR, META · COLR white → pink → brown · FREQ · RES | TRK key tracking · DENS impulses (LFSR, META: LEN, the register) · DRFT drift · CRSH crush (LFSR, META: CLK, the clock above the key) |
 
+On **LOFI → MOTN**, **SWP** sets a downward attack sweep's depth: OFF at zero,
+about one octave halfway, and almost two octaves at maximum. Low settings give
+small pitch dips. The sweep settles in roughly 0.3 seconds and stays at that
+depth while held; each new attack restarts it. Changing SWP during a held note
+glides to the new depth. It changes pitch, separately from CRSH/DCY and TONE.
+
 The **SAMPLE** sets are free recordings (CC0: Versilian Studios VSCO-2 CE and VCSL, Sonic Pi), coloured like a record through an old sampler. **GRAND PNO** is a Steinway recorded note by note; long notes fade as on the real one.
 
 ### FM6 and DX7 patches
@@ -955,9 +966,22 @@ On FX + KNOB 1–3, or GLO → MASTER:
 | | Does |
 | --- | --- |
 | **DUST** 0–100 % | the mix through an old sampler and a record: drive into a soft clip, a lower sample rate (down to ~11 kHz), fewer bits (down to 8), a low-pass closing to ~3 kHz, and, while the transport plays, a little hiss and crackle (a stopped SLOOP is silent) |
-| **DUCK** 0–100 % | every kick pumps the synth tracks down and back over an 1/8 note: the sidechain sound, in time at any tempo |
+| **DUCK** 0–100 % | selected drum hits pump the synth tracks down and back over a synced recovery. Around 50% matches the former maximum; higher settings hold the dip at silence longer for an intense sidechain pump. The drum track stays unducked. |
 | **FILT** | a DJ filter: left of centre a low-pass closing, right a high-pass opening, centre OFF; it glides (no zipper noise) |
 | **ROLL** | the note-repeat rate of ARP + key |
+
+### Ducking controls
+
+Tap **GLO**, then turn **SELECT** to **DUCK**. The knobs are:
+
+1. **DUCK**: depth. Zero bypasses ducking; 50% is around the old maximum, and 100% holds a much deeper pump.
+2. **TRIG**: **KICK** uses both kick lanes; **SNARE** uses SNARE and SNARE 2; **K+S** uses both groups; **ANY** uses all drum lanes, including clap and hats. The metronome and count-in never trigger ducking. Lane identity follows across factory, sampled and user kits. A kick-like sound on a synth track does not trigger it.
+3. **RECOV**: **1/4**, **1/8**, **1/16**, **1/32**, **8T** or **16T**. Each new trigger restarts the dip; frequent hats in ANY mode can keep the synths down. This follows musical transport time, including external clock and HALF/DOUBLE.
+4. **SHAPE**: **SNAP** bounces back quickly, **RAMP** returns evenly, and **HOLD** keeps the dip longer before returning. High depth extends the silent part of each shape.
+
+The default is KICK, 1/8 and SNAP. **Hold FX + KNOB 3** changes depth using the selected settings. Synth audio and new effect sends are ducked; drums and existing chorus/delay/reverb tails remain audible. TEXTURE follows the same envelope if its own DUCK setting is ON. The selected kit's sound or velocity does not change the envelope: it is event-triggered ducking, rather than an audio-level compressor.
+
+Depth, trigger, recovery and shape save with the whole project and autosaved working state. Loading a section during a song leaves these global controls alone. Older projects retain their saved depth and use KICK, 1/8 and SNAP.
 
 ### Reverb spaces
 
@@ -1105,6 +1129,13 @@ Noise-only synth drum TUNE changes filter brightness; tonal tuning is unchanged.
 USB RATE and enabling the second core take effect at the next power-on.
 USB SERIAL is available only in builds with the developer console enabled.
 
+With the second core enabled, automatic scheduling balances measured render
+work while preserving engine safety exclusions. If sustained CPU overload
+removes an eligible held synth note, it can return after sustained headroom,
+provided its key or sequencer gate still owns it and a voice is free. Recovery
+never steals another note. Finished samples and voice-limit replacements are
+not restarted. See [scheduling and recovery](docs/firmware/VOICE-LOFI-FIXES.md).
+
 | Control in the menu | Does |
 | --- | --- |
 | **SELECT** | the previous / next section |
@@ -1238,7 +1269,7 @@ saved shared LFO. The temporary effect stops, and octave does not change. Rate,
 waveform and beat division transfer; tremolo depth is exact, vibrato depth rounds
 to PIT steps. Other destination depths remain but share the new timing/waveform.
 Save the project normally to retain it after power-off.
-A temporary panel appears after 140 ms. **Knob 1** adjusts speed, **knob 2** depth,
+A temporary panel appears after 350 ms. **Knob 1** adjusts speed, **knob 2** depth,
 **knob 3** waveform (sine / triangle / saw / square), and **knob 4** beat sync.
 SYNC offers OFF, 1/4, 1/8, 1/16, 1/32, 8T, 16T, 1/2, 1BAR and 2BAR.
 OFF uses knob 1 Hz; turning knob 1 also returns to OFF. Synced cycles follow the
@@ -1278,7 +1309,7 @@ CC1 uses that instrument's own mapping. Controller input through Android does no
 forward CC1; an external wheel connected directly to FM1 does work.
 **Sustain and pitch bend (2.6).** The **sustain pedal** (CC 64, on the track its channel plays): while it is down, a note you let go keeps sounding until the pedal comes up (the arp keeps it, a recording holds it as you hear it; a note played again meanwhile ends with its key). **Pitch bend** bends the track its channel plays, smoothly, by up to **BEND** semitones (GLO → MIDI 2: 1–12, default 2); the drum track ignores it. Other unmapped CCs are ignored; CC1 retains the fork’s transient vibrato behavior.
 
-**Program Change (2.6, after Felucca 1.5.1 and @renebohne's PR #179).** A Program Change on a track's channel loads its sound: on a synth track, number *n* is the *n*-th sound of the PRESETS list (0 the first: 808 BOOM; the 171 factory sounds by kind, then your user presets in order), on the drum channel kit *n*. A number past the end is ignored. The screen says *T2 PROG 5*. IN = CLOCK ignores it; IN = CH n sends it to the selected track.
+**Program Change (2.6, after Felucca 1.5.1 and @renebohne's PR #179).** A Program Change on a track's channel loads its sound: on a synth track, number *n* is the *n*-th sound of the PRESETS list (0 the first: 808 BOOM; the 179 factory sounds by kind, then your user presets in order), on the drum channel kit *n*. A number past the end is ignored. The screen says *T2 PROG 5*. IN = CLOCK ignores it; IN = CH n sends it to the selected track.
 
 ### MIDI LEARN (2.6)
 
@@ -1915,6 +1946,8 @@ SEL+OCT+ remains the independent scale-light on/off toggle.
 
 ### More LOFI sounds to try
 
+For more playable sounds, tap **SAVE → SOUNDS** and set **KNOB 2 KIND** to **CHIP** or **LOFI**. CHIP includes **NES REED** (soft pulse lead), **NES BUBBLE** (looping pulse/octave pattern), **GB MALLET**, **GB VOX**, **MD BASS** and **MD BRASS**. LOFI adds **WORN EP** and **DUST ORGAN**. Audition with **KNOB 1/PRESETS**, keep with **KNOB 3 right**, and favourite with **KNOB 4 right**. The MD sounds use DIGITAL FM; the others use the LOFI chip/wavetable engine. [Recipes and controls](docs/firmware/CONSOLE-SOUNDS-EXPANSION.md).
+
 On **FX → LOFI**, choose **TAPE** for worn tape: **WOW / DARK / WEAR**.
 Choose **SMPLR** for early-digital crunch: **RATE / CRUSH / DRIVE**. Higher RATE
 amount means a lower sampling rate; higher CRUSH means fewer bits. DRIVE is
@@ -1928,15 +1961,16 @@ choice alone. Combine the warm presets with TAPE, or try SMPLR on drums.
 ### Slow ambient DRIFT
 
 On a synth track, tap **LFO** through to **DRIFT**. Knob 1 selects
-**OFF / ON**; knob 2 selects the same cycles as DRONE: **1S / 2S / 5S / 10S / 20S / 40S / 80S / 160S**, then **16BAR / 8BAR / 4BAR / 2BAR / 1BAR / 1/2 / 1/4 / 1/8 / 8T / 1/16 / 16T**. Knob 3
+**OFF / RAND / SIN / TRI / SAW / SQR**; knob 2 selects the same cycles as DRONE: **1S / 2S / 5S / 10S / 20S / 40S / 80S / 160S**, then **16BAR / 8BAR / 4BAR / 2BAR / 1BAR / 1/2 / 1/4 / 1/8 / 8T / 1/16 / 16T**. Knob 3
 sets AMOUNT; knob 4 selects **TONE / SHAPE / PAN / T+S / T+P / S+P / ALL / MORPH**.
 Synced motion follows transport phase and pauses when stopped; timed cycles keep
-moving. Joining a synced cycle mid-way holds the current value until the next
-boundary, avoiding a jump.
+moving. RAND joins a synced cycle mid-way by holding its value until the next
+boundary. The repeating shapes follow the selected transport phase.
 The combined targets move together: T is tone, S is shape, P is pan. Full amount allows roughly
 ±64 control units of movement. The live bipolar meter shows the actual motion;
-the cycle bar shows progress toward the next random destination. This is smooth random
-movement, independently generated for each synth track. It layers over your
+the cycle bar shows cycle progress. RAND gives smooth random movement; SIN and
+TRI sweep back and forth, SAW ramps upward then resets, and SQR alternates
+extremes. Each synth track has independent motion. It layers over your
 existing sound and LFO settings. TONE moves filter cutoff, SHAPE moves the
 engine’s shape control, and PAN moves stereo position. A target may be subtle
 on sounds whose corresponding control is already at its limit.
@@ -1945,7 +1979,8 @@ Fresh defaults are OFF, 10S and about 50% amount. For LOFI, **EDIT → MOTN**,
 knob 4 **TONE** around 50% leaves room to wander both darker and brighter.
 
 Change these controls during playback. Amount changes, OFF and target changes
-fade instead of jumping. The direct TONE/SHAPE/PAN targets do not change pitch.
+fade instead of jumping; shape changes also fade through zero. SAW resets and
+SQR edges are intentionally abrupt during a cycle. The direct TONE/SHAPE/PAN targets do not change pitch.
 DRIFT is unavailable on drums,
 and is not stored in sections/projects; it resets when powered off.
 
@@ -1954,7 +1989,7 @@ SEQUENCES, select **CHORD**, and try **VLEAD**, a slow tempo and a long attack
 and release. Each has one onset per bar with tied sustains. ROOT/SCALE, octave,
 independent rhythms, preview, ADD/REPLACE and Apply work as for other starters.
 For tap-toggle notes, go to the next page, **LFO → DRONE**, and set MODE to
-**DRONE**. DRIFT remains independently OFF or ON; use both pages together to
+**DRONE**. DRIFT remains independently OFF or in its chosen motion mode; use both pages together to
 add slow sound movement to the held notes.
 Tap pitches to add them, then tap those pitches again to remove them. Other
 held pitches keep sounding. Key lights show the selected notes at the current
@@ -2070,3 +2105,9 @@ the current sound; otherwise it shows MATCH SOURCES and skips automatic morphing
 ![Track sound morphing](assets/screens/merthsoft/neon/track-morph.png)
 
 [Implementation and scope](docs/firmware/TRACK-SNAPSHOTS-DESIGN.md).
+
+### Per-track ducking and HOME status
+
+On a synth track, open **FX → FILTER** and turn **knob 2 (DUCK)** to ON or OFF. ON follows GLO → DUCK; OFF keeps that track out of the pump. Drum audio remains unducked. The switches follow project and section saves, survive sound browsing, and reset to ON in a new project. Older saves include all three synth tracks.
+
+HOME shows active master filter strength in the upper left of the landscape, the selected LOFI character in the upper right, and duck targets below it. `D13` means tracks 1 and 3; `D--` means none. The duck tag only appears when master DUCK depth is above zero; filter and LOFI tags disappear when bypassed. These are configuration indicators, not audio meters.

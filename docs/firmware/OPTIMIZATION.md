@@ -1,5 +1,7 @@
 # Eleven physical chord modifiers
 
+Current UI reuse work is recorded in [UI-REUSE-INTEGRATION.md](UI-REUSE-INTEGRATION.md): **560 B net linked flash saved**, no static RAM growth, unchanged screen/control behavior. The sections below retain earlier measurements for their original baselines.
+
 The .49 image is **584,336/584,336 bytes**, **0 free**, eight bytes over .48.
 Main RAM remains **89,128/98,304**, low RAM **28,280/29,496**, audio pool
 **332,876/344,064**. The eleven-bit latch set grows logically by three bytes across
@@ -768,3 +770,28 @@ cache. Main/low/pool remain 97,324 / 28,928 / 335,424 B. Diagnostic .90 is
 583,844 B (492 free), with 97,340 B main. No individual savings were summed.
 [Integration and validation](ENGINE-PERFORMANCE-INTEGRATION.md) records the
 exact-output tests, actual links and deferred unmeasured cache proposals.
+
+
+## Combined .91 audit integration (.92)
+
+Shared UI calls, cold storage conversions/copies/hash and startup drum/literal
+representation changes link at 582,320 B with the .91 version string, versus
+584,296 B frozen baseline. The final .92 image is 582,324 B, leaving 2,012 B
+flash. Static RAM is unchanged. No DSP outlining, compiler-option experiment,
+RAM expansion or playback decoder is included. See [the staged measurements,
+validation and runtime tradeoffs](FLASH-91-INTEGRATION.md).
+
+## Scheduling and recovery fixes (.93)
+
+Current-activity VOICE eligibility, measured legal core partitions and bounded
+CPU-shed held-note recovery consume 1,980 B of the recovered flash and 48 B main
+RAM: **584,304 B image / 97,548 B main static RAM**. Low RAM and pool are
+unchanged. Deliberate control-function boundaries keep the new metadata live
+across smaller regions; a unified dispatch trial increased size and was reverted.
+The LOFI transition prototypes remain unshipped because their target timing
+benefit has not been established. [Implementation and evidence](VOICE-LOFI-FIXES.md).
+
+The subsequent shared control-wave evaluator recovers 176 B before new motion
+modes. With SIN/TRI/SAW/SQR added to the existing DRIFT/MORPH runner, normal .95
+is 584,192 B, 144 B free; static RAM is unchanged. Existing audio oscillators
+retain their specialized hot paths. [Contracts and validation](MODULATION-WAVEFORMS.md).

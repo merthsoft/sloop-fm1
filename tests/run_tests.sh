@@ -24,6 +24,7 @@
 set -e
 export AC79_SDK="${AC79_SDK:-$HOME/fw-AC79_AIoT_SDK}"
 cd "$(dirname "$0")/.."
+python3 tests/target_budget_parser_test.py
 OUT=build/host
 mkdir -p "$OUT"
 CC="${CC:-cc} -UNDEBUG -O1 -Wall -Wno-unused-function"
@@ -96,6 +97,12 @@ $CC -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/modulation_test" t
 run "live modulation wheel: priority, restoration, bounds and cleanup" "$OUT/modulation_test"
 $CC -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/lofi_chord_arp_test" tests/lofi_chord_arp_test.c -lm
 run "LOFI chip arp: legacy and complete SEL chord shapes" "$OUT/lofi_chord_arp_test"
+$CC -UNDEBUG -O2 -fwrapv -fno-strict-aliasing -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/lofi_sweep_test" tests/lofi_sweep_test.c -lm -pthread
+run "LOFI pitch sweep: continuous depth, bounded hold and live changes" "$OUT/lofi_sweep_test"
+$CC -UNDEBUG -O2 -fwrapv -fno-strict-aliasing -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/chip_presets_test" tests/chip_presets_test.c -lm -pthread
+run "console/LOFI presets: ranges, distinct recipes and audible output" "$OUT/chip_presets_test" "$OUT/chip-presets.wav" "$OUT/chip-presets.txt"
+$CC -UNDEBUG -O2 -fwrapv -fno-strict-aliasing -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/modulation_wave_test" tests/modulation_wave_test.c -lm -pthread
+run "shared control waveforms and shaped DRIFT/MORPH" "$OUT/modulation_wave_test"
 $CC -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/keyboard_handoff_test" tests/keyboard_handoff_test.c -lm
 run "keyboard octave handoff: shared hold without reattack" "$OUT/keyboard_handoff_test"
 
@@ -109,6 +116,20 @@ $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/drumkit_test" tests/drumkit_test.
 run "synthesised drum kits: every kit x sound bounded, audible, finite, levels, cost" "$OUT/drumkit_test" "$OUT/drum-kits.wav" "$OUT/drum-kits.txt"
 $CC -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/userkit_test" tests/userkit_test.c -lm
 run "user drum kits (KIT USR1..USR3): a user slot's sounds on the drum lanes" "$OUT/userkit_test"
+$CC -UNDEBUG -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/drum_factory_identity_test" tests/drum_factory_identity_test.c -lm -pthread
+run "factory drums: original sounds after dictionary reordering and startup restore" "$OUT/drum_factory_identity_test"
+$CC -UNDEBUG -O2 -fwrapv -fno-strict-aliasing -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/drum_allocation_test" tests/drum_allocation_test.c -lm -pthread
+run "drum allocation: kicks, retrigger, choke and declick across kit paths" "$OUT/drum_allocation_test"
+$CC -UNDEBUG -O2 -fwrapv -fno-strict-aliasing -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/duck_test" tests/duck_test.c -lm -pthread
+run "duck: depth range and tempo recovery" "$OUT/duck_test"
+$CC -UNDEBUG -O2 -fwrapv -fno-strict-aliasing -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/duck_ui_test" tests/duck_ui_test.c -lm -pthread
+run "duck UI: trigger, recovery, shapes and quick depth" "$OUT/duck_ui_test" "$OUT"
+$CC -UNDEBUG -O2 -fwrapv -fno-strict-aliasing -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/ui_reuse_controls_test" tests/ui_reuse_controls_test.c -lm -pthread
+run "UI reuse: parameter values and encoder acceleration state" "$OUT/ui_reuse_controls_test"
+$CC -UNDEBUG -O2 -fwrapv -fno-strict-aliasing -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/ui_reuse_drawing_test" tests/ui_reuse_drawing_test.c -lm -pthread
+run "UI reuse: exact font widths, trim, cards and REC digits" "$OUT/ui_reuse_drawing_test"
+$CC -UNDEBUG -O2 -fwrapv -fno-strict-aliasing -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/ui_reuse_layers_test" tests/ui_reuse_layers_test.c -lm -pthread
+run "UI reuse: menu settings and held-FX state parity" "$OUT/ui_reuse_layers_test"
 $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/dsyn_test" tests/dsyn_test.c -lm
 run "SYN1..SYN4 drum kits and the editor's DRUM SYNTH commands (v10)" "$OUT/dsyn_test"
 $CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/font_test" tests/font_test.c
@@ -164,8 +185,6 @@ $CC -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/note_trails_test" 
 run "note trails: transient capture, full pitch range, overlap colors and mute" "$OUT/note_trails_test" "$OUT"
 $CC -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/track_fx_ui_test" tests/track_fx_ui_test.c -lm
 run "track FX: preserve across instruments, explicit reset and track isolation" "$OUT/track_fx_ui_test"
-$CC -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/editor_drum_grooves_test" tests/editor_drum_grooves_test.c -lm
-run "phone drum grooves: capabilities, malformed requests, confirmation and undo" "$OUT/editor_drum_grooves_test"
 $CC -O2 -Wall -Wextra -o "$OUT/harmony_owners_test" tests/harmony_owners_test.c firmware/src/harmony_owners.c
 run "inactive harmony foundation: shared-owner note transitions" "$OUT/harmony_owners_test"
 
@@ -211,6 +230,7 @@ fi
 
 # the second core's host double (tests/cpu1_host.c, firmware/src/cpu1.h): inline, a thread, a slow thread, a lost
 # job; and the thread under ThreadSanitizer (the render's shared state shows up here once it uses core 1)
+run "production worker HAL: corrupt jobs, fault paths and warm-reset bar" env CC="$CC" python3 tests/cpu1_hal_test.py
 $CC -w -Ifirmware/src -o "$OUT/cpu1_test" tests/cpu1_test.c
 run "second core, host double: inline, deferred to the wait (CORES=1)" env CORES=1 "$OUT/cpu1_test"
 run "second core, host double: a thread (CORES=2)" env CORES=2 "$OUT/cpu1_test"
@@ -280,6 +300,8 @@ $CC -UNDEBUG -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal tests/delay_ui_tes
 run "delay characters: native page and controls; LOFI OFF default" "$OUT/delay_ui_test" "$OUT"
 $CC -UNDEBUG -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal tests/ui_shared_paths_test.c -o "$OUT/ui_shared_paths_test" -lm
 run "shared UI paths: HOME isolation and physical/MIDI chord entry" "$OUT/ui_shared_paths_test"
+$CC -UNDEBUG -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/ui_gfx_sharing_test" tests/ui_gfx_sharing_test.c -lm -pthread
+run "shared UI primitives: identical clipped pixels, palettes and hold boundaries" "$OUT/ui_gfx_sharing_test"
 $CC -UNDEBUG -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal tests/progression_perform_test.c -o "$OUT/progression_perform_test" -lm
 run "progression performance: pads, MIDI ownership, recording and cleanup" "$OUT/progression_perform_test" "$OUT"
 $CC -UNDEBUG -O2 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal tests/chord_modifiers_test.c -o "$OUT/chord_modifiers_test" -lm
@@ -366,6 +388,11 @@ $CC -DFELUCCA_AUDIO_DIAG=0 -UNDEBUG -O2 -fwrapv -fno-strict-aliasing -w -Ibuild/
 run "production audio ISR: working threshold retained without diagnostic UI" "$OUT/audio_shed_normal_test"
 $CC -UNDEBUG -O2 -fwrapv -fno-strict-aliasing -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal tests/auto_split_test.c -o "$OUT/auto_split_test" -lm -pthread
 run "automatic core split: workload, tails, masks and exclusions" "$OUT/auto_split_test"
+$CC -UNDEBUG -O2 -fwrapv -fno-strict-aliasing -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal tests/unit_scheduler_test.c -o "$OUT/unit_scheduler_test" -lm -pthread
+run "measured unit scheduler: current activity, legal subsets and invalidation" "$OUT/unit_scheduler_test"
+run "measured unit scheduler: timeout discards partial profiles" "$OUT/unit_scheduler_test" timeout
+$CC -UNDEBUG -O2 -fwrapv -fno-strict-aliasing -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal tests/cpu_shed_recovery_test.c -o "$OUT/cpu_shed_recovery_test" -lm -pthread
+run "CPU-shed held notes: ownership, headroom, cancellation and backoff" "$OUT/cpu_shed_recovery_test"
 $CC -UNDEBUG -O2 -fwrapv -fno-strict-aliasing -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal tests/sustain_character_test.c -o "$OUT/sustain_character_test" -lm -pthread
 run "sustain characters: clean attacks, released-tail color and controls" "$OUT/sustain_character_test" "$OUT"
 $CC -UNDEBUG -O2 -fwrapv -fno-strict-aliasing -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal tests/headroom_commit_test.c -o "$OUT/headroom_commit_test" -lm -pthread

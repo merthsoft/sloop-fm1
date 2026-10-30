@@ -27,7 +27,7 @@ Latest target sizes and memory headroom are recorded in [release notes](RELEASE-
 Target instruction budgets pass; physical audio deadline and dual-core timing validation remain pending.
 User hardware acceptance is recorded in STATUS, independently of measured deadline evidence.
 
-Firmware accepts its upstream standard MIDI CC map for track parameters. Android XY macros emit standard MIDI CC; unsupported controllers and pitch bend remain outside this slice. INFO 15 uses upstream SYN kits (72–76) and LIVE (77). Fork extensions are scene staging (85, disabled in production), remote performance (86) and drum grooves (87). Commands 88/89 are retired and reply unavailable. Android gates these extensions on INFO 15. Arpeggios now preserve source velocity across audio, generated MIDI and recording.
+Firmware accepts its upstream standard MIDI CC map for track parameters. Android XY macros emit standard MIDI CC; unsupported controllers and pitch bend remain outside this slice. INFO 15 uses upstream SYN kits (72–76) and LIVE (77). Fork extensions are scene staging (85, disabled in production) and remote performance (86). Commands 87–89 are retired and reply unavailable; the built-in groove bank remains on the FM-1 GROOVE page. Clients must inspect capability replies, rather than infer support from INFO alone. Android playing, chord input and sampling remain available. Arpeggios preserve source velocity across audio, generated MIDI and recording.
 
 Merthsoft.8 adds a persistent scale-note LED guide: physical SEL + OCT+ toggles it
 without changing octave or latch. Merthsoft.9 aligns it and the held SEL display with
@@ -168,9 +168,7 @@ operation, and app coexistence. Firmware installation remains a separate explici
 
 Command 73 uses bounded leases for remote fills/punch; physical punch controls take priority.
 Stop, panic and project adoption clear remote ownership. See [performance wire](../src/Sloop.Protocol/PERFORMANCE-WIRE.md).
-Command 74 discovers the same twenty-four ROM groove starters used by the hardware GROOVE page
-and applies ordinary editable drum steps while stopped. Existing drum material requires confirmation;
-replacement shares hardware undo and does not change the kit or global tempo.
+The former companion command 87 for browsing/applying the twenty-four ROM groove starters is retired to recover firmware space. It replies `[op,2]` (unavailable); Android directs the player to the hardware GROOVE page. All twenty-four on-device grooves, preview and pattern undo remain available. Command 74 belongs to upstream SYN editing and must not be used for this feature.
 See [drum groove design](../../docs/firmware/DRUM-GROOVES-DESIGN.md).
 Sequencer-to-arp routing is active through ARP 2 ORD SNOTE/SPLAY: literal recorded
 chords contribute independently of the legacy live held list. Direct sequenced chord playback

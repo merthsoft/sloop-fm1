@@ -142,6 +142,8 @@ UI_SMALL static void fm1_fault(const fm1_crash_t *c)
 {
     char b[12];
     uint32_t t0;
+    if (fm1_c1_on)                                      /* (2.8.3, X0X ed35a45) a crash beside the second core: one */
+        fm1_cpu1_bar();                                 /* core until power-off (a misread on core 0 can't be caught) */
     fm1_audio_stop();
     lcd_fill(0, 0, 240, 240, RGB(160, 0, 0));
     draw_text_box(0, 8, 240, &FONT_S, "FELUCCA CRASH", C_WHITE, 1);
@@ -377,6 +379,8 @@ UI_SMALL static void fm1_main(void)
 UI_SMALL void fm1_cstart(void)
 {
     uint32_t *s, *d, p3, src, wdt, boot_mode;
+    fm1_cpu1_halt();                            /* (2.8.3, X0X 20353c9) a second core left running by the reset would
+                                                 * read the RAM cleared below (fm1_sys.h: registers only) */
     fm1_time_init();
     fm1_supplies_stock();                       /* (2.7) VDC14 1.60 V, SYSVDD 1.38 V, as M-VAVE's firmware: both cores
                                                  * read the flash and SRAM right on every unit (fm1_sys.h) */

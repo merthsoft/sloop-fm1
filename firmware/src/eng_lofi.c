@@ -87,7 +87,7 @@ static void lofi_note_on(track_t *t, voice_t *v)
     v->s[0] = 0;                 /* held sample */
     v->s[1] = 0;                 /* hold counter */
     v->s[2] = 0x7FFF;            /* LFSR */
-    v->s[3] = 0;                 /* sweep, 1/16 st */
+    v->s[3] = 0;                 /* sweep: Q8 of 1/16 semitone */
     v->s[4] = 0;                 /* 1-pole lp state */
     v->s[5] = 0;                 /* arp counter */
     v->s[6] = 15 | (step_period(t->p[P_E3] >> 2) & 15) << 4;   /* stepped env: every note-on restarts it */
@@ -154,11 +154,11 @@ static void lofi_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const 
     int32_t wdc = 0;
     if (wave == RW_WRAM)
         wdc = WRAM_DC[bits == 1][((uint32_t)p[P_E2] >> 3) & 15u];
-    /* sweep down, vibrato (uses the track LFO through m->pitch16 already) */
-    if (v->s[3] < 4096)                                 /* past 2047 + an arp step the pitch is 0 anyway */
-        v->s[3] += p[P_E4] / 8;
+    /* Bounded attack sweep: 0..23.8 semitones, ~93 ms time constant.
+     * Fractional state avoids the old /8 dead zone and runaway pitch fall. */
+    v->s[3] += (p[P_E4] * 768 - v->s[3] + 127) >> 7;
     v->s[5]++;
-    pitch = m->pitch16 - v->s[3] + lofi_arp_offset(t,v->note,(uint32_t)v->s[5]/28u) * 16;   /* ~50 Hz, chip-style */
+    pitch = m->pitch16 - (v->s[3] >> 8) + lofi_arp_offset(t,v->note,(uint32_t)v->s[5]/28u) * 16;   /* ~50 Hz, chip-style */
     inc = pitch_inc(clamp(pitch, 0, 2047));
     inc += (uint32_t)((int32_t)(inc >> 12) * m->fine);
     if (p[P_E5])
@@ -246,6 +246,13 @@ static const preset_t LOFI_PRESETS[] = {
     {"WORN PAD", {1,4,80,12,0,24,0,60}, {48,90,105,60}, 0,0, FX(0,20,12,22)},
     {"TOY BELL", {0,4,120,10,0,5,0,105}, {0,95,0,38}, 0,0, FX(0,0,18,18)},
     {"DUST BASS", {2,4,64,22,0,6,0,58}, {0,70,90,18}, 0,1, FX(0,0,0,4)},
+    /* Append-only console/old-digital colors; no extra oscillator or sample data. */
+    {"NES REED", {4,0,32,0,0,6,0,90}, {4,72,100,24}, 0,1, FX(0,0,0,8)},
+    {"NES BUBBLE", {4,0,96,72,0,0,1,110}, {0,68,90,18}, 0,0, FX(0,0,8,10)},
+    {"GB MALLET", {0,4,64,0,0,0,0,112}, {0,76,0,30}, 0,0, FX(0,0,12,16)},
+    {"GB VOX", {0,4,88,0,0,14,0,106}, {24,80,110,48}, 0,0, FX(0,12,10,20)},
+    {"WORN EP", {1,4,64,10,0,10,0,62}, {0,87,24,36}, 0,0, FX(0,12,12,18)},
+    {"DUST ORGAN", {0,4,72,9,0,18,0,66}, {6,70,112,42}, 0,0, FX(0,28,8,24)},
 };
 #endif
 

@@ -3,7 +3,7 @@
 ## Follow-on status
 
 The later LOFI experiments append DUST KEYS, WORN PAD, TOY BELL and DUST BASS
-without changing the fourteen voices below. The current factory count is 171;
+without changing the fourteen voices below. Eight more console/worn-digital presets now bring the current normal factory count to 179; see [the expansion](CONSOLE-SOUNDS-EXPANSION.md). The earlier four-LOFI follow-on brought it to 171;
 all eighteen appended voices pass range/velocity/release tests. See
 [LOFI implementation and current measurements](LOFI-MASTER-DESIGN.md).
 The measurements below describe the original fourteen-voice batch.

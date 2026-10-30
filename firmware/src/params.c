@@ -42,13 +42,16 @@ _Static_assert(NELEM(N_AMODE) == ARP_COUNT, "arp mode names");
 static const char *const N_MOUT[] = {"KEYS", "SEQ"};
 static const char *const N_MIN[] = {"NOTES", "CLOCK", "CH 1", "CH 2", "CH 3", "CH 4", "CH 5", "CH 6", "CH 7", "CH 8", "CH 9",
                                      "CH 10", "CH 11", "CH 12", "CH 13", "CH 14", "CH 15", "CH 16"};  /* G_ROUTE: MIDI in, notes and clock, the clock only, or (2.6) one channel only, on the selected track (seq.c) */    /* G_MIDI: what goes to MIDI OUT (seq.c seq_out_on) */
-static const char *const N_DIV[] = {"1/4", "1/8", "1/16", "1/32", "8T", "16T"};
+static const char *const N_DTRIG[] = {"KICK", "SNARE", "K+S", "ANY"};
+static const char *const N_DSHAPE[] = {"SNAP", "RAMP", "HOLD"};
 static const char *const N_SDIV[] = {"1/4", "1/8", "1/16", "1/32", "8T", "16T", "1/2", "1BAR", "2BAR"};   /* core.h div_units */
 static const char *const N_DLY[] = {"1/4", "1/8", "1/16", "1/32", "8T", "16T", "1/8D", "1/16D", "1/4D"};   /* core.h dly_units
                                                                           * (2.6: 1/4D, after Felucca 1.5.1) */
 static const char *const N_SCALE[] = {"CHR", "MAJ", "MIN", "DOR", "MIX", "PEN", "MPEN", "HARM",
                                     "PHRY", "LYD", "LOC", "MEL", "BLUES", "WHOLE", "DIMHW", "DIMWH"};
 static const char *const N_ONOFF[] = {"OFF", "ON"};
+static const char *const N_DTARGET[] = {"ON", "OFF"};
+static const param_desc_t DUCK_TARGET = {"DUCK", F_ENUM, 0, 1, 0, N_DTARGET, 0};
 static const char *const N_CLKOUT[] = {"OFF", "OUT"};   /* 2.7, GLO > MIDI 3 > CLOCK: OUT, the MIDI clock out */
 static const char *const N_DRMAP[] = {"GM", "1-16"};   /* (2.7) GLO > MIDI 3: DR MAP */
 static const char *const N_QUANT[] = {"OFF", "SNAP", "WHITE", "CHROM"};   /* seq.c kb_map; 1 = SNAP as the old ON */
@@ -97,7 +100,7 @@ static const param_desc_t TP[P_COUNT] = {
     [P_LD_SHP] = PD("SHP", F_BIPCT, -64, 63, 0),
     [P_LD_AMP] = PD("AMP", F_PCT, 0, 127, 0),
     [P_AMODE] = PE("MODE", N_AMODE, 0),
-    [P_ARATE] = PE("RATE", N_DIV, 2),
+    [P_ARATE] = {"RATE",F_ENUM,0,NDIV_SHORT-1,2,N_SDIV,0},
     [P_AOCT] = PD("OCT", F_INT, 1, 4, 1),
     [P_AGATE] = PD("GATE", F_PCT, 1, 127, 64),
     [P_ASWING] = PD("SWG", F_SWING, 0, 100, 0),
@@ -200,6 +203,9 @@ static const param_desc_t GP[G_COUNT] = {
     [G_DRREV] = PD("REV", F_INT, 0, 127, 16),
     [G_DUST] = PD("DUST", F_PCT, 0, 127, 0),
     [G_DUCK] = PD("DUCK", F_PCT, 0, 127, 0),
+    [G_DTRIG] = PE("TRIG", N_DTRIG, 0),
+    [G_DREC] = {"RECOV",F_ENUM,0,NDIV_SHORT-1,1,N_SDIV,0},
+    [G_DSHAPE] = PE("SHAPE", N_DSHAPE, 0),
     [G_FILT] = PD("FILT", F_FILT, -64, 63, 0),
     [G_ROLL] = PE("ROLL", N_ROLL, 1),
     [G_NEWPRJ] = PE("NEW", N_GO, 0),
@@ -409,8 +415,9 @@ static const uint16_t EVOLVE_UNITS[]={6144,3072,1536,768,384,192,96,48,32,24,16}
 static int16_t drift_p[NPART][4]={{0,3,64,0},{0,3,64,0},{0,3,64,0}};
 enum { DRIFT_MORPH=7 };
 static const char *const N_DRIFT_TARGET[]={"TONE","SHAPE","PAN","T+S","T+P","S+P","ALL","MORPH"};
+static const char *const N_DRIFT_MODE[]={"OFF","RAND","SIN","TRI","SAW","SQR"};
 static const param_desc_t DRIFT_DESC[]={
-    PE("MODE",N_ONOFF,0), PE("CYCLE",N_EVOLVE_CYCLE,3),
+    PE("MODE",N_DRIFT_MODE,0), PE("CYCLE",N_EVOLVE_CYCLE,3),
     PD("AMOUNT",F_PCT,0,127,64), PE("TARGET",N_DRIFT_TARGET,0)
 };
 static int16_t evolve_p[NPART][6]={{0,3,50,1,3,5},{0,3,50,1,3,5},{0,3,50,1,3,5}};
@@ -477,6 +484,7 @@ static const page_t PAGES[] = {
     {"MORPH", FAM_EDIT, SC_MORPH, GR_NONE, {0,1,2,3}},
     {"GLOBAL", FAM_GLO, SC_GLOBAL, GR_NONE, {G_BPM, G_SWING, G_CLOCK, G_TUNE}},
     {"MASTER", FAM_GLO, SC_GLOBAL, GR_NONE, {G_DUST, G_DUCK, G_FILT, G_ROLL}},
+    {"DUCK", FAM_GLO, SC_GLOBAL, GR_NONE, {G_DUCK, G_DTRIG, G_DREC, G_DSHAPE}},
     {"SYSTEM", FAM_GLO, SC_GLOBAL, GR_NONE, {G_MIDI, G_SYNC, G_ROUTE, G_INFO}},
     {"DRUMS", FAM_GLO, SC_GLOBAL, GR_NONE, {G_DRCH, G_DRLVL, G_DRREV, G_DRDLY}},   /* GM kit on MIDI ch 10 */
     {"MIDI", FAM_GLO, SC_GLOBAL, GR_NONE, {G_CH1, G_CH2, G_CH3, G_DRCH}},   /* 2.6: each track's channel, the drums' too */
@@ -526,6 +534,9 @@ static int page_shown(const page_t *pg)
 static __attribute__((minsize,noinline)) const param_desc_t *page_desc(const page_t *pg, uint32_t slot, int16_t **valp)
 {
     uint32_t id = pg->id[slot];
+    if(pg->graph==GR_FILTER && slot==1u && !is_drum(TSEL)) {
+        *valp=&duck_bypass[song.sel%NPART];return &DUCK_TARGET;
+    }
     if((uint32_t)(pg->scope-SC_DRIFT)<4u) {
         /* Contiguous runtime-only scopes share the same native field resolver. */
         static const struct {void *values;const param_desc_t *desc;} fields[]={

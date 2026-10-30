@@ -14,17 +14,17 @@ import lz4blk
 from collections import Counter
 
 
-def pair_encode(parts, max_codes=128):
+def pair_encode(parts, max_codes=159):
     """Shared byte-pair grammar, expanded backwards at startup, never playback.
 
     Original high bytes remain literals. New codes use only unused values and
     refer to already defined symbols; depth is capped for the 8-byte C stack.
     """
-    assert 0 <= max_codes <= 128
+    assert 0 <= max_codes <= 159
     streams = [list(p) for p in parts]
     depth = {v: 0 for p in parts for v in p}
     dictionary = bytearray()
-    for code in range(128, 128 + max_codes):
+    for code in (list(range(128,256)) + list(range(1,32)))[:max_codes]:
         if code in depth:
             continue
         counts = Counter((p[i], p[i + 1]) for p in streams for i in range(len(p) - 1))
@@ -33,7 +33,7 @@ def pair_encode(parts, max_codes=128):
         if not choices:
             break
         _, pair = min(choices, key=lambda item: (-item[0], item[1]))
-        offset = (code - 128) * 2
+        offset = (code - 128 if code >= 128 else code + 127) * 2
         dictionary.extend(bytes(offset + 2 - len(dictionary)))
         dictionary[offset:offset + 2] = bytes(pair)
         depth[code] = max(depth[v] for v in pair) + 1
@@ -56,7 +56,7 @@ def pair_decode(tokens, dictionary):
         stack = [token]
         while stack:
             token = stack.pop()
-            i = (token - 128) * 2
+            i = (token - 128 if token >= 128 else token + 127 if 0 < token < 32 else -1) * 2
             pair = dictionary[i:i + 2] if 0 <= i < len(dictionary) else b''
             if pair and any(pair):
                 stack.extend(reversed(pair))
@@ -115,7 +115,7 @@ def pool_object(data, main_limit=5500, pool_limit=2500):
             roots.append(literal)
     groups = [[], [], []]  # main RAM, pool RAM, flash
     used = [0, 0]
-    for root in roots:
+    for root in sorted(roots):
         destination = 2
         for i, limit in enumerate((main_limit, pool_limit)):
             if used[i] + len(root) <= limit:
@@ -123,7 +123,7 @@ def pool_object(data, main_limit=5500, pool_limit=2500):
                 destination = i
                 break
         groups[destination].append(root)
-    parts = [b''.join(sorted(group)) for group in groups]
+    parts = [b''.join(sorted(group, reverse=True)) for group in groups]
     assert parts[0] and parts[1] and parts[2]
     tokens, dictionary = pair_encode(parts[:2])
     blobs = [lz4blk.compress_best(token) for token in tokens]

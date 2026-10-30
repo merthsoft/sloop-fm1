@@ -180,15 +180,13 @@ static void phys_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const 
     if (S->model != md)                                  /* MODEL changed under a sounding note */
         phys_reset(S, md, rng());
     switch (md) {
-    case PM_MODAL: {
-        px_modal_blk_t B;
-        px_modal_block(&B, &S->u.m, f0, strc, brit, damp, acc, pos * 129, bow);   /* pos 0..1/4 */
-        px_modal_run(&B, &S->u.m, y, ax, n);
-        break;
-    }
+    case PM_MODAL:
     case PM_MEMB: {
         px_modal_blk_t B;
-        px_memb_block(&B, &S->u.m, f0, strc, brit, damp, acc, pos * 516, p[P_E6] * 6192);   /* BEND 0..12 st */
+        if (md == PM_MODAL)
+            px_modal_block(&B, &S->u.m, f0, strc, brit, damp, acc, pos * 129, bow);
+        else
+            px_memb_block(&B, &S->u.m, f0, strc, brit, damp, acc, pos * 516, p[P_E6] * 6192);
         px_modal_run(&B, &S->u.m, y, ax, n);
         break;
     }

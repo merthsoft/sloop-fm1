@@ -727,6 +727,10 @@ static const struct __attribute__((packed)) { uint8_t kind:4, e:4; } BANK[] = {
     {BK_INST, 2} /* VIOLIN */, {BK_INST, 1} /* CLARINET */, {BK_INST, 2} /* OBOE */, {BK_INST, 1} /* BASSOON */,
     {BK_INST, ENGI_PHYS} /* HARPSICHORD */, {BK_INST, ENGI_PHYS} /* OUD */,
     {BK_LOFI, 3}, {BK_LOFI, 3}, {BK_LOFI, 3}, {BK_LOFI, 3},
+    {BK_CHIP, 3} /* NES REED */, {BK_CHIP, 3} /* NES BUBBLE */,
+    {BK_CHIP, 3} /* GB MALLET */, {BK_CHIP, 3} /* GB VOX */,
+    {BK_CHIP, 1} /* MD BASS */, {BK_CHIP, 1} /* MD BRASS */,
+    {BK_LOFI, 3} /* WORN EP */, {BK_LOFI, 3} /* DUST ORGAN */,
 };
 #define NBANK (sizeof BANK / sizeof BANK[0])
 /* Resolved against engine preset names; keep this order for stored favourites and PC. */
@@ -745,6 +749,7 @@ static const uint8_t bank_pi[] = {
     0, 1, 2, 3,
 #endif
     8, 9, 10, 11, 12, 13, 14, 15, 8, 22, 9, 23, 26, 27, 16, 17, 18, 19,
+    20, 21, 22, 23, 24, 25, 24, 25,
 };
 _Static_assert(NELEM(bank_pi) == NBANK, "every browser entry has an engine-local index");
 static void bank_resolve(void) {} /* Existing host fixtures may call this. */

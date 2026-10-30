@@ -28,9 +28,13 @@ int main(void)
 {
     host_tracks_init();
     uint64_t unchanged = 0;
+    /* Keep the original DSP fingerprint independent of intentional kit edits.
+     * Actual current factory bytes are checked by drum_factory_identity_test;
+     * current factory/user TUNE parity is exercised below. */
+    FILE *original=fopen("tests/fixtures/drum-factory-sounds.bin","rb");assert(original);
     for (unsigned k = 0; k < DS_NKITS; ++k) {
         for (unsigned l = 0; l < DS_LANES; ++l) {
-            dsnd_t d; ds_factory_sound(k, l, &d);
+            dsnd_t d;assert(fread(&d,1,sizeof d,original)==sizeof d);
             for (unsigned vi = 0; vi < 3; ++vi) {
                 unsigned vel = vi == 0 ? 1 : vi == 1 ? 64 : 127;
                 unchanged = unchanged * 1099511628211ull ^ hit_hash(&d, DS_LANE_NOTE[l], vel, 0);
@@ -41,7 +45,8 @@ int main(void)
             }
         }
     }
-    printf("unchanged factory TUNE=0 / tonal tuned fingerprint: %016llx\n", (unsigned long long)unchanged);
+    assert(fgetc(original)==EOF);assert(!fclose(original));
+    printf("frozen original factory TUNE=0 / tonal tuned fingerprint: %016llx\n", (unsigned long long)unchanged);
     /* Captured before the noise TUNE change. Includes all kits/lanes at three
      * velocities and +/-24-semitone renders of every tonal sound. */
     assert(unchanged == 0x003ad3fd47ca4d70ull);

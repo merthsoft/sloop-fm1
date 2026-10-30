@@ -630,6 +630,35 @@ int main(void)
     bad += check("old VINYL tag retains amounts and selects VINYL",song.g[G_LTYPE]==1&&song.g[G_VWOW]==37&&song.g[G_VTONE]==89&&song.g[G_VCRACKLE]==127);
     q2.g[G_NAME]=q2.g[G_ENGGO]=0;proj_apply(&q2,1);
     bad += check("legacy projects bypass VINYL",song.g[G_LTYPE]==0&&!song.g[G_VWOW]&&!song.g[G_VTONE]&&!song.g[G_VCRACKLE]);
+    for(int trigger=0;trigger<4;trigger++) for(int rate=0;rate<6;rate++) for(int shape=0;shape<3;shape++) {
+        song.g[G_DUCK]=93;song.g[G_DTRIG]=trigger;song.g[G_DREC]=rate;song.g[G_DSHAPE]=shape;
+        proj_capture(&q2);
+        project_t imported;
+        bad += check("DUCK packed settings survive checked import",proj_import(&imported,&q2,sizeof q2)&&!memcmp(&imported,&q2,sizeof q2));
+        song.g[G_DUCK]=0;song.g[G_DTRIG]=0;song.g[G_DREC]=1;song.g[G_DSHAPE]=0;
+        proj_apply(&q2,1);
+        bad += check("DUCK all settings project round trip",song.g[G_DUCK]==93&&song.g[G_DTRIG]==trigger&&song.g[G_DREC]==rate&&song.g[G_DSHAPE]==shape);
+        song.g[G_DUCK]=17;proj_apply(&q2,0);
+        bad += check("section adoption leaves global DUCK controls alone",song.g[G_DUCK]==17&&song.g[G_DTRIG]==trigger&&song.g[G_DREC]==rate&&song.g[G_DSHAPE]==shape);
+    }
+    q2.g[G_DUCK]=51;proj_apply(&q2,1);
+    bad += check("legacy DUCK retains depth with kick/eighth/snap defaults",song.g[G_DUCK]==51&&!song.g[G_DTRIG]&&song.g[G_DREC]==1&&!song.g[G_DSHAPE]);
+    q2.g[G_DUCK]=(int16_t)0x7FFF;proj_apply(&q2,1);
+    bad += check("invalid DUCK tag restores safe defaults",song.g[G_DUCK]==127&&!song.g[G_DTRIG]&&song.g[G_DREC]==1&&!song.g[G_DSHAPE]);
+    q2.g[G_DUCK]=-1;proj_apply(&q2,1);
+    bad += check("negative legacy DUCK clamps off",!song.g[G_DUCK]&&!song.g[G_DTRIG]&&song.g[G_DREC]==1&&!song.g[G_DSHAPE]);
+    for(uint32_t mask=0;mask<8;mask++)for(uint32_t type=0;type<4;type++) {
+        song.g[G_DTYPE]=type;
+        for(uint32_t i=0;i<NPART;i++)duck_bypass[i]=(mask>>i)&1u;
+        proj_capture(&q2);
+        for(int all=0;all<=1;all++) {
+            memset(duck_bypass,0,sizeof duck_bypass);song.g[G_DTYPE]=0;
+            proj_apply(&q2,all);
+            bad+=check("delay type and per-track duck survive project/section adoption",song.g[G_DTYPE]==type && duck_bypass[0]==(mask&1u) && duck_bypass[1]==((mask>>1)&1u) && duck_bypass[2]==((mask>>2)&1u));
+        }
+    }
+    q2.g[G_ENGSEL]=0;proj_apply(&q2,1);
+    bad+=check("untagged projects include every synth in ducking",!duck_bypass[0]&&!duck_bypass[1]&&!duck_bypass[2]);
     printf("%s\n", bad ? "PROJECT FORMAT TEST FAILED" : "project format test passed");
     return bad != 0;
 }

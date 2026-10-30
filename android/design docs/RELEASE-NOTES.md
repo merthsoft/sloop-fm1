@@ -1,3 +1,24 @@
+# MerthSloop firmware 2.8.0.98 - configurable ducking
+
+- GLO > DUCK adds drum source (KICK / SNARE / K+S / ANY), synced recovery and SNAP / RAMP / HOLD curves alongside the stronger depth range. Held FX + KNOB 3 remains the quick depth control.
+- All duck controls persist in project/working-state saves without increasing project size. Older files default to kick/eighth/snap.
+- Retire only companion groove browsing/apply command 87 to fund the controls. Native GROOVE selection, preview and undo, Android chord/MIDI playing and sampling remain. The Android client explains the unavailable capability; no new APK installation is claimed.
+- Target image 584,288 B (48 B free), main static RAM 97,612 B (692 B free). [Implementation](../../docs/firmware/DUCKING-DESIGN.md).
+
+# MerthSloop firmware 2.8.0.92 - shared code and startup data
+
+- Share repeated UI drawing calls while retaining palettes, pixels, clipping and control behavior.
+- Share cold project conversion, storage forward copies and editor step hashing without changing saved/wire formats or persistence lifetimes.
+- Improve synthesized-drum dictionary compression and startup literal grammar without adding static RAM or playback decoding.
+- Final image leaves 2,012 B flash. DSP/compiler experiments and RAM-funded expansions remain separate. [Integration evidence](../../docs/firmware/FLASH-91-INTEGRATION.md).
+
+# MerthSloop firmware 2.8.0.91 - worker safety and hold timing
+
+- Bring in upstream worker job validation, cache-line mailbox separation, worker stack guards, a power-cycle-cleared fallback bar and fault-safe worker parking. Hold a leftover worker before boot clears RAM.
+- Delay held panels to 350 ms, preserving immediate key/knob interaction and normal page taps.
+- Share crash-record writes to fit the safety changes without altering render loops or the voice budget. Normal About is restored in this installer package.
+- Production HAL fault-injection/sanitizer, UI, split/timeout, target DSP and literal-restoration checks pass; silicon fault and deadline behavior still need hardware testing.
+
 # MerthSloop firmware 2.8.0.90 — engine audit integration
 
 - Reduce redundant GRAIN density work and reverse-grain decoder replay; share exact sample/drum/GRAIN magnitude arithmetic and specialize pitch setup.

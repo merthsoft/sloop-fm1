@@ -30,18 +30,18 @@ UI_SMALL static void actions_draw(void)
     draw_head();
     if(!ui.force&&last==sig)return;
     last=sig;uint32_t ready=actions_ready(),n=note_action.hit?6u:7u;char label[32],value[16];
-    cv_oy=0;cv_begin(240,44,C_BLACK);
+    cv_oy=0;cv_band(44);
     if(ready) {
         if(note_action.hit)str_cpy(label,LANE_SHORT[note_action.lane],sizeof label);
         else scale_note_name(label,TSEL,ui.roll_pitch);
         str_cpy(label+str_len(label),"  STEP ",8);fmt_int(label+str_len(label),note_action.at+1);
     } else str_cpy(label,note_action.hit?"SELECT A HIT":"SELECT A NOTE",sizeof label);
-    cv_text(4,0,&FONT_S,label,C_WHITE);cv_text(4,22,&FONT_S,"K1: ROW  K2: VALUE",C_GRAY);cv_blit(0,Y_LABEL);
-    cv_begin(240,H_GRAPH,C_BLACK);
+    cv_text_c_white(4,0,label);cv_text_c_gray(4,22,"K1: ROW  K2: VALUE");cv_band_blit(Y_LABEL);
+    cv_band(H_GRAPH);
     for(uint32_t row=0;row<n;row++) {
         int32_t y=(int32_t)row*17;uint16_t color=row==note_action.row?C_WHITE:C_GRAY;
-        if(row==note_action.row){cv_rect(0,y,240,17,TE_G1);cv_rect(0,y,2,17,TE_COL[song.sel]);}
-        cv_text(5,y,&FONT_S,note_action.hit?HIT_ACTIONS[row]:NOTE_ACTIONS[row],color);
+        if(row==note_action.row){cv_rect_te_g1(0,y,240,17);cv_rect(0,y,2,17,TE_COL[song.sel]);}
+        cv_text_s(5,y,note_action.hit?HIT_ACTIONS[row]:NOTE_ACTIONS[row],color);
         str_cpy(value,"--",sizeof value);
         if(ready) {
             if(row<actions_shared()) {
@@ -53,15 +53,15 @@ UI_SMALL static void actions_draw(void)
             } else if(row<actions_shared()+2u)fmt_int(value,note_action.dest+1);
             else str_cpy(value,"GO",sizeof value);
         }
-        cv_text(235-text_w(&FONT_S,value),y,&FONT_S,value,color);
+        cv_text_s(235-text_w(&FONT_S,value),y,value,color);
     }
-    cv_blit(0,Y_GRAPH);cv_begin(240,H_FOOT,C_BLACK);cv_rect(0,0,240,1,TE_COL[song.sel]);
-    cv_text(4,2,&FONT_S,note_action.hit?"HIT ACTIONS":"NOTE ACTIONS",TE_COL[song.sel]);
-    cv_text(4,20,&FONT_S,"OCT+: APPLY  OCT-: BACK",C_GRAY);cv_blit(0,Y_FOOT);
+    cv_band_blit(Y_GRAPH);cv_band(H_FOOT);cv_rect(0,0,240,1,TE_COL[song.sel]);
+    cv_text_s(4,2,note_action.hit?"HIT ACTIONS":"NOTE ACTIONS",TE_COL[song.sel]);
+    cv_text_c_gray(4,20,"OCT+: APPLY  OCT-: BACK");cv_band_blit(Y_FOOT);
 }
 UI_SMALL static void actions_leave(void)
 {
-    for(uint32_t k=0;k<NE;k++)panel_enc(k); /* no pending turn leaks into the destination page */
+    enc_drop(); /* no pending turn leaks into the destination page */
     kb_grid=0;
     if(note_action.hit){drum_page=0;ui.force=1;return;}
     for(uint32_t p=0;p<NPAGES;p++)if(PAGES[p].scope==SC_STEP&&PAGES[p].id[0]==4u){ui.page=(uint8_t)p;break;}
@@ -121,7 +121,7 @@ UI_SMALL static int actions_input(uint32_t pressed,uint32_t home)
     if((s=panel_enc(EN_SELECT))){
         if(note_action.hit){drum_page=(uint8_t)clamp(5+clamp(s,-5,5),0,5);kb_grid=drum_page==5?2:0;ui.force=1;}
         else page_walk(clamp(s,-(int32_t)NPAGES,(int32_t)NPAGES));
-        if(!actions_on()){for(uint32_t k=0;k<NE;k++)panel_enc(k);return 1;}
+        if(!actions_on()){enc_drop();return 1;}
     }
     if((s=panel_enc(EN_ALGO))){uint32_t track=song.sel;track_select(clamp((int32_t)song.sel+(s>0?1:-1),0,3));if(track!=song.sel)actions_leave();}
     panel_enc(EN_PRESET);

@@ -11,11 +11,11 @@ recipes and tap-toggle DRONE keys. EVOLVE now adds slow scale-aware changes to d
 
 ## DRIFT
 
-Tap LFO, then cycle its pages to DRIFT. Four knobs: MODE / CYCLE / AMOUNT / TARGET. MODE selects OFF/ON. TARGET offers TONE, SHAPE, PAN, T+S, T+P, S+P, ALL or MORPH. Combined targets share one bounded motion signal; no additional generators or sample buffers are allocated.
+Tap LFO, then cycle its pages to DRIFT. Four knobs: MODE / CYCLE / AMOUNT / TARGET. MODE selects OFF / RAND / SIN / TRI / SAW / SQR. TARGET offers TONE, SHAPE, PAN, T+S, T+P, S+P, ALL or MORPH. Combined targets share one bounded motion signal; no additional generators or sample buffers are allocated. Repeating shapes use the [shared control-wave evaluator](MODULATION-WAVEFORMS.md); RAND retains the original smooth random interpolation.
 CYCLE shares DRONE’s 1S, 2S, 5S, 10S, 20S, 40S, 80S and 160S choices, followed by
 16BAR, 8BAR, 4BAR, 2BAR, 1BAR, 1/2, 1/4, 1/8, 8T, 1/16 and 16T between random target values.
-Synced cycles follow transport phase and pause on STOP. Mid-cycle entry holds the
-current value until the next boundary. Timed cycles continue while stopped. Default
+Synced cycles follow transport phase and pause on STOP. RAND mid-cycle entry holds the
+current value until the next boundary; repeating shapes use the current transport phase. Timed cycles continue while stopped. Default
 is MODE OFF, 10S, amount 64 (about 50%), TONE. The first segment begins at zero; each subsequent
 segment interpolates continuously from its previous destination. Each synth
 track owns independent phase, RNG and values. Target choices are TONE (filter
@@ -25,7 +25,7 @@ The existing saved LFO and live vibrato/tremolo/wah/pan remain independent.
 AMOUNT has a full-scale range of about ±63.5 parameter units (twice the first build’s range). It bounds displacement around existing edited values, without writing those
 values back to the patch. Changing amount slews; OFF fades back to the unchanged
 base sound. Changing target fades the prior target to zero before engaging the
-new one. Direct TONE/SHAPE/PAN targets do not change pitch or notes; MORPH can
+new one; shape changes use the same fade-through-zero rule. Direct TONE/SHAPE/PAN targets do not change pitch or notes; MORPH can
 move any captured sound control, including tuning. PAN clamps to the existing pan
 range. The drum track does not expose or run DRIFT.
 

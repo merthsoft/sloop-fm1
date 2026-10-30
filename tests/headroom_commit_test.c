@@ -260,5 +260,45 @@ static void browser_autosave_test(void) {
  puts("browser persistence: pending audition blocks actual autosave; KEEP resumes; project adoption invalidates original patch PASS");
 }
 #ifndef SNAPSHOT_PERSISTENCE_FIXTURE
-int main(int argc,char **argv){original_commit_test(argc,argv);notify_test();syn_commit_test();browser_autosave_test();return 0;}
+UI_SMALL static uint32_t ed_step_sig_reference(const track_t *t, uint32_t i)   /* all 10 bytes (a drum step's lanes too), v7: + its nudge and locks, v8: + its condition */
+{
+    const uint8_t *b = (const uint8_t *)&t->step[i % NSTEP];
+    uint32_t k, h = 0x811C9DC5u;
+    for (k = 0; k < sizeof t->step[0]; k++)
+        h = (h ^ b[k]) * 16777619u;
+    h = (h ^ (uint8_t)t->micro[i % NSTEP]) * 16777619u;
+    h = (h ^ (step_fill(t, i) + 1u)) * 16777619u;        /* v8: its fill condition */
+    for (k = 0; k < NLOCK; k++)
+        if (t->lock[k].step == i)
+            h = (h ^ (uint32_t)(t->lock[k].param | (uint16_t)t->lock[k].val << 8)) * 16777619u;
+    return h;
+}
+static void audit_hash_oracle(void) {
+    track_t t;uint32_t seed=0x71821345u;
+    for(uint32_t trial=0;trial<10000;trial++) {
+        for(uint32_t j=0;j<sizeof t;j++){seed^=seed<<13;seed^=seed>>17;seed^=seed<<5;((uint8_t *)&t)[j]=(uint8_t)seed;}
+        for(uint32_t i=0;i<NSTEP;i++)assert(ed_step_sig(&t,i)==ed_step_sig_reference(&t,i));
+    }
+    puts("editor hash: 640000 reference comparisons passed");
+}
+static void duck_persistence_test(void) {
+ setup();flash_ok=1;
+ song.g[G_DUCK]=97;song.g[G_DTRIG]=2;song.g[G_DREC]=4;song.g[G_DSHAPE]=2;
+ duck_bypass[1]=1;song.g[G_DTYPE]=3;
+ proj_capture(&autosave_buf);
+ assert(!st_save(OBJ_AUTOSAVE,&autosave_buf,sizeof autosave_buf));
+ host_tracks_init();memset(&autosave_buf,0,sizeof autosave_buf);
+ assert(st_load(OBJ_AUTOSAVE,&autosave_buf,sizeof autosave_buf)==sizeof autosave_buf);
+ proj_apply(&autosave_buf,1);
+ assert(song.g[G_DUCK]==97 && song.g[G_DTRIG]==2 && song.g[G_DREC]==4 && song.g[G_DSHAPE]==2);
+ assert(!duck_bypass[0] && duck_bypass[1] && !duck_bypass[2] && song.g[G_DTYPE]==3);
+ unsigned writes=programs;
+ for(unsigned cmd=87;cmd<=89;cmd++) {
+  uint8_t op=0;request(cmd,&op,1);
+  assert(ed_n==8 && ed_out[4]==cmd && ed_out[5]==0 && ed_out[6]==2 && ed_out[7]==0xF7);
+ }
+ assert(programs==writes && song.g[G_DUCK]==97);
+ puts("DUCK: NOR save/cold-state reload; retired companion commands explicitly unavailable without writes PASS");
+}
+int main(int argc,char **argv){audit_hash_oracle();original_commit_test(argc,argv);notify_test();syn_commit_test();browser_autosave_test();duck_persistence_test();return 0;}
 #endif

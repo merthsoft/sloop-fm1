@@ -31,7 +31,7 @@ UI_SMALL static void song_screen_draw(void)
     if(!ui.force&&sig==previous) return;
     previous=sig;
     if(ui.force) draw_frame();
-    cv_begin(240,44,C_BLACK);
+    cv_band(44);
     const arr_entry_t *entry=&arrangement.entry[song_cursor];
     for(i=0;i<4;i++) {
         static const char *const label[]={"ENTRY","SECT","BARS","LENGTH"};
@@ -41,9 +41,9 @@ UI_SMALL static void song_screen_draw(void)
         if(i==1) {b[0]=(char)('A'+v);b[1]=0;} else fmt_int(b,(int32_t)v);
         ui_card(2+(int32_t)i*60,0,label[i],b,ratio,TE_COL[i],0);
     }
-    cv_blit(0,26);
-    cv_begin(240,124,C_BLACK);
-    cv_text(4,0,&FONT_S,arrangement_enabled?"SONG ORDER":"LOOP / SONG ORDER",C_WHITE);
+    cv_band_blit(26);
+    cv_band(124);
+    cv_text_c_white(4,0,arrangement_enabled?"SONG ORDER":"LOOP / SONG ORDER");
     for(i=0;i<4;i++) {
         uint32_t pos=start+i;
         if(pos>=arrangement.count) continue;
@@ -52,22 +52,22 @@ UI_SMALL static void song_screen_draw(void)
         uint16_t sc=TE_COL[e->scene&3u];
         int32_t y=22+(int32_t)i*24,w=e->bars*110/64+4;
         cv_rect(2,y,236,23,selected?TE_G1:C_BLACK);
-        if(selected) cv_rect(2,y,2,23,C_WHITE);
-        fmt_int(b,(int32_t)pos+1);cv_text(8,y+3,&FONT_S,b,selected?C_WHITE:TE_G3);
+        if(selected) cv_rect_c_white(2,y,2,23);
+        fmt_int(b,(int32_t)pos+1);cv_text_s(8,y+3,b,selected?C_WHITE:TE_G3);
         cv_rect(30,y+2,22,19,used?sc:TE_G2);
         b[0]=(char)('A'+e->scene);b[1]=0;
-        cv_text(37,y+3,&FONT_S,b,used?C_BLACK:sc);
+        cv_text_s(37,y+3,b,used?C_BLACK:sc);
         cv_rect(60,y+9,w,6,used?TE_DIM[e->scene&3u]:TE_G2);
         fmt_int(b,e->bars);str_cpy(b+str_len(b),e->bars==1?" BAR":" BARS",7);
-        cv_text(180,y+3,&FONT_S,used?b:"EMPTY",selected?C_WHITE:TE_G3);
+        cv_text_s(180,y+3,used?b:"EMPTY",selected?C_WHITE:TE_G3);
         if(arrangement_clock.running&&arrangement_clock.index==pos)
             cv_rect(60,y+17,(int32_t)(arrangement_clock.bar+1u)*w/(e->bars?e->bars:1),2,sc);
     }
-    cv_blit(0,74);
-    cv_begin(240,38,C_BLACK);
-    cv_text(4,0,&FONT_S,"REC STORE / SAVE CHAIN",TE_G4);
-    cv_text(4,20,&FONT_S,"OCT- MODE / OCT+ X2 LOAD",TE_G3);
-    cv_blit(0,202);
+    cv_band_blit(74);
+    cv_band(38);
+    cv_text_te_g4(4,0,"REC STORE / SAVE CHAIN");
+    cv_text_te_g3(4,20,"OCT- MODE / OCT+ X2 LOAD");
+    cv_band_blit(202);
 }
 
 UI_SMALL static void song_screen_input(uint32_t pressed, uint32_t home)

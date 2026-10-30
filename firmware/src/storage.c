@@ -129,17 +129,21 @@ UI_SMALL static const void *st_xip(uint32_t obj, uint32_t *len)
 }
 #endif
 
+/* Forward byte copy retains the storage gatherer's alias/zero-length behavior. */
+UI_SMALL static void st_copy(void *dst, const void *src, uint32_t n)
+{
+    for (uint32_t i=0;i<n;i++) ((uint8_t *)dst)[i]=((const uint8_t *)src)[i];
+}
+
 /* load object into dst (up to max bytes); returns the length, or -1 */
 UI_SMALL static int st_load(uint32_t obj, void *dst, uint32_t max)
 {
-    uint32_t i;
     st_hdr_t h;
     if (st_current(obj, &h) < 0)
         return -1;
     if (h.len > max)
         h.len = max;
-    for (i = 0; i < h.len; i++)
-        ((uint8_t *)dst)[i] = st_buf[i];
+    st_copy(dst, st_buf, h.len);
     return (int)h.len;
 }
 
@@ -198,13 +202,10 @@ UI_SMALL static int st_save3(uint32_t obj, const void *src, uint32_t len, const 
     cur = st_current(obj, &h);
     seq = cur < 0 ? 0u : h.seq;
     base = st_sector(obj, cur == 0 ? 1u : 0u);       /* write the other copy */
-    for (off = 0; off < len; off++)
-        st_buf[off] = ((const uint8_t *)src)[off];    /* the driver wants RAM sources */
-    for (off = 0; off < len2; off++)
-        st_buf[len + off] = ((const uint8_t *)src2)[off];
+    st_copy(st_buf, src, len);    /* the driver wants RAM sources */
+    st_copy(st_buf + len, src2, len2);
     len += len2;
-    for (off = 0; off < len3; off++)
-        st_buf[len + off] = ((const uint8_t *)src3)[off];
+    st_copy(st_buf + len, src3, len3);
     len += len3;
     if ((rc = st_erase(base)) != 0)
         return rc;

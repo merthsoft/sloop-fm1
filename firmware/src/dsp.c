@@ -70,6 +70,20 @@ DSP_INLINE int32_t osc_tri(uint32_t ph)
     return s < 65536 ? s - 32768 : 98303 - s;
 }
 
+/* Control-rate waveform evaluation, shared by modulation and its displays.
+ * Stateless: callers own clocks and random draws. Audio oscillators keep their
+ * dedicated band-limited/render paths. IDs match the saved track LFO choices. */
+static __attribute__((noinline)) int32_t modulation_wave(uint32_t wave,uint32_t phase,int32_t held)
+{
+    switch(wave) {
+    case 1:return osc_tri(phase);
+    case 2:return (int32_t)(phase>>16)-32768;
+    case 3:return phase<0x80000000u?32767:-32767;
+    case 4:return held;
+    default:return osc_sine(phase);
+    }
+}
+
 /* tanh(x / 32768) * 32767, linearly interpolated (a plain lookup gives
  * 256-unit steps, audible on quiet signals) */
 DSP_INLINE int32_t softclip(int32_t x)
@@ -136,4 +150,13 @@ DSP_INLINE int32_t amp_at(const vmod_t *m, uint32_t i)
 {
     int32_t x = (m->amp1 - m->amp0) * (int32_t)i;
     return m->amp0 + ((x + ((x >> 31) & (CTL - 1))) >> CTL_LOG2);
+}
+
+static __attribute__((minsize,noinline)) uint32_t proj_hash(const void *p, uint32_t n)   /* FNV-1a over n bytes */
+{
+    const uint8_t *b = (const uint8_t *)p;
+    uint32_t i, s = 0x811C9DC5u;
+    for (i = 0; i < n; i++)
+        s = (s ^ b[i]) * 16777619u;
+    return s;
 }

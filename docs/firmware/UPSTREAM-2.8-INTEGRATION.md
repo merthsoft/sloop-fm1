@@ -120,3 +120,41 @@ audio and user-record loading. The fork still is not a full 2.8 merge: upstream
 POLY recording/bit-7 legato semantics remain deferred. Current production image
 is 581,140 bytes (424 free), main static RAM 89,064/98,304. See
 [editor integration](PIANO-ROLL-INTEGRATION.md) and [MIDI](MIDI-EXPRESSION-BANKS.md).
+
+## Selective upstream 2.8.3 safety and hold timing
+
+The next selective batch takes the 350 ms layer-display threshold and second-core
+hardening from upstream `5eb24c1`. Normal page taps still use the existing 450 ms
+tap limit. Held key/knob use opens a layer immediately; temporary LFO/ENV panels
+use the same longer threshold. The chord/arp latch gesture remains 700 ms.
+
+Worker jobs carry a function/argument/sequence check word; core 1 accepts only the
+next job and keeps its completed sequence in a register. Each core writes its own
+64-byte mailbox area. Wrong jobs are refused; timeout or refusal holds the worker
+and bars it across warm resets until power-off. A main-core crash beside an active
+worker sets the same bar. Boot holds any leftover worker before clearing RAM.
+Core 1 installs its own stack bounds; a worker fault records and parks instead of
+trying to draw/reset from the worker and freezing itself.
+
+MerthSloop retains its weighted voice budget, automatic render split, timeout
+recovery and audio diagnostics. The shared crash recorder avoids duplicating its
+common field writes for the two cores. The crash record keeps its layout; the new
+eight-byte bar follows the existing `.noinit` records. Console `cpu1_gave_up`
+reports refusal (1), timeout (2), or a retained bar (3). Extra upstream BAD display
+and console fields are omitted to conserve flash; job validation is unchanged.
+
+`tests/cpu1_hal_test.py` compiles the production HAL and fault handler with only
+MMIO, barriers and terminal fault loops doubled. It checks 20,000 handoffs, corrupt
+function/argument/check/sequence rejection, no replay, timer wrap/timeout, startup
+failure, stack-register setup, warm-reset blocking and both fault paths under
+UBSan. UI checks cover page taps around the old threshold, the 350 ms boundary,
+immediate knob use and the existing navigation/fuzz suite. These checks do not
+qualify silicon cache ordering, physical stack traps or audio deadline margin.
+
+That batch did not import the upstream drum allocator, sample retrigger changes, MIDI
+queue-overflow recovery or new overlapping-note editor/recording implementation.
+
+The subsequent [.96 drum playback integration](DRUM-PLAYBACK-INTEGRATION.md)
+imports the shared upstream allocator for sampled and synthesized drums, retaining
+same-sound retrigger priority, kick protection, six voices, hat choke and declicking.
+The other exclusions above remain separate work.

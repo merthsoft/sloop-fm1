@@ -108,25 +108,25 @@ UI_SMALL static void sequence_screen_draw(void)
     }
 
     te_dials(lab,val,ratio,sequence_page+song.sel*13u,&cards);
-    cv_begin(240,124,C_BLACK);
-    cv_text(4,0,&FONT_S,sequence_sel==NSEQUENCE_STARTERS?"CUSTOM":SEQUENCE_STARTERS[sequence_sel].name,C_WHITE);
+    cv_band(124);
+    cv_text_c_white(4,0,sequence_sel==NSEQUENCE_STARTERS?"CUSTOM":SEQUENCE_STARTERS[sequence_sel].name);
     for(k=0;k<(sequence_sel==NSEQUENCE_STARTERS?sequence_custom_count:4u);k++) {
         fmt_int(b,sequence_degree(sequence_sel,k)+1);
         int32_t x=8+28*(int32_t)k;
-        cv_rect(x,26,24,28,TE_G1);cv_text(x+4,23,&FONT_L,b,TE_COL[song.sel]);
-        if((sequence_page==3&&k==sequence_custom_slot) || (sequence_page==4 && progression.active && k+1u==(uint32_t)(v[3][0]-'0'))) cv_rect(x,55,24,2,C_WHITE);
+        cv_rect_te_g1(x,26,24,28);cv_text(x+4,23,&FONT_L,b,TE_COL[song.sel]);
+        if((sequence_page==3&&k==sequence_custom_slot) || (sequence_page==4 && progression.active && k+1u==(uint32_t)(v[3][0]-'0'))) cv_rect_c_white(x,55,24,2);
     }
-    cv_text(4,62,&FONT_S,sequence_page==4?(TSEL->p[P_AMODE]?"RHYTHM: ARP / NOW":"OUTPUT: CHORD / NOW"):sequence_add?"ALGO: MERGE":"ALGO: REPLACE",TE_G4);
-    cv_text(4,82,&FONT_S,sequence_page==4?N_NOTE[sequence_root]:"RHY:",TE_G4);
-    cv_text(40,82,&FONT_S,sequence_page==4?N_SCALE[sequence_scale]:SEQUENCE_RHYTHMS[sequence_rhythm].name,C_WHITE);
-    cv_text(4,102,&FONT_S,sequence_page==4?"BLACK: MODIFIERS":sequence_preview.active?"PREVIEW PLAYING":"PRESETS: RHYTHM",TE_COL[song.sel]);
-    cv_blit(0,74);
-    cv_begin(240,38,C_BLACK);
+    cv_text_te_g4(4,62,sequence_page==4?(TSEL->p[P_AMODE]?"RHYTHM: ARP / NOW":"OUTPUT: CHORD / NOW"):sequence_add?"ALGO: MERGE":"ALGO: REPLACE");
+    cv_text_te_g4(4,82,sequence_page==4?N_NOTE[sequence_root]:"RHY:");
+    cv_text_c_white(40,82,sequence_page==4?N_SCALE[sequence_scale]:SEQUENCE_RHYTHMS[sequence_rhythm].name);
+    cv_text_s(4,102,sequence_page==4?"BLACK: MODIFIERS":sequence_preview.active?"PREVIEW PLAYING":"PRESETS: RHYTHM",TE_COL[song.sel]);
+    cv_band_blit(74);
+    cv_band(38);
     str_cpy(b,sequence_page==4?"PERFORM ":sequence_page==3?"CUSTOM ":"SEQUENCES ",sizeof b);
     fmt_int(b+str_len(b),sequence_page+1);str_cpy(b+str_len(b),"/5",4);
-    cv_text(4,0,&FONT_S,b,C_WHITE);
-    cv_text(4,20,&FONT_S,sequence_page==4?"WHITE: SLOTS  PLAY / REC":sequence_confirm?"OCT+ AGAIN / HOLD":sequence_preview.active?"OCT- STOP / OCT+ APPLY":"OCT- LISTEN / OCT+ APPLY",TE_G4);
-    cv_blit(0,202);
+    cv_text_c_white(4,0,b);
+    cv_text_te_g4(4,20,sequence_page==4?"WHITE: SLOTS  PLAY / REC":sequence_confirm?"OCT+ AGAIN / HOLD":sequence_preview.active?"OCT- STOP / OCT+ APPLY":"OCT- LISTEN / OCT+ APPLY");
+    cv_band_blit(202);
 }
 UI_SMALL static void sequence_screen_input(uint32_t pressed,uint32_t home)
 {

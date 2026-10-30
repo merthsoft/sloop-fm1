@@ -138,14 +138,15 @@ int main(void)
 #endif
 
     factory_fixture();
-    { /* Frozen upstream 2.7.1 expanded bank oracle (includes upstream stronger kicks). */
+    { /* Reviewed factory bank: upstream kicks plus three explicit snare edits.
+       * drum_factory_identity_test checks the old fixture and exact edit allowlist. */
         uint64_t hash = UINT64_C(14695981039346656037);
         for (uint32_t k = 0; k < DS_NKITS; k++)
             for (uint32_t lane = 0; lane < DS_LANES; lane++) {
                 const uint8_t *b = (const uint8_t *)&TEST_FACTORY_KITS[k].s[lane];
                 for (uint32_t i = 0; i < sizeof(dsnd_t); i++) hash = (hash ^ b[i]) * UINT64_C(1099511628211);
             }
-        check(hash == UINT64_C(0xfd47ca65f74e33ea), "all 512 decoded factory records match upstream 2.7.1 expanded bank byte for byte");
+        check(hash == UINT64_C(0x57ab82accf419591), "all 512 decoded records match the reviewed factory bank (three tuned snares)");
     }
 
     uint32_t i, k, ok;

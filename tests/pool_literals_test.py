@@ -108,6 +108,22 @@ class LiteralTests(unittest.TestCase):
         with self.assertRaises(AssertionError):
             pool_object(bytes(52), 25, 18)
 
+    def test_control_tokens_preserve_existing_bytes(self):
+        # Every high code is already a literal: only unused low codes may encode
+        # pairs. Existing low bytes and NUL must remain literal as well.
+        parts = [bytes(range(128, 256)) + b'\0\1\5\37' + b'ALPHA BETA GAMMA\0' * 100,
+                 b'BETA ALPHA GAMMA\0' * 120]
+        encoded, dictionary = pair_encode(parts)
+        self.assertGreater(len(dictionary), 256)
+        for code in (1, 5, 31):
+            at = 2 * (code + 127)
+            self.assertTrue(at >= len(dictionary) or dictionary[at:at + 2] == b'\0\0')
+        self.assertEqual([pair_decode(p, dictionary) for p in encoded], parts)
+        self.assertEqual(pair_encode(parts), (encoded, dictionary))
+        for invalid in (-1, 160):
+            with self.assertRaises(AssertionError):
+                pair_encode(parts, max_codes=invalid)
+
 
 def target_check():
     gen, out = ROOT / 'build/gen', ROOT / 'build/voice-experiment'

@@ -39,7 +39,7 @@
 #define PROJ_NG 32u                            /* the globals of formats 4 and 5 (G_COUNT until 2.4). SLOOP 2.5's
                                                 * G_DRDLY rides in the byte after sel (0 in older projects: off),
                                                 * so the format and its size do not change */
-_Static_assert(G_DRDLY == PROJ_NG && G_TXSRC == PROJ_NG + 5u && G_RMODEL == G_CLKOUT + 1u && G_VWOW == G_RMODEL + 1u && G_RTIME == G_VCRACKLE + 1u && G_LTYPE == G_RTIME + 1u && G_DTYPE == G_LTYPE + 1u && G_COUNT == G_DHOLD + 1u,
+_Static_assert(G_DRDLY == PROJ_NG && G_TXSRC == PROJ_NG + 5u && G_RMODEL == G_CLKOUT + 1u && G_VWOW == G_RMODEL + 1u && G_RTIME == G_VCRACKLE + 1u && G_LTYPE == G_RTIME + 1u && G_DTYPE == G_LTYPE + 1u && G_COUNT == G_DSHAPE + 1u,
                "the globals a project holds, then G_DRDLY (then 2.6's GLO > MIDI: settings of the FM-1)");
 #define PROJ_NC6 ((uint32_t)P_ITYPE)           /* format 6: the parameters kept in 16 bits, P_LEVEL .. P_VLEAD (as 5), */
 #define PROJ_NX6 ((uint32_t)(P_E0 - P_ITYPE))  /* the 2.6 ones in a byte (0..127), then P_E0 .. P_E7 */
@@ -154,14 +154,6 @@ project_t proj_slot[4] __attribute__((section(".noinit")));
 static void snapshot_section_apply(const project_t *p);
 #endif
 
-UI_SMALL static uint32_t proj_hash(const void *p, uint32_t n)   /* FNV-1a over n bytes */
-{
-    const uint8_t *b = (const uint8_t *)p;
-    uint32_t i, s = 0x811C9DC5u;
-    for (i = 0; i < n; i++)
-        s = (s ^ b[i]) * 16777619u;
-    return s;
-}
 UI_SMALL static uint32_t proj_sum(const project_t *p) { return proj_hash(p, sizeof *p - 4u); }
 UI_SMALL static int proj_ok(const project_t *q) { return q->magic == PROJ_MAGIC && q->size == sizeof *q && q->sum == proj_sum(q); }
 
@@ -264,6 +256,19 @@ UI_SMALL static void proj_trk_from_old(proj_trk_t *d, const void *raw, uint32_t 
     }
 }
 
+/* FUN4/FUN5 share the p[], engine, preset and ten-byte-step prefix. */
+UI_SMALL static void proj_trk_modern(proj_trk_t *d,const void *raw,uint32_t np)
+{
+    const int16_t *p=raw;const uint8_t *b=raw;
+    proj_trk_plain(d);
+    for(uint32_t k=0;k<PROJ_NC6;k++)d->p[k]=k<np-8u?p[k]:TP[k].def;
+    for(uint32_t k=0;k<8u;k++)d->e[k]=p[np-8u+k];
+    d->engine=b[2u*np];d->preset=b[2u*np+1u];
+    memcpy(d->step,b+2u*np+2u,sizeof d->step);
+}
+_Static_assert(__builtin_offsetof(proj_trk_v4_t,step)==2u*PROJ_NP_V4+2u &&
+               __builtin_offsetof(proj_trk_v5_t,step)==2u*PROJ_NP_V5+2u,"modern prefix");
+
 /* a format 4 project (n bytes in *v4) -> slot q as format 6: the same, no nudge, no lock, no condition, no FILTER */
 UI_SMALL static int proj_from_v4(project_t *q, const project_v4_t *v4, int n)
 {
@@ -274,15 +279,7 @@ UI_SMALL static int proj_from_v4(project_t *q, const project_v4_t *v4, int n)
     memcpy(q->g, v4->g, sizeof q->g);
     q->sel = v4->sel;
     for (i = 0; i < NTRK; i++) {
-        uint32_t k;
-        proj_trk_plain(&q->t[i]);
-        for (k = 0; k < PROJ_NC6; k++)                 /* by id up to P_CHORD, the parameters added since: */
-            q->t[i].p[k] = k < PROJ_NP_V4 - 8u ? v4->t[i].p[k] : TP[k].def;   /* their defaults; P_E0.. moved */
-        for (k = 0; k < 8u; k++)
-            q->t[i].e[k] = v4->t[i].p[PROJ_NP_V4 - 8u + k];
-        q->t[i].engine = v4->t[i].engine;
-        q->t[i].preset = v4->t[i].preset;
-        memcpy(q->t[i].step, v4->t[i].step, sizeof q->t[i].step);
+        proj_trk_modern(&q->t[i], &v4->t[i], PROJ_NP_V4);
     }
     q->sum = proj_sum(q);
     return 1;
@@ -302,14 +299,7 @@ UI_SMALL static int proj_from_v5(project_t *q, const project_v5_t *v5, int n)
     for (i = 0; i < NTRK; i++) {
         const proj_trk_v5_t *s = &v5->t[i];
         proj_trk_t *d = &q->t[i];
-        proj_trk_plain(d);
-        for (k = 0; k < PROJ_NC6; k++)
-            d->p[k] = s->p[k];
-        for (k = 0; k < 8u; k++)
-            d->e[k] = s->p[PROJ_NP_V5 - 8u + k];
-        d->engine = s->engine;
-        d->preset = s->preset;
-        memcpy(d->step, s->step, sizeof d->step);
+        proj_trk_modern(d, s, PROJ_NP_V5);
         for (k = 0; k < NSTEP; k++)
             pt_set_mf(d, k, clamp(s->micro[k], MICRO_MIN, MICRO_MAX), (uint32_t)s->fill[k / 4u] >> (2u * (k % 4u)));
         for (k = 0; k < NLOCK; k++) {
@@ -322,39 +312,30 @@ UI_SMALL static int proj_from_v5(project_t *q, const project_v5_t *v5, int n)
     return 1;
 }
 
-/* a format 3 project -> slot q as format 6 */
-UI_SMALL static void proj_from_v3_ok(project_t *q, const project_v3_t *v3)
+/* FUN2/FUN3 differ only in their track parameter count and record stride. */
+_Static_assert(__builtin_offsetof(project_v2_t,t)==__builtin_offsetof(project_v3_t,t) &&
+               __builtin_offsetof(project_v2_t,g)==__builtin_offsetof(project_v3_t,g) &&
+               __builtin_offsetof(project_v2_t,sel)==__builtin_offsetof(project_v3_t,sel),"old project prefix");
+UI_SMALL static int proj_from_old(project_t *q,const void *raw,int n,uint32_t np)
 {
-    uint32_t i;
+    uint32_t size=np==PROJ_NP_V3?sizeof(project_v3_t):sizeof(project_v2_t);
+    uint32_t magic=np==PROJ_NP_V3?PROJ_MAGIC_V3:PROJ_MAGIC_V2;
+    if(!proj_record_ok(raw,n,size,magic))return 0;
+    const uint8_t *b=raw;
     proj_init(q);
-    proj_g_from_old(q->g, v3->g);
-    q->sel = v3->sel;
-    for (i = 0; i < NTRK; i++)
-        proj_trk_from_old(&q->t[i], &v3->t[i], PROJ_NP_V3, i == TRK_DRUM);
-    q->sum = proj_sum(q);
+    proj_g_from_old(q->g,(const int16_t *)(const void *)(b+__builtin_offsetof(project_v2_t,g)));
+    q->sel=b[__builtin_offsetof(project_v2_t,sel)];
+    const uint8_t *t=b+__builtin_offsetof(project_v2_t,t);
+    for(uint32_t i=0;i<NTRK;i++) {
+        proj_trk_from_old(&q->t[i],t,np,i==TRK_DRUM);
+        t+=2u*np+2u+sizeof(step8_t)*NSTEP;
+    }
+    q->sum=proj_sum(q);return 1;
 }
-UI_SMALL static int proj_from_v3(project_t *q, const project_v3_t *v3, int n)
-{
-    if (!proj_record_ok(v3, n, sizeof *v3, PROJ_MAGIC_V3))
-        return 0;
-    proj_from_v3_ok(q, v3);
-    return 1;
-}
-
-/* a format 2 project (n bytes in *v2) -> slot q as format 5 */
-UI_SMALL static int proj_from_v2(project_t *q, const project_v2_t *v2, int n)
-{
-    uint32_t i;
-    if (!proj_record_ok(v2, n, sizeof *v2, PROJ_MAGIC_V2))
-        return 0;
-    proj_init(q);
-    proj_g_from_old(q->g, v2->g);
-    q->sel = v2->sel;
-    for (i = 0; i < NTRK; i++)
-        proj_trk_from_old(&q->t[i], &v2->t[i], PROJ_NP_V2, i == TRK_DRUM);
-    q->sum = proj_sum(q);
-    return 1;
-}
+UI_SMALL static int proj_from_v3(project_t *q,const project_v3_t *v3,int n)
+{ return proj_from_old(q,v3,n,PROJ_NP_V3); }
+UI_SMALL static int proj_from_v2(project_t *q,const project_v2_t *v2,int n)
+{ return proj_from_old(q,v2,n,PROJ_NP_V2); }
 
 /* a format 1 project (n bytes in *v1) -> slot q as format 5: the instrument becomes track 1,
  * tracks 2..4 start empty (their sounds as at power-on) */
@@ -437,27 +418,28 @@ UI_SMALL static uint32_t drum_tw_sum(const int16_t *e)
 }
 UI_SMALL static void drum_tw_put(project_t *p)
 {
-    uint16_t w[7] = {0};
-    uint32_t l, b;
+    int16_t *w=p->t[TRK_DRUM].e+1u;
+    uint32_t l;
+    for(l=0;l<7u;l++)w[l]=0;
     for (l = 0; l < DRUM_LANES; l++) {
         uint32_t v = ((uint32_t)drum_tune[l] & 15u) | ((uint32_t)drum_dec[l] & 7u) << 4;
-        for (b = 0; b < 7u; b++)
-            if ((v >> b) & 1u)
-                w[(l * 7u + b) / 16u] |= (uint16_t)(1u << ((l * 7u + b) % 16u));
+        uint32_t bit=l*7u, word=bit/16u, shift=bit%16u;
+        w[word] |= (int16_t)(v << shift);
+        if(shift>9u)w[word+1u] |= (int16_t)(v >> (16u-shift));
     }
-    for (l = 0; l < 7u; l++)
-        p->t[TRK_DRUM].e[l + 1u] = (int16_t)w[l];
     p->g[G_SAVE] = (int16_t)(DRUM_TW_MARK | drum_tw_sum(p->t[TRK_DRUM].e));
 }
 static void drum_tw_get(const project_t *p)
 {
     const int16_t *e = p->t[TRK_DRUM].e;
-    uint32_t l, b, ok = (uint16_t)p->g[G_SAVE] == (DRUM_TW_MARK | drum_tw_sum(e));
+    uint32_t l, ok = (uint16_t)p->g[G_SAVE] == (DRUM_TW_MARK | drum_tw_sum(e));
     for (l = 0; l < DRUM_LANES; l++) {
-        uint32_t v = 0;
-        for (b = 0; ok && b < 7u; b++)
-            if (((uint16_t)e[1u + (l * 7u + b) / 16u] >> ((l * 7u + b) % 16u)) & 1u)
-                v |= 1u << b;
+        uint32_t bit=l*7u, word=bit/16u, shift=bit%16u;
+        uint32_t v=0;
+        if(ok) {
+            v=(uint16_t)e[1u+word] >> shift;
+            if(shift>9u)v |= (uint32_t)(uint16_t)e[2u+word] << (16u-shift);
+        }
         drum_tune[l] = (int8_t)((int32_t)((v & 15u) ^ 8u) - 8);
         drum_dec[l] = (int8_t)((int32_t)(((v >> 4) & 7u) ^ 4u) - 4);
     }
@@ -472,8 +454,14 @@ UI_SMALL static void proj_capture(project_t *p)        /* what is playing now, a
     for (i = 0; i < PROJ_NG; i++)
         p->g[i] = song.g[i];
     p->sel = song.sel;
+    /* DUCK's high bits were unused. Tag settings without growing the project. */
+    if (song.g[G_DTRIG] || song.g[G_DREC] != 1 || song.g[G_DSHAPE])
+        p->g[G_DUCK] = (int16_t)(song.g[G_DUCK] | 0x4000u |
+            (uint32_t)song.g[G_DTRIG] << 7 | (uint32_t)song.g[G_DREC] << 9 | (uint32_t)song.g[G_DSHAPE] << 12);
     p->drdly = (uint8_t)song.g[G_DRDLY];
-    p->g[G_ENGSEL] = song.g[G_DTYPE] ? (int16_t)(0xED00u | (song.g[G_DTYPE] & 3)) : 0;
+    uint32_t delay_meta=song.g[G_DTYPE];
+    for(i=0;i<NPART;i++) delay_meta|=(uint32_t)!!duck_bypass[i]<<(i+3u);
+    p->g[G_ENGSEL] = delay_meta ? (int16_t)(0xED00u | delay_meta) : 0;
     if(song.g[G_DDRIVE]!=127)p->g[G_CLRSEQ]=(int16_t)(0xD400u|song.g[G_DDRIVE]);
     if(song.g[G_DBITS]!=8 || song.g[G_DHOLD]!=2)
         p->g[G_INITSND]=(int16_t)(0xD800u|((song.g[G_DBITS]-4)<<3)|song.g[G_DHOLD]);
@@ -521,7 +509,10 @@ static void proj_apply(const project_t *p, int all)
     uint32_t i, k;
     undo.valid = 0;                                  /* undo never crosses project/section adoption */
     project_revision++;
-    song.g[G_DTYPE] = ((uint16_t)p->g[G_ENGSEL] & 0xFFFCu)==0xED00u  ? p->g[G_ENGSEL]&3 : 0;
+    uint32_t delay_meta=(uint16_t)p->g[G_ENGSEL];
+    if((delay_meta&0xFFC0u)!=0xED00u)delay_meta=0;
+    song.g[G_DTYPE] = (delay_meta&7u)<4u ? delay_meta&7u : 0;
+    for(i=0;i<NPART;i++)duck_bypass[i]=(delay_meta>>(i+3u))&1u;
     uint32_t drive=(uint16_t)p->g[G_CLRSEQ],crush=(uint16_t)p->g[G_INITSND];
     uint32_t known=(crush&0xFF80u)==0xD800u && ((crush>>3)&15u)<=12u && (crush&7u)<=4u;
     song.g[G_DDRIVE]=(drive&0xFF80u)==0xD400u?drive&127u:127;
@@ -536,6 +527,14 @@ static void proj_apply(const project_t *p, int all)
                                                                  * its slot and G_INFO's hold the TEXTURE) */
             song.g[i] = (int16_t)clamp(p->g[i], GP[i].min, GP[i].max);
     song.g[G_DRDLY] = (int16_t)clamp(p->drdly, GP[G_DRDLY].min, GP[G_DRDLY].max);   /* (a load and a section, as REV) */
+    if (all) {
+        uint32_t duck_cfg = (uint16_t)p->g[G_DUCK];
+        uint32_t valid = (duck_cfg & 0xC000u) == 0x4000u && ((duck_cfg >> 9) & 7u) < 6u && ((duck_cfg >> 12) & 3u) < 3u;
+        song.g[G_DUCK] = (int16_t)clamp(valid ? (int32_t)(duck_cfg & 127u) : p->g[G_DUCK], 0, 127);
+        song.g[G_DTRIG] = valid ? (duck_cfg >> 7) & 3u : 0;
+        song.g[G_DREC] = valid ? (duck_cfg >> 9) & 7u : 1;
+        song.g[G_DSHAPE] = valid ? (duck_cfg >> 12) & 3u : 0;
+    }
     uint32_t rev = (uint16_t)p->g[G_LOAD], expanded = (rev & 0xFC00u) == 0x5800u;
     uint32_t timed = (rev & 0xFF00u) == 0x5500u;
     song.g[G_RTIME] = expanded || timed ? clamp((rev >> (expanded?3:1)) & 127,20,80) : 50;

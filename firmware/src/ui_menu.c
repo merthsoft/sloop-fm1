@@ -130,29 +130,29 @@ UI_SMALL static void draw_page_help(void)
         labels[0]="ENTRY";labels[1]="SECT";labels[2]="BARS";labels[3]="LENGTH";
     }
     for(uint32_t pass=0;pass<2;pass++) {
-        cv_begin(240,120,C_BLACK);cv_oy=-(int32_t)pass*120;
-        cv_text(4,2,&FONT_S,"PAGE HELP",C_WHITE);
-        cv_text(4,22,&FONT_S,ui.home?"HOME":page_title(pg),TE_COL[song.sel]);
+        cv_band(120);cv_oy=-(int32_t)pass*120;
+        cv_text_c_white(4,2,"PAGE HELP");
+        cv_text_s(4,22,ui.home?"HOME":page_title(pg),TE_COL[song.sel]);
         for(uint32_t k=0;k<4;k++) {
             char n[4]={'K',(char)('1'+k),':',0};
-            cv_text(4,46+(int32_t)k*20,&FONT_S,n,TE_COL[k]);
-            cv_text(36,46+(int32_t)k*20,&FONT_S,labels[k],TE_G4);
+            cv_text_s(4,46+(int32_t)k*20,n,TE_COL[k]);
+            cv_text_te_g4(36,46+(int32_t)k*20,labels[k]);
         }
         if(pg->scope==SC_EVOLVE) {
-            cv_text(4,132,&FONT_S,"DRONE: HOLD / MOVE",TE_G4);
-            cv_text(4,152,&FONT_S,"RANGE: SCALE STEPS",TE_G4);
-            cv_text(4,172,&FONT_S,"ONE NOTE PER CYCLE",TE_G4);
-            cv_text(4,192,&FONT_S,"RUNTIME / NOT SAVED",TE_G4);
+            cv_text_te_g4(4,132,"DRONE: HOLD / MOVE");
+            cv_text_te_g4(4,152,"RANGE: SCALE STEPS");
+            cv_text_te_g4(4,172,"ONE NOTE PER CYCLE");
+            cv_text_te_g4(4,192,"RUNTIME / NOT SAVED");
         } else {
-        cv_text(4,132,&FONT_S,"SELECT: PAGE",TE_G4);
-        cv_text(4,152,&FONT_S,"PRESETS",TE_G4);
-        cv_text(148,152,&FONT_S,"ALGORITHM",TE_G4);
-        cv_text(4,172,&FONT_S,"SOUND",TE_G4);
-        cv_text(148,172,&FONT_S,"TRACK",TE_G4);
-        cv_text(4,192,&FONT_S,page_hold_hint(pg),TE_G4);
+        cv_text_te_g4(4,132,"SELECT: PAGE");
+        cv_text_te_g4(4,152,"PRESETS");
+        cv_text_te_g4(148,152,"ALGORITHM");
+        cv_text_te_g4(4,172,"SOUND");
+        cv_text_te_g4(148,172,"TRACK");
+        cv_text_te_g4(4,192,page_hold_hint(pg));
         }
-        cv_text(4,222,&FONT_S,"OCT-: BACK",C_WHITE);
-        cv_oy=0;cv_blit(0,pass*120);
+        cv_text_c_white(4,222,"OCT-: BACK");
+        cv_oy=0;cv_band_blit(pass*120);
     }
 }
 #if FELUCCA_AUDIO_DIAG
@@ -163,16 +163,16 @@ UI_SMALL static void draw_audio_diag(void)
     static const char *const labels[] = {"STEALS", "SHEDS", "RESTORE", "MAX US", "LATE", "C1MASK"};
     uint32_t v[6] = {voice_kills, shed_count, drone_restores, audio_wall_max,
         felucca_dbg.late, cpu1_last_mask};
-    cv_begin(240,H_HEAD,C_BLACK);
-    cv_text(4,1,&FONT_S,"DIAG " FELUCCA_VERSION,C_WHITE);cv_blit(0,Y_HEAD);
+    cv_band(H_HEAD);
+    cv_text_c_white(4,1,"DIAG " FELUCCA_VERSION);cv_band_blit(Y_HEAD);
     for(uint32_t pass=0;pass<2;pass++) {
-        cv_begin(240,pass?95u:124u,C_BLACK);cv_oy=pass?-124:0;
+        cv_band(pass?95u:124u);cv_oy=pass?-124:0;
         for(uint32_t i=0;i<NELEM(labels);i++) {
             char b[40];fmt_int(b,(int32_t)v[i]);
-            cv_text(4,(int32_t)i*18,&FONT_S,labels[i],C_DIM);
-            cv_text(236-text_w(&FONT_S,b),(int32_t)i*18,&FONT_S,b,C_WHITE);
+            cv_text_c_dim(4,(int32_t)i*18,labels[i]);
+            cv_text_c_white(236-text_w(&FONT_S,b),(int32_t)i*18,b);
         }
-        cv_oy=0;cv_blit(0,H_HEAD+1+pass*124u);
+        cv_oy=0;cv_band_blit(H_HEAD+1+pass*124u);
     }
 }
 #endif
@@ -193,10 +193,10 @@ UI_SMALL static void draw_menu(void)
     ui.menu_sig = sig;
     if (ui.force)                                   /* head + rule + two bands cover rows 0..229 */
         lcd_fill(0, H_HEAD + 1 + 124 + 95, 240, 240 - (H_HEAD + 1 + 124 + 95), C_BLACK);
-    cv_begin(240, H_HEAD, C_BLACK);
-    cv_text(4, 1, &FONT_S, ui.menu == 2 ? "ABOUT" : "MENU", C_HI);
+    cv_band(H_HEAD);
+    cv_text_c_hi(4, 1, ui.menu == 2 ? "ABOUT" : "MENU");
     if (ui.menu == 2)
-        cv_text(236 - text_w(&FONT_S, FELUCCA_VERSION " MERTHSOFT"), 1, &FONT_S, FELUCCA_VERSION " MERTHSOFT", C_GRAY);
+        cv_text_c_gray(236 - text_w(&FONT_S, FELUCCA_VERSION " MERTHSOFT"), 1, FELUCCA_VERSION " MERTHSOFT");
     if (ui.menu != 2) {                             /* the section and its number, as a page's "ENV DEST 2/2" */
         char t[16];
         str_cpy(t, MS_NAME[sec], sizeof t);
@@ -204,12 +204,12 @@ UI_SMALL static void draw_menu(void)
         fmt_int(t + str_len(t), (int32_t)sec + 1);
         str_cpy(t + str_len(t), "/", 2);
         fmt_int(t + str_len(t), MS_COUNT);
-        cv_text(236 - text_w(&FONT_S, t), 1, &FONT_S, t, C_GRAY);
+        cv_text_c_gray(236 - text_w(&FONT_S, t), 1, t);
     }
-    cv_blit(0, Y_HEAD);
+    cv_band_blit(Y_HEAD);
     lcd_fill(0, H_HEAD, 240, 1, C_LINE);
     for (pass = 0; pass < 2u; pass++) {             /* the canvas holds 124 rows: draw in two bands */
-        cv_begin(240, pass ? 95u : 124u, C_BLACK);
+        cv_band(pass ? 95u : 124u);
         cv_oy = pass ? -124 : 0;
         if (ui.menu == 2) {
 #if !FELUCCA_AUDIO_DIAG
@@ -221,13 +221,13 @@ UI_SMALL static void draw_menu(void)
             for(uint32_t line=0;line<NELEM(credits);line++) {
                 uint16_t color=!line?C_WHITE:line>=8?TE_G4:(210u>>line)&1u?C_AMB:C_HI;
                 int32_t y=line?8+(int32_t)line*16:4;
-                int32_t x=cv_text(4,y,&FONT_S,credits[line],color);
-                if(line==2)cv_text(x+8,y,&FONT_S,"@KUROGEDELIC",C_AMB);
+                int32_t x=cv_text_s(4,y,credits[line],color);
+                if(line==2)cv_text_c_amb(x+8,y,"@KUROGEDELIC");
             }
 #if FELUCCA_CPU1
             char sv[12];cpu1_supplies(sv);
-            cv_text(236-text_w(&FONT_S,sv),72,&FONT_S,sv,C_GRAY);
-            cv_text(236-text_w(&FONT_S,cpu1_label()),88,&FONT_S,cpu1_label(),C_AMB);
+            cv_text_c_gray(236-text_w(&FONT_S,sv),72,sv);
+            cv_text_c_amb(236-text_w(&FONT_S,cpu1_label()),88,cpu1_label());
 #endif
 #endif
         } else {
@@ -237,8 +237,8 @@ UI_SMALL static void draw_menu(void)
             for (i = 0; i < MS_COUNT; i++) {        /* the sections as tabs: this one lit */
                 int32_t w = text_w(&FONT_S, MS_TAB[i]);
                 if (i == sec)
-                    cv_rect(x - 2, 3, w + 4, 18, C_LINE);
-                cv_text(x, 4, &FONT_S, MS_TAB[i], i == sec ? C_WHITE : C_DIM);
+                    cv_rect_c_line(x - 2, 3, w + 4, 18);
+                cv_text_s(x, 4, MS_TAB[i], i == sec ? C_WHITE : C_DIM);
                 x += w + gap;
             }
             for (i = MS_FIRST[sec]; i < MS_FIRST[sec + 1u]; i++) {
@@ -249,14 +249,14 @@ UI_SMALL static void draw_menu(void)
                 const char *v = mi_value(i, &vc);
                 char k[4] = {'K', (char)('1' + r), 0, 0};
                 cv_rect(4, y + 2, 4, MI_DY - 8, cur ? C_WHITE : TE_COL[r & 3u]);   /* the knob's colour */
-                xv = cv_text(14, y, &FONT_S, k, TE_COL[r & 3u]);
-                cv_text(xv + 6, y, &FONT_S, MI_NAME[i], cur ? C_WHITE : C_GRAY);
+                xv = cv_text_s(14, y, k, TE_COL[r & 3u]);
+                cv_text_s(xv + 6, y, MI_NAME[i], cur ? C_WHITE : C_GRAY);
                 if (v[0] && text_w(&FONT_L, v) <= (i == MI_COLOR ? 144 : 222)) {
                     xv = cv_text(14, y + 16, &FONT_L, v, cur && vc == C_HI ? C_WHITE : vc);
                 } else if (v[0]) {                      /* (too wide for the large type: WHITE KEYS) */
-                    xv = cv_text(14, y + 24, &FONT_S, v, cur && vc == C_HI ? C_WHITE : vc);
+                    xv = cv_text_s(14, y + 24, v, cur && vc == C_HI ? C_WHITE : vc);
                 } else {
-                    xv = cv_text(14, y + 24, &FONT_S, "OCT+ OPENS", cur ? C_WHITE : C_DIM);
+                    xv = cv_text_s(14, y + 24, "OCT+ OPENS", cur ? C_WHITE : C_DIM);
                 }
                 if (i == MI_COLOR) {                    /* the palette's colours */
                     uint32_t q;
@@ -264,22 +264,22 @@ UI_SMALL static void draw_menu(void)
                         cv_rect(166 + (int32_t)q * 14, y + 28, 10, 10, pal[q]);
                 }
                 if (i == MI_RATE && usb_rate != usb_rate_now())
-                    cv_text(xv + 8, y + 30, &FONT_S, "RESTART", C_AMB);   /* (usb.c: at the next start) */
+                    cv_text_c_amb(xv + 8, y + 30, "RESTART");   /* (usb.c: at the next start) */
 #if FELUCCA_CDC
                 if (i == MI_SERIAL && usb_serial != usb_cdc_now())
-                    cv_text(xv + 8, y + 30, &FONT_S, "RESTART", C_AMB);   /* (usb.c: at the next start) */
+                    cv_text_c_amb(xv + 8, y + 30, "RESTART");   /* (usb.c: at the next start) */
 #endif
                 if (i == MI_CPU1 && !mi_cpu1_have())
-                    cv_text(xv + 8, y + 30, &FONT_S, "NOT RUNNING", C_AMB);   /* (cpu1.c: ABOUT says 1 CORE) */
+                    cv_text_c_amb(xv + 8, y + 30, "NOT RUNNING");   /* (cpu1.c: ABOUT says 1 CORE) */
             }
             if (MS_FIRST[sec + 1u] - MS_FIRST[sec] <= 3u) {   /* (SYSTEM has four rows with 2ND CORE: its fourth
                                                                * row, ABOUT, takes the help's place) */
-                cv_text(4, MI_Y0 + 3 * MI_DY + 6, &FONT_S, "SELECT SECTION  KNOB SETS", C_DIM);
-                cv_text(4, MI_Y0 + 3 * MI_DY + 22, &FONT_S, "OCT+ OK   OCT- CLOSE", C_DIM);   /* (rows .. 218) */
+                cv_text_c_dim(4, MI_Y0 + 3 * MI_DY + 6, "SELECT SECTION  KNOB SETS");
+                cv_text_c_dim(4, MI_Y0 + 3 * MI_DY + 22, "OCT+ OK   OCT- CLOSE");   /* (rows .. 218) */
             }
         }
         cv_oy = 0;
-        cv_blit(0, H_HEAD + 1 + pass * 124u);
+        cv_band_blit(H_HEAD + 1 + pass * 124u);
     }
 }
 
@@ -304,6 +304,13 @@ UI_SMALL static void menu_close(void)
 /* Shared byte switches keep identical menu direction/toggle rules in one place. */
 UI_SMALL static void mi_toggle(uint8_t *value,int32_t direction)
 {*value=(uint8_t)(direction>0?1u:direction<0?0u:!*value);}
+
+UI_SMALL static void mi_step(uint8_t *v,int32_t s,uint32_t n)
+{
+    if(s>0 && *v+1u<n) (*v)++;
+    else if(s<0 && *v) (*v)--;
+    else if(!s) *v=(uint8_t)((*v+1u)%n);
+}
 
 /* item i: a knob turned s (> 0 right, < 0 left), or 0: OCT+ (steps round, toggles, or opens) */
 UI_SMALL static void mi_set(uint32_t i, int32_t s)
@@ -343,9 +350,7 @@ UI_SMALL static void mi_set(uint32_t i, int32_t s)
     case MI_BUDGET: {
         uint8_t *v = i == MI_RATE ? &usb_rate : &voice_expand;
         uint32_t last = i == MI_RATE ? 2u : 4u;
-        if (s > 0 && *v < last) (*v)++;
-        else if (s < 0 && *v) (*v)--;
-        else if (!s) *v = (uint8_t)((*v + 1u) % (last + 1u));
+        mi_step(v,s,last+1u);
         break;
     }
     case MI_CPU1:                                      /* right ON, left OFF; at once (the next block renders so) */
@@ -382,12 +387,7 @@ UI_SMALL static void mi_set(uint32_t i, int32_t s)
     case MI_KEYS: {                                    /* brighter / dimmer (stops at the ends); OCT+ steps round */
         uint8_t *v = i == MI_LIGHTS ? &lights_lvl : i == MI_KEYS ? &lights_keys : &scale_light_level;
         uint32_t n = i == MI_LIGHTS ? LIGHTS_N : KEYS_N;
-        if (s > 0 && *v + 1u < n)
-            (*v)++;
-        else if (s < 0 && *v > 0u)
-            (*v)--;
-        else if (!s)
-            *v = (uint8_t)((*v + 1u) % n);
+        mi_step(v,s,n);
         if (i == MI_KEYS && lights_keys && !lights_lvl)
             lights_lvl = LIGHTS_LOW;                   /* keys lit need a level: the lowest */
         break;

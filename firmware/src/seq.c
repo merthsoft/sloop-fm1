@@ -2294,18 +2294,52 @@ static void drone_toggle(track_t *t,uint32_t n,uint32_t except)
         midi_out_note(kh_mc[part],n,100);
     }
 }
-/* Restore only stolen drone voices, after quiet admission; never steal to recover.
+/* Recover CPU-shed owned notes and stolen drone voices without stealing.
  * MIDI/logical owners remain unchanged. Natural one-shots are not restarted. */
-static void drone_recover(uint32_t frames)
+static __attribute__((noinline)) int cpu_notes_have(const uint8_t *notes,uint32_t n,uint32_t note)
+{
+    for(uint32_t i=0;i<n;i++)if(notes[i]==note)return 1;
+    return 0;
+}
+static int cpu_note_owned(const track_t *t,uint32_t note)
+{
+    uint32_t p=trk_index(t);
+    if(cpu_notes_have(t->seq_notes,t->seq_n,note) || cpu_notes_have(t->arp_notes,t->arp_n,note))return 1;
+    if(t->p[P_AMODE])return 0; /* Held arp roots are not sounding output owners. */
+    if(kh_has(t,note) || midi_scale_owner(p,note))return 1;
+    for(uint32_t k=0;k<27;k++)if(kb_kind[k]==KS_NOTE && kb_trk[k]==p)
+        if(cpu_notes_have(kb_nt[k],kb_n[k],note))return 1;
+    return cpu_notes_have(chord_latch_notes[p],chord_latch_n[p],note);
+}
+static __attribute__((noinline)) void drone_recover(uint32_t frames)
 {
     if(voice_recover_wait){voice_recover_wait=voice_recover_wait>frames?voice_recover_wait-frames:0;return;}
     for(uint32_t p=0;p<NPART;p++) {
         track_t *t=&trk[p];
+        if((cpu_lost_mask&(1u<<p)) && cpu_recover_safe>=(FS/2u<<cpu_recover_backoff) && t->p[P_VOICE]==V_POLY &&
+           !t->xf_on && !t->pold && t->eng_req==t->engine && !trk_silent(t) && voice_fits(t)) {
+            uint32_t pending=0,slot;
+            for(slot=0;slot<trk_nvoice(t);slot++)if(!t->v[slot].active)break;
+            if(slot==trk_nvoice(t))continue;
+            for(uint32_t note=0;note<128;note++)if(drone_lost[p][note]&128u) {
+                uint32_t vel=drone_lost[p][note]&127u,i;
+                if(cpu_lost_source[p].engine!=t->engine || cpu_lost_source[p].source!=cpu_source(t) ||
+                   cpu_lost_source[p].gen!=smp_user_gen || !cpu_note_owned(t,note)) {drone_lost[p][note]=0;continue;}
+                pending=1;
+                for(i=0;i<NVOICE;i++)if(t->v[i].active && t->v[i].note==note)break;
+                if(i<NVOICE)continue;
+                voice_start(t,&t->v[slot],note,vel,0);
+                cpu_recover_safe=0;
+                if(cpu_recover_backoff<3u)cpu_recover_backoff++;
+                return;
+            }
+            if(!pending)cpu_lost_mask&=(uint8_t)~(1u<<p);
+        }
         if(!drone_on(t) || t->p[P_VOICE]!=V_POLY || t->xf_on || t->pold || t->eng_req!=t->engine || trk_silent(t) || !voice_fits(t))continue;
         for(uint32_t i=0;i<trk_nvoice(t);i++) {
             voice_t *v=&t->v[i];
             if(v->active)continue;
-            for(uint32_t note=0;note<128;note++)if(drone_lost[p][note]) {
+            for(uint32_t note=0;note<128;note++)if(drone_lost[p][note]==1u) {
                 if(!kh_has(t,note)){drone_lost[p][note]=0;continue;}
                 voice_start(t,v,note,100,0);
 #if FELUCCA_AUDIO_DIAG

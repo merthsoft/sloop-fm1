@@ -17,8 +17,9 @@ static __attribute__((minsize,noinline)) int boot_literal_restore(uint8_t *dst,c
         uint8_t stack[8];uint32_t n=1;stack[0]=dst[--i];
         while(n) {
             uint32_t v=stack[--n];
-            if(v>=128u && v-128u<boot_literal_sizes[6]) {
-                const uint8_t *pair=boot_literal_pairs+2u*(v-128u);
+            uint32_t code=v>=128u?v-128u:v+127u;
+            if((v>=128u || (v>0u && v<32u)) && code<boot_literal_sizes[6]) {
+                const uint8_t *pair=boot_literal_pairs+2u*code;
                 if(pair[0] || pair[1]) {
                     if(n+2u>sizeof stack)return 0;
                     stack[n++]=pair[0];stack[n++]=pair[1];

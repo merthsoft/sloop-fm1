@@ -245,6 +245,16 @@ static int32_t px_stiff(int32_t s)
     return 98304 - (px_sin(((uint32_t)s << 15) + 0x40000000u) >> 15);   /* 1.5 - cos(pi s) / 2 */
 }
 
+static __attribute__((noinline)) void px_modal_finish(px_modal_blk_t *B, px_modal_t *M, uint32_t i)
+{
+    B->n = i;
+    for (; i < PX_NMODE; i++) M->s[i][0] = M->s[i][1] = 0;
+    for (i = 0; i < B->n; i++) {
+        M->s[i][0] = clamp(M->s[i][0], -(1 << 28), 1 << 28);
+        M->s[i][1] = clamp(M->s[i][1], -(1 << 28), 1 << 28);
+    }
+}
+
 /* ModalVoice::Process, the exciter's per-block part (MODAL and MEMB): its low-pass, the strike or,
  * bowed, Dust. f0c: the note (cycles Q32, <= 0.25); b, d: brightness and damping with the accent */
 static __attribute__((noinline)) void px_modal_exciter(px_modal_blk_t *B, px_modal_t *M, uint32_t f0c, int32_t brightness,
@@ -327,13 +337,7 @@ static __attribute__((noinline)) void px_modal_block(px_modal_blk_t *B, px_modal
         q8 = (q8 * (uint32_t)ql) >> 16;
         phs += (uint32_t)pos << 16;
     }
-    B->n = i;
-    for (; i < PX_NMODE; i++)                            /* out of the band: silent */
-        M->s[i][0] = M->s[i][1] = 0;
-    for (i = 0; i < B->n; i++) {                         /* bound the states at +-64 (far beyond any real use): */
-        M->s[i][0] = clamp(M->s[i][0], -(1 << 28), 1 << 28);   /* every sum of the next block fits */
-        M->s[i][1] = clamp(M->s[i][1], -(1 << 28), 1 << 28);   /* in 32 bits */
-    }
+    px_modal_finish(B, M, i);
 }
 
 /* ----------------------------------------------------------- Membrane --- */
@@ -388,18 +392,12 @@ static __attribute__((noinline)) void px_memb_block(px_modal_blk_t *B, px_modal_
                          px_m(inv, inv, 16), 16);        /* Q28: a mode's level from the strike rises as ratio^2 */
         q8 = (q8 * (uint32_t)ql) >> 16;
     }
-    B->n = i;
-    for (; i < PX_NMODE; i++)
-        M->s[i][0] = M->s[i][1] = 0;
-    for (i = 0; i < B->n; i++) {
-        M->s[i][0] = clamp(M->s[i][0], -(1 << 28), 1 << 28);
-        M->s[i][1] = clamp(M->s[i][1], -(1 << 28), 1 << 28);
-    }
+    px_modal_finish(B, M, i);
 }
 
 /* n (<= 32) samples: out[i] = the resonator (Q20), aux[i] = the exciter (Q20). The exciter first (skipped
  * once a strike has rung out), then the modes */
-static void px_modal_run(const px_modal_blk_t *B, px_modal_t *M, int32_t *out, int32_t *aux, uint32_t n)
+static __attribute__((noinline)) void px_modal_run(const px_modal_blk_t *B, px_modal_t *M, int32_t *out, int32_t *aux, uint32_t n)
 {
     uint32_t i, k, nm = B->n;
     int32_t x[32];

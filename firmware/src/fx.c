@@ -402,8 +402,9 @@ static int32_t gain_next(track_t *t)                    /* the track's mute gain
     return 32767 - t->att;
 }
 
-/* ---- DUCK: every kick (the drum track's KICK / KICK 2) dips the synth parts, which come back over an
- * eighth note: depth G_DUCK, the curve (1 - t / T)^2. drum_on sets drums.kick. */
+/* ---- DUCK: selected drum lanes dip the synth parts over a synced recovery.
+ * SNAP squares the remaining time, RAMP is linear, HOLD doubles it before
+ * clamping. Above half depth the stronger dip holds at silence. */
 static struct {
     uint32_t t;                                         /* units since the kick */
     int32_t g0, g1;                                     /* the parts' gain at the block start, end (Q15) */
@@ -411,8 +412,8 @@ static struct {
 
 static void duck_block(uint32_t adv)
 {
-    int32_t depth = song.g[G_DUCK] * 258, x;
-    uint32_t len = BEAT_U / 2u;
+    int32_t depth = song.g[G_DUCK] * 516, x;
+    uint32_t len = BEAT_U / DIV_DEN[song.g[G_DREC]];
     duck.g0 = duck.g1;
     if (drums.kick) {
         drums.kick = 0;
@@ -425,7 +426,13 @@ static void duck_block(uint32_t adv)
     x = 32767 - (int32_t)((duck.t << 10) / (len >> 5));      /* 1 - t / T, Q15 (t < len < 2^21) */
     if (x < 0)
         x = 0;
-    duck.g1 = 32767 - mulq15(depth, mulq15(x, x));
+    if (!song.g[G_DSHAPE])
+        x = mulq15(x, x);
+    else if (song.g[G_DSHAPE] == 2)
+        x = x > 16383 ? 32767 : x * 2;
+    duck.g1 = 32767 - mulq15(depth, x);
+    if (duck.g1 < 0)
+        duck.g1 = 0;
     duck.t = duck.t + adv < duck.t ? 0xFFFFFFFFu : duck.t + adv;
 }
 
@@ -731,13 +738,12 @@ static __attribute__((noinline)) void ins_rest(track_t *t)
 
 /* one synth part into the dry mix and the sends; a part with no voice sounding costs
  * the LFO tick and a cleared buffer only (after the DIST tail has run out) */
-/* Previous block's actual render count. Both workers have joined before the
- * scheduler reads this, and each part writes only its own cell. No voice rescan. */
-static uint32_t mix_voice_count[NPART];
 static void mix_part_run(track_t *t, uint32_t n, mixacc_t *mx, int32_t *b);
 /* (2.6) a preset's fade (voice.c sound_change): the whole part rendered with the sound it had, then the new one back.
- * The sound set aside per core, as part_buf is (a part may fade on each core at once) */
-static void mix_part(track_t *t, uint32_t n, mixacc_t *mx, int32_t *b)   /* into the set mx, through the scratch b */
+ * The sound set aside per core, as part_buf is (a part may fade on each core at once).
+ * Keep the wrapper separate: mix_units' profiling state need not stay live
+ * across its parameter copies and temporary morph/fade overlay. */
+static __attribute__((noinline)) void mix_part(track_t *t, uint32_t n, mixacc_t *mx, int32_t *b)   /* into the set mx, through the scratch b */
 {
     static int16_t pnew[2][P_COUNT] __attribute__((section(".lowram")));
     int16_t *pn = pnew[mx != &acc[0]];
@@ -759,7 +765,6 @@ static void mix_part_run(track_t *t, uint32_t n, mixacc_t *mx, int32_t *b)
     uint32_t i;
     int32_t g0 = 32767 - t->att, g1 = gain_next(t);
     uint32_t voices = track_render(t, b, n);
-    mix_voice_count[t-trk]=voices;
     int32_t filter = live_wah_filter(t, b, n); /* decay the follower even on silent/muted blocks */
     if (voices)
         t->tail = t->p[P_ITYPE] ? 64 : 16, t->ins_xt = 0;              /* blocks of DIST / INSERT state to run out after the last
@@ -785,7 +790,8 @@ static void mix_part_run(track_t *t, uint32_t n, mixacc_t *mx, int32_t *b)
         int32_t c = t->p[P_CHOR] * 258, d = send_thr(t->p[P_DLY] * 258, thr_dly), r = send_thr(t->p[P_REV] * 258, thr_rev);
         int32_t pk = t->peak;
         int32_t xmax = c > d ? c : d;
-        int32_t ga = mulq15(g0, duck.g0), gb = mulq15(g1, duck.g1);   /* mute x duck, ramped over the block */
+        int32_t ga = g0, gb = g1;
+        if(!duck_bypass[t-trk]) {ga=mulq15(g0,duck.g0);gb=mulq15(g1,duck.g1);}
         xmax = 0x7FFFFFFF / ((xmax > r ? xmax : r) | 1);   /* sends: loud chords at a high LEVEL */
         track_dist(t, b, n);
         if (t->p[P_ITYPE] | t->ins_run) {
@@ -912,6 +918,33 @@ static void djf_process(int32_t *l, int32_t *r, uint32_t n)
 #define U_DRUMS (1u << NPART)
 #define U_ALL ((2u << NPART) - 1u)
 
+/* Each unit writes its own cell; the next block reads only after both cores
+ * joined. Current activity, not last block's render count, also covers notes
+ * adopted or started by events_block immediately before partitioning. */
+static uint32_t mix_active(const track_t *t)
+{
+    uint32_t n=0;
+    for(uint32_t i=0;i<NVOICE;i++)n+=t->v[i].active!=0;
+    return n;
+}
+static struct { uint32_t ticks, identity, voices; } unit_time[NTRK];
+static uint8_t unit_last_mask;
+static uint32_t unit_identity(const track_t *t)
+{
+    uint32_t fade=t->xf_on && t->xf;
+    return t->engine | (uint32_t)t->preset<<8 |
+        (uint32_t)(uint8_t)(fade?t->pe_old[0]:t->p[P_E0])<<16 | fade<<24;
+}
+static void unit_time_set(uint32_t k,uint32_t start,uint32_t voices,uint32_t identity)
+{
+    uint32_t elapsed=cpu1_ticks()-start;
+    /* A stopped host timer and implausible interrupted samples are not cost
+     * measurements. Unsigned subtraction deliberately handles timer wrap. */
+    unit_time[k].ticks=elapsed && elapsed<CPU1_TICKS_PER_US*10000u?elapsed:0;
+    unit_time[k].voices=voices;
+    unit_time[k].identity=identity;
+}
+
 /* the drum track's INSERT (2.6): its left, right and the two sends, each through its own state, the same settings */
 static void drum_insert(int32_t *l, int32_t *r, int32_t *v, int32_t *d, uint32_t n)
 {
@@ -963,12 +996,19 @@ static void mix_drums(uint32_t n, mixacc_t *mx)
 /* the units of mask into the set mx, in their order */
 static void mix_units(uint32_t mask, uint32_t n, mixacc_t *mx, int32_t *scratch)
 {
-    uint32_t k;
+    uint32_t k, profile=cpu1_units<0 && cpu1_on();
     for (k = 0; k < NPART; k++)
-        if (mask & (1u << k))
+        if (mask & (1u << k)) {
+            uint32_t count=0, identity=0, start=0;
+            if(profile) {count=mix_active(&trk[k]);identity=unit_identity(&trk[k]);start=cpu1_ticks();}
             mix_part(&trk[k], n, mx, scratch);
-    if (mask & U_DRUMS)
+            if(profile)unit_time_set(k,start,count,identity);
+        }
+    if (mask & U_DRUMS) {
+        uint32_t start=profile?cpu1_ticks():0;
         mix_drums(n, mx);
+        if(profile)unit_time_set(NPART,start,1,0);
+    }
 }
 
 /* the load figures: core 1's time in its job and core 0's time waiting for it, in ticks over a half (cpu1.h
@@ -992,13 +1032,33 @@ static void cpu1_units_job(uint32_t arg)                /* core 1's job: the uni
     cpu1_job_ticks += cpu1_ticks() - t0;
 }
 
-/* Select the estimated heaviest thread-safe synth part. Put drums beside the
- * lighter synth workload, rather than always sharing the worker. Manual masks
- * and the shared-state exclusions remain independent of automatic balancing. */
+/* Bound the partition search's register lifetime separately from eligibility
+ * and profile validation. There are only four render units. */
+static __attribute__((noinline)) uint32_t unit_partition(uint32_t mask,const uint32_t *cost)
+{
+    uint32_t all=0, peak=~0u, chosen=0, previous=~0u;
+    for(uint32_t k=0;k<NTRK;k++)all+=cost[k];
+    for(uint32_t m=0;m<=U_ALL;m++)if(!(m&~mask)) {
+        uint32_t worker=0;
+        for(uint32_t k=0;k<NTRK;k++)if(m&(1u<<k))worker+=cost[k];
+        uint32_t main=all-worker, p=worker>main?worker:main;
+        if(m==unit_last_mask)previous=p;
+        if(p<peak) {peak=p;chosen=m;}
+    }
+    /* Keep a legal split within 3% of the best: measurement noise should not
+     * bounce tracks between cores, but a clear improvement wins. */
+    if(previous!=~0u && previous-peak<=previous/32u)chosen=unit_last_mask;
+    unit_last_mask=(uint8_t)chosen;
+    return chosen;
+}
+
+/* Use measured whole-unit work to balance every legal subset. Until a target
+ * timer has supplied measurements, retain the estimated split. Manual masks
+ * and shared-state exclusions remain independent of automatic balancing. */
 static __attribute__((noinline)) uint32_t units_split(void)
 {
-    /* Relative work from the preceding block, not measured deadlines. Count
-     * rendered tails and prefer the last eligible part on equal estimates. */
+    /* Startup/invalid-profile fallback. Current active tails count too; prefer
+     * the last eligible part on equal estimates, as the original split did. */
     static const uint8_t weight[NENGINES] = {2,2,3,1,2,3,3,3,6,6,5,2
 #if FELUCCA_SLICE
         ,3
@@ -1006,13 +1066,26 @@ static __attribute__((noinline)) uint32_t units_split(void)
     };
     uint32_t best=0, score=0, total=0;
     uint32_t mask=cpu1_units<0?U_ALL:(uint32_t)cpu1_units&U_ALL;
-    uint32_t nform=0;
+    uint32_t nform=0, active[NPART], cost[NTRK], measured=0, ready=1;
+    if(cpu1_units>=0) {
+        memset(unit_time,0,sizeof unit_time);
+        unit_last_mask=0;
+    }
     if (!mask) return 0;
-    for(uint32_t k=0;k<NPART;k++)nform+=ENGINES[trk[k].engine]==&ENG_FORMANT;
+    for(uint32_t k=0;k<NPART;k++) {
+        active[k]=mix_active(&trk[k]);
+        nform+=active[k] && ENGINES[trk[k].engine]==&ENG_FORMANT;
+    }
     for(uint32_t k=0;k<NPART;k++) {
         const track_t *t=&trk[k];const engine_t *e=ENGINES[t->engine];
-        uint32_t work=mix_voice_count[k]*weight[t->engine];
+        uint32_t work=active[k]*weight[t->engine];
         total+=work; /* Include ineligible parts: they still occupy core 0. */
+        cost[k]=(work+1u)*256u;
+        if(unit_time[k].ticks && unit_time[k].identity==unit_identity(t) &&
+           (!active[k] || unit_time[k].voices)) {
+            cost[k]=unit_time[k].ticks*(active[k]+1u)/(unit_time[k].voices+1u);
+            measured=1;
+        } else if(active[k])ready=0;
         uint32_t bit=1u<<k, fade=t->xf_on && t->xf;
         const int16_t *p=fade && t->pold?t->p_old:t->p;
         if(!(mask&bit))continue;
@@ -1027,7 +1100,11 @@ static __attribute__((noinline)) uint32_t units_split(void)
             if(work>=score) {best=bit;score=work;}
         }
     }
-    if(cpu1_units<0)mask=best|((!score || total-score>score)?mask&U_DRUMS:0u);
+    if(cpu1_units<0) {
+        if(!measured || !ready)return best|((!score || total-score>score)?mask&U_DRUMS:0u);
+        cost[NPART]=unit_time[NPART].ticks?unit_time[NPART].ticks:256u;
+        mask=unit_partition(mask,cost);
+    }
     return mask;
 }
 
@@ -1279,12 +1356,26 @@ static void texture_mix(int32_t *l, int32_t *r, uint32_t n)
         texture_reset(src);                             /* faded out: the new source from rest */
 }
 
+static __attribute__((noinline)) void master_limit_output(lim_t *state, int32_t *l, int32_t *r, int32_t *out, uint32_t n)
+{
+    lim_block(state, l, r, n);
+    for (uint32_t i = 0; i < n; i++) {
+        out[2u * i] = knee(l[i]);
+        out[2u * i + 1u] = knee(r[i]);
+    }
+}
+
+static __attribute__((noinline)) void mix_acc_clear(mixacc_t *mx, uint32_t n)
+{
+    for (uint32_t i = 0; i < n; i++)
+        mx->l[i] = mx->r[i] = mx->sc[i] = mx->sd[i] = mx->sr[i] = 0;
+}
+
 static void mix_block(int32_t *out, uint32_t n)
 {
     uint32_t i, c1;
     int32_t m0, m1, *mix_l = acc[0].l, *mix_r = acc[0].r;
-    for (i = 0; i < n; i++)
-        acc[0].l[i] = acc[0].r[i] = acc[0].sc[i] = acc[0].sd[i] = acc[0].sr[i] = 0;
+    mix_acc_clear(&acc[0], n);
     {   /* REV / ECHO THROW (2.6): the sends glide to full and back over ~12 ms (17 blocks); set before the hand-off:
          * the units on both cores read them (send_thr) */
         uint32_t q = thr_req | thr_ed;                  /* (2.7: the editor's LIVE page too) */
@@ -1295,8 +1386,7 @@ static void mix_block(int32_t *out, uint32_t n)
     duck_block(musical_advance);
     c1 = cpu1_on() ? units_split() : 0;                 /* core 1's units this block */
     if (c1) {
-        for (i = 0; i < n; i++)
-            acc[1].l[i] = acc[1].r[i] = acc[1].sc[i] = acc[1].sd[i] = acc[1].sr[i] = 0;
+        mix_acc_clear(&acc[1], n);
         if (!cpu1_run(cpu1_units_job, c1 | n << 8))
             c1 = 0;
     }
@@ -1310,9 +1400,10 @@ static void mix_block(int32_t *out, uint32_t n)
         cpu1_wait_ticks += cpu1_ticks() - w0;
         if (late) {                                     /* core 1 did not finish in time: held from now on (cpu1.h);
                                                          * its units here, once (what it half did is this block's glitch) */
-            for (i = 0; i < n; i++)
-                acc[1].l[i] = acc[1].r[i] = acc[1].sc[i] = acc[1].sd[i] = acc[1].sr[i] = 0;
+            mix_acc_clear(&acc[1], n);
             cpu1_units_job(c1 | n << 8);
+            memset(unit_time,0,sizeof unit_time);
+            unit_last_mask=0;                           /* discard partial/failed-worker timings */
         }
         for (i = 0; i < n; i++) {
             acc[0].l[i] += acc[1].l[i];
@@ -1356,22 +1447,14 @@ static void mix_block(int32_t *out, uint32_t n)
                 master_pre_usb(&ul[i], &ur[i]);
             }
         }
-        lim_block(&lim_dac, ol, orr, n);
-        for (i = 0; i < n; i++) {
-            out[2u * i] = knee(ol[i]);
-            out[2u * i + 1u] = knee(orr[i]);
-        }
+        master_limit_output(&lim_dac, ol, orr, out, n);
         if (usb_full_now && !usb_was) {                 /* (a new recording: no old block in its delay) */
             memset(&lim_usb, 0, sizeof lim_usb);
             lim_usb.env = LIM_T, lim_usb.g = 32768, lim_usb.hold = 0;
         }
         usb_was = usb_full_now;
         if (usb_full_now) {
-            lim_block(&lim_usb, ul, ur, n);
-            for (i = 0; i < n; i++) {
-                usb_out[2u * i] = knee(ul[i]);
-                usb_out[2u * i + 1u] = knee(ur[i]);
-            }
+            master_limit_output(&lim_usb, ul, ur, usb_out, n);
         }
     }
 }

@@ -91,25 +91,40 @@ static void fm1_irq_enable_all(void)
 /* called from fm1_fatal_common (fm1_vec.S) with the saved frame:
  * f[0..15] r0..r15, f[16] reti, f[17] rete, f[18] retx, f[19] stub+6,
  * f[20] psr, f[21] icfg, f[22] usp, f[23] ssp, f[24] sp, f[25] interrupted rets */
+extern uint32_t _c1_ustack[], _c1_sstack_top[];  /* fm1_cpu1.S (SLOOP 2.8.3, from X0X 20353c9) */
 void fm1_fault_c(uint32_t *f)
 {
     static volatile uint32_t in_fault;
-    uint32_t i, count = fm1_crash.magic == FM1_CRASH_MAGIC ? fm1_crash.count : 0;
-    uint32_t early = fm1_crash.magic == FM1_CRASH_MAGIC ? fm1_crash.early : 0;
-    fm1_irq_off();
-    if (in_fault++)                           /* fault while reporting: reset at once */
-        *(volatile uint32_t *)0x10000u |= 1u << 4;
+    uint32_t i, count, early;
+    uint32_t core1 = f[24] >= (uint32_t)(uintptr_t)_c1_ustack && f[24] <= (uint32_t)(uintptr_t)_c1_sstack_top;
+    count = fm1_crash.magic == FM1_CRASH_MAGIC ? fm1_crash.count : 0;
+    early = fm1_crash.magic == FM1_CRASH_MAGIC ? fm1_crash.early : 0;
+    if (!core1) {
+        fm1_irq_off();
+        if (in_fault++)                       /* fault while reporting: reset at once */
+            *(volatile uint32_t *)0x10000u |= 1u << 4;
+    }
+    /* Both cores write the same record fields. Share this cold body so the
+     * worker hardening does not duplicate the existing crash recorder. */
     fm1_crash.magic = FM1_CRASH_MAGIC;
     fm1_crash.count = count + 1u;
     fm1_crash.vec = (f[19] - (uint32_t)(uintptr_t)fm1_fatal_stubs) / 6u - 1u;
     fm1_crash.pc = f[16];
     fm1_crash.rets = f[25];
-    fm1_crash.emu = FM1_EMU_MSG;
     fm1_crash.dbg = FM1_DBG_MSG;
     fm1_crash.sp = f[24];
     fm1_crash.psr = f[20];
-    fm1_crash.icfg = f[21];
     fm1_crash.uptime_ms = *(volatile uint32_t *)0x10804u / 24000u;   /* TIMER4 since boot */
+    if (core1) {
+        /* Record and park only: reporting/resetting here would hold this core
+         * itself and freeze the device. Core 0 times out and continues alone. */
+        fm1_crash.emu = 0xC1u;
+        __asm__ volatile("csync" ::: "memory");
+        for (;;)
+            ;
+    }
+    fm1_crash.emu = FM1_EMU_MSG;
+    fm1_crash.icfg = f[21];
     for (i = 0; i < 4u; i++)
         fm1_crash.etm[i] = FM1_ETM_PC(i);
     fm1_crash.early = fm1_crash.uptime_ms < 3000u ? early + 1u : 0u;

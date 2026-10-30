@@ -10,6 +10,8 @@ public sealed partial class EditorClient
         if (info.ProtocolVersion < 15) throw new NotSupportedException("Update SLOOP firmware to browse its groove bank.");
         var caps = await RequestAsync(87, [0], cancellationToken: token).ConfigureAwait(false);
         var a = caps.Arguments;
+        if (a.Length == 2 && a[0] == 0 && a[1] == 2)
+            throw new NotSupportedException("This firmware keeps groove browsing on the FM-1. Use its GROOVE page.");
         if (a.Length != 5 || a[0] != 0 || a[1] != 0 || a[2] != 1 || a[3] is < 1 or > 24 || a[4] != 1)
             throw new FormatException("Unsupported drum groove bank capabilities.");
         var entries = DecodeDrumGrooves(await RequestAsync(87, [1], cancellationToken: token).ConfigureAwait(false));

@@ -301,6 +301,11 @@ UI_SMALL static int32_t accel(uint32_t role, int32_t s, int32_t range)
     return s * (int32_t)m;
 }
 
+UI_SMALL static int32_t param_turn(const param_desc_t *d, int32_t v, uint32_t slot, int32_t steps)
+{
+    return clamp(v + accel(EN_K1 + slot, steps, d->names ? 0 : d->max - d->min), d->min, d->max);
+}
+
 /* TRACKS page: KNOB 1 SWING (the groove of every track, MPC 50..75 %), 2 LEVEL (0 = mute; the drum
  * track: GLO > DRUMS LEVEL), 3 LEN of its pattern, 4 PAN. A track muted with MUTE (GLO + key, the
  * editor): the first turn of KNOB 2 unmutes it */
@@ -331,7 +336,7 @@ UI_SMALL static void tracks_edit(uint32_t slot, int32_t steps)
         d = &TP[P_PAN];
         break;
     }
-    *vp = (int16_t)clamp(*vp + accel(EN_K1 + slot, steps, d->names ? 0 : d->max - d->min), d->min, d->max);
+    *vp = (int16_t)param_turn(d, *vp, slot, steps);
     if (!is_drum(t) && (vp == &t->p[P_LEVEL] || vp == &t->p[P_PAN]))
         ml_knob(t, vp == &t->p[P_LEVEL] ? P_LEVEL : P_PAN);   /* MIDI LEARN: LEVEL, PAN (2.6) */
 }
@@ -495,6 +500,7 @@ UI_SMALL static void project_new(void)
                                                                  * FM-1's settings: GLO > MIDI 2.6) */
             song.g[i] = GP[i].def;
     song.solo = 0;
+    memset(duck_bypass,0,sizeof duck_bypass);
     song.octave = 0;
     sync_reload = 1;
     ui.force = 1;
@@ -569,8 +575,9 @@ UI_SMALL static void edit_param(uint32_t slot, int32_t steps)
     if (!d || !vp || d->max == d->min)
         return;
     v = d->names == ESYNC_NAMES || d->names == N_IBITS || d->names == N_IRATE ? names_turn(d, *vp, steps)   /* (a name a detent) */
-                                    : clamp(*vp + accel(EN_K1 + slot, steps, d->names ? 0 : d->max - d->min), d->min, d->max);
+                                    : param_turn(d, *vp, slot, steps);
     *vp = (int16_t)v;
+    if(d==&DUCK_TARGET)return;
     if(pg->scope==SC_EVOLVE && id>=4u) {
         int16_t *other=vp+(id==4u?1:-1);
         if(id==4u?*other<v:*other>v)*other=(int16_t)v;
@@ -1421,11 +1428,12 @@ UI_SMALL static void ui_input(void)
         if (ui.home) {
             int16_t *vp;
             const param_desc_t *d = home_param(k, &vp);
-            *vp = (int16_t)clamp(*vp + accel(EN_K1 + k, s, d->names ? 0 : d->max - d->min), d->min, d->max);   /* (a list: no jumps) */
-            if (!is_drum(TSEL) && p_lockable(ENGINES[TSEL->eng_req % NENGINES]->macro[k & 3u]))
-                ui.lock_par = ENGINES[TSEL->eng_req % NENGINES]->macro[k & 3u];
-            if (!is_drum(TSEL))
-                ml_knob(TSEL, ENGINES[TSEL->eng_req % NENGINES]->macro[k & 3u]);   /* MIDI LEARN (2.6) */
+            *vp = (int16_t)param_turn(d, *vp, k, s);   /* (a list: no jumps) */
+            if (!is_drum(TSEL)) {
+                uint32_t id=ENGINES[TSEL->eng_req % NENGINES]->macro[k & 3u];
+                if(p_lockable(id))ui.lock_par=(uint8_t)id;
+                ml_knob(TSEL,id);
+            }   /* MIDI LEARN (2.6) */
         } else {
             edit_param(k, s);
         }

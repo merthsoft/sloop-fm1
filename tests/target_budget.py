@@ -3,7 +3,7 @@
 # Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments
 """Target-side cost estimate of the hot DSP code, from the pi32v2 objdump listing tools/build.py writes
 (build/felucca.dis). For each engine's render function and the audio ISR: the instructions
-inside loops (every address range closed by a backward branch: the per-sample loops and what they
+inside loops (cyclic backward branches: the per-sample loops and what they
 contain), and the hardware divides and calls in them. cost = the loop instructions, each weighted 4 per
 level of nesting (an inner loop runs several times per sample) and 1 + 8 for a divide (many cycles). A static count, not a cycle count: it changes only when the compiled code changes,
 so it is exact run to run, and it catches a render loop that grew (more work per sample, a new divide,
@@ -36,7 +36,7 @@ TARGET = re.compile(r"goto -?\d+ <[^>]*: ([0-9a-f]+) >")
 def functions(path):
     """{name: [(addr, text)]}: a function runs to the next label not starting with '.' (the compiler's
     jump-table labels are inside functions); jump-table data ('< n : 0x.. >') is left out"""
-    out, cur = {}, None
+    out, cur, predicated = {}, None, 0
     with open(path) as f:
         for line in f:
             m = LABEL.match(line.strip())
@@ -44,23 +44,77 @@ def functions(path):
                 name = m.group(1)
                 if not name.startswith("."):
                     cur = out.setdefault(name, []) if name in FUNCS else None
+                    predicated = 0
                 continue
             m = INSN.match(line)
             if cur is not None and m and not m.group(3).lstrip().startswith("<"):
-                cur.append((int(m.group(1), 16), m.group(3).strip()))
+                text = m.group(3).strip()
+                # pi32v2 emits predicated instruction blocks as `if (...) {`
+                # followed by ordinary-looking instructions. Their return or
+                # goto must retain the false-condition fallthrough in the CFG.
+                if predicated and (text.startswith("goto ") or is_return(text)):
+                    text = "if (predicated) " + text
+                cur.append((int(m.group(1), 16), text))
+                if text.startswith(("if ", "ifs ")) and text.endswith("{"):
+                    predicated += 1
+            elif cur is not None and line.strip().startswith("}"):
+                if "else {" not in line:
+                    predicated = max(0, predicated - 1)
     return out
+
+
+def is_return(text):
+    return text == "rts" or text.startswith("{pc,") or text.startswith("{pc}")
+
+
+def cyclic_heads(insns):
+    """Reject backward cold-block rejoins that are not cycles.
+
+    A backwards layout is not enough: execution must reach its source again
+    from its destination. Keep the historical span weighting after this test.
+    Opaque computed branches conservatively reach every node rather than hide
+    a genuine loop. Calls return to the following instruction.
+    """
+    addresses = {a: i for i, (a, _) in enumerate(insns)}
+    successors = []
+    for i, (_, text) in enumerate(insns):
+        edge = TARGET.search(text)
+        target = addresses.get(int(edge.group(1), 16)) if edge else None
+        following = [i + 1] if i + 1 < len(insns) else []
+        if is_return(text):
+            successors.append([])
+        elif edge:
+            successors.append(([target] if target is not None else []) +
+                              ([] if text.startswith("goto ") else following))
+        elif "goto " in text or "pc = " in text:
+            successors.append(range(len(insns)))
+        else:
+            successors.append(following)
+
+    heads = {}
+    for i, (address, text) in enumerate(insns):
+        edge = TARGET.search(text)
+        if not edge:
+            continue
+        head = int(edge.group(1), 16)
+        if head not in addresses or head >= address:
+            continue
+        pending, seen = [addresses[head]], set()
+        while pending:
+            node = pending.pop()
+            if node == i:
+                heads[head] = max(heads.get(head, address), address)
+                break
+            if node not in seen:
+                seen.add(node)
+                pending.extend(successors[node])
+    return heads
 
 
 def cost(insns):
     """loops: one span per loop head (the farthest backward branch to it); an instruction inside d
     spans weighs NEST ** (d - 1) (an inner loop runs several times per pass of the outer one)"""
-    lo = insns[0][0]
-    heads = {}
-    for a, t in insns:
-        m = TARGET.search(t)
-        if m and lo <= int(m.group(1), 16) < a:
-            h = int(m.group(1), 16)
-            heads[h] = max(heads.get(h, a), a)
+    heads = cyclic_heads(insns)
     n = divs = calls = 0
     w = 0
     for a, t in insns:

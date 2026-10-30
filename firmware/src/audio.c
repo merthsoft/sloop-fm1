@@ -83,6 +83,11 @@ void fm1_alnk0_irq(void)                       /* via isr_alnk0 (hal/fm1_isr.S) 
             if (all / FM1_TICKS_PER_US > audio_wall_max) audio_wall_max = all / FM1_TICKS_PER_US;
 #endif
             us = (all - t5_nested_ticks) / FM1_TICKS_PER_US;
+            /* Full wall time, with a 25% reserve; the CPU display excludes nested work. */
+            if(all / FM1_TICKS_PER_US * 100u <= (HALF_FRAMES * 1000000u / FS) * 75u) {
+                if(cpu_recover_safe<FS*8u)cpu_recover_safe+=HALF_FRAMES;
+                else cpu_recover_backoff=0;
+            } else cpu_recover_safe=0;
             shed_over = (uint8_t)(shed_over << 1 | (all / FM1_TICKS_PER_US * 100u > (HALF_FRAMES * 1000000u / FS) * AUDIO_SHED_PERCENT));
         }
         if (us > audio_max_us)
@@ -90,8 +95,10 @@ void fm1_alnk0_irq(void)                       /* via isr_alnk0 (hal/fm1_isr.S) 
         if ((shed_over & 3u) == 3u)
             shed_req = 1;                               /* two in a row */
         song.cpu_q8 = (song.cpu_q8 * 15u + (us * 256u) / (HALF_FRAMES * 1000000u / FS)) / 16u;
-        if (fm1_audio_free_half() != half)
+        if (fm1_audio_free_half() != half) {
             felucca_dbg.late++;                         /* the DMA moved on while we rendered */
+            cpu_recover_safe=0;
+        }
         felucca_dbg.halves++;
         felucca_dbg.last_us = us;
         if (us > felucca_dbg.max_us)

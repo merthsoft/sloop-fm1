@@ -213,7 +213,21 @@ static void click_render(int32_t *ml, int32_t *mr, uint32_t n)
         click.env = 0;                                /* (-72 dB: done, about 100 ms) */
 }
 
-/* a synthesised voice: note on the 16 sounds snd (a factory kit, SYN1..4), the oldest voice stolen */
+/* Upstream 2.8.3: free slot, same sound, then oldest non-kick. */
+static voice_t *drum_pick(uint32_t note)
+{
+    voice_t *v=0;
+    uint32_t best=0xFFFFFFFFu;
+    for(uint32_t i=0;i<NDRUM;i++)if(!drums.v[i].active)return &drums.v[i];
+    for(uint32_t i=0;i<NDRUM;i++)if(drums.v[i].note==note)return &drums.v[i];
+    for(uint32_t i=0;i<NDRUM;i++) {
+        uint32_t kick=drums.v[i].note==35u || drums.v[i].note==36u;
+        uint32_t key=(kick?0x80000000u:0u)|(drums.v[i].age&0x7FFFFFFFu);
+        if(key<best){best=key;v=&drums.v[i];}
+    }
+    return v?v:&drums.v[0];
+}
+/* A synthesised voice: factory kits and editable SYN1..4 share allocation. */
 static void __attribute__((noinline)) drum_synth_on(uint32_t note, uint32_t vel, uint32_t kit, const dsnd_t *snd, uint32_t crush,
                                                     int tweak)
 {
@@ -225,14 +239,7 @@ static void __attribute__((noinline)) drum_synth_on(uint32_t note, uint32_t vel,
                 drums.v[i].active = 0;
                 drums.tail += drums.v[i].s[7];
             }
-    for (i = 0; i < NDRUM; i++) {
-        if (!drums.v[i].active) {
-            v = &drums.v[i];
-            break;
-        }
-        if (drums.v[i].age < v->age)
-            v = &drums.v[i];
-    }
+    v = drum_pick(note);
     if (v->active)
         drums.tail += v->s[7];
     i = (uint32_t)(v - drums.v);
@@ -279,8 +286,10 @@ static void drum_on(uint32_t note, uint32_t vel)
         drums.hits |= (uint16_t)(1u << lane_of_note(note));
         drums.hit_vel[lane_of_note(note)] = (uint8_t)clamp((int32_t)vel, 0, 127);
     }
-    if (note == 35u || note == 36u)
-        drums.kick = 1;                             /* (DUCK) */
+    /* Trigger by lane, before sample remapping; click/count-in never pump the parts. */
+    static const uint16_t duck_mask[4] = {3u, 0x104u, 0x107u, 0xFFFFu};
+    if (!DRUM_CLICK(note) && (duck_mask[song.g[G_DTRIG]] & (1u << lane_of_note(note))))
+        drums.kick = 1;                             /* selected DUCK source */
     if (kit >= DRUM_SYN) {                          /* SYN1..SYN4: your synthesised kit */
         const dsu_kit_t *u = dsu_kit(kit - DRUM_SYN);
         drum_synth_on(note, vel, kit, u->s, u->crush, 1);
@@ -320,14 +329,7 @@ static void drum_on(uint32_t note, uint32_t vel)
                 drums.v[i].active = 0;
                 drums.tail += drums.v[i].s[7];          /* fade what it was playing, not a step */
             }
-    for (i = 0; i < NDRUM; i++) {                   /* free voice, else the oldest */
-        if (!drums.v[i].active) {
-            v = &drums.v[i];
-            break;
-        }
-        if (drums.v[i].age < v->age)
-            v = &drums.v[i];
-    }
+    v = drum_pick(note);
     if (v->active)
         drums.tail += v->s[7];                      /* stolen voice: fade its last value */
     v->note = (uint8_t)note;

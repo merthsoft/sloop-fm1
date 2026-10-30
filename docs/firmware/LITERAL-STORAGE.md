@@ -9,11 +9,11 @@ removing instruments/features or adding decoding to audio playback.
 tools/pool_literals.py operates on the unlinked JieLi ELF32 object after preset
 probing/compilation and before final linking. Only .rodata.str1.1 object symbols
 are transformed. Complete bytes, sizes, terminators and embedded zeros are
-preserved. Longest roots are collected deterministically and grouped into at
+preserved. Longest roots are collected deterministically, then assigned in lexical order into at
 most 5,500 bytes main RAM, 2,500 bytes pool RAM, and the remaining flash literals.
-The selected roots are lexically sorted, then encoded with a shared byte-pair
-grammar before LZ4 packing. Unused high-byte values represent frequent adjacent
-pairs; original high bytes remain literals. Dictionary children always refer to
+The selected groups are laid out in reverse lexical order, then encoded with a shared byte-pair
+grammar before LZ4 packing. Unused high-byte and control-byte values represent frequent adjacent
+pairs; original bytes remain literals. Dictionary children always refer to
 older symbols, and generation caps depth for an eight-byte expansion stack.
 
 Each literal symbol points directly to its new pool offset. Existing relocations
@@ -47,6 +47,13 @@ larger RAM allocation is not adopted; this bounded variant preserves more main
 and pool margin. Current linked measurements are in HEADROOM-COMPARISON.md.
 
 ## Shared label grammar
+
+The grammar offers unused byte values 128–255 first, then unused control bytes
+1–31. Values already present anywhere in the original streams are never used as
+tokens; NUL remains literal. High tokens index the dictionary at `v-128`, low
+tokens at `v+127`, with explicit zero holes for unavailable codes. Encoder and
+decoder changes must land together. Restored RAM limits remain 5,500/2,500 B.
+The expanded token range is included in the [combined flash integration](FLASH-91-INTEGRATION.md).
 
 LZ4 first restores the shorter token stream at the start of its final destination.
 The grammar expands it backwards in place, right child before left. Every token

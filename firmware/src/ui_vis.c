@@ -260,9 +260,9 @@ UI_SMALL static void vis_scope(void)
             i0 = i;
             break;
         }
-    cv_rect(0, 120, 240, 1, C_LINE);
+    cv_rect_c_line(0, 120, 240, 1);
     for (i = 0; i < 240u; i += 40u)
-        cv_rect((int32_t)i, 116, 1, 9, C_LINE);
+        cv_rect_c_line((int32_t)i, 116, 1, 9);
     for (i = 0; i < 240u; i++) {
         int32_t y = 120 - vis_l[i0 + i] * 100 / (vs.scale ? vs.scale : 1);
         y = clamp(y, 2, 237);
@@ -281,7 +281,7 @@ UI_SMALL static void vis_spectrum(void)
         int32_t x0 = 4 + (int32_t)k * 7, h = vs.bar[k] * 210 / 1000, y, cy = 232 - vs.cap[k] * 210 / 1000;
         for (y = 232; y > 232 - h; y -= 4)          /* LED segments */
             cv_rect(x0, y - 2, 5, 3, TE_COL[k / 8u]);
-        cv_rect(x0, cy - 1, 5, 2, C_WHITE);
+        cv_rect_c_white(x0, cy - 1, 5, 2);
     }
 }
 UI_SMALL static uint16_t vis_heat(uint32_t v)               /* 0..255: black, blue, green, yellow, white */
@@ -307,10 +307,10 @@ UI_SMALL static void vis_spectrogram(void)
             if (vis_sg[r][c] > 8u)
                 cv_rect((int32_t)c * 5, y, 5, 3, vis_heat(vis_sg[r][c]));
     }
-    cv_text(2, 2, &FONT_S, "40", C_DIM);
-    cv_text(30, 2, &FONT_S, "200", C_DIM);
-    cv_text(132, 2, &FONT_S, "1k", C_DIM);
-    cv_text(196, 2, &FONT_S, "4k", C_DIM);
+    cv_text_c_dim(2, 2, "40");
+    cv_text_c_dim(30, 2, "200");
+    cv_text_c_dim(132, 2, "1k");
+    cv_text_c_dim(196, 2, "4k");
 }
 UI_SMALL static void vis_meters(void)
 {
@@ -326,7 +326,7 @@ UI_SMALL static void vis_meters(void)
                 col = C_WHITE;
             cv_rect(x0, y - 5, 35, 6, col);
         }
-        cv_text(x0 + 13, 216, &FONT_S, lab, c);
+        cv_text_s(x0 + 13, 216, lab, c);
     }
 }
 /* the logo (tools/gen_logo.py at 0.86, centred on 120, 112), alive: the dial is the master, the sail's four
@@ -341,30 +341,30 @@ UI_SMALL static void vis_trails(void)
 {
     uint32_t i, t, n;
     for (n = 0; n < 128u; n += 12u)
-        cv_rect(0, 216 - (int32_t)n * 3 / 2, 240, 1, C_LINE);
+        cv_rect_c_line(0, 216 - (int32_t)n * 3 / 2, 240, 1);
     for (i = 0; i < 48u; i++)
         for (t = 0; t < 3u; t++)
             for (n = 0; n < 128u; n++)
                 if ((vis_notes[(vis_notes_head + 1u + i) % 48u][t][n >> 5] >> (n & 31u)) & 1u)
                     cv_rect((int32_t)i * 5 + (int32_t)t, 216 - (int32_t)n * 3 / 2, 5, 2, TE_COL[t]);
-    cv_rect(239, 24, 1, 194, C_WHITE);
-    cv_rect(0, 223, 240, 16, C_BLACK);
+    cv_rect_c_white(239, 24, 1, 194);
+    cv_rect_c_black(0, 223, 240, 16);
     for (i = 0; i < 48u; i++)
         for (n = 0; n < 16u; n++)
             if ((vis_drum_notes[(vis_notes_head + 1u + i) % 48u] >> n) & 1u)
-                cv_rect((int32_t)i * 5, 223 + (int32_t)n, 5, 1, C_WHITE);
+                cv_rect_c_white((int32_t)i * 5, 223 + (int32_t)n, 5, 1);
 }
 UI_SMALL static void vis_groove(void)
 {
     uint32_t t, s;
-    cv_text(8, 24, &FONT_S, "GRID / SWING / NUDGE", C_DIM);
+    cv_text_c_dim(8, 24, "GRID / SWING / NUDGE");
     for (t = 0; t < 4u; t++) {
         track_t *p = &trk[t];
         uint32_t into,slen,len=trk_len(p),abs=trk_grid(p,&into,&slen),at=abs%len,base=at/8u*8u;
         int32_t y = 65 + (int32_t)t * 48;
         cv_rect(8, y + 15, 224, 1, TE_DIM[t]);
         /* Grid first: a shifted hit may land on the next cell's grid line. */
-        for(s=0;s<8u;s++) cv_rect(14+(int32_t)s*28,y-8,1,30,C_LINE);
+        for(s=0;s<8u;s++) cv_rect_c_line(14+(int32_t)s*28,y-8,1,30);
         for (s = 0; s < 8u; s++) {
             uint32_t idx = (base + s) % len, k, rats = 1, velocity = 100;
             int32_t x = 14 + (int32_t)s * 28, shift = p->micro[idx] * 28 / 64;
@@ -397,20 +397,20 @@ UI_SMALL static void vis_journey(void)
     int running = song.playing && (chain_n || arrangement_clock.running);
     char lab[24];
     if (n > ARR_STEPS) n = ARR_STEPS;
-    cv_text(14, 30, &FONT_S, chain_n ? "QUICK CHAIN" : "SONG ORDER", C_DIM);
+    cv_text_c_dim(14, 30, chain_n ? "QUICK CHAIN" : "SONG ORDER");
     for (i = 0; i < n; i++) {
         uint32_t sec = chain_n ? chain_sec[i % CHAIN_MAX] & 3u : arrangement.entry[i].scene & 3u;
         int32_t x = 12 + (int32_t)(i % 4u) * 57, y = 65 + (int32_t)(i / 4u) * 32;
         char s[2] = {(char)('A' + sec), 0};
         cv_rect(x, y, 50, 25, i == at ? TE_COL[sec] : TE_DIM[sec]);
-        cv_text(x + 20, y + 4, &FONT_S, s, i == at ? C_BLACK : C_WHITE);
+        cv_text_s(x + 20, y + 4, s, i == at ? C_BLACK : C_WHITE);
     }
     if (running) {
         fmt_int(lab, (int32_t)(elapsed < bars ? bars - elapsed : 0));
         str_cpy(lab + str_len(lab), " BARS LEFT", 12);
     } else str_cpy(lab, "READY", sizeof lab);
-    cv_text(14, 205, &FONT_S, lab, C_WHITE);
-    cv_rect(12, 230, 216, 4, C_LINE);
+    cv_text_c_white(14, 205, lab);
+    cv_rect_c_line(12, 230, 216, 4);
     cv_rect(12, 230, (int32_t)(elapsed < bars ? elapsed : bars) * 216 / (int32_t)(bars ? bars : 1u), 4, TE_COL[0]);
 }
 /* the visualiser, every other frame: the update, then both bands */
@@ -425,7 +425,7 @@ UI_SMALL static void vis_draw(void)
     }
     vis_update();
     for (pass = 0; pass < 2u; pass++) {
-        cv_begin(240, 120, C_BLACK);
+        cv_band(120);
         cv_oy = -(int32_t)(pass * 120u);
         switch (vis_style % VIS_N) {
         case VIS_SCOPE: vis_scope(); break;
@@ -440,16 +440,16 @@ UI_SMALL static void vis_draw(void)
         if (!pass && (vis_name_t || ui.msg_t)) {    /* the style's name a second (or a message) */
             char n[8];
             const char *s = ui.msg_t ? ui.msg : VIS_NAME[vis_style % VIS_N];
-            cv_rect(0, 0, 240, 20, C_BLACK);
-            cv_text(120 - text_w(&FONT_S, s) / 2, 2, &FONT_S, s, C_WHITE);
+            cv_rect_c_black(0, 0, 240, 20);
+            cv_text_c_white(120 - text_w_s( s) / 2, 2, s);
             if (!ui.msg_t) {
                 fmt_int(n, (int32_t)(vis_style % VIS_N) + 1);
                 str_cpy(n + str_len(n), "/7", 3);
-                cv_text(4, 2, &FONT_S, n, C_DIM);
+                cv_text_c_dim(4, 2, n);
             }
         }
         cv_oy = 0;
-        cv_blit(0, pass * 120u);
+        cv_band_blit(pass * 120u);
     }
     if (vis_name_t)
         vis_name_t--;

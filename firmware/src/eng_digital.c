@@ -155,6 +155,9 @@ static const preset_t DIGITAL_PRESETS[] = {
     /* Reed interpretations: 2:1 modulation emphasizes odd carrier harmonics. */
     {"CLARINET", {0, 2, 1, 1, 18, 64, 0, 0}, {24, 60, 105, 26}, 0, 1, FX(0, 0, 0, 18)},
     {"BASSOON", {2, 2, 1, 2, 46, 100, 4, 0}, {10, 65, 100, 24}, 0, 1, FX(0, 0, 0, 18)},
+    /* Mega Drive-inspired four-operator colors, not a YM2612 emulation. */
+    {"MD BASS", {0,1,1,1,86,20,22,0}, {0,68,66,18}, 0,1, FX(0,0,0,6), XP(P_TRANS+1,-12)},
+    {"MD BRASS", {4,1,1,1,52,68,15,0}, {6,65,100,30}, 0,0, FX(0,8,8,14), XP(P_LD_PIT+1,1,P_LRATE+1,78)},
 };
 #endif
 

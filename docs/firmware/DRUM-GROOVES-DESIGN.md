@@ -18,7 +18,9 @@ Lifecycle integration: `proj_apply` invalidates `undo.valid` and the UI project 
 
 Verification: `tests/drum_grooves_test.c` uses the real UI harness and project serializer. It checks template bounds, accent and known kick/snare positions, browsing/cancel/running refusal, record arm and pending start refusal, replacement cleanup, full undo/redo restoration, synth/sound preservation, ordinary project roundtrip and framebuffer bounds for every starter. `tests/run_drum_grooves.sh` runs it with a host compiler. The existing `ui_pages_test.c` suite checks retained drum gestures and 20,000 frames of randomized UI use.
 
-## Phone command 87, schema 1
+## Retired phone command 87, schema 1
+
+The handler described below is historical and has been removed from production to fund configurable ducking. It now replies `[op,2]` (unavailable), with op 127 if omitted. Android playing and sampling, all native grooves, hardware preview/apply and undo remain available. The former dedicated firmware protocol test was retired with the handler; native groove tests remain, and the editor/storage integration test checks the unavailable response without writes.
 
 `editor_drum_grooves.c` exposes the same ROM bank and `drum_groove_apply`, independently of selected track. Parent integration includes it after editor reply helpers and calls `ed_drum_grooves_handle(cmd, a, na)` before ordinary dispatch. It returns 1 if command 87 was handled, including malformed requests; ordinary editor framing/send remains in `editor.c`.
 

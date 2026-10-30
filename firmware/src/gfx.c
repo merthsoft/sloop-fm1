@@ -271,6 +271,22 @@ static uint32_t glyph(const felucca_font_t *f, uint32_t ch)
     return ch - f->first;
 }
 
+UI_SMALL static void cv_band(uint32_t h) { cv_begin(240,h,C_BLACK); }
+UI_SMALL static void cv_band_blit(uint32_t y) { cv_blit(0,y); }
+
+UI_SMALL static void cv_rect_c_black(int32_t a,int32_t b,int32_t c,int32_t d) { cv_rect(a,b,c,d,C_BLACK); }
+UI_SMALL static void cv_rect_c_white(int32_t a,int32_t b,int32_t c,int32_t d) { cv_rect(a,b,c,d,C_WHITE); }
+UI_SMALL static void cv_rect_c_line(int32_t a,int32_t b,int32_t c,int32_t d) { cv_rect(a,b,c,d,C_LINE); }
+UI_SMALL static void cv_rect_c_dim(int32_t a,int32_t b,int32_t c,int32_t d) { cv_rect(a,b,c,d,C_DIM); }
+UI_SMALL static void cv_rect_c_gray(int32_t a,int32_t b,int32_t c,int32_t d) { cv_rect(a,b,c,d,C_GRAY); }
+UI_SMALL static void cv_rect_te_g1(int32_t a,int32_t b,int32_t c,int32_t d) { cv_rect(a,b,c,d,TE_G1); }
+UI_SMALL static void cv_rect_te_g2(int32_t a,int32_t b,int32_t c,int32_t d) { cv_rect(a,b,c,d,TE_G2); }
+UI_SMALL static void cv_line_c_white(int32_t a,int32_t b,int32_t c,int32_t d) { cv_line(a,b,c,d,C_WHITE); }
+UI_SMALL static void cv_line_c_line(int32_t a,int32_t b,int32_t c,int32_t d) { cv_line(a,b,c,d,C_LINE); }
+UI_SMALL static void cv_line_c_dim(int32_t a,int32_t b,int32_t c,int32_t d) { cv_line(a,b,c,d,C_DIM); }
+UI_SMALL static void cv_line_c_gray(int32_t a,int32_t b,int32_t c,int32_t d) { cv_line(a,b,c,d,C_GRAY); }
+UI_SMALL static void cv_line_te_g2(int32_t a,int32_t b,int32_t c,int32_t d) { cv_line(a,b,c,d,TE_G2); }
+
 /* text, alpha-blended onto the background with colour c; returns the end x */
 static int32_t cv_text(int32_t x, int32_t y, const felucca_font_t *f, const char *s, uint16_t c)
 {
@@ -307,6 +323,25 @@ static int32_t cv_text(int32_t x, int32_t y, const felucca_font_t *f, const char
     return x;
 }
 
+/* Shared small-font call ABI for UI labels; rendering remains cv_text. */
+static __attribute__((noinline,minsize)) int32_t cv_text_s(int32_t x,int32_t y,const char *s,uint16_t c)
+{ return cv_text(x,y,&FONT_S,s,c); }
+
+static __attribute__((noinline,minsize)) int32_t cv_text_c_gray(int32_t x,int32_t y,const char *s)
+{ return cv_text(x,y,&FONT_S,s,C_GRAY); }
+static __attribute__((noinline,minsize)) int32_t cv_text_c_dim(int32_t x,int32_t y,const char *s)
+{ return cv_text(x,y,&FONT_S,s,C_DIM); }
+static __attribute__((noinline,minsize)) int32_t cv_text_c_hi(int32_t x,int32_t y,const char *s)
+{ return cv_text(x,y,&FONT_S,s,C_HI); }
+static __attribute__((noinline,minsize)) int32_t cv_text_c_white(int32_t x,int32_t y,const char *s)
+{ return cv_text(x,y,&FONT_S,s,C_WHITE); }
+static __attribute__((noinline,minsize)) int32_t cv_text_c_amb(int32_t x,int32_t y,const char *s)
+{ return cv_text(x,y,&FONT_S,s,C_AMB); }
+static __attribute__((noinline,minsize)) int32_t cv_text_te_g4(int32_t x,int32_t y,const char *s)
+{ return cv_text(x,y,&FONT_S,s,TE_G4); }
+static __attribute__((noinline,minsize)) int32_t cv_text_te_g3(int32_t x,int32_t y,const char *s)
+{ return cv_text(x,y,&FONT_S,s,TE_G3); }
+
 static int32_t text_w(const felucca_font_t *f, const char *s)
 {
     int32_t w = 0;
@@ -315,20 +350,27 @@ static int32_t text_w(const felucca_font_t *f, const char *s)
     return w;
 }
 
+UI_SMALL static int32_t text_w_s(const char *s) { return FONT_S.adv ? text_w(&FONT_S,s) : (int32_t)str_len(s)*FONT_S.fixed_adv; }
+UI_SMALL static int32_t text_w_l(const char *s) { return FONT_L.adv ? text_w(&FONT_L,s) : (int32_t)str_len(s)*FONT_L.fixed_adv; }
+
+UI_SMALL static void text_trim(char *s,const felucca_font_t *f,int32_t maxw)
+{ while (s[0] && text_w(f,s)>maxw) s[str_len(s)-1u]=0; }
+
+UI_SMALL static int32_t cv_text_l(int32_t x,int32_t y,const char *s,uint16_t c) {return cv_text(x,y,&FONT_L,s,c);}
 /* Shared NEON card. No allocation, extra font or framebuffer. Widths are
  * checked with real font metrics; full parameter details remain in the panel. */
 UI_SMALL static void ui_card(int32_t x, int32_t y, const char *label, const char *value,
                             int32_t ratio, uint16_t color, int hot)
 {
     char l[8], v[12];
-    const felucca_font_t *f = text_w(&FONT_L, value) <= 50 ? &FONT_L : &FONT_S;
+    const felucca_font_t *f = text_w_l( value) <= 50 ? &FONT_L : &FONT_S;
     str_cpy(l, label, sizeof l); str_cpy(v, value, sizeof v);
-    while (text_w(&FONT_S,l)>48) l[str_len(l)-1u]=0;
-    while (text_w(f,v)>48) v[str_len(v)-1u]=0;
+    while (text_w_s(l)>48) l[str_len(l)-1u]=0;
+    text_trim(v,f,48);
     cv_rect(x,y,56,44,hot?color:TE_G2);
     cv_rect(x+1,y+1,54,42,TE_G1);
     if (!label[0]) {cv_text(x+20,y+14,&FONT_S,"--",TE_G2);return;}
-    cv_text(x+4,y,&FONT_S,l,TE_G4);
+    cv_text_te_g4(x+4,y,l);
     cv_text(x+(56-text_w(f,v))/2,y+(f==&FONT_L?10:19),f,v,color);
     if(ratio>=0) for(int32_t i=0;i<10;i++)
         cv_rect(x+4+i*5,y+40,3,2,i*100<ratio?color:TE_G2);

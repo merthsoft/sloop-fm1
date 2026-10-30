@@ -2,10 +2,12 @@
 # SPDX-License-Identifier: GPL-3.0-only
 """Guard target per-sample helper inlining under size compilation.
 
-Caps are the merged 2.6 -Os build's call sites inside backwards-branch loops,
+Caps are the merged 2.6 -Os build's call sites inside cyclic backwards-branch loops,
 measured with the pinned JieLi compiler. They protect hot DSP from -Oz outlining
 small helpers without conflating branch layout with the historical cost budget.
 This is a static call-site check, not a hardware cycle or timing measurement.
+Cold blocks that jump backward to rejoin straight-line code are excluded by
+target_budget's conservative reachability check; no call cap is raised for them.
 """
 import sys
 from pathlib import Path

@@ -39,7 +39,8 @@ SECTIONS
         boot_literal_main_start = .; *(.boot_literal_main) . = ALIGN(4);
         _scratch_start = .; *(.scratch*) . = ALIGN(4); _scratch_end = .; _bss_end = .; } > RAM
     .pool (NOLOAD) : { _pool_start = .; *(.pool*) boot_literal_pool_start = .; *(.boot_literal_pool) . = ALIGN(4); _pool_end = .; } > POOL
-    .noinit (NOLOAD) : { *(.noinit*) } > NOINIT
+    /* Keep the worker's warm-reset bar after the existing retained records. */
+    .noinit (NOLOAD) : { *(.noinit) *(.noinit.*) } > NOINIT
     _guard0 = 0x01C74000; _ustack_lo = 0x01C74100; _ustack_top = 0x01C7A000;
     _guard1 = 0x01C7A000; _sstack_lo = 0x01C7A100; _sstack_top = 0x01C7C000;
     /DISCARD/ : { *(.comment) *(.note*) }

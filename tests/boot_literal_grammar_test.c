@@ -9,8 +9,8 @@ uint8_t boot_literal_main_start[32],boot_literal_pool_start[32];
 const uint8_t boot_literal_main_blob[]={0x30,129,129,129};
 const uint8_t boot_literal_pool_blob[]={0x10,255};
 /* 128=AB, 129=ABC, 130=invalid cycle, 131=DEL+ABC, 132=literal. */
-const uint8_t boot_literal_pairs[]={'A','B',128,'C',130,130,127,129,0,0};
-const uint32_t boot_literal_sizes[]={4,3,9,2,1,1,5};
+const uint8_t boot_literal_pairs[318]={'A','B',128,'C',130,130,127,129,0,0,[256]='X',[257]='Y',[258]=2,[259]=2,[316]=1,[317]='Z'};
+const uint32_t boot_literal_sizes[]={4,3,9,2,1,1,159};
 #include "boot_literals.c"
 
 int main(void)
@@ -43,6 +43,14 @@ int main(void)
     const uint8_t nul[]={0x20,0,0};
     const uint32_t zeros[]={3,2,2};
     assert(boot_literal_restore(out,nul,zeros)&&!out[0]&&!out[1]);
+    const uint8_t control[]={0x60,1,31,0,32,127,255};
+    const uint32_t control_size[]={7,6,9};
+    const uint8_t control_want[]={'X','Y','X','Y','Z',0,32,127,255};
+    memset(out,0xa5,sizeof out);
+    assert(boot_literal_restore(out,control,control_size));
+    assert(!memcmp(out,control_want,9) && out[9]==0xa5);
+    const uint8_t control_cycle[]={0x10,2};
+    assert(!boot_literal_restore(out,control_cycle,size));
     puts("boot literal grammar: backward overlap, nested tokens, high/NUL literals, guards and malformed trees PASS");
     return 0;
 }
