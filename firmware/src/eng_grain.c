@@ -434,17 +434,25 @@ static const preset_t GRAIN_PRESETS[] = {
 #endif
 
 static const engine_t ENG_GRAIN = {
-    "GRAIN", {"GRAN", "SPRY"},
-    {
-        {"SRC", F_ENUM, 0, SMP_NALL - 1, 0, SMP_ALL_NAMES, 0},
-        {"POS", F_PCT, 0, 127, 32, 0, 0},
-        {"SIZE", F_PCT, 0, 127, 80, 0, 0},
-        {"DENS", F_PCT, 0, 127, 80, 0, 0},
-        {"PTCH", F_SEMI, -24, 24, 0, 0, 0},
-        {"SPRD", F_PCT, 0, 127, 30, 0, 0},
-        {"RAND", F_PCT, 0, 127, 10, 0, 0},
-        {"TONE", F_PCT, 0, 127, 127, 0, 0},
+    .name = "GRAIN",
+    .page_title = {"GRAN", "SPRY"},
+    .edit = {
+        {"SRC", F_ENUM, 0, SMP_NALL - 1, 0, SMP_ALL_NAMES},
+        {"POS", F_PCT, 0, 127, 32, 0},
+        {"SIZE", F_PCT, 0, 127, 80, 0},
+        {"DENS", F_PCT, 0, 127, 80, 0},
+        {"PTCH", F_SEMI, -24, 24, 0, 0},
+        {"SPRD", F_PCT, 0, 127, 30, 0},
+        {"RAND", F_PCT, 0, 127, 10, 0},
+        {"TONE", F_PCT, 0, 127, 127, 0},
     },
-    GRAIN_PRESETS, sizeof(GRAIN_PRESETS) / sizeof(GRAIN_PRESETS[0]), 1, grain_note_on, grain_render,
-    0x87F0, {P_E1, P_E2, P_E3, P_E5}, GR_POLY, 0, 0, grain_block,
+    .presets = GRAIN_PRESETS,
+    .npresets = sizeof(GRAIN_PRESETS) / sizeof(GRAIN_PRESETS[0]),
+    .note_on = grain_note_on,
+    .render = grain_render,
+    .macro = {P_E1, P_E2, P_E3, P_E5},
+    .poly = GR_POLY,
+    .amp = 0,
+    .desc = 0,
+    .block = grain_block,
 };

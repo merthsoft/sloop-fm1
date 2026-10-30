@@ -752,10 +752,10 @@ UI_SMALL static void layer_title(const char *name, const char *sub, uint16_t col
     cv_band_blit(218);
 }
 
-UI_SMALL static const char *lock_label(const track_t *t, uint32_t id)   /* the lock parameter's name, lower case */
+UI_SMALL static const char *lock_label(const track_t *t, uint32_t id)   /* bounded lock parameter label */
 {
     static char b[8];
-    te_lower(b, track_desc(t, id % P_COUNT)->label, 8);
+    str_cpy(b, track_desc(t, id % P_COUNT)->label, 8);
     return b;
 }
 
@@ -876,7 +876,7 @@ UI_SMALL static void layer_screen_draw(void)
             sub[6] = (char)('1' + sel); sub[7] = ' ';
             scale_pitch_name(sub + 8, t, (uint32_t)t->p[P_ROOT] % 12u);
             str_cpy(sub + str_len(sub), " ", 2);
-            te_lower(sub + str_len(sub), N_SCALE[clamp(t->p[P_SCALE],0,NSCALES-1)], 8);
+            str_cpy(sub + str_len(sub), N_SCALE[clamp(t->p[P_SCALE],0,NSCALES-1)], 8);
         }
         lab[0] = m->sync ? "FREEHZ" : "RATEHZ"; lab[1] = "depth %"; lab[2] = "wave"; lab[3] = "sync";
         const char *unit;
@@ -919,11 +919,9 @@ UI_SMALL static void layer_screen_draw(void)
         {
             const char *u;
             param_format(&GP[G_FILT], song.g[G_FILT], v[0], &u);
-            te_lower(v[0], v[0], 8);
             fmt_int(v[1], song.g[G_DUST] * 100 / 127);
             fmt_int(v[2], song.g[G_DUCK] * 100 / 127);
             param_format(&TP[P_TFLT], t->p[P_TFLT], v[3], &u);
-            te_lower(v[3], v[3], 8);
         }
         ratio[0] = (song.g[G_FILT] + 64) * 1000 / 127;
         ratio[1] = song.g[G_DUST] * 1000 / 127;
@@ -1078,7 +1076,7 @@ UI_SMALL static void layer_screen_draw(void)
                 const char *u;
                 char b[8];
                 param_format(lock_desc(t, id), t->lock[k].val, b, &u);
-                te_lower(sub + str_len(sub), b, 8);
+                str_cpy(sub + str_len(sub), b, 8);
             } else {
                 str_cpy(sub + str_len(sub), "--", 3);
             }
@@ -1100,7 +1098,7 @@ UI_SMALL static void layer_screen_draw(void)
         str_cpy(sub, "key: ", sizeof sub);
         scale_pitch_name(sub + 5, key, root);
         str_cpy(sub + str_len(sub), " ", 2);
-        te_lower(sub + str_len(sub), N_SCALE[clamp(key->p[P_SCALE], 0, NSCALES - 1)], 8);
+        str_cpy(sub + str_len(sub), N_SCALE[clamp(key->p[P_SCALE], 0, NSCALES - 1)], 8);
         static const char *const root_hint[16] = {"root F","root G","root A","root B","root C","root D","root E","root F",
             "root G","root A","root B","root C","root D","root E","root F","root G"};
         for (i = 0; i < 16u; i++) {
@@ -1140,9 +1138,9 @@ UI_SMALL static void layer_screen_draw(void)
             tl[i].fg = pc == root ? C_BLACK : in ? C_WHITE : TE_G2;
         }
         lab[0] = "chord", lab[1] = "scale", lab[2] = "keys", lab[3] = "transp";
-        te_lower(v[0], N_CHORD[clamp(t->p[P_CHORD], 0, CH_COUNT - 1)], 8);
-        te_lower(v[1], N_SCALE[clamp(key->p[P_SCALE], 0, NSCALES - 1)], 8);
-        te_lower(v[2], N_QUANT[clamp(t->p[P_QUANT], 0, 2)], 8);
+        str_cpy(v[0], N_CHORD[clamp(t->p[P_CHORD], 0, CH_COUNT - 1)], 8);
+        str_cpy(v[1], N_SCALE[clamp(key->p[P_SCALE], 0, NSCALES - 1)], 8);
+        str_cpy(v[2], N_QUANT[clamp(t->p[P_QUANT], 0, 2)], 8);
         fmt_int(v[3], t->p[P_TRANS]);
         if (is_drum(t))
             v[0][0] = v[2][0] = v[3][0] = 0;

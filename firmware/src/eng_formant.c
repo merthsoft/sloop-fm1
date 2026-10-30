@@ -229,17 +229,22 @@ static const preset_t FORMANT_PRESETS[] = {
 #endif
 
 static const engine_t ENG_FORMANT = {
-    "VOICE", {"VOWL", "TONE"},
-    {
-        {"VOWL", F_INT, 0, 127, 0, 0, 0},
-        {"VOWL2", F_INT, 0, 127, 64, 0, 0},
-        {"TALK", F_TIME, 0, 127, 0, 0, 0},
-        {"SHIFT", F_SEMI, -12, 12, 0, 0, 0},
-        {"BUZZ", F_PCT, 0, 127, 64, 0, 0},
-        {"BRTH", F_PCT, 0, 127, 10, 0, 0},
-        {"Q", F_PCT, 0, 127, 64, 0, 0},
-        {"RAND", F_PCT, 0, 127, 0, 0, 0},
+    .name = "VOICE",
+    .page_title = {"VOWL", "TONE"},
+    .edit = {
+        {"VOWL", F_INT, 0, 127, 0, 0},
+        {"VOWL2", F_INT, 0, 127, 64, 0},
+        {"TALK", F_TIME, 0, 127, 0, 0},
+        {"SHIFT", F_SEMI, -12, 12, 0, 0},
+        {"BUZZ", F_PCT, 0, 127, 64, 0},
+        {"BRTH", F_PCT, 0, 127, 10, 0},
+        {"Q", F_PCT, 0, 127, 64, 0},
+        {"RAND", F_PCT, 0, 127, 0, 0},
     },
-    FORMANT_PRESETS, sizeof(FORMANT_PRESETS) / sizeof(FORMANT_PRESETS[0]), 0, formant_note_on, formant_render,
-    0xF81F, {P_E0, P_E4, P_E5, P_E2}, 4,
+    .presets = FORMANT_PRESETS,
+    .npresets = sizeof(FORMANT_PRESETS) / sizeof(FORMANT_PRESETS[0]),
+    .note_on = formant_note_on,
+    .render = formant_render,
+    .macro = {P_E0, P_E4, P_E5, P_E2},
+    .poly = 4,
 };

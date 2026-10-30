@@ -1,0 +1,10 @@
+{
+  "descriptors.txt": {
+    "sha256": "4c39fefcf717aa4e095ee952c177016afd71b7fad453041363e0438599d4d75b",
+    "bytes": 1160878
+  },
+  "wire.bin": {
+    "sha256": "a81a414a367d21867df7df0a07dee229ef28188abe2fb27674ed0a642f0fbd4b",
+    "bytes": 449269
+  }
+}

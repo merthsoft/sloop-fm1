@@ -51,7 +51,7 @@ static const char *const N_SCALE[] = {"CHR", "MAJ", "MIN", "DOR", "MIX", "PEN", 
                                     "PHRY", "LYD", "LOC", "MEL", "BLUES", "WHOLE", "DIMHW", "DIMWH"};
 static const char *const N_ONOFF[] = {"OFF", "ON"};
 static const char *const N_DTARGET[] = {"ON", "OFF"};
-static const param_desc_t DUCK_TARGET = {"DUCK", F_ENUM, 0, 1, 0, N_DTARGET, 0};
+static const param_desc_t DUCK_TARGET = {"DUCK", F_ENUM, 0, 1, 0, N_DTARGET};
 static const char *const N_CLKOUT[] = {"OFF", "OUT"};   /* 2.7, GLO > MIDI 3 > CLOCK: OUT, the MIDI clock out */
 static const char *const N_DRMAP[] = {"GM", "1-16"};   /* (2.7) GLO > MIDI 3: DR MAP */
 static const char *const N_QUANT[] = {"OFF", "SNAP", "WHITE", "CHROM"};   /* seq.c kb_map; 1 = SNAP as the old ON */
@@ -78,8 +78,8 @@ static const char *const N_ENGNAME[] = {"ANALOG", "DIGITAL", "PHASE", "LOFI", "S
 #endif
 };
 
-#define PD(l, f, mn, mx, df) {l, f, mn, mx, df, 0, 0}
-#define PE(l, n, df) {l, F_ENUM, 0, (int16_t)(sizeof(n) / sizeof(n[0]) - 1), df, n, 0}
+#define PD(l, f, mn, mx, df) {l, f, mn, mx, df, 0}
+#define PE(l, n, df) {l, F_ENUM, 0, (int16_t)(sizeof(n) / sizeof(n[0]) - 1), df, n}
 
 static const param_desc_t TP[P_COUNT] = {
     [P_LEVEL] = PD("LVL", F_DB, 0, 127, 104),
@@ -100,7 +100,7 @@ static const param_desc_t TP[P_COUNT] = {
     [P_LD_SHP] = PD("SHP", F_BIPCT, -64, 63, 0),
     [P_LD_AMP] = PD("AMP", F_PCT, 0, 127, 0),
     [P_AMODE] = PE("MODE", N_AMODE, 0),
-    [P_ARATE] = {"RATE",F_ENUM,0,NDIV_SHORT-1,2,N_SDIV,0},
+    [P_ARATE] = {"RATE",F_ENUM,0,NDIV_SHORT-1,2,N_SDIV},
     [P_AOCT] = PD("OCT", F_INT, 1, 4, 1),
     [P_AGATE] = PD("GATE", F_PCT, 1, 127, 64),
     [P_ASWING] = PD("SWG", F_SWING, 0, 100, 0),
@@ -170,7 +170,7 @@ static const param_desc_t GP[G_COUNT] = {
     [G_TUNE] = PD("TUNE", F_INT, -50, 50, 0),
     [G_DTYPE] = PE("TYPE", N_DTYPE, 0),
     [G_DDRIVE] = PD("DRIVE", F_PCT, 0, 127, 127),
-    [G_DBITS] = {"BITS", F_INT, 4, 16, 8, 0, ""},
+    [G_DBITS] = {"BITS", F_INT, 4, 16, 8, 0},
     [G_DHOLD] = PE("RATE", N_DHOLD, 2),
     [G_DTIME] = PE("TIME", N_DLY, 1),
     [G_DFDBK] = PD("FDBK", F_PCT, 0, 120, 60),
@@ -180,7 +180,7 @@ static const param_desc_t GP[G_COUNT] = {
     [G_VTONE] = PD("TONE", F_PCT, 0, 127, 0),
     [G_VCRACKLE] = PD("CRACKLE", F_PCT, 0, 127, 0),
     [G_LTYPE] = PE("TYPE", N_LOFI, 0),
-    [G_RTIME] = {"TIME", F_INT, 20, 80, 50, 0, "MS"},
+    [G_RTIME] = {"TIME", F_INT_MS, 20, 80, 50, 0},
     [G_RMODEL] = PE("TYPE", N_RMODEL, 0),
     [G_RSIZE] = PD("SIZE", F_PCT, 0, 127, 90),
     [G_RDAMP] = PD("DAMP", F_PCT, 0, 127, 60),
@@ -190,7 +190,7 @@ static const param_desc_t GP[G_COUNT] = {
     [G_SYNC] = PE("SYNC", N_SYNC, 0),           /* a setting of the FM-1, not of a project (panel.c lights_sync) */
     [G_ROUTE] = PE("IN", N_MIN, 0),             /* MIDI IN: NOTES (and the clock), CLOCK only, or CH n: that channel only (a setting of the FM-1) */
     [G_INFO] = PD("CPU", F_INT, 0, 0, 0),
-    [G_SLOT] = {"SECT", F_INT, 1, 4, 1, N_SECT, 0},     /* (2.7: A..D, the song's sections; "SLOT" 1..4 before) */
+    [G_SLOT] = {"SECT", F_INT, 1, 4, 1, N_SECT},     /* (2.7: A..D, the song's sections; "SLOT" 1..4 before) */
     [G_NAME] = PE("NAME", N_DASH, 0),
     [G_LOAD] = PE("LOAD", N_GO, 0),
     [G_SAVE] = PE("SAVE", N_GO, 0),
@@ -204,7 +204,7 @@ static const param_desc_t GP[G_COUNT] = {
     [G_DUST] = PD("DUST", F_PCT, 0, 127, 0),
     [G_DUCK] = PD("DUCK", F_PCT, 0, 127, 0),
     [G_DTRIG] = PE("TRIG", N_DTRIG, 0),
-    [G_DREC] = {"RECOV",F_ENUM,0,NDIV_SHORT-1,1,N_SDIV,0},
+    [G_DREC] = {"RECOV",F_ENUM,0,NDIV_SHORT-1,1,N_SDIV},
     [G_DSHAPE] = PE("SHAPE", N_DSHAPE, 0),
     [G_FILT] = PD("FILT", F_FILT, -64, 63, 0),
     [G_ROLL] = PE("ROLL", N_ROLL, 1),
@@ -231,11 +231,11 @@ static const param_desc_t GP[G_COUNT] = {
 static const param_desc_t DRUM_KIT_DESC = PE("KIT", DRUM_KIT_NAMES, 0);
 /* the INSERT's A B C as its TYPE means them (TP's ranges and defaults): the drives DRIVE TONE LEVEL, CRUSH BITS RATE
  * LPF, the swept ones RATE DEPTH FDBK; OFF TP's own */
-#define PU(l, f, df, n, u) {l, f, 0, 127, df, n, u}
+#define PU(l, f, df, n) {l, f, 0, 127, df, n}
 static const param_desc_t INS_DESC[3][3] = {
-    {PU("DRIVE", F_PCT, 64, 0, 0), PU("TONE", F_CUTOFF, 96, 0, 0), PU("LEVEL", F_DB, 96, 0, 0)},
-    {PU("BITS", F_INT, 64, N_IBITS, 0), PU("RATE", F_INT, 96, N_IRATE, "Hz"), PU("LPF", F_CUTOFF, 96, 0, 0)},
-    {PU("RATE", F_LFOHZ, 64, 0, 0), PU("DEPTH", F_PCT, 96, 0, 0), PU("FDBK", F_PCT, 96, 0, 0)},
+    {PU("DRIVE", F_PCT, 64, 0), PU("TONE", F_CUTOFF, 96, 0), PU("LEVEL", F_DB, 96, 0)},
+    {PU("BITS", F_INT, 64, N_IBITS), PU("RATE", F_INT_HZ, 96, N_IRATE), PU("LPF", F_CUTOFF, 96, 0)},
+    {PU("RATE", F_LFOHZ, 64, 0), PU("DEPTH", F_PCT, 96, 0), PU("FDBK", F_PCT, 96, 0)},
 };
 #undef PU
 static const param_desc_t *ins_desc(int32_t type, uint32_t k)
@@ -245,9 +245,9 @@ static const param_desc_t *ins_desc(int32_t type, uint32_t k)
     return &INS_DESC[type < 5 ? 0 : type == 5 ? 1 : 2][k % 3u];   /* (SOFT .. FUZZ, CRUSH, the swept ones) */
 }
 static const param_desc_t ESYNC_DESC[3] = {   /* ATK DEC REL with ENV SYNC on: the range and defaults as ever */
-    {"ATK", F_INT, 0, 127, 10, ESYNC_NAMES, 0},
-    {"DEC", F_INT, 0, 127, 70, ESYNC_NAMES, 0},
-    {"REL", F_INT, 0, 127, 60, ESYNC_NAMES, 0},
+    {"ATK", F_INT, 0, 127, 10, ESYNC_NAMES},
+    {"DEC", F_INT, 0, 127, 70, ESYNC_NAMES},
+    {"REL", F_INT, 0, 127, 60, ESYNC_NAMES},
 };
 
 static const param_desc_t *track_desc(const track_t *t, uint32_t id)
@@ -279,8 +279,8 @@ static int32_t names_turn(const param_desc_t *d, int32_t v, int32_t steps)
 /* value string (<= 5 chars) and unit for a parameter value */
 static void param_format(const param_desc_t *d, int32_t v, char *val, const char **unit)
 {
-    *unit = "";
-    switch (d->fmt) {
+    *unit = param_unit(d);
+    switch (param_fmt(d)) {
     case F_PCT:                                       /* of the range: 0 .. 100 % */
         fmt_int(val, d->max > 0 ? (v * 100 + d->max / 2) / d->max : v);
         *unit = "%";
@@ -370,8 +370,6 @@ static void param_format(const param_desc_t *d, int32_t v, char *val, const char
         break;
     case F_ENUM:
         str_cpy(val, d->names[v < d->min ? d->min : v > d->max ? d->max : v], 6);
-        if (d->unit)
-            *unit = d->unit;
         break;
     case F_BPM:
         fmt_int(val, v);
@@ -396,8 +394,6 @@ static void param_format(const param_desc_t *d, int32_t v, char *val, const char
         } else {
             fmt_int(val, v);
         }
-        if (d->unit)
-            *unit = d->unit;
         break;
     }
 }
@@ -425,7 +421,7 @@ enum { DRONE_OFF, DRONE_STILL, DRONE_MOVE };
 static const char *const N_DRONE_MODE[]={"OFF","DRONE","MOVE"};
 static const param_desc_t EVOLVE_DESC[]={
     PE("MODE",N_DRONE_MODE,0), PE("CYCLE",N_EVOLVE_CYCLE,3),
-    {"CHANCE",F_INT,0,101,50,0,"%"}, PD("RANGE",F_INT,1,7,1),
+    {"CHANCE",F_INT_PERCENT,0,101,50,0}, PD("RANGE",F_INT,1,7,1),
     PD("LO OCT",F_INT,-1,9,3), PD("HI OCT",F_INT,-1,9,5)
 };
 /* Track-local runtime sustain; no upstream saved IDs. */

@@ -1,5 +1,11 @@
 # Measured branch headroom
 
+## Current cold-UI headroom build
+
+MerthSloop **2.8.0.105** uses **582,196 / 584,336 B**, leaving **2,140 B flash**. Engine-table cleanup, obsolete UI case conversion removal, unreachable font-slot aliases and more existing startup string packing recover **740 B net** against .104. Main static RAM falls **384 B** to **97,340 / 98,304 B**; low RAM **29,288 / 29,392 B** and pool **335,424 / 344,064 B** are unchanged. The 8,192 B pool reserve remains. No sounds/features were removed or playback decoding added. See [measurements and equivalence checks](COLD-UI-HEADROOM.md).
+
+The preceding [compact-descriptor batch](PARAMETER-DESCRIPTOR-COMPACTION.md) recovered 976 B net, reaching 582,936 B with 1,400 B free. Historical measurements below are separate checkpoints, not additive savings.
+
 ## Integrated review build
 
 Removing obsolete parameter-icon lookups and generating only the two header

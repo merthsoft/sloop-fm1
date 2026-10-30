@@ -300,5 +300,32 @@ static void duck_persistence_test(void) {
  assert(programs==writes && song.g[G_DUCK]==97);
  puts("DUCK: NOR save/cold-state reload; retired companion commands explicitly unavailable without writes PASS");
 }
-int main(int argc,char **argv){audit_hash_oracle();original_commit_test(argc,argv);notify_test();syn_commit_test();browser_autosave_test();duck_persistence_test();return 0;}
+static void song_save_filter_test(void) {
+ setup();flash_ok=1;song.playing=transport_req=0;autosave_hash=0;
+ song.g[G_FILT]=-40;proj_capture(&autosave_buf);assert(!autosave_commit(&autosave_buf));
+ song.g[G_FILT]=0;arrangement_save();arrangement_save();
+ /* No idle tick or shutdown flush: power goes off immediately after SAVE. */
+ host_tracks_init();song.g[G_FILT]=-40;autosave_hash=0;autosave_resume();
+ assert(!song.g[G_FILT]);
+ /* Other current globals and mix values belong to the same working save. */
+ song.g[G_FILT]=23;song.g[G_SWING]=61;trk[0].p[P_LEVEL]=79;
+ arrangement.entry[0].bars=7;arrangement_save();
+ host_tracks_init();autosave_hash=0;autosave_resume();
+ assert(song.g[G_FILT]==23 && song.g[G_SWING]==61 && trk[0].p[P_LEVEL]==79);
+ persist_boot();assert(arrangement.entry[0].bars==7);
+ assert(!proj_slot[0].magic); /* SONG SAVE never silently overwrites a section. */
+ fault=FAULT_SIDE_PROG;arrangement.entry[0].bars=8;arrangement_save();assert(strcmp(ui.msg,"SONG SAVED"));
+ fault=FAULT_NONE;arrangement_save();assert(!strcmp(ui.msg,"SONG SAVED"));
+ persist_boot();assert(arrangement.entry[0].bars==8);
+ /* Background autosave must also record zero once actually idle and quiet. */
+ song.g[G_FILT]=-40;proj_capture(&autosave_buf);assert(!autosave_commit(&autosave_buf));
+ song.g[G_FILT]=0;song.playing=transport_req=rec_wait=ft_on=ui.menu=0;browse_saved.active=0;
+ for(uint32_t p=0;p<NTRK;p++)memset(trk[p].v,0,sizeof trk[p].v);
+ memset(&drums,0,sizeof drums);fm1_ms+=30000u;ui_input_ms=fm1_ms-30000u;autosave_checked=0;
+ autosave_tick();
+ host_tracks_init();song.g[G_FILT]=-40;autosave_hash=0;autosave_resume();assert(!song.g[G_FILT]);
+ song.playing=1;unsigned writes=programs;arrangement_save();assert(programs==writes);song.playing=0;
+ puts("SONG SAVE: cleared filter, repeated saves, immediate restart, working mix and arrangement order PASS");
+}
+int main(int argc,char **argv){audit_hash_oracle();original_commit_test(argc,argv);notify_test();syn_commit_test();browser_autosave_test();duck_persistence_test();song_save_filter_test();return 0;}
 #endif

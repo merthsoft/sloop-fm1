@@ -748,12 +748,12 @@ UI_SMALL static void ed_handle(const uint8_t *f, uint32_t n)   /* f: the bytes b
             return;
         ed_b(a[0]);
         ed_b(a[1]);
-        ed_b(d->fmt);
+        ed_b(param_fmt(d));
         ed_v(d->min);
         ed_v(d->max);
         ed_v(d->def);
         ed_str(d->label, 8);
-        ed_str(d->unit, 8);
+        ed_str(param_unit(d), 8);
         if (d->fmt == F_ENUM && d->names)
             for (i = 0; i <= (uint32_t)(d->max - d->min) && i < 64u; i++)   /* (the 34 drum kits) */
                 ed_str(d->names[i], 8);

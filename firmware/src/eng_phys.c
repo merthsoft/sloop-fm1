@@ -54,11 +54,11 @@ typedef struct {
 static const char *const N_PHYS_MODEL[] = {"MODAL", "STRNG", "MEMB", "SYMP"};
 static const char *const N_PHYS_CHORD[] = {"OCT", "5TH", "4TH", "MAJ", "MIN", "SUS", "7TH", "ROOT", 0};
 /* per model: STRC .. EXC under their own names (phys_desc; range and default as edit[], 0 = edit[]) */
-static const param_desc_t PHYS_D_HARM = {"HARM", F_PCT, 0, 127, 64, 0, 0};
-static const param_desc_t PHYS_D_BEND = {"BEND", F_PCT, 0, 127, 0, 0, 0};
-static const param_desc_t PHYS_D_CHRD = {"CHRD", F_INT, 0, 127, 64, N_PHYS_CHORD, 0};
-static const param_desc_t PHYS_D_SYMP = {"SYMP", F_PCT, 0, 127, 20, 0, 0};
-static const param_desc_t PHYS_D_BUZZ = {"BUZZ", F_PCT, 0, 127, 0, 0, 0};
+static const param_desc_t PHYS_D_HARM = {"HARM", F_PCT, 0, 127, 64, 0};
+static const param_desc_t PHYS_D_BEND = {"BEND", F_PCT, 0, 127, 0, 0};
+static const param_desc_t PHYS_D_CHRD = {"CHRD", F_INT, 0, 127, 64, N_PHYS_CHORD};
+static const param_desc_t PHYS_D_SYMP = {"SYMP", F_PCT, 0, 127, 20, 0};
+static const param_desc_t PHYS_D_BUZZ = {"BUZZ", F_PCT, 0, 127, 0, 0};
 static const param_desc_t *const PHYS_DESC[PM_COUNT][8] = {
     [PM_MEMB] = {0, &PHYS_D_HARM, 0, 0, 0, 0, &PHYS_D_BEND, 0},
     [PM_SYMP] = {0, &PHYS_D_CHRD, 0, 0, &PHYS_D_SYMP, 0, &PHYS_D_BUZZ, 0},
@@ -268,21 +268,19 @@ static const engine_t ENG_PHYS = {
     .name = "PHYS",
     .page_title = {"BODY", "EXCT"},
     .edit = {
-        {"MODEL", F_ENUM, 0, PM_COUNT - 1, 0, N_PHYS_MODEL, 0},
-        {"STRC", F_PCT, 0, 127, 64, 0, 0},
-        {"BRIT", F_PCT, 0, 127, 80, 0, 0},
-        {"DAMP", F_PCT, 0, 127, 80, 0, 0},
-        {"POS", F_PCT, 0, 127, 20, 0, 0},
-        {"ACC", F_PCT, 0, 127, 90, 0, 0},
-        {"BOW", F_PCT, 0, 127, 0, 0, 0},
-        {"EXC", F_PCT, 0, 127, 0, 0, 0},
+        {"MODEL", F_ENUM, 0, PM_COUNT - 1, 0, N_PHYS_MODEL},
+        {"STRC", F_PCT, 0, 127, 64, 0},
+        {"BRIT", F_PCT, 0, 127, 80, 0},
+        {"DAMP", F_PCT, 0, 127, 80, 0},
+        {"POS", F_PCT, 0, 127, 20, 0},
+        {"ACC", F_PCT, 0, 127, 90, 0},
+        {"BOW", F_PCT, 0, 127, 0, 0},
+        {"EXC", F_PCT, 0, 127, 0, 0},
     },
     .presets = PHYS_PRESETS,
     .npresets = NELEM(PHYS_PRESETS),
     .note_on = phys_note_on,
     .render = phys_render,
-    .fil_page = -1,
-    .color = 0xFD8F,
     .macro = {P_E1, P_E2, P_E3, P_E4},
     .poly = PHYS_POLY,
     .desc = phys_desc,

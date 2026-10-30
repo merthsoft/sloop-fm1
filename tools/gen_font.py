@@ -140,6 +140,15 @@ def main(out):
     base = None                                        # (name, first, h, glyphs) of the 1x font
     for name, ttf, px, scale, pixel, first, last in SIZES:
         h, glyphs = render(ttf, px, scale, pixel, first, last)
+        # gfx.c folds case before reading metrics/bitmaps. Alias unreachable
+        # lowercase/control slots to their displayed glyph, retaining all slots.
+        original = glyphs
+        glyphs = []
+        for code in range(first, last + 1):
+            shown = code - 32 if (97 <= code <= 122 or 224 <= code <= 254 and code != 247) else code
+            if shown < first or shown > last or 127 <= shown < 160:
+                shown = ord('?')
+            glyphs.append(original[shown - first])
         adv_ref, fixed_adv = emit_metric(lines, name, "ADV", [a for a, _, _ in glyphs])
         bw_ref, fixed_bw = emit_metric(lines, name, "BW", [b for _, b, _ in glyphs])
         if scale > 1 and pixel and base is not None:

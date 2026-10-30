@@ -381,17 +381,21 @@ static const preset_t TRIO_PRESETS[] = {
 #endif
 
 static const engine_t ENG_TRIO = {
-    "TRIO", {"OSC", "TONE"},
-    {
-        {"WAVE", F_ENUM, 0, 15, 0, N_TRIO_WAVE, 0},
-        {"INT2", F_SEMI, -24, 24, 0, 0, 0},
-        {"INT3", F_SEMI, -24, 24, -12, 0, 0},
-        {"DTN", F_INT, 0, 50, 6, 0, "ct"},
-        {"MODE", F_ENUM, 0, 3, 0, N_TRIO_MODE, 0},
-        {"CUT", F_CUTOFF, 0, 127, 80, 0, 0},
-        {"RES", F_PCT, 0, 127, 40, 0, 0},
-        {"PW", F_PCT, 0, 127, 64, 0, 0},
+    .name = "TRIO",
+    .page_title = {"OSC", "TONE"},
+    .edit = {
+        {"WAVE", F_ENUM, 0, 15, 0, N_TRIO_WAVE},
+        {"INT2", F_SEMI, -24, 24, 0, 0},
+        {"INT3", F_SEMI, -24, 24, -12, 0},
+        {"DTN", F_INT_CT, 0, 50, 6, 0},
+        {"MODE", F_ENUM, 0, 3, 0, N_TRIO_MODE},
+        {"CUT", F_CUTOFF, 0, 127, 80, 0},
+        {"RES", F_PCT, 0, 127, 40, 0},
+        {"PW", F_PCT, 0, 127, 64, 0},
     },
-    TRIO_PRESETS, sizeof(TRIO_PRESETS) / sizeof(TRIO_PRESETS[0]), 1, trio_note_on, trio_render,
-    0xFFE0, {P_E5, P_E6, P_E7, P_E1},
+    .presets = TRIO_PRESETS,
+    .npresets = sizeof(TRIO_PRESETS) / sizeof(TRIO_PRESETS[0]),
+    .note_on = trio_note_on,
+    .render = trio_render,
+    .macro = {P_E5, P_E6, P_E7, P_E1},
 };

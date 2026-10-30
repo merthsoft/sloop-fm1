@@ -163,17 +163,21 @@ static const preset_t ANALOG_PRESETS[] = {
 #endif
 
 static const engine_t ENG_ANALOG = {
-    "ANALOG", {"OSC", "FLT"},
-    {
-        {"WAVE", F_ENUM, 0, 4, 0, N_ANALOG_WAVE, 0},
-        {"DTN", F_INT, 0, 127, 10, 0, "ct"},
-        {"MIX", F_PCT, 0, 127, 64, 0, 0},
-        {"NOIS", F_PCT, 0, 127, 0, 0, 0},
-        {"CUT", F_CUTOFF, 0, 127, 90, 0, 0},
-        {"RES", F_PCT, 0, 127, 30, 0, 0},
-        {"DRV", F_PCT, 0, 127, 0, 0, 0},
-        {"KTR", F_PCT, 0, 127, 64, 0, 0},
+    .name = "ANALOG",
+    .page_title = {"OSC", "FLT"},
+    .edit = {
+        {"WAVE", F_ENUM, 0, 4, 0, N_ANALOG_WAVE},
+        {"DTN", F_INT_CT, 0, 127, 10, 0},
+        {"MIX", F_PCT, 0, 127, 64, 0},
+        {"NOIS", F_PCT, 0, 127, 0, 0},
+        {"CUT", F_CUTOFF, 0, 127, 90, 0},
+        {"RES", F_PCT, 0, 127, 30, 0},
+        {"DRV", F_PCT, 0, 127, 0, 0},
+        {"KTR", F_PCT, 0, 127, 64, 0},
     },
-    ANALOG_PRESETS, sizeof(ANALOG_PRESETS) / sizeof(ANALOG_PRESETS[0]), 1, analog_note_on, analog_render,
-    0xF986, {P_E4, P_E5, P_ATK, P_REL},
+    .presets = ANALOG_PRESETS,
+    .npresets = sizeof(ANALOG_PRESETS) / sizeof(ANALOG_PRESETS[0]),
+    .note_on = analog_note_on,
+    .render = analog_render,
+    .macro = {P_E4, P_E5, P_ATK, P_REL},
 };

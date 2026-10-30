@@ -300,17 +300,25 @@ static const preset_t DRAWBAR_PRESETS[] = {
 #endif
 
 static const engine_t ENG_DRAWBAR = {
-    "WHEEL", {"BARS", "TONE"},
-    {
-        {"REG", F_ENUM, 0, 15, 4, N_DRW_REG, 0},
-        {"SUB", F_INT, -8, 8, 0, 0, 0},
-        {"BODY", F_INT, -8, 8, 0, 0, 0},
-        {"TOP", F_INT, -8, 8, 0, 0, 0},
-        {"PERC", F_ENUM, 0, 6, 0, N_DRW_PERC, 0},
-        {"CLICK", F_PCT, 0, 127, 40, 0, 0},
-        {"DRV", F_PCT, 0, 127, 0, 0, 0},
-        {"ROTR", F_ENUM, 0, 2, 1, N_DRW_ROTR, 0},
+    .name = "WHEEL",
+    .page_title = {"BARS", "TONE"},
+    .edit = {
+        {"REG", F_ENUM, 0, 15, 4, N_DRW_REG},
+        {"SUB", F_INT, -8, 8, 0, 0},
+        {"BODY", F_INT, -8, 8, 0, 0},
+        {"TOP", F_INT, -8, 8, 0, 0},
+        {"PERC", F_ENUM, 0, 6, 0, N_DRW_PERC},
+        {"CLICK", F_PCT, 0, 127, 40, 0},
+        {"DRV", F_PCT, 0, 127, 0, 0},
+        {"ROTR", F_ENUM, 0, 2, 1, N_DRW_ROTR},
     },
-    DRAWBAR_PRESETS, sizeof(DRAWBAR_PRESETS) / sizeof(DRAWBAR_PRESETS[0]), -1, drawbar_note_on, drawbar_render,
-    0xBC1F, {P_E0, P_E4, P_E6, P_E7}, 0, 0, 0, drawbar_block,
+    .presets = DRAWBAR_PRESETS,
+    .npresets = sizeof(DRAWBAR_PRESETS) / sizeof(DRAWBAR_PRESETS[0]),
+    .note_on = drawbar_note_on,
+    .render = drawbar_render,
+    .macro = {P_E0, P_E4, P_E6, P_E7},
+    .poly = 0,
+    .amp = 0,
+    .desc = 0,
+    .block = drawbar_block,
 };

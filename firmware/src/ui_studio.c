@@ -28,13 +28,6 @@ UI_SMALL static void te_disc(int32_t cx, int32_t cy, int32_t r, uint16_t c)     
 }
 UI_SMALL static uint32_t studio_hash(uint32_t h, const char *p)
 { while (*p) h = h * 31u + (uint8_t)*p++; return h; }
-UI_SMALL static void te_lower(char *d, const char *s, uint32_t n)
-{
-    uint32_t i;
-    for (i = 0; i + 1u < n && s[i]; i++)
-        d[i] = s[i] >= 'A' && s[i] <= 'Z' ? (char)(s[i] + 32) : s[i];
-    d[i] = 0;
-}
 UI_SMALL static void te_text_c(int32_t cx, int32_t y, const char *s, uint16_t c)   /* centred on cx */
 {
     cv_text_s(cx - text_w_s( s) / 2, y, s, c);
@@ -265,7 +258,7 @@ UI_SMALL static void drum_screen_draw(void)
             if (nm[0])
                 style = nm;
         }
-        te_lower(st, style, sizeof st);
+        str_cpy(st, style, sizeof st);
         st[12] = 0;
         draw_head();
     }

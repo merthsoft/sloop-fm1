@@ -162,17 +162,21 @@ static const preset_t DIGITAL_PRESETS[] = {
 #endif
 
 static const engine_t ENG_DIGITAL = {
-    "DIGITAL", {"OPS", "MOD"},
-    {
-        {"ALG", F_ENUM, 0, 7, 0, N_FMALG, 0},
-        {"R2", F_ENUM, 0, 14, 1, N_RATIO, 0},
-        {"R3", F_ENUM, 0, 14, 1, N_RATIO, 0},
-        {"R4", F_ENUM, 0, 14, 1, N_RATIO, 0},
-        {"IDX", F_PCT, 0, 127, 60, 0, 0},
-        {"MDEC", F_TIME, 0, 127, 60, 0, 0},
-        {"FB", F_PCT, 0, 127, 0, 0, 0},
-        {"-", F_INT, 0, 0, 0, 0, 0},
+    .name = "DIGITAL",
+    .page_title = {"OPS", "MOD"},
+    .edit = {
+        {"ALG", F_ENUM, 0, 7, 0, N_FMALG},
+        {"R2", F_ENUM, 0, 14, 1, N_RATIO},
+        {"R3", F_ENUM, 0, 14, 1, N_RATIO},
+        {"R4", F_ENUM, 0, 14, 1, N_RATIO},
+        {"IDX", F_PCT, 0, 127, 60, 0},
+        {"MDEC", F_TIME, 0, 127, 60, 0},
+        {"FB", F_PCT, 0, 127, 0, 0},
+        {"-", F_INT, 0, 0, 0, 0},
     },
-    DIGITAL_PRESETS, sizeof(DIGITAL_PRESETS) / sizeof(DIGITAL_PRESETS[0]), -1, digital_note_on, digital_render,
-    0xFD20, {P_E4, P_E5, P_E6, P_REL},
+    .presets = DIGITAL_PRESETS,
+    .npresets = sizeof(DIGITAL_PRESETS) / sizeof(DIGITAL_PRESETS[0]),
+    .note_on = digital_note_on,
+    .render = digital_render,
+    .macro = {P_E4, P_E5, P_E6, P_REL},
 };

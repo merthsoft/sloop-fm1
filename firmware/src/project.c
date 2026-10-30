@@ -1214,13 +1214,17 @@ UI_SMALL static uint32_t project_restore(uint32_t slot, const void *raw, uint32_
 UI_SMALL static void arrangement_save(void)
 {
     if (song.playing || transport_req) { ui_message("STOP BEFORE SAVE"); return; }
-    settings_save();
 #if FELUCCA_FLASH
     if (flash_ok) {
-        ui_message(memcmp(&persist_saved.arrangement, &arrangement, sizeof arrangement) ? "SAVE ERROR" : "SONG SAVED");
+        /* An explicit save must also replace the power-on working loop now,
+         * even if its only change is a master control returning to zero. */
+        proj_capture(&autosave_buf);
+        int failed=autosave_commit(&autosave_buf);
+        ui_message(failed || settings_later || memcmp(&persist_saved.arrangement, &arrangement, sizeof arrangement) ? "SAVE ERROR" : "SONG SAVED");
         return;
     }
 #endif
+    settings_save();
     ui_message("SONG IN RAM ONLY");
 }
 

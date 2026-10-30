@@ -745,3 +745,5 @@ Code: GPL-3.0-only (see [LICENSE](LICENSE), and [LICENSING.md](LICENSING.md) for
 Master LOFI controls and the held LOFI punch are described in the MerthSloop additions above.
 
 **Reverb controls:** On FX → REVERB, knob 1 selects TYPE, knob 2 SIZE controls decay, and knob 3 DAMP darkens the tail. SPRING adds knob 4 **TIME** for reflection spacing (20–80 ms), independently of SIZE’s nominal decay target. Other types leave TIME inactive. SPRING uses two unequal dispersive paths for stereo width; ROOM, PLATE and HALL tune the existing feedback network for contrasting spaces. Types save with projects and sections; FREEZE defers type changes until released.
+
+**Saving the current sound and mix:** with playback stopped, SAVE on the SONG screen stores the arrangement and the working loop for the next power-on. This includes clearing the master filter to OFF. Use REC on SONG, or held SAVE → SAVE A–D, to store a section separately.

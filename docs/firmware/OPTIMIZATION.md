@@ -1,5 +1,14 @@
 # Eleven physical chord modifiers
 
+## Cold UI and engine metadata
+
+The next pass recovers **740 B net flash** and **384 B main static RAM**, leaving **2,140 B flash free**. It removes unused engine metadata and redundant case conversion, aliases unreachable font slots, and spends part of the recovered RAM on existing startup-only string packing. Audio loops and displayed output remain unchanged. [Measurements and verification](COLD-UI-HEADROOM.md).
+
+## Compact parameter descriptors
+
+Parameter descriptors now occupy 12 target bytes instead of 16. Explicit integer units use internal format variants; formatting and editor replies recover the original units and public F_INT format. This removes a mostly-null pointer from every descriptor without a RAM cache or audio-time lookup. The measured .104 batch saves **976 B net**, leaving **1,400 B flash**. [Design, baseline equivalence and target measurements](PARAMETER-DESCRIPTOR-COMPACTION.md).
+
+
 Current UI reuse work is recorded in [UI-REUSE-INTEGRATION.md](UI-REUSE-INTEGRATION.md): **560 B net linked flash saved**, no static RAM growth, unchanged screen/control behavior. The sections below retain earlier measurements for their original baselines.
 
 The .49 image is **584,336/584,336 bytes**, **0 free**, eight bytes over .48.

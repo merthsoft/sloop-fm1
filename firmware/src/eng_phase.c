@@ -192,17 +192,21 @@ static const preset_t PHASE_PRESETS[] = {
 #endif
 
 static const engine_t ENG_PHASE = {
-    "PHASE", {"PHS", "LINE"},
-    {
-        {"WAVE", F_ENUM, 0, 7, 0, N_PD_WAVE, 0},
-        {"WAVE2", F_ENUM, 0, 8, 0, N_PD_WAVE2, 0},
-        {"DCW", F_PCT, 0, 127, 60, 0, 0},
-        {"ENV", F_PCT, 0, 127, 64, 0, 0},
-        {"DTN", F_INT, 0, 127, 0, 0, "ct"},
-        {"LINE", F_ENUM, 0, 1, 0, N_PD_LINE, 0},
-        {"SUB", F_PCT, 0, 127, 0, 0, 0},
-        {"-", F_INT, 0, 0, 0, 0, 0},
+    .name = "PHASE",
+    .page_title = {"PHS", "LINE"},
+    .edit = {
+        {"WAVE", F_ENUM, 0, 7, 0, N_PD_WAVE},
+        {"WAVE2", F_ENUM, 0, 8, 0, N_PD_WAVE2},
+        {"DCW", F_PCT, 0, 127, 60, 0},
+        {"ENV", F_PCT, 0, 127, 64, 0},
+        {"DTN", F_INT_CT, 0, 127, 0, 0},
+        {"LINE", F_ENUM, 0, 1, 0, N_PD_LINE},
+        {"SUB", F_PCT, 0, 127, 0, 0},
+        {"-", F_INT, 0, 0, 0, 0},
     },
-    PHASE_PRESETS, sizeof(PHASE_PRESETS) / sizeof(PHASE_PRESETS[0]), 0, phase_note_on, phase_render,
-    0x05DF, {P_E2, P_E3, P_E4, P_REL},
+    .presets = PHASE_PRESETS,
+    .npresets = sizeof(PHASE_PRESETS) / sizeof(PHASE_PRESETS[0]),
+    .note_on = phase_note_on,
+    .render = phase_render,
+    .macro = {P_E2, P_E3, P_E4, P_REL},
 };

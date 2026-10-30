@@ -226,17 +226,21 @@ static void sample_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, cons
 
 
 static const engine_t ENG_SAMPLE = {
-    "SAMPLE", {"SET", "TONE"},
-    {
-        {"SET", F_ENUM, 0, SMP_NALL - 1, 0, SMP_ALL_NAMES, 0},
-        {"TUNE", F_SEMI, -24, 24, 0, 0, 0},
-        {"BITS", F_INT, 0, 127, 0, 0, 0},
-        {"LOOP", F_ENUM, 0, 1, 1, N_ONOFF_E, 0},
-        {"CUT", F_INT, 0, 127, 127, 0, 0},
-        {"-", F_INT, 0, 0, 0, 0, 0},
-        {"DRV", F_PCT, 0, 127, 0, 0, 0},
-        {"-", F_INT, 0, 0, 0, 0, 0},
+    .name = "SAMPLE",
+    .page_title = {"SET", "TONE"},
+    .edit = {
+        {"SET", F_ENUM, 0, SMP_NALL - 1, 0, SMP_ALL_NAMES},
+        {"TUNE", F_SEMI, -24, 24, 0, 0},
+        {"BITS", F_INT, 0, 127, 0, 0},
+        {"LOOP", F_ENUM, 0, 1, 1, N_ONOFF_E},
+        {"CUT", F_INT, 0, 127, 127, 0},
+        {"-", F_INT, 0, 0, 0, 0},
+        {"DRV", F_PCT, 0, 127, 0, 0},
+        {"-", F_INT, 0, 0, 0, 0},
     },
-    SMP_PRESET_TABLE, sizeof(SMP_PRESET_TABLE) / sizeof(SMP_PRESET_TABLE[0]), -1, sample_note_on, sample_render,
-    0xFFFF, {P_E0, P_E4, P_ATK, P_REL},
+    .presets = SMP_PRESET_TABLE,
+    .npresets = sizeof(SMP_PRESET_TABLE) / sizeof(SMP_PRESET_TABLE[0]),
+    .note_on = sample_note_on,
+    .render = sample_render,
+    .macro = {P_E0, P_E4, P_ATK, P_REL},
 };

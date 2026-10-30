@@ -53,7 +53,8 @@ enum {
     F_INT, F_PCT, F_BIPCT, F_TIME, F_LFOHZ, F_CUTOFF, F_DB, F_SEMI, F_ENUM, F_BPM, F_NOTE,
     F_ONOFF, F_OCT, F_STEPS,
     F_SWING,                    /* 0..100: MPC swing, 50 % (straight) .. 75 % */
-    F_FILT                      /* -64..63: the DJ filter, LP <- OFF -> HP */
+    F_FILT,                     /* -64..63: the DJ filter, LP <- OFF -> HP */
+    F_INT_CT, F_INT_ST, F_INT_MS, F_INT_PERCENT, F_INT_HZ /* internal integer/unit variants; wire format stays F_INT */
 };
 
 typedef struct {
@@ -62,9 +63,18 @@ typedef struct {
     int8_t min;
     uint8_t max;
     int8_t def; /* Descriptor bounds/defaults fit bytes; values remain int16_t in tracks. */
-    const char *const *names;   /* F_ENUM */
-    const char *unit;           /* F_INT / F_ENUM optional unit */
+    const char *const *names;   /* F_ENUM or integer controls with named ranges */
 } param_desc_t;
+_Static_assert(sizeof(void *)!=4 || sizeof(param_desc_t)==12,"compact target parameter descriptor");
+static inline uint32_t param_fmt(const param_desc_t *d)
+{return d->fmt>F_FILT?F_INT:d->fmt;}
+/* Unit variants are internal only: descriptor replies use param_fmt(). */
+static const char *param_unit(const param_desc_t *d)
+{
+    static const char *const units[]={"","ct","st","MS","%","Hz"};
+    uint32_t code=(uint32_t)d->fmt-F_FILT;
+    return code<sizeof units/sizeof units[0]?units[code]:"";
+}
 
 enum {                          /* per-track parameters */
     P_LEVEL,
@@ -205,12 +215,11 @@ typedef struct {
     param_desc_t edit[8];        /* P_E0..P_E7 */
     const preset_t *presets;
     uint8_t npresets;
-    int8_t fil_page;             /* EDIT page that holds the filter, -1 = none */
+    uint8_t poly;                /* voice cap for POLY and UNISON, 0 = NVOICE */
+    uint8_t ownenv;              /* engine envelopes replace ADSR; see done below */
+    uint8_t macro[4];            /* HOME: the four parameters on KNOB 1..4 */
     void (*note_on)(struct track *t, voice_t *v);
     void (*render)(struct track *t, voice_t *v, int32_t *out, uint32_t n, const vmod_t *m);
-    uint16_t color;              /* accent colour of the engine (RGB565) */
-    uint8_t macro[4];            /* HOME: the four parameters on KNOB 1..4 */
-    uint8_t poly;                /* voice cap for POLY and UNISON, 0 = NVOICE */
     /* optional (0 = none): the voice amplitude instead of the ADSR curve, once per control tick;
      * gets the ADSR value (Q15, env_tick already ran: it still gates the voice), returns Q15 */
     int32_t (*amp)(struct track *t, voice_t *v, int32_t adsr);
@@ -222,9 +231,9 @@ typedef struct {
     /* 1 = the engine's own envelopes are the voice's amplitude (FM6): voice.c renders it at 1.0 (no ADSR, no
      * velocity; LFO -> AMP and the fades still apply; ENV is 0) and the voice ends when done() says so (once
      * per control tick, before the render), not at the end of the ADSR's release */
-    uint8_t ownenv;
     int (*done)(struct track *t, voice_t *v);
 } engine_t;
+_Static_assert(sizeof(void *)!=4 || sizeof(engine_t)==144,"compact target engine table");
 
 /* ------------------------------------------------------------ track --- */
 enum { ST_NOTE, ST_TIE, ST_REST };

@@ -758,7 +758,7 @@ The FM-1 holds **one song**: up to **16 steps** of **4 sections, A–D**. Each s
 device settings such as the 1/8 swing grid. During playback, the snapshot says
 **QUEUED: STOP TO SAVE**. Stop and release sounding notes, then wait for
 **SECTIONS SAVED TO FLASH** before powering off. Explicit section saves also refresh the startup working loop, including track root/scale, so a restart does not restore an older key while the background autosave is waiting. Failed writes are retried.
-SONG-screen SAVE stores arrangement order; REC stores the selected section.
+SONG-screen SAVE immediately stores both the arrangement order and the current working loop for power-on restore, including master effects and mixer settings. REC stores the selected section. Saving the song does not overwrite sections A–D.
 
 1. Make a loop (the verse). **SAVE + key 5**: *save A*. Change the loop (the chorus) and save it into **B** (key 6), a bridge into **C** (key 7), an ending into **D** (key 8). Saving over a used section asks for the key again within 3 s.
 2. **Play the sections live: SAVE + key 1–4.** Playing: the section starts on the next bar, every track from its first step, always in time. Stopped: it becomes the loop at once.

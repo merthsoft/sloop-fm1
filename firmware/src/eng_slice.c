@@ -405,17 +405,23 @@ static const preset_t SLICE_PRESETS[] = {
 #endif
 
 static const engine_t ENG_SLICE = {
-    "SLICE", {"SLCE", "PLAY"},
-    {
-        {"SRC", F_ENUM, 0, 3, 0, N_SLC_SRC, 0},
-        {"DIV", F_ENUM, 0, 4, 2, N_SLC_DIV, 0},
-        {"START", F_INT, 0, 31, 0, 0, 0},
-        {"PTCH", F_SEMI, -24, 24, 0, 0, 0},
-        {"MODE", F_ENUM, 0, 2, 0, N_SLC_MODE, 0},
-        {"REV", F_ENUM, 0, 1, 0, N_SLC_REV, 0},
-        {"DCAY", F_TIME, 0, 127, 127, 0, 0},
-        {"TONE", F_INT, 0, 127, 127, 0, 0},
+    .name = "SLICE",
+    .page_title = {"SLCE", "PLAY"},
+    .edit = {
+        {"SRC", F_ENUM, 0, 3, 0, N_SLC_SRC},
+        {"DIV", F_ENUM, 0, 4, 2, N_SLC_DIV},
+        {"START", F_INT, 0, 31, 0, 0},
+        {"PTCH", F_SEMI, -24, 24, 0, 0},
+        {"MODE", F_ENUM, 0, 2, 0, N_SLC_MODE},
+        {"REV", F_ENUM, 0, 1, 0, N_SLC_REV},
+        {"DCAY", F_TIME, 0, 127, 127, 0},
+        {"TONE", F_INT, 0, 127, 127, 0},
     },
-    SLICE_PRESETS, sizeof(SLICE_PRESETS) / sizeof(SLICE_PRESETS[0]), -1, slice_note_on, slice_render,
-    0xFB2C, {P_E0, P_E1, P_E3, P_E6}, 0, slice_amp,
+    .presets = SLICE_PRESETS,
+    .npresets = sizeof(SLICE_PRESETS) / sizeof(SLICE_PRESETS[0]),
+    .note_on = slice_note_on,
+    .render = slice_render,
+    .macro = {P_E0, P_E1, P_E3, P_E6},
+    .poly = 0,
+    .amp = slice_amp,
 };

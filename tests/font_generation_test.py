@@ -83,7 +83,7 @@ class Representations(unittest.TestCase):
             row[original_counts[e]:] = [0] * (32 - original_counts[e])
         raw = bytes(value & 255 for row in tab for value in row)
         self.assertEqual(hashlib.sha256(raw).hexdigest(), TRIM_SHA256)
-        self.assertEqual(len(entries), 175)
+        self.assertEqual(len(entries), 185)
 
     def test_new_only_preserves_old_and_unrendered_engine(self):
         # A production no-SLICE render must not delete the optional trim row or

@@ -128,6 +128,9 @@ $CC -UNDEBUG -O2 -fwrapv -fno-strict-aliasing -w -Ibuild/gen -Ifirmware/src -Ifi
 run "reverse delay: window order, ring safety, transitions and feedback" "$OUT/reverse_delay_test"
 $CC -UNDEBUG -O2 -fwrapv -fno-strict-aliasing -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/ui_reuse_controls_test" tests/ui_reuse_controls_test.c -lm -pthread
 run "UI reuse: parameter values and encoder acceleration state" "$OUT/ui_reuse_controls_test"
+$CC -UNDEBUG -O2 -fwrapv -fno-strict-aliasing -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/descriptor_oracle_test" tests/descriptor_oracle_test.c -lm -pthread
+$CC -UNDEBUG -O2 -fwrapv -fno-strict-aliasing -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/descriptor_wire_test" tests/descriptor_wire_test.c -lm -pthread
+run "compact descriptors: original metadata, values, units and wire bytes" python3 tests/parameter_descriptors_test.py "$OUT/descriptor_oracle_test" "$OUT/descriptor_wire_test" "$OUT/parameter-descriptors"
 $CC -UNDEBUG -O2 -fwrapv -fno-strict-aliasing -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/ui_reuse_drawing_test" tests/ui_reuse_drawing_test.c -lm -pthread
 run "UI reuse: exact font widths, trim, cards and REC digits" "$OUT/ui_reuse_drawing_test"
 $CC -UNDEBUG -O2 -fwrapv -fno-strict-aliasing -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/ui_reuse_layers_test" tests/ui_reuse_layers_test.c -lm -pthread
