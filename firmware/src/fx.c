@@ -42,6 +42,18 @@ static int32_t delay_character_sample(int32_t x,uint32_t mode,uint32_t w)
 #define CHO_LEN 2048u
 static int16_t dly_buf[DLY_LEN] __attribute__((section(".pool")));
 static int16_t cho_buf[CHO_LEN] __attribute__((section(".pool")));
+static struct {uint32_t phase;int32_t mix;} reverse_delay;
+/* Half-overlapped backwards windows. Both heads remain behind the writer;
+ * a window is at most half the ring. Complementary triangles hide its splice. */
+static int32_t delay_reverse(uint32_t len,uint32_t writer)
+{
+    uint32_t a=reverse_delay.phase>>16,b=(a+32768u)&65535u;
+    if(len>DLY_LEN/2u)len=DLY_LEN/2u;
+    int32_t x=dly_buf[(writer-1u-2u*((a*len)>>16))&(DLY_LEN-1u)];
+    int32_t y=dly_buf[(writer-1u-2u*((b*len)>>16))&(DLY_LEN-1u)];
+    uint32_t gain=a<32768u?a:65535u-a;
+    return y+(((x-y)*(int32_t)gain)>>15);
+}
 /* the reverb: two input diffusers, then four delay lines mixed by a Hadamard matrix (a feedback delay
  * network: every echo feeds all four, so it thickens instead of ringing like a comb), damped in the
  * loop, one line slowly modulated (no metallic tone on long tails); left and right take different lines */
@@ -73,6 +85,12 @@ static struct {
     uint16_t line_i[4], ap_i[2];
     int32_t line_lp[4];
 } fx;
+DSP_INLINE int32_t delay_read(uint32_t len)
+{
+    int32_t x=dly_buf[(fx.dly_w-len)&(DLY_LEN-1u)];
+    if(reverse_delay.mix)x+=((delay_reverse(len,fx.dly_w)-x)*reverse_delay.mix)>>15;
+    return x;
+}
 static volatile uint8_t rev_frz;         /* punch-in FREEZE (punch.c): the reverb holds, no loss, no damping */
 static int32_t rev_l[CTL], rev_r[CTL];   /* the reverb's own return of this block (FREEZE plays it) */
 
@@ -259,6 +277,7 @@ static void fx_buses(const int32_t *cho_in, const int32_t *dly_in, const int32_t
                      int32_t *wet_r, uint32_t n)
 {
     uint32_t i, k, dl = delay_samples();
+    uint32_t reverse_inc=2u*(0x80000000u/(dl>DLY_LEN/2u?DLY_LEN/2u:dl));
     int32_t fb = song.g[G_DFDBK] * 230, col = 2000 + song.g[G_DCOLOR] * 240;
     if (thr_dly && fb < 89 * 230)                       /* ECHO THROW: FDBK at least 70 %, gliding with it (2.6) */
         fb += ((89 * 230 - fb) * thr_dly) >> 15;
@@ -301,13 +320,15 @@ static void fx_buses(const int32_t *cho_in, const int32_t *dly_in, const int32_t
         }
         fx.cho_w++;
         /* delay with a low-passed feedback (in the middle) */
-        x = dly_buf[(fx.dly_w - fx.dly_time) & (DLY_LEN - 1u)];
+        reverse_delay.mix+=clamp((song.g[G_DTYPE]==4?32768:0)-reverse_delay.mix,-256,256);
+        x = delay_read(fx.dly_time);
         if (fx.dly_fade) {
-            int32_t next = dly_buf[(fx.dly_w - fx.dly_next) & (DLY_LEN - 1u)];
+            int32_t next = delay_read(fx.dly_next);
             x += ((next - x) * (int32_t)(64u - fx.dly_fade)) >> 6;
             if (!--fx.dly_fade) fx.dly_time = fx.dly_next;
         }
         x=delay_character_sample(x,(uint32_t)song.g[G_DTYPE],fx.dly_w);
+        reverse_delay.phase+=reverse_inc;
         fx.dly_lp += mulq15(x - fx.dly_lp, col);
         dly_buf[fx.dly_w & (DLY_LEN - 1u)] =
             (int16_t)clamp((dly_in[i] >> 1) + mulq15(fx.dly_lp, fb), -32768, 32767);

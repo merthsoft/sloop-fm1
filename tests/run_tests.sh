@@ -124,6 +124,8 @@ $CC -UNDEBUG -O2 -fwrapv -fno-strict-aliasing -w -Ibuild/gen -Ifirmware/src -Ifi
 run "duck: depth range and tempo recovery" "$OUT/duck_test"
 $CC -UNDEBUG -O2 -fwrapv -fno-strict-aliasing -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/duck_ui_test" tests/duck_ui_test.c -lm -pthread
 run "duck UI: trigger, recovery, shapes and quick depth" "$OUT/duck_ui_test" "$OUT"
+$CC -UNDEBUG -O2 -fwrapv -fno-strict-aliasing -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/reverse_delay_test" tests/reverse_delay_test.c -lm -pthread
+run "reverse delay: window order, ring safety, transitions and feedback" "$OUT/reverse_delay_test"
 $CC -UNDEBUG -O2 -fwrapv -fno-strict-aliasing -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/ui_reuse_controls_test" tests/ui_reuse_controls_test.c -lm -pthread
 run "UI reuse: parameter values and encoder acceleration state" "$OUT/ui_reuse_controls_test"
 $CC -UNDEBUG -O2 -fwrapv -fno-strict-aliasing -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/ui_reuse_drawing_test" tests/ui_reuse_drawing_test.c -lm -pthread

@@ -166,6 +166,7 @@ static const struct {unsigned engine;const char *name;} expected[]={
     {3,"DUST KEYS"}, {3,"WORN PAD"}, {3,"TOY BELL"}, {3,"DUST BASS"},
     {3,"NES REED"}, {3,"NES BUBBLE"}, {3,"GB MALLET"}, {3,"GB VOX"},
     {1,"MD BASS"}, {1,"MD BRASS"}, {3,"WORN EP"}, {3,"DUST ORGAN"},
+    {2,"REV LEAD"}, {2,"REV GLASS"},
 };
 int main(void){
  host_tracks_init();assert(NBANK==NELEM(expected));

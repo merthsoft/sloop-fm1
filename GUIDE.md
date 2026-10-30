@@ -2111,3 +2111,9 @@ the current sound; otherwise it shows MATCH SOURCES and skips automatic morphing
 On a synth track, open **FX → FILTER** and turn **knob 2 (DUCK)** to ON or OFF. ON follows GLO → DUCK; OFF keeps that track out of the pump. Drum audio remains unducked. The switches follow project and section saves, survive sound browsing, and reset to ON in a new project. Older saves include all three synth tracks.
 
 HOME shows active master filter strength in the upper left of the landscape, the selected LOFI character in the upper right, and duck targets below it. `D13` means tracks 1 and 3; `D--` means none. The duck tag only appears when master DUCK depth is above zero; filter and LOFI tags disappear when bypassed. These are configuration indicators, not audio meters.
+
+### Reverse sounds
+
+Raise a synth or drum track’s DLY send, open **FX → DLY TYPE**, and choose **REV** with knob 1. TIME chooses the beat-synced reverse window; FDBK repeats it and MIX sets the shared return level. Reverse windows are capped at about 0.74 seconds, so slow-tempo divisions may reach the cap. Two overlapping windows smooth the splices; this reverses fragments, not an entire recorded phrase. Mode switches fade over roughly 3 ms.
+
+For playable reverse-style sounds, browse **REV LEAD** (LEAD category) or **REV GLASS** (INSTRUMENT category), or select them in PHASE. Hold a key through the rising attack: each sound swells, reaches its peak, then cuts away. Short taps interrupt the swell. ENV → ATK changes its length; DEC/SUS/REL can soften the cutoff or sustain the peak. These presets synthesize backwards-style envelopes; they do not reverse SAMPLE audio.

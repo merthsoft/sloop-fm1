@@ -511,7 +511,7 @@ static void proj_apply(const project_t *p, int all)
     project_revision++;
     uint32_t delay_meta=(uint16_t)p->g[G_ENGSEL];
     if((delay_meta&0xFFC0u)!=0xED00u)delay_meta=0;
-    song.g[G_DTYPE] = (delay_meta&7u)<4u ? delay_meta&7u : 0;
+    song.g[G_DTYPE] = (delay_meta&7u)<5u ? delay_meta&7u : 0;
     for(i=0;i<NPART;i++)duck_bypass[i]=(delay_meta>>(i+3u))&1u;
     uint32_t drive=(uint16_t)p->g[G_CLRSEQ],crush=(uint16_t)p->g[G_INITSND];
     uint32_t known=(crush&0xFF80u)==0xD800u && ((crush>>3)&15u)<=12u && (crush&7u)<=4u;

@@ -6,7 +6,8 @@
 #include <assert.h>
 static const struct {uint8_t engine,preset;const char *name;} ADDED[]={
  {3,20,"NES REED"},{3,21,"NES BUBBLE"},{3,22,"GB MALLET"},{3,23,"GB VOX"},
- {1,24,"MD BASS"},{1,25,"MD BRASS"},{3,24,"WORN EP"},{3,25,"DUST ORGAN"}};
+ {1,24,"MD BASS"},{1,25,"MD BRASS"},{3,24,"WORN EP"},{3,25,"DUST ORGAN"},
+ {2,10,"REV LEAD"},{2,11,"REV GLASS"}};
 int main(int argc,char **argv)
 {
  assert(argc==3);
@@ -16,7 +17,7 @@ int main(int argc,char **argv)
   const engine_t *e=ENGINES[ADDED[a].engine];const preset_t *p=&e->presets[ADDED[a].preset];
   assert(!strcmp(p->name,ADDED[a].name));
   for(uint32_t k=0;k<8;k++)assert(p->e[k]>=e->edit[k].min&&p->e[k]<=e->edit[k].max);
-  for(uint32_t old=0;old<(ADDED[a].engine==3?20u:24u);old++)
+  for(uint32_t old=0;old<(ADDED[a].engine==2?10u:ADDED[a].engine==3?20u:24u);old++)
    assert(memcmp((const uint8_t*)p+sizeof p->name,(const uint8_t*)&e->presets[old]+sizeof p->name,32));
   host_tracks_init();host_preset(&trk[0],ADDED[a].engine,ADDED[a].preset);
   /* Run out shared bus tails before each isolated example. */
@@ -43,5 +44,5 @@ int main(int argc,char **argv)
   printf("%s: peak %d RMS %.2f changes %u PASS\n",p->name,peak,sqrt((double)energy/(section*CTL)),changes);
  }
  fseek(w,0,SEEK_SET);wav_hdr(w,total);assert(!fclose(w)&&!fclose(rep));
- puts("Eight appended presets: bounds, distinct recipes, audible rendering and demo WAV PASS");return 0;
+ puts("Appended presets: bounds, distinct recipes, audible rendering and demo WAV PASS");return 0;
 }

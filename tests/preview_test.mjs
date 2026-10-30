@@ -23,11 +23,11 @@ async function request(m, [cmd, a]) {
   const inp = [...m.access.inputs.values()][0], out = [...m.access.outputs.values()][0];
   return new Promise((resolve) => { inp.onmidimessage = ({data}) => resolve(E.unframe(data)); out.send(E.frame(cmd, a)); });
 }
-for (let probe = 0; probe < 36; probe++) {
-  const sweep = probe>=33 ? [1,8,127][probe-33] : null;
+for (let probe = 0; probe < 37; probe++) {
+  const sweep = probe>=33 && probe<36 ? [1,8,127][probe-33] : null;
   const engine = probe < 12 ? probe : sweep!==null ? 3 : 0, reverb = probe===29 ? 5 : probe >=12 && probe<17 ? probe-12 : null;
   const lofi = probe===32 ? 6 : probe===30 ? 5 : probe>=17 && probe<22 ? probe-17 : null;
-  const delay = probe===31 ? 3 : probe>=22 && probe<29 ? (probe<25?probe-22:probe<27?1:2) : null;
+  const delay = probe===36 ? 4 : probe===31 ? 3 : probe>=22 && probe<29 ? (probe<25?probe-22:probe<27?1:2) : null;
   const m = device();
   await request(m, E.req.set(1, 20, engine));
   await request(m, E.req.preset(engine, 0));

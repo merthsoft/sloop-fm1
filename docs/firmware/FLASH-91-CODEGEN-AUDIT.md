@@ -1,5 +1,7 @@
 # .91 target code-generation and linker audit
 
+The protected application-only inlining candidate is now integrated and remeasured on .101: **176 B saved**, rather than the historical 320 B below. The resulting .102 reverse-sound build, guard checks and remaining hardware qualification are recorded in [reverse sounds](REVERSE-SOUNDS.md). The frozen measurements below remain audit history.
+
 2026-10-28. The useful result is a **320-byte application-flash candidate**, with **zero static RAM cost**. The preferred review patch limits threshold-zero inlining to application compilation and explicitly retains inline timer/interrupt primitives. It is a hardware-gated candidate, not an adopted production setting or a demonstrated speed improvement. No multi-KiB code-generation win was established.
 
 ## Baseline and isolation

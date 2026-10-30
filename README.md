@@ -99,6 +99,8 @@ show the previous presentation of the same controls.
 
 **SEQ → NOTES** selects one note within a chord and edits its pitch, sustain and strength. PRESETS zooms STEP/NOTES to 8, 16, 32 or 64 steps. **NOTE ACTIONS** adds selected-note move/copy/delete plus explicitly shared step timing, slide, accent and fill controls. The drum grid adds **HIT ACTIONS** for individual hit editing. Existing OCT-held tie/rest, octave and move brushes remain available.
 
+**FX → DLY TYPE → REV** plays overlapping fragments backward, using the existing delay buffer. TIME sets the synced window (up to about 0.74 seconds); feedback builds reversing echoes. **REV LEAD** and **REV GLASS** in the sound browser offer swelling attacks with short cutoffs—reverse-style synthesis rather than reversed samples.
+
 **FX → LOFI** selects OFF, Vinyl, Tape, VHS, CD or Radio, with three controls tailored to the character. Vinyl has stronger irregular wow and sparse clicks/pops; Tape adds flutter, darkening and drive; VHS adds warble and damage; CD uses short captured-fragment stutters. Radio narrows the mix to a receiver band with drift, hiss and crackling static; its controls become audible well before their upper range. CD is a microstutter character, not a phrase-length delay. Settings save with projects and sections; all three amounts at zero bypass the effect. The **LOFI** punch temporarily intensifies the selected character. If TYPE is OFF it uses Vinyl, then returns to dry on release. Saved settings never change.
 LOFI TYPE starts at and defaults to **OFF**: it fades to dry without changing the three stored
 amounts. Selecting a character restores those amounts; LOFI punch remains

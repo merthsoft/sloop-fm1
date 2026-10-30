@@ -647,7 +647,7 @@ int main(void)
     bad += check("invalid DUCK tag restores safe defaults",song.g[G_DUCK]==127&&!song.g[G_DTRIG]&&song.g[G_DREC]==1&&!song.g[G_DSHAPE]);
     q2.g[G_DUCK]=-1;proj_apply(&q2,1);
     bad += check("negative legacy DUCK clamps off",!song.g[G_DUCK]&&!song.g[G_DTRIG]&&song.g[G_DREC]==1&&!song.g[G_DSHAPE]);
-    for(uint32_t mask=0;mask<8;mask++)for(uint32_t type=0;type<4;type++) {
+    for(uint32_t mask=0;mask<8;mask++)for(uint32_t type=0;type<5;type++) {
         song.g[G_DTYPE]=type;
         for(uint32_t i=0;i<NPART;i++)duck_bypass[i]=(mask>>i)&1u;
         proj_capture(&q2);

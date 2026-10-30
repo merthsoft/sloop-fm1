@@ -161,7 +161,7 @@ static void preset_extras(int16_t *p, const preset_t *pr)
 
 
 static const char *const N_RMODEL[] = {"STEREO", "SPRING", "ROOM", "PLATE", "HALL", "DARK"};
-static const char *const N_DTYPE[]={"DIGI","TAPE","CRUSH","DUB"};
+static const char *const N_DTYPE[]={"DIGI","TAPE","CRUSH","DUB","REV"};
 static const char *const N_DHOLD[]={"2K8", "5K5", "11K", "22K", "44K"};
 static const param_desc_t GP[G_COUNT] = {
     [G_BPM] = PD("BPM", F_BPM, 40, 240, 90),
