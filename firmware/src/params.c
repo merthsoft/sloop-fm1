@@ -430,9 +430,12 @@ static const char *const N_SUSTAIN[]={"OFF","PEDAL","PIANO","STRINGS","LOFI"};
 static const char *const N_TAIL_TIME[]={"0.5S","1S","2S","4S","8S","16S","32S","HOLD"};
 static const param_desc_t SUSTAIN_DESC[]={PE("TYPE",N_SUSTAIN,0),PE("DECAY",N_TAIL_TIME,4),PD("DAMP",F_PCT,0,127,0),PD("AMOUNT",F_PCT,0,127,127)};
 /* Runtime A/B parameter states. No engine payloads, note owners or saved IDs. */
-static int16_t snapshot_p[NPART][4], snapshot_values[NPART][2][P_COUNT];
+enum { SNAPSHOT_N=7 };
+static int16_t snapshot_p[NPART][SNAPSHOT_N], snapshot_values[NPART][2][P_COUNT];
 static const char *const N_SNAPSHOT[]={"EMPTY","A","B","A+B"};
-static const param_desc_t SNAPSHOT_DESC[]={PD("MORPH",F_PCT,0,127,0),PE("SET A",N_GO,0),PE("SET B",N_GO,0),PE("STORED",N_SNAPSHOT,0)};
+static const char *const N_MORPH_SCOPE[]={"ALL","SOUND","FILTER","ENV","LFO","MIX"};
+static const char *const N_MORPH_MOVE[]={"STOP","A>B","B>A"};
+static const param_desc_t SNAPSHOT_DESC[]={PD("MORPH",F_PCT,0,127,0),PE("SET A",N_GO,0),PE("SET B",N_GO,0),PE("STORED",N_SNAPSHOT,0),PE("SCOPE",N_MORPH_SCOPE,0),PE("MOVE",N_MORPH_MOVE,0),PE("TIME",N_EVOLVE_CYCLE,0)};
 static const char *const N_SPREAD[]={"CLOSE","OPEN","WIDE"};
 static const param_desc_t VOICE_INVERT=PD("INVERT",F_INT,-3,3,0);
 static const param_desc_t VOICE_SPREAD=PE("SPREAD",N_SPREAD,0);
@@ -477,7 +480,8 @@ static const page_t PAGES[] = {
                                                                           * RES KTR (page_shown) */
     {"VOICE", FAM_EDIT, SC_TRACK, GR_NONE, {P_VOICE, P_GLIDE, P_GLMODE, P_PRIO}},
     {"VOICE 2", FAM_EDIT, SC_TRACK, GR_NONE, {P_ALLOC, P_DETUNE, P_PAN, P_MUTE}},
-    {"MORPH", FAM_EDIT, SC_MORPH, GR_NONE, {0,1,2,3}},
+    {"MORPH", FAM_EDIT, SC_MORPH, GR_NONE, {0,1,2,4}},
+    {"MORPH GO", FAM_EDIT, SC_MORPH, GR_NONE, {5,6,0,3}},
     {"GLOBAL", FAM_GLO, SC_GLOBAL, GR_NONE, {G_BPM, G_SWING, G_CLOCK, G_TUNE}},
     {"MASTER", FAM_GLO, SC_GLOBAL, GR_NONE, {G_DUST, G_DUCK, G_FILT, G_ROLL}},
     {"DUCK", FAM_GLO, SC_GLOBAL, GR_NONE, {G_DUCK, G_DTRIG, G_DREC, G_DSHAPE}},
@@ -539,7 +543,7 @@ static __attribute__((minsize,noinline)) const param_desc_t *page_desc(const pag
             {&drift_p,DRIFT_DESC},{&evolve_p,EVOLVE_DESC},{&sustain_p,SUSTAIN_DESC},{&snapshot_p,SNAPSHOT_DESC}
         };
         if(is_drum(TSEL) || id==0xFFu){*valp=0;return 0;}
-        uint32_t family=pg->scope-SC_DRIFT, stride=pg->scope==SC_EVOLVE?6u:4u;
+        uint32_t family=pg->scope-SC_DRIFT, stride=pg->scope==SC_EVOLVE?6u:pg->scope==SC_MORPH?SNAPSHOT_N:4u;
         *valp=(int16_t *)((uint8_t *)fields[family].values+((song.sel%NPART)*stride+id)*sizeof(int16_t));
         return &fields[family].desc[id];
     }

@@ -793,7 +793,7 @@ UI_SMALL static const char *page_hold_hint(const page_t *pg)
         "HOLD GLO: MIX/FILL", "HOLD SAVE: SONG/NEW", "HOLD ARP: ROLL/LATCH",
         "HOLD SEQ: STEP KEYS", "PRESETS: SOUND / ALGO: TRACK"};
     if(pg->graph==GR_BROWSE)return "K3: RIGHT KEEP / LEFT UNDO";
-    return pg->scope==SC_MORPH?"STORE: TURN RIGHT TWICE":pg->scope==SC_STEP?"PRESETS: ZOOM / OCT: TOOLS":hints[pg->fam];
+    return pg->scope==SC_MORPH?(pg->id[0]?"MOVE: START / STOP / TIME":"STORE: TURN RIGHT TWICE"):pg->scope==SC_STEP?"PRESETS: ZOOM / OCT: TOOLS":hints[pg->fam];
 }
 UI_SMALL static const char *page_title(const page_t *pg)
 {
@@ -973,7 +973,7 @@ UI_SMALL static void draw_columns(void)
             draw_column(c, "", "", "", C_HI, -1);
             continue;
         }
-        draw_parameter_column(c,d,cur_page()->scope==SC_MORPH && !c && snapshot_ready(TSEL,song.sel)?snapshot_position(song.sel):*vp,0);
+        draw_parameter_column(c,d,cur_page()->scope==SC_MORPH && cur_page()->id[c]==0 && snapshot_ready(TSEL,song.sel)?snapshot_position(song.sel):*vp,0);
     }
 }
 

@@ -768,6 +768,7 @@ static __attribute__((noinline)) void mix_part(track_t *t, uint32_t n, mixacc_t 
 {
     static int16_t pnew[2][P_COUNT] __attribute__((section(".lowram")));
     int16_t *pn = pnew[mx != &acc[0]];
+    if(snapshot_p[t-trk][5])snapshot_tick(t);
     drift_tick(t);
     uint32_t morph=drift[t-trk].target==DRIFT_MORPH && drift[t-trk].depth && snapshot_ready(t,(uint32_t)(t-trk));
     uint32_t fading=t->pold && t->xf_on && t->xf;
@@ -1112,8 +1113,8 @@ static __attribute__((noinline)) uint32_t units_split(void)
         if(!(mask&bit))continue;
         /* Only morphs that can change LFO timing need the core-0 guard.
          * Otherwise the ordinary wrap/source/RNG exclusions remain sufficient. */
-        if((drift_p[k][3]==DRIFT_MORPH || drift[k].target==DRIFT_MORPH) &&
-           (drift_p[k][0] || drift[k].depth) && !snapshot_lfo_stable(k,p)) {mask&=~bit;continue;}
+        if((snapshot_p[k][5] || ((drift_p[k][3]==DRIFT_MORPH || drift[k].target==DRIFT_MORPH) &&
+           (drift_p[k][0] || drift[k].depth))) && !snapshot_lfo_stable(k,p)) {mask&=~bit;continue;}
         uint32_t inc=p[P_LSYNC]?lfo_sync_inc(p):LFO_INC[p[P_LRATE]&127];
         if(t->lfo_ph+inc<t->lfo_ph || (e==&ENG_PHYS && phys_render_draws(t,fade?t->pe_old[0]:p[P_E0])) ||
            (e==&ENG_FORMANT && nform>1u))mask&=~bit;

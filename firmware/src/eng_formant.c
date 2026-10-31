@@ -225,6 +225,13 @@ static const preset_t FORMANT_PRESETS[] = {
      XP(P_LD_AMP + 1, 18, P_LRATE + 1, 80, P_LFADE + 1, 60)},
     {"ROBOT", {40, 40, 0, 0, 127, 0, 110, 0}, {0, 60, 110, 20}, 0, 1, FX(10, 0, 20, 15), XP(P_GLIDE + 1, 20)},
     {"VOX PAD", {20, 100, 110, 0, 50, 30, 60, 10}, {80, 90, 118, 90}, 0, 0, FX(0, 60, 15, 70)},
+    /* Additional existing-engine performance voices. */
+    {"REV CHOIR", {110,0,84,0,32,20,54,0}, {90,0,0,6}, 0,0, FX(0,16,8,24)},
+    /* Horror-film colors from the existing oscillator and modulation paths. */
+    {"HEX CHOIR", {110,32,100,-5,24,68,78,24}, {78,94,110,76}, 0,0, FX(0,8,8,40)},
+    /* Vacation collection: existing synthesis, appended factory identities. */
+    {"LUNAR VOX", {120,72,108,5,16,42,48,8}, {92,90,118,86}, 0,0, FX(0,22,10,36)},
+    {"ROBOT TALK", {24,110,64,7,112,4,96,32}, {2,76,96,34}, 0,1, FX(6,0,16,16), XP(P_LRATE + 1,68, P_LD_SHP + 1,20)},
 };
 #endif
 

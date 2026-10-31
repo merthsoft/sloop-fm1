@@ -11,6 +11,7 @@ typedef struct {
     snapshot_record_t section[4],working;
     uint32_t crc;
 } snapshot_bank_t;
+_Static_assert(NELEM(N_MORPH_SCOPE)*NELEM(N_EVOLVE_CYCLE)<=128,"snapshot motion metadata fits seven spare bits");
 #define SNAPSHOT_MAGIC 0x3142464Du /* MFB1 */
 static snapshot_record_t snapshot_sections[4] __attribute__((section(".pool")));
 static uint32_t snapshot_saved;
@@ -19,11 +20,14 @@ UI_SMALL static void snapshot_capture(snapshot_record_t *r,const project_t *p)
 {
     memset(r,0,sizeof *r);r->project=p->sum;
     for(uint32_t k=0;k<NPART;k++) {
-        r->t[k].ready=(uint8_t)(snapshot_p[k][3]&3);
-        r->t[k].position=(uint8_t)snapshot_p[k][0];
+        /* Six scopes x nineteen times fit seven spare bits. Legacy zero bits
+         * decode as ALL / 1S; record size, captures and upstream prefix stay put. */
+        uint32_t meta=(uint32_t)snapshot_p[k][4]+NELEM(N_MORPH_SCOPE)*(uint32_t)snapshot_p[k][6];
+        r->t[k].ready=(uint8_t)((snapshot_p[k][3]&3)|(meta<<2));
+        r->t[k].position=(uint8_t)(snapshot_p[k][0]|((meta&64u)<<1));
         uint32_t j=0;
         for(uint32_t id=0;id<P_COUNT;id++)if(snapshot_param(id)) {
-            for(uint32_t side=0;side<2;side++)if(r->t[k].ready&(1u<<side)) {
+            for(uint32_t side=0;side<2;side++)if((r->t[k].ready&3u)&(1u<<side)) {
                 int16_t v=snapshot_values[k][side][id];
                 r->t[k].value[side][j]=(int8_t)v;
             }
@@ -34,8 +38,12 @@ UI_SMALL static void snapshot_capture(snapshot_record_t *r,const project_t *p)
 UI_SMALL static void snapshot_restore(const snapshot_record_t *r,const project_t *p)
 {
     if(r->project!=p->sum)return;
-    for(uint32_t k=0;k<NPART;k++)if(r->t[k].ready<=3u && r->t[k].position<=127u) {
-        snapshot_p[k][0]=r->t[k].position;snapshot_p[k][3]=r->t[k].ready;
+    for(uint32_t k=0;k<NPART;k++) {
+        uint32_t meta=(r->t[k].ready>>2)|((r->t[k].position&128u)>>1);
+        if(meta>=NELEM(N_MORPH_SCOPE)*NELEM(N_EVOLVE_CYCLE))continue;
+        snapshot_p[k][0]=r->t[k].position&127u;snapshot_p[k][3]=r->t[k].ready&3u;
+        snapshot_p[k][4]=(int16_t)(meta%NELEM(N_MORPH_SCOPE));
+        snapshot_p[k][6]=(int16_t)(meta/NELEM(N_MORPH_SCOPE));snapshot_p[k][5]=0;
         uint32_t j=0;
         for(uint32_t id=0;id<P_COUNT;id++)if(snapshot_param(id)) {
             for(uint32_t side=0;side<2;side++)snapshot_values[k][side][id]=r->t[k].value[side][j];

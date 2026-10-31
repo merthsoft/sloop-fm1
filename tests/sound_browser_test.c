@@ -55,8 +55,9 @@ int main(int argc,char **argv)
         TSEL->p[P_REL]=91;TSEL->p[P_DLY]=33;TSEL->p[P_VOICE]=V_POLY;
         int16_t before[P_COUNT];memcpy(before,TSEL->p,sizeof before);
         for(unsigned a=0;a<2;a++)for(unsigned id=0;id<P_COUNT;id++)snapshot_values[0][a][id]=(int16_t)(id+a);
-        snapshot_p[0][0]=64;snapshot_p[0][3]=3;
-        int16_t ab[2][P_COUNT],morph[4];memcpy(ab,snapshot_values[0],sizeof ab);memcpy(morph,snapshot_p[0],sizeof morph);
+        snapshot_p[0][0]=64;snapshot_p[0][3]=3;snapshot_p[0][4]=3;snapshot_p[0][5]=1;snapshot_p[0][6]=8;
+        snapshot_run[0].phase=0x12345678u;
+        int16_t ab[2][P_COUNT],morph[SNAPSHOT_N];memcpy(ab,snapshot_values[0],sizeof ab);memcpy(morph,snapshot_p[0],sizeof morph);
         uint8_t patch[FP_SIZE+1u];memcpy(patch,fm6_patch[0],sizeof patch);
         patch[0]=(uint8_t)(patch[0]==50?51:50);fm6_set_patch(0,patch);
         memcpy(patch,fm6_patch[0],sizeof patch);
@@ -67,6 +68,7 @@ int main(int argc,char **argv)
         assert(TSEL->eng_req==engine && TSEL->preset==0 && !TSEL->user);
         assert(!memcmp(before,TSEL->p,sizeof before));
         assert(!memcmp(ab,snapshot_values[0],sizeof ab)&&!memcmp(morph,snapshot_p[0],sizeof morph));
+        assert(snapshot_run[0].phase==0x12345678u&&!snapshot_run[0].playing);
         assert(!memcmp(patch,fm6_patch[0],sizeof patch));
         assert(!memcmp(notes,TSEL->step,sizeof notes)&&!memcmp(other,trk[1].p,sizeof other));
     }

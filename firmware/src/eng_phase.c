@@ -170,7 +170,8 @@ static void phase_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const
 }
 
 #if FELUCCA_BOOT_PRESETS
-static preset_t PHASE_PRESETS[BP_N_PHASE_PRESETS] __attribute__((section(".lowram")));
+/* Cold preset metadata uses main RAM to leave low RAM room for appended sounds. */
+static preset_t PHASE_PRESETS[BP_N_PHASE_PRESETS];
 #else
 static const preset_t PHASE_PRESETS[] = {
     /* name, {WAVE, WAVE2, DCW, ENV, DTN, LINE, SUB, -}, {A D S R}, fenv, mono */
@@ -183,11 +184,17 @@ static const preset_t PHASE_PRESETS[] = {
     {"CZ LEAD", {0, 0, 70, 60, 6, 0, 0, 0}, {2, 70, 110, 30}, 0, 1, FX(0, 10, 25, 25), XP(P_GLIDE + 1, 30)},
     {"CZ PAD", {1, 4, 45, 30, 14, 0, 0, 0}, {70, 90, 115, 85}, 0, 0, FX(0, 50, 20, 60)},
     {"CZ RESO", {6, 0, 80, 90, 0, 0, 0, 0}, {0, 70, 60, 40}, 0, 0, FX(0, 10, 25, 30)},
-    {"VIOLIN", {0, 0, 38, 12, 0, 0, 0, 0}, {28, 75, 112, 34}, 0, 1, FX(0, 0, 0, 24)},
+    {"VIOLIN", {0, 0, 82, 26, 0, 0, 0, 0}, {28, 75, 112, 34}, 0, 1, FX(0, 0, 0, 24)},
     {"OBOE", {2, 0, 42, 18, 0, 0, 0, 0}, {8, 66, 108, 24}, 0, 1, FX(0, 0, 0, 18)},
     /* Reverse-style envelopes: swell to the peak, then fall away without a tail. */
     {"REV LEAD", {0,4,55,42,6,0,0,0}, {65,0,0,4}, 0,0, FX(0,12,24,18)},
     {"REV GLASS", {3,0,48,76,0,0,0,0}, {55,0,0,4}, 0,0, FX(0,0,28,20)},
+    {"REV REED", {2,0,46,28,0,0,0,0}, {72,0,0,5}, 0,0, FX(0,0,12,16)},
+    /* Horror-film colors from the existing oscillator and modulation paths. */
+    {"SLASH STR", {0,3,82,34,37,0,0,0}, {4,65,82,38}, 0,0, FX(4,0,8,26), XP(P_LRATE + 1,90, P_LD_PIT + 1,2, P_LFADE + 1,20)},
+    /* Vacation collection: existing synthesis, appended factory identities. */
+    {"ORBIT PAD", {1,4,42,18,19,0,14,0}, {92,98,116,88}, 0,0, FX(0,28,16,36), XP(P_LRATE + 1,26, P_LD_SHP + 1,14)},
+    {"CRT LEAD", {4,0,62,18,6,0,0,0}, {3,74,102,28}, 0,1, FX(0,6,16,16), XP(P_LRATE + 1,82, P_LD_PIT + 1,1, P_LFADE + 1,64)},
 };
 #endif
 

@@ -66,7 +66,7 @@ def pair_decode(tokens, dictionary):
     return bytes(out)
 
 
-def pool_object(data, main_limit=6250, pool_limit=2500):
+def pool_object(data, main_limit=6144, pool_limit=2500):
     b = bytearray(data)
     h = struct.unpack_from('<16sHHIIIIIHHHHHH', b)
     assert h[0][:7] == b'\x7fELF\x01\x01\x01' and h[1] == 1 and h[2] == 241  # Pinned JieLi pi32v2 ELF contract.

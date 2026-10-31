@@ -11,6 +11,9 @@ enum { R_BASS, R_HELD, R_COMP, R_MELODY, R_ONE };
 static int has(const char *n, const char *w) { return strstr(n, w) != 0; }
 static int role_of(const char *n)
 {
+    /* Match the intended performance of the vacation choir and percussive organ. */
+    if (!strcmp(n, "LUNAR VOX")) return R_HELD;
+    if (!strcmp(n, "TOY ORGAN")) return R_COMP;
     /* Avoid treating the instrument name's "chord" as a one-key chord patch. */
     if (!strcmp(n, "HARPSICHORD")) return R_COMP;
     if (!strcmp(n, "GB WAVE BS")) return R_BASS;

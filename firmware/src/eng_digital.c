@@ -158,6 +158,15 @@ static const preset_t DIGITAL_PRESETS[] = {
     /* Mega Drive-inspired four-operator colors, not a YM2612 emulation. */
     {"MD BASS", {0,1,1,1,86,20,22,0}, {0,68,66,18}, 0,1, FX(0,0,0,6), XP(P_TRANS+1,-12)},
     {"MD BRASS", {4,1,1,1,52,68,15,0}, {6,65,100,30}, 0,0, FX(0,8,8,14), XP(P_LD_PIT+1,1,P_LRATE+1,78)},
+    /* Additional existing-engine performance voices. */
+    {"REV METAL", {4,6,1,13,62,110,4,0}, {86,0,0,5}, 0,0, FX(0,0,12,18)},
+    {"REV HARP", {4,1,1,2,38,110,0,0}, {82,0,0,4}, 0,0, FX(0,0,10,18)},
+    {"MD CRYSTAL", {5,1,2,7,66,40,5,0}, {0,86,0,46}, 0,0, FX(0,0,14,20)},
+    {"MD PICK", {2,1,2,1,74,24,18,0}, {0,82,24,26}, 0,0, FX(0,0,8,12)},
+    /* Horror-film colors from the existing oscillator and modulation paths. */
+    {"DREAD BELL", {4,13,6,9,80,96,12,0}, {0,106,0,72}, 0,0, FX(0,0,18,30)},
+    /* Vacation collection: existing synthesis, appended factory identities. */
+    {"STAR KEYS", {5,1,4,8,40,82,0,0}, {3,94,25,65}, 0,0, FX(0,8,18,26)},
 };
 #endif
 

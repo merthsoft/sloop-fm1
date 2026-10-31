@@ -2,7 +2,8 @@
 /* A single reversible audition owns only patch parameters, never voices/patterns.
  * Leaving the browser cancels; KEEP establishes a new audition baseline. */
 static struct {
-    int16_t p[P_COUNT], ab[2][P_COUNT], morph[4];
+    int16_t p[P_COUNT], ab[2][P_COUNT], morph[SNAPSHOT_N];
+    uint32_t morph_phase;
     uint8_t patch[FP_SIZE+1u], fm_slot, fm_pending;
     uint8_t active, part, eng, preset, user;
     int8_t fav;
@@ -48,6 +49,8 @@ UI_SMALL static void browse_end(int keep)
         memcpy(t->p,browse_saved.p,sizeof t->p);
         memcpy(snapshot_values[browse_saved.part],browse_saved.ab,sizeof browse_saved.ab);
         memcpy(snapshot_p[browse_saved.part],browse_saved.morph,sizeof browse_saved.morph);
+        snapshot_run[browse_saved.part].phase=browse_saved.morph_phase;
+        snapshot_run[browse_saved.part].playing=0;
         fm1_irq_on();
         fm6_set_patch(browse_saved.part,browse_saved.patch);
         fm6_slot[browse_saved.part]=browse_saved.fm_slot;
@@ -69,6 +72,7 @@ UI_SMALL static void browse_step(int32_t steps)
         for(uint32_t id=0;id<P_COUNT;id++)browse_saved.p[id]=*snapshot_base(t,id);
         memcpy(browse_saved.ab,snapshot_values[song.sel],sizeof browse_saved.ab);
         memcpy(browse_saved.morph,snapshot_p[song.sel],sizeof browse_saved.morph);
+        browse_saved.morph_phase=snapshot_run[song.sel].phase;
         memcpy(browse_saved.patch,fm6_patch[song.sel],sizeof browse_saved.patch);
         browse_saved.fm_slot=fm6_slot[song.sel];browse_saved.fm_pending=(uint8_t)(fm6_pend&(1u<<song.sel));
         browse_saved.eng=t->eng_req;browse_saved.preset=t->preset;browse_saved.user=t->user;

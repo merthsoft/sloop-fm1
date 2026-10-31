@@ -1,6 +1,22 @@
 # Measured branch headroom
 
-## Current cold-UI headroom build
+## Vacation sound collection
+
+MerthSloop **2.8.0.109** uses **583,844 / 584,336 B**, leaving **492 B flash**. Twelve existing-engine presets and browser entries cost **320 B net** against .108. Main static RAM is **98,160 / 98,304 B** (144 B free), low RAM **29,324 / 29,392 B** (68 B free), and pool **335,784 / 344,064 B**. The 8,192 B pool reserve remains intact. WHEEL factory metadata moves to spare pool RAM and the main startup literal budget falls to 6,144 B. No playback DSP or audio buffers are added. All 237 audio goldens pass, preserving all preceding 225 exactly. [Sounds, memory details and checks](VACATION-SOUNDS.md).
+
+## Horror-preset checkpoint
+
+MerthSloop **2.8.0.108** uses **583,524 / 584,336 B**, leaving **812 B flash**. Four existing-engine horror presets cost **128 B net** against .107. Main static RAM is **98,060 / 98,304 B** (244 B free), low RAM **29,324 / 29,392 B** (68 B free), and pool **335,424 / 344,064 B**, with the 8,192 B reserve unchanged. No new DSP or audio buffers. All 225 audio goldens pass; the preceding 221 remain exact. [Sounds and validation](HORROR-SOUNDS.md).
+
+## Scoped-MORPH and sound-pack checkpoint
+
+MerthSloop **2.8.0.107** uses **583,396 / 584,336 B**, leaving **940 B flash**. The combined scope/one-shot controls, saved scope/duration metadata, audition-state preservation and eight extra existing-engine presets cost **1,136 B** against .106. Main static RAM is **97,996 / 98,304 B** (308 B free), low RAM **29,216 / 29,392 B** (176 B free), and pool **335,424 / 344,064 B**, with the 8,192 B reserve unchanged. No new audio buffers or sample decoding. [MORPH design](TRACK-SNAPSHOTS-DESIGN.md) · [New voices](PERFORMANCE-SOUND-PACK.md).
+
+## Swelling-preset checkpoint
+
+MerthSloop **2.8.0.106** adds three existing-engine swell presets and refines VIOLIN at a combined **64 B flash cost**: **582,260 / 584,336 B**, **2,076 B free**. Main static RAM is **97,852 / 98,304 B**, low RAM **28,928 / 29,392 B**, pool **335,424 / 344,064 B**. PHASE preset metadata relocates from low to main RAM; no audio buffers are added. See [reverse sounds](REVERSE-SOUNDS.md).
+
+## Cold-UI headroom checkpoint
 
 MerthSloop **2.8.0.105** uses **582,196 / 584,336 B**, leaving **2,140 B flash**. Engine-table cleanup, obsolete UI case conversion removal, unreachable font-slot aliases and more existing startup string packing recover **740 B net** against .104. Main static RAM falls **384 B** to **97,340 / 98,304 B**; low RAM **29,288 / 29,392 B** and pool **335,424 / 344,064 B** are unchanged. The 8,192 B pool reserve remains. No sounds/features were removed or playback decoding added. See [measurements and equivalence checks](COLD-UI-HEADROOM.md).
 

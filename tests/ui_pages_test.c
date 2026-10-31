@@ -1344,7 +1344,8 @@ int main(int argc, char **argv)
         tap(B_EDIT); SEL(-9);
         check(!strcmp(PT(), "EDIT 1"), "SELECT on EDIT: back to the first page");
         SEL(9);
-        check(!strcmp(PT(), "MORPH"), "SELECT on EDIT: up to MORPH");
+        check(!strcmp(PT(), "MORPH GO"), "SELECT on EDIT: up to MORPH GO");
+        SEL(-1);check(!strcmp(PT(), "MORPH"), "MORPH captures precede the transition page");
         tap(B_SEQ); SEL(9);
         check(!strcmp(PT(), "SONG"), "SELECT on SEQ reaches SONG through the sequence browser");
         tap(B_ENV);

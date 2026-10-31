@@ -10,14 +10,40 @@ part while its notes keep playing. It does not capture or replace a sequence.
   native control units; named choices switch at the midpoint.
 - Knob 2 SET A: turn right twice to capture the current sound as A.
 - Knob 3 SET B: turn right twice to capture the current sound as B.
+- Knob 4 SCOPE: ALL, SOUND, FILTER, ENV, LFO or MIX. Captures always retain the full sound; scope only limits what is applied.
+
+The next EDIT page is **MORPH GO**:
+
+- Knob 1 MOVE: STOP, A>B or B>A. Select a direction to start from that endpoint. Completion returns MOVE to STOP and retains the destination sound.
+- Knob 2 TIME: the same eight second-based and eleven tempo durations used by DRIFT/DRONE.
+- Knob 3 MORPH: live position; turning it cancels a transition and takes manual control.
 - Column 4 STORED: EMPTY, A, B or A+B; read-only.
+
+Timed transitions work while stopped. Tempo durations pause with transport and resume without a clock-reset jump. Changing TIME preserves the completed fraction and uses the new timing for the remaining fraction. STOP freezes the current sound. Capturing A/B, loading a sound, or applying a project/section cancels the old run. A sound-browser audition pauses it; cancelling the audition restores its sound, controls and progress. Starting a one-shot turns off DRIFT→MORPH on that track so the two do not fight; other DRIFT targets remain independent.
 
 Capture A, edit the sound on the other pages, capture B, then turn MORPH.
 Each track keeps its own pair when switching tracks or leaving the page.
 Both endpoints are required before morphing. Capture and morph work during
 playback and recording without disarming the track.
 
-![Native track morph page](../../assets/screens/merthsoft/neon/track-morph.png)
+![Native track morph page](../../assets/screens/merthsoft/neon/morph-scope.png)
+
+## Selective scope
+
+| Scope | Controls applied |
+| --- | --- |
+| ALL | The complete supported capture below |
+| SOUND | Eight engine controls, glide amount and unison detune |
+| FILTER | Track DJ filter and ANALOG filter type; also ANALOG cutoff/resonance/key tracking and LOFI TONE |
+| ENV | ADSR, envelope modulation destinations and ENV SYNC |
+| LFO | Rate, waveform, phase, fade, destinations, sync, trigger and polarity |
+| MIX | Level, preset trim, pan, distortion/chorus/delay/reverb sends, and track insert controls |
+
+SOUND includes native engine filter controls; FILTER provides a narrower way to animate those supported controls. Other engines still have the common track filter. Scope applies to manual, DRIFT-driven and one-shot morphing. Unselected controls keep their current values, including levels and sends when you animate SOUND. Switching scope does not undo earlier changes.
+
+![Native scoped morph controls](../../assets/screens/merthsoft/neon/morph-scope.png)
+
+![Native one-shot morph controls](../../assets/screens/merthsoft/neon/morph-go.png)
 
 ## Scope and lifetime
 
@@ -38,8 +64,8 @@ This is parameter interpolation, not an audio crossfade between two engines;
 discrete changes can be abrupt.
 
 Loading a factory/user sound invalidates the pair. STOP and track selection do
-not. Section SAVE persists A/B, readiness and manual blend alongside the current
-sound; loading that section restores its pair. Working-project autosave also
+not. Section SAVE persists A/B, readiness, manual blend, scope and duration alongside the current
+sound; loading that section restores its pair, with MOVE stopped. Working-project autosave also
 checks A/B-only changes, after the existing stopped/idle gates. Queued live saves
 remain RAM-only until STOP flushes them. DRIFT can animate the pair at runtime;
 its runtime mode is not made persistent by this extension.
@@ -60,7 +86,7 @@ MIDI output, RNG and pattern memory are untouched by the operation.
 ## Space and validation
 
 The pair uses 852 bytes for three tracks × two complete 71-value arrays, plus
-24 bytes of per-track controls. Only the documented subset is applied. Target
+42 bytes of per-track controls and 36 bytes of one-shot phase state. Only the documented subset is applied. Target
 alignment/global layout determines final occupied RAM.
 
 To fund the feature, ANALOG's previously duplicated LP and BP/HP bodies now share
@@ -134,3 +160,13 @@ funding persistence without adding any audio-path decoding. Current .85 image:
 A/B-only autosave, unchanged upstream prefix, trailer write/drop/corruption
 failures, retry, absent trailers and mismatched project rejection. Hardware
 power-cycle verification remains required.
+
+## One-shot scheduling and saved metadata
+
+Each part owns a phase accumulator. The existing motion timing helpers supply free increments or transport phase; MORPH does not add another waveform evaluator or beat clock. Interpolation runs only when the displayed 0–127 position changes, not every sample or every block of a slow sweep. Idle parts skip the transition helper. Preset crossfades pause progression until their engine is ready. Parameter locks retain their instantaneous values and receive the new morphed base underneath.
+
+The dispatcher applies the existing core-0 exclusion when a running transition can alter LFO timing. A scope that excludes LFO can use normal splitting. Automatic SOUND/ALL transitions retain the existing matching source/patch requirement for SAMPLE, GRAIN, FM6 and PHYS; the other scopes do not change those source identities. Named controls switch at the midpoint; this remains parameter interpolation rather than a crossfade between separate engines or sample sources.
+
+Scope/time use seven spare bits in each existing snapshot trailer track record: six scopes × nineteen durations fit 114 states. Readiness retains two bits and position seven. Zero metadata in an older record decodes as ALL / 1S. The record remains 268 bytes, the bank 1,348 bytes, with the same upstream settings prefix and no new flash region. A running gesture is not resumed automatically after loading or power-on.
+
+`morph_transition_test` covers all scopes and engines, category isolation, all durations in both directions, endpoint hold, stop/restart, manual/capture takeover, source safety, LFO dispatch and actual page/knob routing. `snapshot_persistence_test` checks every scope/time/readiness combination at both endpoint positions, old zero metadata, real cold restart, section saves and write-failure retry. Existing DRIFT/mixer parity, audition restoration and full UI fuzz remain in the validation set.

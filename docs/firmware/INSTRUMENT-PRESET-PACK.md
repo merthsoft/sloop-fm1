@@ -8,6 +8,8 @@ all eighteen appended voices pass range/velocity/release tests. See
 [LOFI implementation and current measurements](LOFI-MASTER-DESIGN.md).
 The measurements below describe the original fourteen-voice batch.
 
+The PHASE VIOLIN uses a stronger existing distortion-envelope contour for more bow-like harmonic edge, retaining its calibrated level. See [the refinement and listening evidence](VIOLIN-BOW-TEXTURE.md).
+
 ## Scope
 
 Start with fourteen additional factory presets, using existing engines only.

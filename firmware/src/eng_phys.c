@@ -261,6 +261,9 @@ static const preset_t PHYS_PRESETS[] = {
     {"TIMPANI", {PM_MEMB, 10, 50, 100, 20, 110, 6, 10}, {0, 100, 127, 90}, 0, 0, FX(0, 0, 0, 50), XP(P_TRANS + 1, -12)},
     {"HARPSICHORD", {PM_STRING, 38, 108, 94, 10, 88, 0, 8}, {0, 100, 127, 24}, 0, 0, FX(0, 0, 0, 18)},
     {"OUD", {PM_STRING, 30, 70, 94, 28, 84, 0, 4}, {0, 100, 127, 34}, 0, 0, FX(0, 0, 0, 18)},
+    /* Vacation collection: existing synthesis, appended factory identities. */
+    {"ISLAND PAN", {PM_MODAL,42,105,82,48,96,0,28}, {0,100,127,55}, 0,0, FX(0,0,12,24)},
+    {"DESERT OUD", {PM_STRING,22,60,103,8,100,16,4}, {0,100,127,48}, 0,0, FX(0,0,14,20)},
 };
 #endif
 

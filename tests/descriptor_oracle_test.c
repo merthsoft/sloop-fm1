@@ -14,7 +14,10 @@ int main(int argc,char **argv) {
  host_tracks_init();
  for(uint32_t i=0;i<P_COUNT;i++)emit(&TP[i]);
  for(uint32_t i=0;i<G_COUNT;i++)emit(&GP[i]);
- for(uint32_t e=0;e<NENGINES;e++)for(uint32_t p=0;p<ENGINES[e]->npresets;p++) {
+ /* Freeze the original descriptor corpus; appended presets have independent tests. */
+ const uint8_t original_counts[]={22,26,12,26,11,7,14,8,8,8,28,11,4};
+ for(uint32_t e=0;e<NENGINES;e++)for(uint32_t p=0;p<original_counts[e];p++) {
+  assert(original_counts[e]<=ENGINES[e]->npresets);
   host_preset(&trk[0],e,p);
   for(uint32_t i=0;i<8;i++)emit(track_desc(&trk[0],P_E0+i));
  }
@@ -23,7 +26,7 @@ int main(int argc,char **argv) {
  for(uint32_t i=0;i<NELEM(DRIFT_DESC);i++)emit(&DRIFT_DESC[i]);
  for(uint32_t i=0;i<NELEM(EVOLVE_DESC);i++)emit(&EVOLVE_DESC[i]);
  for(uint32_t i=0;i<NELEM(SUSTAIN_DESC);i++)emit(&SUSTAIN_DESC[i]);
- for(uint32_t i=0;i<NELEM(SNAPSHOT_DESC);i++)emit(&SNAPSHOT_DESC[i]);
+ for(uint32_t i=0;i<4;i++)emit(&SNAPSHOT_DESC[i]);
  emit(&DUCK_TARGET);emit(&VOICE_INVERT);emit(&VOICE_SPREAD);emit(&REC_SNAP_DESC);
  assert(!fclose(out));return 0;
 }

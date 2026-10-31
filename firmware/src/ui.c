@@ -732,6 +732,31 @@ static const struct __attribute__((packed)) { uint8_t kind:4, e:4; } BANK[] = {
     {BK_CHIP, 1} /* MD BASS */, {BK_CHIP, 1} /* MD BRASS */,
     {BK_LOFI, 3} /* WORN EP */, {BK_LOFI, 3} /* DUST ORGAN */,
     {BK_LEAD,2} /* REV LEAD */, {BK_INST,2} /* REV GLASS */,
+    {BK_PAD,0} /* REV STR */, {BK_LOFI,3} /* REV HAZE */, {BK_LEAD,2} /* REV REED */,
+    {BK_INST,0} /* SYN VIOLIN */,
+    {BK_PLUCK,1} /* REV METAL */,
+    {BK_PLUCK,1} /* REV HARP */,
+    {BK_PAD,5} /* REV CHOIR */,
+    {BK_CHIP,3} /* GB RAZOR */,
+    {BK_CHIP,3} /* NES SPARK */,
+    {BK_CHIP,1} /* MD CRYSTAL */,
+    {BK_CHIP,1} /* MD PICK */,
+    {BK_PAD,0} /* NIGHT PAD */,
+    {BK_INST,2} /* SLASH STR */,
+    {BK_PAD,5} /* HEX CHOIR */,
+    {BK_FX,1} /* DREAD BELL */,
+    {BK_PAD,2} /* ORBIT PAD */,
+    {BK_KEYS,1} /* STAR KEYS */,
+    {BK_PAD,5} /* LUNAR VOX */,
+    {BK_PLUCK,10} /* ISLAND PAN */,
+    {BK_PLUCK,10} /* DESERT OUD */,
+    {BK_ORGAN,7} /* DUSK ORGAN */,
+    {BK_CHIP,3} /* PIXEL BASS */,
+    {BK_CHIP,3} /* SAVE BELL */,
+    {BK_CHIP,2} /* CRT LEAD */,
+    {BK_PAD,8} /* GLASS RAIN */,
+    {BK_KEYS,7} /* TOY ORGAN */,
+    {BK_FX,5} /* ROBOT TALK */,
 };
 #define NBANK (sizeof BANK / sizeof BANK[0])
 /* Resolved against engine preset names; keep this order for stored favourites and PC. */
@@ -752,6 +777,10 @@ static const uint8_t bank_pi[] = {
     8, 9, 10, 11, 12, 13, 14, 15, 8, 22, 9, 23, 26, 27, 16, 17, 18, 19,
     20, 21, 22, 23, 24, 25, 24, 25,
     10,11,
+    22,26,12,
+    23,26,27,7,27,28,28,29,
+    24,13,8,30,
+    14,31,9,28,29,8,29,30,15,8,9,10,
 };
 _Static_assert(NELEM(bank_pi) == NBANK, "every browser entry has an engine-local index");
 static void bank_resolve(void) {} /* Existing host fixtures may call this. */

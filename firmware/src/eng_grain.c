@@ -430,6 +430,8 @@ static const preset_t GRAIN_PRESETS[] = {
     {"DRONE", {3, 50, 115, 80, -12, 20, 20, 50}, {90, 100, 127, 100}, 0, 0, FX(0, 30, 15, 70)},
     {"PNO FREEZE", {0, 40, 127, 127, 0, 5, 0, 100}, {80, 100, 127, 100}, 0, 0, FX(0, 30, 20, 75)},
     {"HORN CLOUD", {3, 30, 100, 90, 0, 30, 15, 90}, {70, 100, 120, 95}, 0, 0, FX(0, 40, 20, 70)},
+    /* Vacation collection: existing synthesis, appended factory identities. */
+    {"GLASS RAIN", {2,32,34,48,12,60,50,105}, {66,100,116,80}, 0,0, FX(0,18,22,40)},
 };
 #endif
 

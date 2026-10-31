@@ -6,6 +6,21 @@ static __attribute__((minsize,noinline)) int snapshot_param(uint32_t id)
            id==P_GLIDE || id==P_PAN || id==P_DETUNE || id==P_TFLT || id>=P_ITYPE;
 }
 
+/* Scope is orthogonal to the stored capture: never discard unselected values. */
+static __attribute__((minsize,noinline)) int snapshot_selected(const track_t *t,uint32_t id)
+{
+    uint32_t scope=(uint32_t)snapshot_p[t-trk][4];
+    if(!scope)return 1;
+    if(scope==1)return id>=P_E0 || id==P_GLIDE || id==P_DETUNE;
+    if(scope==2)return id==P_TFLT || id==P_FTYPE ||
+        (t->engine==0 && (id==P_E4 || id==P_E5 || id==P_E7)) ||
+        (t->engine==3 && id==P_E7);
+    if(scope==3)return (id>=P_ATK && id<=P_ED_SHP) || id==P_ESYNC;
+    if(scope==4)return (id>=P_LRATE && id<=P_LD_AMP) || (id>=P_LSYNC && id<=P_LPOL);
+    return id==P_LEVEL || id==P_ED_FX || id==P_PAN ||
+        (id>=P_DIST && id<=P_REV) || (id>=P_ITYPE && id<=P_IMIX);
+}
+
 /* Locks keep their instantaneous sound, with the morphed value as their new
  * base. Capturing under a lock likewise captures the underlying sound. */
 static __attribute__((minsize,noinline)) int16_t *snapshot_base(track_t *t,uint32_t id)
@@ -18,7 +33,7 @@ static __attribute__((minsize,noinline)) int16_t *snapshot_base(track_t *t,uint3
 static __attribute__((minsize,noinline)) void snapshot_apply(track_t *t,int32_t position,int overlay)
 {
     uint32_t part=(uint32_t)(t-trk);
-    for(uint32_t id=0;id<P_COUNT;id++)if(snapshot_param(id)) {
+    for(uint32_t id=0;id<P_COUNT;id++)if(snapshot_param(id) && snapshot_selected(t,id)) {
         int32_t a=snapshot_values[part][0][id],b=snapshot_values[part][1][id];
         /* Most captured controls are identical. Avoid lock/descriptor lookup and
          * interpolation when the temporary overlay already has that value. */
@@ -37,6 +52,7 @@ static __attribute__((minsize,noinline)) void snapshot_apply(track_t *t,int32_t 
  * controls at the values it is about to render (including an active lock). */
 static __attribute__((minsize,noinline)) int snapshot_lfo_stable(uint32_t part,const int16_t *p)
 {
+    if(snapshot_p[part][4] && snapshot_p[part][4]!=4)return 1;
     return snapshot_values[part][0][P_LRATE]==p[P_LRATE] &&
            snapshot_values[part][1][P_LRATE]==p[P_LRATE] &&
            snapshot_values[part][0][P_LSYNC]==p[P_LSYNC] &&

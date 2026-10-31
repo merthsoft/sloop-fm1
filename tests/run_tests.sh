@@ -130,6 +130,14 @@ $CC -UNDEBUG -O2 -fwrapv -fno-strict-aliasing -w -Ibuild/gen -Ifirmware/src -Ifi
 run "UI reuse: parameter values and encoder acceleration state" "$OUT/ui_reuse_controls_test"
 $CC -UNDEBUG -O2 -fwrapv -fno-strict-aliasing -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/descriptor_oracle_test" tests/descriptor_oracle_test.c -lm -pthread
 $CC -UNDEBUG -O2 -fwrapv -fno-strict-aliasing -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/descriptor_wire_test" tests/descriptor_wire_test.c -lm -pthread
+$CC -UNDEBUG -O2 -fwrapv -fno-strict-aliasing -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/reverse_presets_test" tests/reverse_presets_test.c -lm -pthread
+run "reverse presets: swell, range, velocity and release" "$OUT/reverse_presets_test"
+$CC -UNDEBUG -O2 -fwrapv -fno-strict-aliasing -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/expanded_sounds_test" tests/expanded_sounds_test.c -lm -pthread
+run "expanded sounds: pitch, velocity, release and identities" "$OUT/expanded_sounds_test"
+$CC -UNDEBUG -O2 -fwrapv -fno-strict-aliasing -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/morph_transition_test" tests/morph_transition_test.c -lm -pthread
+run "morph: scopes, one-shot durations, stop/resume and persistence" "$OUT/morph_transition_test"
+$CC -UNDEBUG -O2 -fwrapv -fno-strict-aliasing -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/violin_preset_test" tests/violin_preset_test.c -lm -pthread
+run "violin: harmonic edge, levels, range and release" "$OUT/violin_preset_test"
 run "compact descriptors: original metadata, values, units and wire bytes" python3 tests/parameter_descriptors_test.py "$OUT/descriptor_oracle_test" "$OUT/descriptor_wire_test" "$OUT/parameter-descriptors"
 $CC -UNDEBUG -O2 -fwrapv -fno-strict-aliasing -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/ui_reuse_drawing_test" tests/ui_reuse_drawing_test.c -lm -pthread
 run "UI reuse: exact font widths, trim, cards and REC digits" "$OUT/ui_reuse_drawing_test"

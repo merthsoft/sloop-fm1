@@ -716,6 +716,10 @@ A muted track fades out in a few milliseconds and plays no new notes; its patter
 
 ### Sound explorer
 
+For twelve more sounds across space, travel, arcade and toy themes, see the [vacation sound collection](docs/firmware/VACATION-SOUNDS.md). All are available in SAVE → SOUNDS and at the end of their engine preset lists.
+
+For horror textures, try **NIGHT PAD** and **HEX CHOIR** under PAD, **SLASH STR** under INST, or **DREAD BELL** under FX. [Sound recipes and playing tips](docs/firmware/HORROR-SOUNDS.md).
+
 Tap **SAVE**, then use SELECT to reach **SOUNDS**. **Knob 2 (KIND)** selects ALL,
 FAV, BASS, KEYS, ORGN, PAD, LEAD, PLCK, STAB, FX, CHIP, INST, LOFI or USER;
 continue turning for factory-engine filters such as ANALOG, CHIP and FM6.
@@ -2076,7 +2080,12 @@ On a synth track, tap **EDIT** and turn **SELECT** to **MORPH**.
 1. Turn **knob 2 (SET A)** right twice to keep the current sound.
 2. Change its sound controls on other pages, then return to MORPH.
 3. Turn **knob 3 (SET B)** right twice.
-4. Sweep **knob 1 (MORPH)**: 0% is A, 100% is B. **STORED** shows A+B.
+4. Sweep **knob 1 (MORPH)**: 0% is A, 100% is B.
+5. Use **knob 4 (SCOPE)** to choose ALL, SOUND, FILTER, ENV, LFO or MIX. For example, SOUND changes the instrument controls while leaving levels and sends alone.
+
+For a one-shot transition, turn SELECT to the next page, **MORPH GO**. Knob 1 chooses **A>B** or **B>A**, knob 2 sets **TIME**, knob 3 shows/adjusts MORPH, and column 4 shows which endpoints are **STORED**. A completed transition stays at its destination; select a direction again to retrigger. MOVE → STOP freezes the current sound. Turning MORPH or capturing an endpoint cancels the run.
+
+TIME shares DRIFT/DRONE's 1S, 2S, 5S, 10S, 20S, 40S, 80S and 160S choices, plus 16/8/4/2/1-bar, half/quarter/eighth/sixteenth and triplet timings. Seconds work while stopped; tempo durations pause with playback. Starting a one-shot turns off that track's DRIFT→MORPH so both controls do not compete. Other DRIFT targets keep running.
 
 You can capture and morph while playing or recording. Each synth track keeps its
 own pair. Continuous sound parameters blend; named choices switch halfway.
@@ -2084,7 +2093,7 @@ Level, pan, envelope/LFO, filter, sends, insert and engine controls are included
 Notes, key/scale, arp routing, voice mode, global FX and ambient runtime controls
 stay as they are. Active parameter locks keep sounding and return to the morphed
 base afterward. Loading a sound clears the pair; loading a section restores its
-saved A/B and manual blend. Section SAVE stores them with the current sound.
+saved A/B, manual blend, scope and duration, with MOVE stopped. Section SAVE stores them with the current sound.
 The working project also autosaves captures after playback stops and the device
 is idle; wait for that save before powering off. A save queued while playing
 becomes durable after STOP. Stopping playback itself does not clear the pair.
@@ -2092,17 +2101,19 @@ This blends controls within an instrument, rather than
 crossfading audio between different engines.
 
 For automatic A/B movement, select **LFO → DRIFT → TARGET: MORPH** and turn
-MODE ON. Set the manual MORPH knob near **50%** to give movement room in both
+MODE to RAND, SIN, TRI, SAW or SQR. Set the manual MORPH knob near **50%** to give movement room in both
 directions, then use AMOUNT and CYCLE to control its depth and timing. The MORPH
 page shows the effective blend. The saved base sound and A/B captures stay intact;
 active parameter locks keep priority. Saving stores the base sound, rather than
 the temporary moving blend. Without both captures, DRIFT shows STORE A AND B.
-For SAMPLE, GRAIN, FM6 and PHYS, keep the same sample, patch or model in A, B and
+For SOUND/ALL scope on SAMPLE, GRAIN, FM6 and PHYS, keep the same sample, patch or model in A, B and
 the current sound; otherwise it shows MATCH SOURCES and skips automatic morphing.
 
 ![Tempo-synced morph drift](assets/screens/merthsoft/neon/drift-morph-sync.png)
 
-![Track sound morphing](assets/screens/merthsoft/neon/track-morph.png)
+![Scoped sound morphing](assets/screens/merthsoft/neon/morph-scope.png)
+
+![One-shot transitions](assets/screens/merthsoft/neon/morph-go.png)
 
 [Implementation and scope](docs/firmware/TRACK-SNAPSHOTS-DESIGN.md).
 
